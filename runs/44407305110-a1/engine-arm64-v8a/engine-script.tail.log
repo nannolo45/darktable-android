@@ -1,0 +1,150 @@
+
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+ * Gettext
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+ * Pugixml (required version >= 1.8), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * ZLIB (required version >= 1.2.11), software library used for data compression
+   Used for decoding DNG Deflate compression
+
+-- Found Glib 2.90.1
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+-- Checking for module 'gtk+-3.0'
+--   Found gtk+-3.0, version 3.24.52
+-- Found GTK3: /opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/gtk-3.0;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/pango-1.0;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../lib/glib-2.0/include;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/harfbuzz;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/freetype2;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/libpng16;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/fribidi;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/cairo;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/pixman-1;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/gdk-pixbuf-2.0;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/gio-unix-2.0;/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/atk-1.0 (Required is at least version "3.24.15")
+-- Found LibXml2: /opt/dta/sysroot-arm64-v8a/lib/libxml2.so (found suitable version "2.15.4", minimum required is "2.6")
+-- Found Potrace: /opt/dta/sysroot-arm64-v8a/lib/libpotrace.so
+-- Could NOT find Imath (missing: Imath_DIR)
+-- Building LibRaw from intree copy
+-- Found LensFun: /opt/dta/sysroot-arm64-v8a/lib/liblensfun.so
+-- Found SQLite3: /opt/dta/sysroot-arm64-v8a/include (found suitable version "3.54.1", minimum required is "3.26")
+-- Found GIO 
+-- Found GThread: /opt/dta/sysroot-arm64-v8a/lib/libgthread-2.0.so
+-- Found GModule: /opt/dta/sysroot-arm64-v8a/lib/libgmodule-2.0.so
+-- Found PangoCairo: /opt/dta/sysroot-arm64-v8a/lib/libpangocairo-1.0.so
+-- Found Rsvg2: /opt/dta/sysroot-arm64-v8a/lib/librsvg-2.so
+-- Found ZLIB: /home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/29/libz.so (found version "1.3.2.1")
+-- Found PNG: /opt/dta/sysroot-arm64-v8a/lib/libpng.so (found version "1.6.59")
+-- Found TIFF: /opt/dta/sysroot-arm64-v8a/lib/cmake/tiff (found version "4.7.2")
+-- Found LCMS2: /opt/dta/sysroot-arm64-v8a/lib/liblcms2.so
+-- Found JsonGlib 
+-- AI features: disabled
+-- Found CURL: /opt/dta/sysroot-arm64-v8a/lib/libcurl.so (found suitable version "8.23.0", minimum required is "7.56")
+-- Found LibArchive: /opt/dta/sysroot-arm64-v8a/lib/libarchive.so (found version "3.8.11")
+-- Found Exiv2: /opt/dta/sysroot-arm64-v8a/lib/libexiv2.so (Required is at least version "0.27.2")
+-- Looking for EXV_ENABLE_BMFF
+-- Looking for EXV_ENABLE_BMFF - found
+-- Exiv2 >= 0.27.4 found with ISOBMFF support (CR3, AVIF, HEIF)
+-- Checking for module 'iso-codes'
+--   Package 'iso-codes', required by 'virtual:world', not found
+-- iso-codes version  found but we need at least version 3.66
+-- no suitable iso-codes, there will be no language names in the preferences
+-- Performing Test HAVE_BUILTIN_CPU_SUPPORTS
+-- Performing Test HAVE_BUILTIN_CPU_SUPPORTS - Failed
+-- Does the compiler support __builtin_cpu_supports(): 
+-- Performing Test HAVE_TLS
+-- Performing Test HAVE_TLS - Success
+-- Checking for -mtune=generic support
+-- Performing Test MTUNEGENERIC
+-- Performing Test MTUNEGENERIC - Success
+-- Lua support: Disabled
+-- Found Pugixml 1.16
+-- Map mode: disabled
+-- Print mode: disabled
+-- Performing Test HAVE_FFP_CONTRACT_OFF
+-- Performing Test HAVE_FFP_CONTRACT_OFF - Success
+-- LibRaw string version: 0.23.0
+-- LibRaw ID version:     0x0230
+-- LibRaw SO version:     27.0.0
+-- 
+-- ----------------------------------------------------------------------------------
+--  Libraw 0.23.0 configuration            <http://www.libraw.org>
+-- 
+--  Libraw will be compiled with OpenMP support .................. YES
+--  Libraw will be compiled with LCMS support .................... NO
+--  Libraw will be compiled with example command-line programs ... NO
+--  Libraw will be compiled with RedCine codec support ........... NO
+--  Libraw will be compiled with DNG deflate codec support ....... YES
+--  Libraw will be compiled with DNG lossy codec support ......... NO
+--  Libraw will be compiled with RawSpeed support ................ NO
+--  Libraw will be compiled with debug message from dcraw ........ NO
+--  Libraw will be compiled with Foveon X3F support .............. NO
+--  Libraw will be compiled with Raspberry Pi RAW support ........ NO
+--  Libraw will be compiled as a shared library
+-- ----------------------------------------------------------------------------------
+-- 
+Missing po4a-translate. Can NOT create translated manpages
+Missing po4a-updatepo. Can NOT update manpage translations
+-- The following features have been enabled:
+
+ * OpenMP-based threading, used for parallelization of the library
+ * XML reading, used for loading of data/cameras.xml
+ * Lossy JPEG decoding, used for DNG Lossy JPEG compression decoding
+ * ZLIB decoding, used for DNG Deflate compression decoding
+
+-- The following OPTIONAL packages have been found:
+
+ * LibArchive
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+ * Gettext
+ * GTK3 (required version >= 3.24.15)
+ * LibXml2 (required version >= 2.6)
+ * Potrace
+ * LensFun
+ * SQLite3 (required version >= 3.26)
+ * Glib
+ * GIO
+ * GThread
+ * GModule
+ * PangoCairo
+ * Rsvg2
+ * PNG
+ * TIFF
+ * LCMS2
+ * JsonGlib
+ * CURL (required version >= 7.56)
+ * Exiv2 (required version >= 0.27.2)
+ * Pugixml (required version >= 1.5), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * ZLIB, software library used for data compression
+   Used for decoding DNG Deflate compression
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+
+-- The following OPTIONAL packages have not been found:
+
+ * Imath (required version >= 3.1)
+ * IsoCodes (required version >= 3.66)
+
+-- Configuring done (6.0s)
+-- Generating done (0.9s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_POLICY_VERSION_MINIMUM
+
+
+-- Build files have been written to: /home/runner/dta-work/engine-build-arm64-v8a
+FAILED: [code=1] bin/CMakeFiles/lib_darktable.dir/common/utility.c.o 
+/home/runner/darktable/src/common/utility.c:1240:14: fatal error: 'strtok' is deprecated: strtok() is not thread-safe; use strtok_r() instead [-Wdeprecated-declarations]
+FAILED: [code=1] bin/CMakeFiles/lib_darktable.dir/gui/accelerators.c.o 
+/home/runner/darktable/src/gui/accelerators.c:3643:23: fatal error: 'strtok' is deprecated: strtok() is not thread-safe; use strtok_r() instead [-Wdeprecated-declarations]
+FAILED: [code=1] bin/CMakeFiles/lib_darktable.dir/gui/presets.c.o 
+/home/runner/darktable/src/gui/presets.c:722:47: fatal error: 'strtok' is deprecated: strtok() is not thread-safe; use strtok_r() instead [-Wdeprecated-declarations]
+Merging translations into /home/runner/dta-work/engine-build-arm64-v8a/share/darktable/org.darktable.darktable.desktop.
+[581/935] Generating ../metainfo/org.darktable.darktable.appdata.xml
+Merging translations into /home/runner/dta-work/engine-build-arm64-v8a/bin/../share/metainfo/org.darktable.darktable.appdata.xml.
+CREATED /home/runner/dta-work/engine-build-arm64-v8a/bin/../share/metainfo/org.darktable.darktable.appdata.xml
+ninja: build stopped: cannot make progress due to previous errors.
+[dta 22:14:18] ERROR: darktable build failed (see engine-arm64-v8a-build.log)
