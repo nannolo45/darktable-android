@@ -30,11 +30,16 @@ COMPAT="$HERE/android-compat/dt_android_compat.h"
 
 [ -f "$DTA_PREFIX/lib/pkgconfig/gtk+-3.0.pc" ] || dta_die "sysroot $DTA_PREFIX is missing gtk+-3.0"
 
+# darktable compiles with -Werror (src/CMakeLists.txt). Bionic marks strtok()
+# deprecated, which darktable uses in common/utility.c, gui/accelerators.c and
+# gui/presets.c; keep that one a warning instead of patching the source.
+WARN="-Wno-error=deprecated-declarations"
+
 mapfile -t CM < <(dta_cmake_args)
 OPTS=(
   -DCMAKE_INSTALL_PREFIX=$ENGINE_PREFIX
-  -DCMAKE_C_FLAGS="$CPPFLAGS $CFLAGS -include $COMPAT"
-  -DCMAKE_CXX_FLAGS="$CPPFLAGS $CXXFLAGS -include $COMPAT"
+  -DCMAKE_C_FLAGS="$CPPFLAGS $CFLAGS -include $COMPAT $WARN"
+  -DCMAKE_CXX_FLAGS="$CPPFLAGS $CXXFLAGS -include $COMPAT $WARN"
   -DBINARY_PACKAGE_BUILD=ON          # no -march=native
   -DUSE_OPENMP=ON                    # brief S2
   -DUSE_OPENCL=OFF                   # PLAN 3.1: later, opt-in
