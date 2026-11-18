@@ -1,0 +1,150 @@
+-- Could NOT find Imath (missing: Imath_DIR)
+-- Building LibRaw from intree copy
+-- Found LensFun: /opt/dta/sysroot-x86_64/lib/liblensfun.so
+-- Found SQLite3: /opt/dta/sysroot-x86_64/include (found suitable version "3.54.1", minimum required is "3.26")
+-- Found GIO 
+-- Found GThread: /opt/dta/sysroot-x86_64/lib/libgthread-2.0.so
+-- Found GModule: /opt/dta/sysroot-x86_64/lib/libgmodule-2.0.so
+-- Found PangoCairo: /opt/dta/sysroot-x86_64/lib/libpangocairo-1.0.so
+-- Found Rsvg2: /opt/dta/sysroot-x86_64/lib/librsvg-2.so
+-- Found ZLIB: /home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/29/libz.so (found version "1.3.2.1")
+-- Found PNG: /opt/dta/sysroot-x86_64/lib/libpng.so (found version "1.6.59")
+-- Found TIFF: /opt/dta/sysroot-x86_64/lib/cmake/tiff (found version "4.7.2")
+-- Found LCMS2: /opt/dta/sysroot-x86_64/lib/liblcms2.so
+-- Found JsonGlib 
+-- AI features: disabled
+-- Found CURL: /opt/dta/sysroot-x86_64/lib/libcurl.so (found suitable version "8.23.0", minimum required is "7.56")
+-- Found LibArchive: /opt/dta/sysroot-x86_64/lib/libarchive.so (found version "3.8.11")
+-- Found Exiv2: /opt/dta/sysroot-x86_64/lib/libexiv2.so (Required is at least version "0.27.2")
+-- Looking for EXV_ENABLE_BMFF
+-- Looking for EXV_ENABLE_BMFF - found
+-- Exiv2 >= 0.27.4 found with ISOBMFF support (CR3, AVIF, HEIF)
+-- Checking for module 'iso-codes'
+--   Package 'iso-codes', required by 'virtual:world', not found
+-- iso-codes version  found but we need at least version 3.66
+-- no suitable iso-codes, there will be no language names in the preferences
+-- Performing Test HAVE_BUILTIN_CPU_SUPPORTS
+-- Performing Test HAVE_BUILTIN_CPU_SUPPORTS - Success
+-- Does the compiler support __builtin_cpu_supports(): 1
+-- Performing Test HAVE_TLS
+-- Performing Test HAVE_TLS - Success
+-- Checking for -mtune=generic support
+-- Performing Test MTUNEGENERIC
+-- Performing Test MTUNEGENERIC - Success
+-- Lua support: Disabled
+-- Found Pugixml 1.16
+-- Map mode: disabled
+-- Print mode: disabled
+-- Performing Test HAVE_FFP_CONTRACT_OFF
+-- Performing Test HAVE_FFP_CONTRACT_OFF - Success
+-- LibRaw string version: 0.23.0
+-- LibRaw ID version:     0x0230
+-- LibRaw SO version:     27.0.0
+-- 
+-- ----------------------------------------------------------------------------------
+--  Libraw 0.23.0 configuration            <http://www.libraw.org>
+-- 
+--  Libraw will be compiled with OpenMP support .................. YES
+--  Libraw will be compiled with LCMS support .................... NO
+--  Libraw will be compiled with example command-line programs ... NO
+--  Libraw will be compiled with RedCine codec support ........... NO
+--  Libraw will be compiled with DNG deflate codec support ....... YES
+--  Libraw will be compiled with DNG lossy codec support ......... NO
+--  Libraw will be compiled with RawSpeed support ................ NO
+--  Libraw will be compiled with debug message from dcraw ........ NO
+--  Libraw will be compiled with Foveon X3F support .............. NO
+--  Libraw will be compiled with Raspberry Pi RAW support ........ NO
+--  Libraw will be compiled as a shared library
+-- ----------------------------------------------------------------------------------
+-- 
+Missing po4a-translate. Can NOT create translated manpages
+Missing po4a-updatepo. Can NOT update manpage translations
+-- The following features have been enabled:
+
+ * OpenMP-based threading, used for parallelization of the library
+ * XML reading, used for loading of data/cameras.xml
+ * Lossy JPEG decoding, used for DNG Lossy JPEG compression decoding
+ * ZLIB decoding, used for DNG Deflate compression decoding
+
+-- The following OPTIONAL packages have been found:
+
+ * LibArchive
+
+-- The following REQUIRED packages have been found:
+
+ * Threads
+ * Gettext
+ * GTK3 (required version >= 3.24.15)
+ * LibXml2 (required version >= 2.6)
+ * Potrace
+ * LensFun
+ * SQLite3 (required version >= 3.26)
+ * Glib
+ * GIO
+ * GThread
+ * GModule
+ * PangoCairo
+ * Rsvg2
+ * PNG
+ * TIFF
+ * LCMS2
+ * JsonGlib
+ * CURL (required version >= 7.56)
+ * Exiv2 (required version >= 0.27.2)
+ * Pugixml (required version >= 1.5), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * ZLIB, software library used for data compression
+   Used for decoding DNG Deflate compression
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+
+-- The following OPTIONAL packages have not been found:
+
+ * Imath (required version >= 3.1)
+ * IsoCodes (required version >= 3.66)
+
+-- Configuring done (6.9s)
+-- Generating done (0.9s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_POLICY_VERSION_MINIMUM
+
+
+-- Build files have been written to: /home/runner/dta-work/engine-build-x86_64
+[933/935] Generating org.darktable.darktable.desktop
+Merging translations into /home/runner/dta-work/engine-build-x86_64/share/darktable/org.darktable.darktable.desktop.
+[934/935] Generating ../metainfo/org.darktable.darktable.appdata.xml
+Merging translations into /home/runner/dta-work/engine-build-x86_64/bin/../share/metainfo/org.darktable.darktable.appdata.xml.
+CREATED /home/runner/dta-work/engine-build-x86_64/bin/../share/metainfo/org.darktable.darktable.appdata.xml
+engine for x86_64, darktable 04477d32a00cc5abaea36d5bee084eb40c6eabb2
+NDK 30.0.16248370, API 29
+configure_seconds 8
+build_seconds 201
+jobs 4
+
+== sizes (stripped, bytes)
+total	63888806
+darktable_lib_and_plugins	13203384
+darktable_plugins_count	153
+darktable-cli	25624
+dependency_libs	36016024
+share_darktable	10394133
+share_lensfun	4249590
+
+== OpenMP
+libdarktable.so NEEDED libomp.so: yes
+-- Found OpenMP_C: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP_CXX: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP: TRUE (found suitable version "5.1", minimum required is "4.5")
+ * OpenMP (required version >= 4.5)
+-- Looking for OpenMP
+
+== ELF load alignment (every PT_LOAD must be >= 0x4000)
+misaligned_files 0
+
+== unresolved NEEDED entries
+missing_needed 0
+-rw-r--r-- 1 runner runner 22486660 Nov 18 22:44 /home/runner/engine-out/engine-x86_64.tar.gz
