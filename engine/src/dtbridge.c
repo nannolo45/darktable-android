@@ -453,8 +453,19 @@ static void _add_value(JsonBuilder *b, const dt_introspection_field_t *f, const 
 {
   switch(f->header.type)
   {
-    case DT_INTROSPECTION_TYPE_FLOAT:  json_builder_add_double_value(b, *(const float *)p); break;
-    case DT_INTROSPECTION_TYPE_DOUBLE: json_builder_add_double_value(b, *(const double *)p); break;
+    // JSON has no NaN or infinity; some modules keep NaN in unused fields
+    // (temperature's "various"), which json-glib would write as "nan.0"
+    case DT_INTROSPECTION_TYPE_FLOAT:
+    case DT_INTROSPECTION_TYPE_DOUBLE:
+    {
+      const double v = f->header.type == DT_INTROSPECTION_TYPE_FLOAT ? *(const float *)p
+                                                                     : *(const double *)p;
+      if(isfinite(v))
+        json_builder_add_double_value(b, v);
+      else
+        json_builder_add_null_value(b);
+      break;
+    }
     case DT_INTROSPECTION_TYPE_INT:    json_builder_add_int_value(b, *(const int *)p); break;
     case DT_INTROSPECTION_TYPE_UINT:   json_builder_add_int_value(b, *(const unsigned int *)p); break;
     case DT_INTROSPECTION_TYPE_INT8:   json_builder_add_int_value(b, *(const int8_t *)p); break;
