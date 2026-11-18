@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Brief S1 pipeline: dependency sysroots -> engine -> emulator test.
+# Each stage is also a workflow of its own that can be started by hand.
+name: s1-pipeline
+
+on:
+  push:
+    branches: [s1-android-build]
+    paths-ignore: ["docs/**", "*.md"]
+  workflow_dispatch:
+    inputs:
+      force_deps:
+        description: "Rebuild the sysroots even if the release files exist"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: s1-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deps:
+    uses: ./.github/workflows/deps.yml
+    with:
+      force: ${{ inputs.force_deps == true }}
+  engine:
+    needs: deps
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/engine.yml
+  emulator-test:
+    needs: engine
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/emulator-test.yml

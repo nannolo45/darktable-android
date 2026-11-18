@@ -1,0 +1,33 @@
+Origin: termux-packages, x11-packages/gtk3/broadway-server.patch (commit 5f68afb0cd1fdb5e14ab058445da9a1602b55187).
+Licence: same as GTK (LGPL-2.1-or-later), per termux-packages LICENSE.md.
+Why: bionic has no shm_open()/shm_unlink(); the broadway backend then uses a
+file in g_get_tmp_dir(), the fallback GTK already has. Unchanged from Termux.
+
+--- a/gdk/broadway/broadway-server.c	2022-12-12 14:17:52.598502580 +0000
++++ b/gdk/broadway/broadway-server.c	2022-12-12 14:18:54.758683298 +0000
+@@ -829,9 +829,6 @@
+   void *ptr;
+   char *filename = NULL;
+
+-  fd = shm_open (name, O_RDONLY, 0600);
+-  if (fd == -1)
+-    {
+       filename = g_build_filename (g_get_tmp_dir (), name, NULL);
+       fd = open (filename, O_RDONLY);
+       if (fd == -1)
+@@ -841,7 +838,6 @@
+
+ 	  return NULL;
+ 	}
+-    }
+
+   ptr = mmap (0, size, PROT_READ, MAP_SHARED, fd, 0);
+
+@@ -852,8 +848,6 @@
+       unlink (filename);
+       g_free (filename);
+     }
+-  else
+-    shm_unlink (name);
+
+   return ptr;

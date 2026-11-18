@@ -1,0 +1,146 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Build the Android dependency sysroot per ABI from deps/ and publish it as a
+# release file named by the hash of deps/ (brief S1). Skips an ABI whose
+# release file already exists.
+name: deps
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild even if the release file exists"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      force:
+        type: boolean
+        default: false
+    outputs:
+      deps_tag:
+        value: ${{ jobs.tag.outputs.deps_tag }}
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      deps_tag: ${{ steps.t.outputs.DEPS_TAG }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: t
+        run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
+
+  sysroot:
+    needs: tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    env:
+      DEPS_TAG: ${{ needs.tag.outputs.deps_tag }}
+      ABI: ${{ matrix.abi }}
+      DTA_WORK: /home/runner/dta-work
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check for an existing release file
+        id: exists
+        run: |
+          if [ "${{ inputs.force }}" != "true" ] && gh release view "$DEPS_TAG" --json assets -q '.assets[].name' 2>/dev/null | grep -qx "sysroot-$ABI.tar.zst"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "sysroot-$ABI.tar.zst already in $DEPS_TAG"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Host tools, NDK, Rust
+        if: steps.exists.outputs.skip != 'true'
+        run: |
+          sudo mkdir -p /opt/dta && sudo chown "$USER" /opt/dta
+          deps/host-setup.sh /home/runner/dta-host > /tmp/env.sh
+          cat /tmp/env.sh
+          . /tmp/env.sh
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+          echo "/home/runner/dta-host/dta-venv/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Restore package cache
+        if: steps.exists.outputs.skip != 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/dta-work/pkgcache
+          key: deps-pkg-${{ matrix.abi }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: deps-pkg-${{ matrix.abi }}-
+
+      - name: Build sysroot
+        id: build
+        if: steps.exists.outputs.skip != 'true'
+        run: |
+          start=$(date +%s)
+          set +e
+          deps/build-sysroot.sh "$ABI" 2>&1 | tee /tmp/build-sysroot.log
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Save package cache
+        if: always() && steps.exists.outputs.skip != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/dta-work/pkgcache
+          key: deps-pkg-${{ matrix.abi }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Publish sysroot release file
+        if: steps.exists.outputs.skip != 'true' && steps.build.outputs.rc == '0'
+        run: |
+          tar -C /opt/dta -cf - "sysroot-$ABI" | zstd -T0 -19 -q -o "sysroot-$ABI.tar.zst"
+          ls -l "sysroot-$ABI.tar.zst"
+          gh release view "$DEPS_TAG" >/dev/null 2>&1 || \
+            gh release create "$DEPS_TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "$DEPS_TAG" --notes "Android dependency sysroots built from deps/ tree ${DEPS_TAG#deps-} (commit $GITHUB_SHA). Experimental, brief S1." || true
+          gh release upload "$DEPS_TAG" "sysroot-$ABI.tar.zst" --clobber
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L/packages"
+          echo "deps_tag: $DEPS_TAG" > "$L/summary.txt"
+          echo "abi: $ABI" >> "$L/summary.txt"
+          echo "skipped_existing: ${{ steps.exists.outputs.skip }}" >> "$L/summary.txt"
+          echo "build_exit: ${{ steps.build.outputs.rc }}" >> "$L/summary.txt"
+          echo "build_seconds: ${{ steps.build.outputs.seconds }}" >> "$L/summary.txt"
+          echo "runner_cores: $(nproc)" >> "$L/summary.txt"
+          LD="$DTA_WORK/logs/$ABI"
+          if [ -d "$LD" ]; then
+            cp "$LD/summary.tsv" "$L/" 2>/dev/null || true
+            cp "$LD/alignment.txt" "$L/" 2>/dev/null || true
+            for f in "$LD"/*.log; do
+              n=$(basename "$f" .log)
+              st=$(awk -F'\t' -v n="$n" '$1==n{print $3}' "$LD/summary.tsv")
+              if [ "$st" = failed ]; then
+                tail -n 300 "$f" > "$L/packages/$n.FAILED.log"
+              else
+                tail -n 15 "$f" > "$L/packages/$n.tail.log"
+              fi
+            done
+            tar -czf "$L/file-lists.tar.gz" -C "$LD" $(cd "$LD" && ls *.files 2>/dev/null) 2>/dev/null || true
+          fi
+          tail -n 120 /tmp/build-sysroot.log > "$L/build-sysroot.tail.log" 2>/dev/null || true
+          ls -l sysroot-*.tar.zst >> "$L/summary.txt" 2>/dev/null || true
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out "deps-$ABI" "${{ job.status }}-rc${{ steps.build.outputs.rc }}"
+
+      - name: Fail if any package failed
+        if: steps.exists.outputs.skip != 'true' && steps.build.outputs.rc != '0'
+        run: |
+          echo "one or more packages failed, see ci-logs"; exit 1

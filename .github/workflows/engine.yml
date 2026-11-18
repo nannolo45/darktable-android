@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Cross-compile darktable (library, module plugins, darktable-cli, data) per
+# ABI against the cached sysroot and publish the engine archive (brief S1).
+name: engine
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      engine_tag:
+        value: ${{ jobs.tag.outputs.engine_tag }}
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      deps_tag: ${{ steps.t.outputs.DEPS_TAG }}
+      engine_tag: ${{ steps.t.outputs.ENGINE_TAG }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: t
+        run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
+
+  android:
+    needs: tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    env:
+      DEPS_TAG: ${{ needs.tag.outputs.deps_tag }}
+      ENGINE_TAG: ${{ needs.tag.outputs.engine_tag }}
+      ABI: ${{ matrix.abi }}
+      DTA_WORK: /home/runner/dta-work
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Host tools and NDK
+        run: |
+          sudo mkdir -p /opt/dta && sudo chown "$USER" /opt/dta
+          deps/host-setup.sh --no-rust /home/runner/dta-host > /tmp/env.sh
+          . /tmp/env.sh
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> "$GITHUB_ENV"
+          echo "/home/runner/dta-host/dta-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Fetch sysroot release file
+        run: |
+          gh release download -R "$GITHUB_REPOSITORY" "$DEPS_TAG" --pattern "sysroot-$ABI.tar.zst" --dir /tmp \
+            || { echo "no sysroot-$ABI.tar.zst in release $DEPS_TAG: run the deps workflow first"; exit 1; }
+          zstd -dc "/tmp/sysroot-$ABI.tar.zst" | tar -x -C /opt/dta
+
+      - name: Fetch darktable source
+        run: |
+          tools/fetch-darktable.sh /home/runner/darktable | tail -1 | tee /tmp/dt-commit
+
+      - name: Build engine
+        id: build
+        run: |
+          set +e
+          start=$(date +%s)
+          tools/build-engine-android.sh "$ABI" /home/runner/darktable /home/runner/engine-out 2>&1 | tee /tmp/engine.log
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          exit $rc
+
+      - name: Publish engine release file
+        run: |
+          cd /home/runner/engine-out
+          gh release view -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --prerelease --target "$GITHUB_SHA" --title "$ENGINE_TAG" \
+              --notes "darktable engine for Android (darktable-cli, libdarktable, plugins, data) built from commit $GITHUB_SHA. Experimental, brief S1. Not an official darktable release." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" "engine-$ABI.tar.gz" "engine-$ABI-report.txt" --clobber
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L"
+          {
+            echo "engine_tag: $ENGINE_TAG"; echo "deps_tag: $DEPS_TAG"; echo "abi: $ABI"
+            echo "darktable: $(cat /tmp/dt-commit 2>/dev/null)"
+            echo "build_exit: ${{ steps.build.outputs.rc }}"; echo "seconds: ${{ steps.build.outputs.seconds }}"
+            echo "runner_cores: $(nproc)"
+          } > "$L/summary.txt"
+          O=/home/runner/engine-out
+          cp "$O/engine-$ABI-report.txt" "$L/" 2>/dev/null || true
+          cp "$O/engine-$ABI-cmake.log" "$L/cmake.log" 2>/dev/null || true
+          grep -n -E "error|warning: .*(implicit|incompatible)|FAILED|undefined" "$O/engine-$ABI-build.log" | head -400 > "$L/build-errors.log" 2>/dev/null || true
+          tail -n 200 "$O/engine-$ABI-build.log" > "$L/build.tail.log" 2>/dev/null || true
+          tail -n 150 /tmp/engine.log > "$L/engine-script.tail.log" 2>/dev/null || true
+          grep -E "^-- " "$O/engine-$ABI-cmake.log" > "$L/cmake-status.log" 2>/dev/null || true
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out "engine-$ABI" "${{ job.status }}"
