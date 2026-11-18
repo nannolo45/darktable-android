@@ -353,6 +353,13 @@ static int cmd_history(const char *raw, const char *xmp, const char *outdir)
 static int cmd_region(const char *raw, const char *xmp, const char *outdir)
 {
   MUST(dtb_open(raw, xmp));
+  // diagnosis only (t5_bisect.sh): render with another demosaic method
+  const char *dm = getenv("DTB_TEST_DEMOSAIC_METHOD");
+  if(dm)
+  {
+    MUST(dtb_param_set_int("demosaic", 0, "demosaicing_method", atoi(dm)));
+    fprintf(stdout, "RESULT demosaicing_method %s\n", dm);
+  }
   int w, h;
   uint8_t *full = render_full(&w, &h, NULL);
   const int rw = 512, rh = 512;
@@ -378,6 +385,26 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
     snprintf(name, sizeof(name), "region%d_crop.ppm", i);
     write_ppm(path_join(outdir, name), crop, rw, rh);
     fprintf(stdout, "RESULT region%d_origin %d %d\n", i, xs[i], ys[i]);
+
+    // measurement for the write-up, not part of the pass/fail check: the
+    // same region rendered with a margin around it and cropped
+    const int margins[3] = { 16, 64, 256 };
+    for(int k = 0; k < 3; k++)
+    {
+      const int m = margins[k];
+      const int px = xs[i] - m < 0 ? 0 : xs[i] - m, py = ys[i] - m < 0 ? 0 : ys[i] - m;
+      const int pw = (xs[i] + rw + m > w ? w : xs[i] + rw + m) - px;
+      const int ph = (ys[i] + rh + m > h ? h : ys[i] + rh + m) - py;
+      uint8_t *pad = malloc((size_t)4 * pw * ph);
+      const double t1 = now();
+      MUST(dtb_render(px, py, pw, ph, 1.0f, pad));
+      const double tp = now() - t1;
+      for(int y = 0; y < rh; y++)
+        memcpy(reg + (size_t)4 * rw * y, pad + 4 * ((size_t)(ys[i] - py + y) * pw + (xs[i] - px)), (size_t)4 * rw);
+      diff_stats(reg, crop, (size_t)rw * rh, &mx, &mean);
+      fprintf(stdout, "RESULT region %d margin %d max %d mean %.4f render_s %.3f\n", i, m, mx, mean, tp);
+      free(pad);
+    }
   }
   free(reg);
   free(crop);

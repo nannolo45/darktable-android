@@ -72,6 +72,15 @@ echo "$CASES" | while IFS='|' read -r C RAW XMP; do
     "$DTB" "$W" render "$RAW" "$XMP" "$D/bridge.ppm" > "$D/T1.log" 2>&1 \
       || fail T1 "$C" "driver failed, see $D/T1.log"
     cmp_rec T1 "$C" "$D/bridge.ppm" "$D/cli.png"
+    # the JSON the app will parse: modules and history must be valid JSON
+    "$DTB" "$W" modules "$RAW" "$XMP" > "$D/modules.log" 2>&1
+    if grep -E '^[[{]' "$D/modules.log" | python3 -I -c '
+import json, sys
+docs = [json.loads(l) for l in sys.stdin]
+assert len(docs) == 2 and isinstance(docs[0], list) and "items" in docs[1]
+print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")' > "$D/json.txt" 2>&1
+    then pass T1 "$C" "modules and history JSON parse: $(cat "$D/json.txt")"
+    else fail T1 "$C" "invalid JSON from the bridge: $(tail -1 "$D/json.txt")"; fi
   fi
 
   if want T2; then
