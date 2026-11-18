@@ -55,6 +55,11 @@ if [ $RUST = 1 ]; then
   rustup toolchain install "$DTA_RUST_TOOLCHAIN" --profile minimal \
     --target aarch64-linux-android --target x86_64-linux-android >/dev/null
   rustup default "$DTA_RUST_TOOLCHAIN" >/dev/null
+  if ! cargo cbuild --version >/dev/null 2>&1; then
+    curl -fsSL --retry 4 -o /tmp/cargo-c.tgz "$DTA_CARGO_C_URL"
+    echo "$DTA_CARGO_C_SHA256  /tmp/cargo-c.tgz" | sha256sum -c --quiet
+    tar -xzf /tmp/cargo-c.tgz -C "$HOME/.cargo/bin"
+  fi
 fi
 
 echo "export ANDROID_NDK_HOME=$NDK_DIR"

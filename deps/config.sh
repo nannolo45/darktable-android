@@ -20,3 +20,6 @@ DTA_PREFIX_BASE=/opt/dta
 # Host tools (installed by the workflow, see deps/host-setup.sh).
 DTA_MESON_VERSION=1.12.1
 DTA_RUST_TOOLCHAIN=1.100.0
+# cargo-c (cargo cbuild), needed by librsvg's meson build; prebuilt release
+DTA_CARGO_C_URL=https://github.com/lu-zero/cargo-c/releases/download/v0.10.26/cargo-c-x86_64-unknown-linux-musl.tar.gz
+DTA_CARGO_C_SHA256=685fab5a2e1539c5075cea21c42469ee5a489d877dbdbf7adccf4bb631d77545

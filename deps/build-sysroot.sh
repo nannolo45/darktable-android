@@ -36,7 +36,7 @@ SUMMARY="$DTA_LOGDIR/summary.tsv"
 printf 'package\tversion\tstatus\tseconds\tso_files\tso_bytes_stripped\tnot_16k_aligned\tlicense\n' > "$SUMMARY"
 
 declare -A STAMP STATUS
-COMMON_HASH=$(cat "$HERE/lib/common.sh" "$HERE/config.sh" | sha256sum | cut -c1-16)
+COMMON_HASH=$(cat "$HERE/lib/common.sh" "$HERE/config.sh" "$0" | sha256sum | cut -c1-16)
 TOOLCHAIN_ID="ndk-$DTA_NDK_VERSION-api$DTA_API-meson$(meson --version 2>/dev/null)-cmake$(cmake --version | head -1 | awk '{print $3}')"
 
 recipe_field() { # recipe_field <file> <VAR>
@@ -108,9 +108,14 @@ for name in "${PKGS[@]}"; do
     STATUS[$name]=cached
   else
     dta_log "building $name $version ($ABI)"
-    if ( build_one "$recipe" ) > "$log" 2>&1; then
-      stage="$DTA_WORK/stage/$ABI/$name$DTA_PREFIX"
-      mkdir -p "$stage"
+    # not inside "if": errexit is ignored in a subshell that is part of a condition
+    ( build_one "$recipe" ) > "$log" 2>&1
+    rc=$?
+    stage="$DTA_WORK/stage/$ABI/$name$DTA_PREFIX"
+    if [ $rc = 0 ] && [ -z "$(find "$stage" -type f 2>/dev/null | head -1)" ]; then
+      echo "recipe finished but installed nothing" >> "$log"; rc=1
+    fi
+    if [ $rc = 0 ]; then
       tar -czf "$pkg.part" -C "$stage" . && mv "$pkg.part" "$pkg"
       tar -xzf "$pkg" -C "$DTA_PREFIX"
       STATUS[$name]=ok

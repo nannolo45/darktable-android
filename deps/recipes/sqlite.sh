@@ -11,6 +11,6 @@ build() {
   ./configure --host="$DTA_TRIPLE" --prefix="$DTA_PREFIX" --libdir="$DTA_PREFIX/lib" \
     --disable-static --enable-shared --disable-tcl --disable-readline --disable-editline \
     --enable-fts5 --enable-rtree --soname=legacy
-  make -j "$DTA_JOBS" lib
-  make install-lib install-headers install-pc DESTDIR="$STAGE"
+  make -j "$DTA_JOBS" so
+  make install-dll install-headers install-pc DESTDIR="$STAGE"
 }
