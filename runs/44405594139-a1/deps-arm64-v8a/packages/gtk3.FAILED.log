@@ -1,0 +1,300 @@
+Configuring gtk+-3.0.pc using configuration
+Configuring gtk+-broadway-3.0.pc using configuration
+Configuring gtk+-unix-print-3.0.pc using configuration
+Program msgfmt found: YES (/usr/bin/msgfmt)
+Program msginit found: YES (/usr/bin/msginit)
+Program msgmerge found: YES (/usr/bin/msgmerge)
+Program xgettext found: YES (/usr/bin/xgettext)
+Program xsltproc found: YES (/usr/bin/xsltproc)
+Message: Not executing post-install steps automatically when cross compiling
+Message: 
+------
+GTK+ 3.24.52 (3.0)
+
+  Display backends: broadway [disabled: quartz wayland win32 x11]
+    Print backends: file [disabled: cups lpr papi test]
+     Cloud support: false
+    Colord support: no
+          Profiler: false
+     Introspection: false
+     Documentation: false
+         Man pages: false
+       Build tests: false
+   Installed tests: false
+             Demos: false
+          Examples: false
+Directories:
+            prefix: /opt/dta/sysroot-arm64-v8a
+        includedir: /opt/dta/sysroot-arm64-v8a/include
+            libdir: /opt/dta/sysroot-arm64-v8a/lib
+           datadir: /opt/dta/sysroot-arm64-v8a/share
+------
+
+Build targets in project: 310
+NOTICE: Future-deprecated features used:
+ * 1.1.0: {'"boolean option" keyword argument "value" of type str'}
+ * 1.12.0: {'"shared_module" keyword argument "name_suffix" of type list'}
+
+gtk 3.24.52
+
+  Subprojects (for host machine)
+    proxy-libintl   : NO
+                      Automatic wrap-based subproject downloading is disabled
+
+  User defined options
+    Cross files     : /home/runner/dta-work/meson-cross-arm64-v8a.ini
+    b_pie           : true
+    broadway_backend: true
+    buildtype       : release
+    cloudproviders  : false
+    colord          : no
+    default_library : shared
+    demos           : false
+    examples        : false
+    gtk_doc         : false
+    installed_tests : false
+    introspection   : false
+    libdir          : lib
+    man             : false
+    prefix          : /opt/dta/sysroot-arm64-v8a
+    print_backends  : file
+    profiler        : false
+    tests           : false
+    tracker3        : false
+    wayland_backend : false
+    wrap_mode       : nodownload
+    x11_backend     : false
+    xinerama        : no
+
+Found ninja-1.13.2 at /usr/local/bin/ninja
+ninja: Entering directory `/home/runner/dta-work/src/arm64-v8a/gtk3/_build-arm64-v8a'
+[1/910] Generating gdk/broadway/clienthtml.h with a custom command
+[2/910] Generating gdk/gdkresources_c with a custom command
+[3/910] Generating gdk/gdkresources_h with a custom command
+[4/910] Generating glib marshaller header gdk/gdkmarshalers_h
+[5/910] Generating gdk/broadway/broadwayjs.h with a custom command
+[6/910] Generating glib marshaller header gtk/gtkmarshalers_h
+[7/910] Generating glib marshaller source gdk/gdkmarshalers_c
+[8/910] Generating GObject enum file gtk/gtkprivatetypebuiltins.h (wrapped by meson to capture output)
+[9/910] Generating GObject enum file gdk/gdkenumtypes.h (wrapped by meson to capture output)
+[10/910] Generating gtk/gtkresources_h with a custom command
+xml-stripblanks preprocessing requested, but XMLLINT is not set, and xmllint is not in PATH
+[11/910] Generating gtk/gtkresources_c with a custom command
+xml-stripblanks preprocessing requested, but XMLLINT is not set, and xmllint is not in PATH
+[12/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkcursor-broadway.c.o
+[13/910] Generating GObject enum file gdk/gdkenumtypes.c (wrapped by meson to capture output)
+[14/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkdevice-broadway.c.o
+[15/910] Generating GObject enum file gtk/gtktypebuiltins.h (wrapped by meson to capture output)
+[16/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkdevicemanager-broadway.c.o
+[17/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkdisplay-broadway.c.o
+[18/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkdnd-broadway.c.o
+[19/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkeventsource.c.o
+[20/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkglobals-broadway.c.o
+[21/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkkeys-broadway.c.o
+[22/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkmonitor-broadway.c.o
+[23/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkproperty-broadway.c.o
+[24/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkscreen-broadway.c.o
+../gdk/broadway/gdkscreen-broadway.c:68:10: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+   68 |   return gdk_screen_get_width (screen) * 25.4 / 96;
+      |          ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:74:10: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+   74 |   return gdk_screen_get_height (screen) * 25.4 / 96;
+      |          ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:98:11: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+   98 |   width = gdk_screen_get_width (screen);
+      |           ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:99:12: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+   99 |   height = gdk_screen_get_height (screen);
+      |            ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:104:16: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  104 |   if (width == gdk_screen_get_width (screen) &&
+      |                ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:105:17: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  105 |       height == gdk_screen_get_height (screen))
+      |                 ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:122:5: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  122 |                                 gdk_screen_get_width (screen),
+      |                                 ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkscreen-broadway.c:123:5: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  123 |                                 gdk_screen_get_height (screen));
+      |                                 ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+8 warnings generated.
+[25/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkselection-broadway.c.o
+[26/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdktestutils-broadway.c.o
+[27/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkvisual-broadway.c.o
+[28/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkbroadway-server.c.o
+FAILED: [code=1] gdk/broadway/libgdk-broadway.a.p/gdkbroadway-server.c.o 
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang -Igdk/broadway/libgdk-broadway.a.p -Igdk/broadway -I../gdk/broadway -I. -I.. -Igdk -I../gdk -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/gdk-pixbuf-2.0 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../lib/glib-2.0/include -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/libpng16 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/cairo -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/freetype2 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/pixman-1 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/pango-1.0 -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/harfbuzz -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/fribidi -I/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/gio-unix-2.0 -I/opt/dta/sysroot-arm64-v8a/include -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -O3 -DG_LOG_USE_STRUCTURED=1 -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_58 '-DGTK_VERSION="3.24.52"' -D_GNU_SOURCE -DG_DISABLE_CAST_CHECKS -O2 -fPIC -g0 -fPIC -pthread -DGDK_COMPILATION '-DG_LOG_DOMAIN="Gdk"' -fno-strict-aliasing -Wpointer-arith -Wimplicit-function-declaration -Wformat=2 -Wformat-security -Wnested-externs -Wold-style-definition -Wundef -Wunused -Wcast-align -Wmissing-noreturn -Wmissing-format-attribute -Wmissing-include-dirs -Wignored-qualifiers -Werror=implicit -Werror=nonnull -Werror=init-self -Werror=main -Werror=missing-braces -Werror=sequence-point -Werror=return-type -Werror=trigraphs -Werror=array-bounds -Werror=write-strings -Werror=address -Werror=int-to-pointer-cast -Werror=pointer-to-int-cast -Werror=empty-body -Werror=write-strings -fvisibility=hidden -MD -MQ gdk/broadway/libgdk-broadway.a.p/gdkbroadway-server.c.o -MF gdk/broadway/libgdk-broadway.a.p/gdkbroadway-server.c.o.d -o gdk/broadway/libgdk-broadway.a.p/gdkbroadway-server.c.o -c ../gdk/broadway/gdkbroadway-server.c
+../gdk/broadway/gdkbroadway-server.c:548:8: error: call to undeclared function 'shm_open'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  548 |   fd = shm_open(name, O_RDWR|O_CREAT|O_EXCL, 0600);
+      |        ^
+../gdk/broadway/gdkbroadway-server.c:580:2: error: call to undeclared function 'shm_unlink'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  580 |         shm_unlink (name);
+      |         ^
+../gdk/broadway/gdkbroadway-server.c:696:5: error: call to undeclared function 'shm_unlink'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  696 |     shm_unlink (data->name);
+      |     ^
+3 errors generated.
+[29/910] Compiling C object gdk/libgdk-3.so.p/meson-generated_.._gdkmarshalers.c.o
+[30/910] Compiling C object gdk/libgdk-3.so.p/meson-generated_.._gdkenumtypes.c.o
+[31/910] Compiling C object gdk/broadway/libgdk-broadway.a.p/gdkwindow-broadway.c.o
+../gdk/broadway/gdkwindow-broadway.c:234:19: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  234 |   window->width = gdk_screen_get_width (screen);
+      |                   ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:235:20: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  235 |   window->height = gdk_screen_get_height (screen);
+      |                    ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:922:6: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  922 |                           gdk_screen_get_width (screen),
+      |                           ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:923:6: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  923 |                           gdk_screen_get_height (screen));
+      |                           ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+4 warnings generated.
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/local/bin/ninja -C /home/runner/dta-work/src/arm64-v8a/gtk3/_build-arm64-v8a -j 4

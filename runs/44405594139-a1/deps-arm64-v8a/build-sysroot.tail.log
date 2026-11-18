@@ -1,0 +1,107 @@
+[dta 21:51:51] building ndk-zlib system (arm64-v8a)
+[dta 21:51:51] building proxy-libintl 0.5 (arm64-v8a)
+[dta 21:51:53] building libffi 3.8.1 (arm64-v8a)
+[dta 21:51:57] building pcre2 10.49 (arm64-v8a)
+[dta 21:52:03] building glib 2.90.1 (arm64-v8a)
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf: error: '/tmp/tmp.1GjrnlGgJH/share/gdb/auto-load/opt/dta/sysroot-arm64-v8a/lib/libglib-2.0.so.0.9000.1-gdb.py': The file was not recognized as a valid object file
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf: error: '/tmp/tmp.1GjrnlGgJH/share/gdb/auto-load/opt/dta/sysroot-arm64-v8a/lib/libgobject-2.0.so.0.9000.1-gdb.py': The file was not recognized as a valid object file
+[dta 21:52:28] building expat 2.10.0 (arm64-v8a)
+[dta 21:52:30] building libpng 1.6.59 (arm64-v8a)
+[dta 21:52:32] building freetype 2.15.0 (arm64-v8a)
+[dta 21:52:37] building fontconfig 2.18.4 (arm64-v8a)
+[dta 21:52:53] building pixman 0.46.4 (arm64-v8a)
+[dta 21:52:58] building cairo 1.18.6 (arm64-v8a)
+[dta 21:53:15] building fribidi 1.0.18 (arm64-v8a)
+[dta 21:53:17] building harfbuzz 15.1.0 (arm64-v8a)
+[dta 21:53:50] building pango 1.58.2 (arm64-v8a)
+[dta 21:53:55] building libjpeg-turbo 3.2.1 (arm64-v8a)
+[dta 21:54:00] building libtiff 4.7.2 (arm64-v8a)
+[dta 21:54:06] building gdk-pixbuf 2.44.8 (arm64-v8a)
+[dta 21:54:09] building libepoxy 1.5.10 (arm64-v8a)
+[dta 21:54:14] building atk 2.38.0 (arm64-v8a)
+[dta 21:54:17] building gtk3 3.24.52 (arm64-v8a)
+[dta 21:54:22] FAILED gtk3, see /home/runner/dta-work/logs/arm64-v8a/gtk3.log
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:922:6: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  922 |                           gdk_screen_get_width (screen),
+      |                           ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:923:6: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  923 |                           gdk_screen_get_height (screen));
+      |                           ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-arm64-v8a/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+4 warnings generated.
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/local/bin/ninja -C /home/runner/dta-work/src/arm64-v8a/gtk3/_build-arm64-v8a -j 4
+[dta 21:54:22] building libxml2 2.15.4 (arm64-v8a)
+[dta 21:54:27] building json-glib 1.10.8 (arm64-v8a)
+[dta 21:54:29] building sqlite 3.54.1 (arm64-v8a)
+[dta 21:54:50] building lcms2 2.20 (arm64-v8a)
+[dta 21:54:53] building lensfun 0.3.4 (arm64-v8a)
+[dta 21:54:55] building potrace 1.16 (arm64-v8a)
+[dta 21:54:58] building pugixml 1.16 (arm64-v8a)
+[dta 21:55:01] building exiv2 0.28.9 (arm64-v8a)
+[dta 21:55:26] building curl 8.23.0 (arm64-v8a)
+[dta 21:55:43] building libarchive 3.8.11 (arm64-v8a)
+[dta 21:56:05] building librsvg 2.63.4 (arm64-v8a)
+package	version	status	seconds	so_files	so_bytes_stripped	not_16k_aligned	license
+ndk-zlib	system	ok	0	0	0	0	Zlib
+proxy-libintl	0.5	ok	2	1	5632	0	LGPL-2.1-or-later
+libffi	3.8.1	ok	4	1	34824	0	MIT
+pcre2	10.49	ok	6	2	404216	0	BSD-3-Clause
+glib	2.90.1	ok	25	8	4020305	0	LGPL-2.1-or-later
+expat	2.10.0	ok	2	1	174816	0	MIT
+libpng	1.6.59	ok	2	1	238072	0	libpng-2.0
+freetype	2.15.0	ok	5	1	711872	0	FTL
+fontconfig	2.18.4	ok	16	1	464456	0	HPND
+pixman	0.46.4	ok	5	1	663912	0	MIT
+cairo	1.18.6	ok	17	3	1165744	0	LGPL-2.1-only OR MPL-1.1
+fribidi	1.0.18	ok	2	1	115184	0	LGPL-2.1-or-later
+harfbuzz	15.1.0	ok	33	1	1422496	0	MIT
+pango	1.58.2	ok	5	3	593864	0	LGPL-2.1-or-later
+libjpeg-turbo	3.2.1	ok	5	1	625680	0	IJG AND BSD-3-Clause AND Zlib
+libtiff	4.7.2	ok	6	2	571488	0	libtiff
+gdk-pixbuf	2.44.8	ok	3	1	164656	0	LGPL-2.1-or-later
+libepoxy	1.5.10	ok	5	1	1100264	0	MIT
+atk	2.38.0	ok	3	1	167272	0	LGPL-2.0-or-later
+gtk3	3.24.52	failed	5	-	-	-	LGPL-2.0-or-later
+libxml2	2.15.4	ok	5	1	1220816	0	MIT
+json-glib	1.10.8	ok	2	1	160344	0	LGPL-2.1-or-later
+sqlite	3.54.1	ok	20	1	1456776	0	blessing
+lcms2	2.20	ok	3	1	390688	0	MIT
+lensfun	0.3.4	ok	2	1	145080	0	LGPL-3.0-or-later
+potrace	1.16	ok	3	1	20936	0	GPL-2.0-or-later
+pugixml	1.16	ok	3	1	247600	0	MIT
+exiv2	0.28.9	ok	25	1	2556608	0	GPL-2.0-or-later
+curl	8.23.0	ok	17	1	681232	0	curl
+libarchive	3.8.11	ok	22	1	785376	0	BSD-2-Clause
+librsvg	2.63.4	ok	58	1	4759552	0	LGPL-2.1-or-later
+[dta 21:57:03] 1 package(s) failed or were skipped
