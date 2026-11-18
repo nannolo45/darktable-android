@@ -20,7 +20,8 @@
  *   timing <raw> <xmp> <outdir>               T7
  *   cancel <raw> <xmp> <outdir>               T8
  *   mask <raw> <xmp> <outdir>                 T9
- *   exposures <raw> <xmp>                     list exposure instances (T3, fresh session)
+ *   extras <raw> <xmp> <outdir>               X1: preview, export, move, delete
+ *   exposures <raw> <xmp>                    list exposure instances (T3, fresh session)
  *   modules <raw> <xmp>                       print modules and history JSON
  * Results are printed as "RESULT key value" lines; exit code 0 = the checks
  * the driver can do on its own passed. Pixel comparisons with darktable-cli
@@ -616,6 +617,58 @@ static int cmd_mask(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* X1, beyond T1 to T9: the API functions those tests do not reach */
+static int cmd_extras(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  int w, h;
+
+  // preview: a downscaled whole image from the second pipeline
+  uint8_t *pv = NULL;
+  int pw, ph;
+  MUST(dtb_render_preview(1024, &pv, &pw, &ph));
+  write_ppm(path_join(outdir, "x_preview.ppm"), pv, pw, ph);
+  dtb_free(pv);
+  fprintf(stdout, "RESULT preview %dx%d\n", pw, ph);
+
+  // export through darktable's own export path
+  MUST(dtb_export_jpeg(path_join(outdir, "x_export.jpg"), 95, 0, 0));
+
+  // move: exposure.0 one step later in the pipe
+  print_exposure_instances("start");
+  MUST(dtb_instance_move("exposure", 0, 1));
+  MUST(dtb_xmp_write(path_join(outdir, "x_move.xmp")));
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "x_move_bridge.ppm"), buf, w, h);
+  free(buf);
+
+  // delete: make two new instances, delete the first new one, then delete
+  // priority 0 (the next instance takes priority 0)
+  int p1 = -1, p2 = -1;
+  MUST(dtb_instance_new("exposure", 0, &p1));
+  MUST(dtb_param_set_float("exposure", p1, "exposure", 0.3f));
+  MUST(dtb_instance_duplicate("exposure", p1, &p2));
+  MUST(dtb_param_set_float("exposure", p2, "exposure", -0.4f));
+  MUST(dtb_instance_delete("exposure", p1));
+  CHECK(!module_info("exposure", p1, NULL, NULL, NULL, 0, NULL), "deleted instance still listed");
+  MUST(dtb_instance_delete("exposure", 0));
+  int last = 0;
+  for(int i = 0; i < 8; i++)
+    if(module_info("exposure", i, NULL, NULL, NULL, 0, NULL)) last++;
+  CHECK(module_info("exposure", 0, NULL, NULL, NULL, 0, NULL), "no exposure.0 after deleting priority 0");
+  CHECK(dtb_instance_delete("vignette", 0) == DTB_E_ARG, "deleting the last instance not refused");
+  print_exposure_instances("after");
+  fprintf(stdout, "RESULT exposure_instances_after %d\n", last);
+  int end;
+  fprintf(stdout, "RESULT history %d\n", history_count(&end));
+  MUST(dtb_xmp_write(path_join(outdir, "x_delete.xmp")));
+  buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "x_delete_bridge.ppm"), buf, w, h);
+  free(buf);
+  MUST(dtb_close());
+  return g_fail;
+}
+
 int main(int argc, char **argv)
 {
   if(argc < 3)
@@ -638,6 +691,7 @@ int main(int argc, char **argv)
   else if(!strcmp(cmd, "timing") && argc == 6) r = cmd_timing(argv[3], argv[4], argv[5]);
   else if(!strcmp(cmd, "cancel") && argc == 6) r = cmd_cancel(argv[3], argv[4], argv[5]);
   else if(!strcmp(cmd, "mask") && argc == 6) r = cmd_mask(argv[3], argv[4], argv[5]);
+  else if(!strcmp(cmd, "extras") && argc == 6) r = cmd_extras(argv[3], argv[4], argv[5]);
   else if(!strcmp(cmd, "exposures") && argc == 5)
   {
     MUST(dtb_open(argv[3], argv[4]));

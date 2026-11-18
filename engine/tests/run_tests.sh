@@ -182,6 +182,38 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["operation"] 
     cli "$RAW" "$D/mask.xmp" "$D/mask_cli.png" "$D/cli.log"
     cmp_rec T9 "$C" "$D/mask_bridge.ppm" "$D/mask_cli.png"
   fi
+
+  # X1, beyond T1 to T9: preview, JPEG export, instance move and delete
+  if want X1; then
+    if "$DTB" "$W" extras "$RAW" "$XMP" "$D" > "$D/X1.log" 2>&1; then
+      pass X1 "$C" "move/new/duplicate/delete in session: $(grep '^RESULT after' "$D/X1.log" | cut -d' ' -f3- | tr '\n' ';')"
+    else
+      fail X1 "$C" "driver checks failed, see $D/X1.log"
+    fi
+    cli "$RAW" "$D/x_move.xmp" "$D/x_move_cli.png" "$D/cli.log"
+    cmp_rec X1 "$C" "$D/x_move_bridge.ppm" "$D/x_move_cli.png"
+    cli "$RAW" "$D/x_delete.xmp" "$D/x_delete_cli.png" "$D/cli.log"
+    cmp_rec X1 "$C" "$D/x_delete_bridge.ppm" "$D/x_delete_cli.png"
+    "$DTB" "$W" exposures "$RAW" "$D/x_delete.xmp" > "$D/X1-reopen.log" 2>&1
+    grep '^RESULT after exposure' "$D/X1.log" | sed 's/^RESULT after //' > "$D/X1-a.txt"
+    grep '^RESULT listed exposure' "$D/X1-reopen.log" | sed 's/^RESULT listed //' > "$D/X1-b.txt"
+    if [ -s "$D/X1-a.txt" ] && cmp -s "$D/X1-a.txt" "$D/X1-b.txt"; then
+      pass X1 "$C" "fresh session lists the same instances after delete"
+    else
+      fail X1 "$C" "instances differ after reopening: $(tr '\n' ';' < "$D/X1-a.txt") vs $(tr '\n' ';' < "$D/X1-b.txt")"
+    fi
+    # JPEG: the same encoder and quality, so the decoded pixels must match
+    rm -f "$D/x_export_cli.jpg"
+    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core --configdir "$OUT/cli-config" \
+      --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
+    cmp_rec X1 "$C" "$D/x_export.jpg" "$D/x_export_cli.jpg"
+    # preview: a different input (the downscaled mipmap) by design, so this is
+    # a measurement against darktable-cli's own downscaled export, not a check
+    rm -f "$D/x_preview_cli.png"
+    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core \
+      --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
+    note "INFO X1 $C preview vs darktable-cli 1024 px export: $($CMP "$D/x_preview.ppm" "$D/x_preview_cli.png" --tolerance 255 2>&1)"
+  fi
 done
 
 md5_after=$(cd "$TESTS" && md5sum images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw)
