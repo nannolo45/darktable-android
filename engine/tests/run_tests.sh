@@ -141,7 +141,11 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
   fi
 
   if want T6; then
-    python3 -I "$HERE/make_guard_xmps.py" "$XMP" "$D" exposure > "$D/T6-make.log" 2>&1
+    # the engine's own exposure version, read through the bridge
+    ev=$("$DTB" "$W" modules "$RAW" "$XMP" 2>/dev/null | grep '^\[' | python3 -I -c '
+import json, sys
+print([m["version"] for m in json.loads(sys.stdin.readline()) if m["operation"] == "exposure"][0])')
+    python3 -I "$HERE/make_guard_xmps.py" "$XMP" "$D" exposure "$ev" > "$D/T6-make.log" 2>&1
     sum_before=$(md5sum "$D/newer.xmp" "$D/unknown.xmp" "$XMP" | cut -d' ' -f1 | tr '\n' ' ')
     if "$DTB" "$W" guard "$RAW" "$XMP" "$D" > "$D/T6.log" 2>&1; then
       pass T6 "$C" "$(tr '\n' ' ' < "$D/T6-make.log")reported and refused (see T6.log)"

@@ -545,11 +545,12 @@ static int cmd_cancel(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_render(0, 0, w, h, 1.0f, buf));
     t_uncancelled = now() - t0;
   }
-  // change again, start a render and cancel it from another thread
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.2)));
+  // start a render and cancel it from another thread; each attempt changes
+  // exposure first, so a full re-render is in flight, not a cache hit
   double worst = 0;
   for(int i = 0; i < 3; i++)
   {
+    MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.2 + 0.05 * i)));
     const double delays[3] = { 0.05, 0.3 * t_uncancelled, 0.6 * t_uncancelled };
     cancel_arg_t a = { delays[i], 0 };
     pthread_t th;
