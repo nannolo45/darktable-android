@@ -172,7 +172,8 @@ dta_meson() {
     --prefix "$DTA_PREFIX" --libdir lib --buildtype release \
     --default-library shared --wrap-mode nodownload \
     -Db_pie=true "$@" || return 1
-  meson compile -C "$b" -j "$DTA_JOBS" || return 1
+  # -k 0: report every failing target, not only the first
+  ninja -C "$b" -j "$DTA_JOBS" -k 0 || return 1
   DESTDIR="$STAGE" meson install -C "$b" --no-rebuild || return 1
 }
 
@@ -200,7 +201,7 @@ dta_cmake() {
   local args=()
   mapfile -t args < <(dta_cmake_args)
   cmake -S "${CMAKE_SRC:-$SRC}" -B "$b" -G Ninja "${args[@]}" "$@" || return 1
-  cmake --build "$b" -j "$DTA_JOBS" || return 1
+  cmake --build "$b" -j "$DTA_JOBS" -- -k 0 || return 1
   DESTDIR="$STAGE" cmake --install "$b" || return 1
 }
 
