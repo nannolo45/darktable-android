@@ -335,6 +335,7 @@ static int cmd_history(const char *raw, const char *xmp, const char *outdir)
   const int n2 = history_count(&end2);
   fprintf(stdout, "RESULT compressed history %d end %d\n", n2, end2);
   CHECK(n2 <= n, "compress grew the history");
+  CHECK(end2 == n2, "history_end %d does not match the %d items after compress", end2, n2);
   uint8_t *comp = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "history_compressed.ppm"), comp, w, h);
   diff_stats(top, comp, (size_t)w * h, &mx, &mean);

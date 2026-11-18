@@ -923,6 +923,15 @@ int dtb_history_compress(void)
   dt_dev_write_history(&S.dev);
   dt_history_compress_on_image(S.imgid);
   _reload_dev();
+  // dt_history_compress_on_image() leaves images.history_end as it was, so
+  // it can point past the shorter history; dt_dev_history_truncate() then
+  // sets it to the new number of items, and so does the bridge
+  const int n = g_list_length(S.dev.history);
+  if(S.dev.history_end != n)
+  {
+    dt_image_set_history_end(S.imgid, n);
+    dt_dev_pop_history_items_ext(&S.dev, n);
+  }
   S.seal_next = TRUE;
   return DTB_OK;
 }
