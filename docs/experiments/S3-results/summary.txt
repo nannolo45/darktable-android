@@ -1,0 +1,73 @@
+== cr2: mire1.cr2 with exposure.xmp
+PASS T1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 cr2: modules and history JSON parse: 97 module instances, 9 history items
+PASS T2 cr2: history 9 end 9 -> 10 end 10, exposure 1.0000 -> 2.0000
+PASS T2 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: duplicate/change/off/on in session (new priority 1)
+PASS T3 cr2: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=1.0000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: 9 end 9; goto 8 differs_from_top max 68 mean 38.7563; back to top: max 0 mean 0.0000; history 9 end 9; compress vs top: max 0 mean 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 cr2: size 512x512 max 182 mean 0.10523 psnr 46.31 differing_values_pct 2.1849
+FAIL T5 cr2: size 512x512 max 182 mean 0.10523 psnr 46.31 differing_values_pct 2.1849
+FAIL T5 cr2: size 512x512 max 75 mean 0.03503 psnr 53.53 differing_values_pct 1.0825
+FAIL T5 cr2: size 512x512 max 75 mean 0.03503 psnr 53.53 differing_values_pct 1.0825
+FAIL T5 cr2: size 512x512 max 64 mean 0.07199 psnr 50.59 differing_values_pct 2.1743
+FAIL T5 cr2: size 512x512 max 64 mean 0.07199 psnr 50.59 differing_values_pct 2.1743
+PASS T6 cr2: newer.xmp: exposure modversion 5 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 cr2: guarded files unchanged
+INFO T7 cr2 (x86_64, 2 cores): size 3908x2602 preview 1024x681;open_s 0.200;first_full_render_s 0.903;unchanged_full_render_s 0.082;late_change_full_render_s 0.309;early_change_full_render_s 1.240;late_change_region_1920x1080_s 0.338;preview_first_s 0.161;preview_late_change_s 0.045;preview_early_change_s 0.077;
+PASS T8 cr2: worst latency 0.202 s; after cancels: max 0 mean 0.0000
+PASS T9 cr2: local: inside 74.778, corners 0.000
+PASS T9 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== raf: xtransIV.raf with lens-metadata-xtransIV-modversion-7.xmp
+PASS T1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 raf: modules and history JSON parse: 97 module instances, 12 history items
+PASS T2 raf: history 12 end 12 -> 13 end 13, exposure 0.7000 -> 1.7000
+PASS T2 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: duplicate/change/off/on in session (new priority 1)
+PASS T3 raf: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=0.7000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: 12 end 12; goto 11 differs_from_top max 139 mean 16.8457; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 raf: size 512x512 max 40 mean 0.09596 psnr 52.23 differing_values_pct 5.2536
+FAIL T5 raf: size 512x512 max 40 mean 0.09596 psnr 52.23 differing_values_pct 5.2536
+FAIL T5 raf: size 512x512 max 12 mean 0.02458 psnr 60.33 differing_values_pct 1.5280
+FAIL T5 raf: size 512x512 max 12 mean 0.02458 psnr 60.33 differing_values_pct 1.5280
+FAIL T5 raf: size 512x512 max 17 mean 0.02405 psnr 60.75 differing_values_pct 1.5348
+FAIL T5 raf: size 512x512 max 17 mean 0.02405 psnr 60.75 differing_values_pct 1.5348
+PASS T6 raf: newer.xmp: exposure modversion 6 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 raf: guarded files unchanged
+INFO T7 raf (x86_64, 2 cores): size 6250x4168 preview 1024x683;open_s 0.948;first_full_render_s 11.120;unchanged_full_render_s 0.195;late_change_full_render_s 12.955;early_change_full_render_s 12.930;late_change_region_1920x1080_s 1.380;preview_first_s 0.642;preview_late_change_s 0.084;preview_early_change_s 0.323;
+PASS T8 raf: worst latency 2.775 s; after cancels: max 0 mean 0.0000
+PASS T9 raf: local: inside 74.515, corners 0.000
+PASS T9 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== arw: hlrecovery.arw with spektrafilm.xmp
+PASS T1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 arw: modules and history JSON parse: 98 module instances, 14 history items
+PASS T2 arw: history 14 end 14 -> 15 end 15, exposure 0.7000 -> 1.7000
+PASS T2 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: duplicate/change/off/on in session (new priority 2)
+PASS T3 arw: fresh session lists the same exposure instances: exposure.0 name='_builtin_scene-referred default' enabled=1 exposure=0.7000;exposure.1 name='after' enabled=1 exposure=0.5500;exposure.2 name='2' enabled=1 exposure=-0.5000;
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: 14 end 14; goto 13 differs_from_top max 40 mean 19.9579; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 arw: size 512x512 max 21 mean 0.30012 psnr 50.68 differing_values_pct 22.6823
+FAIL T5 arw: size 512x512 max 21 mean 0.30012 psnr 50.68 differing_values_pct 22.6823
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T6 arw: newer.xmp: exposure modversion 7 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 arw: guarded files unchanged
+INFO T7 arw (x86_64, 2 cores): size 5492x3672 preview 1024x684;open_s 0.126;first_full_render_s 3.886;unchanged_full_render_s 0.206;late_change_full_render_s 4.471;early_change_full_render_s 4.513;late_change_region_1920x1080_s 1.791;preview_first_s 0.220;preview_late_change_s 0.093;preview_early_change_s 0.144;
+PASS T8 arw: worst latency 0.468 s; after cancels: max 0 mean 0.0000
+PASS T9 arw: local: inside 76.291, corners 0.000
+PASS T9 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS safety: RAW files unchanged
