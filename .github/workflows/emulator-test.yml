@@ -112,7 +112,7 @@ jobs:
 
       - name: Fetch x86_64 engine release file
         run: |
-          gh release download "$ENGINE_TAG" --pattern "engine-x86_64.tar.gz" --dir /home/runner \
+          gh release download -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --pattern "engine-x86_64.tar.gz" --dir /home/runner \
             || { echo "no engine-x86_64.tar.gz in $ENGINE_TAG: run the engine workflow first"; exit 1; }
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

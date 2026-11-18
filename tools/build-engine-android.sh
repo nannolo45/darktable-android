@@ -76,13 +76,30 @@ cp -a "$STAGE$ENGINE_PREFIX/share/darktable" "$E/share/"
 # OpenCL kernels are unused (OpenCL off); translations are not needed by the engine
 rm -rf "$E/share/darktable/kernels"
 # runtime libraries from the sysroot (shared objects only)
-( cd "$DTA_PREFIX/lib" && find . -maxdepth 1 \( -name '*.so' -o -name '*.so.*' \) -print0 | xargs -0 cp -a -t "$E/lib/" )
+( cd "$DTA_PREFIX/lib" && find . -maxdepth 1 \( -name '*.so' -o -name '*.so.*' \) -print0 | xargs -0 cp -L --preserve=mode,timestamps -t "$E/lib/" )   # symlinks resolved: one real file per name
 cp -a "$DTA_PREFIX/share/lensfun" "$E/share/" 2>/dev/null || dta_log "warning: no lensfun database in sysroot"
 # C++ runtime and OpenMP runtime from the NDK
 cp "$DTA_NDK_SYSROOT/usr/lib/$DTA_TRIPLE/libc++_shared.so" "$E/lib/"
 OMP=$(find "$DTA_TOOLCHAIN/lib/clang" -path "*/lib/linux/$DTA_LLVM_ARCH/libomp.so" | head -1)
 [ -n "$OMP" ] || dta_die "libomp.so not found in NDK"
 cp "$OMP" "$E/lib/"
+# Ship only libraries that are actually needed: the DT_NEEDED closure of
+# darktable-cli, libdarktable and every plugin. (darktable only dlopen()s its
+# own plugins; gdk-pixbuf's loaders are built in.)
+declare -A NEED=()
+queue=()
+while IFS= read -r f; do queue+=("$f"); done < <(find "$E/bin" "$E/lib/darktable" -type f \( -name '*.so' -o -path '*/bin/*' \))
+while [ ${#queue[@]} -gt 0 ]; do
+  f="${queue[0]}"; queue=("${queue[@]:1}")
+  for n in $("$READELF" -dW "$f" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'); do
+    if [ -z "${NEED[$n]:-}" ] && [ -e "$E/lib/$n" ]; then NEED[$n]=1; queue+=("$E/lib/$n"); fi
+  done
+done
+DROPPED=()
+for f in "$E"/lib/*.so*; do
+  n=$(basename "$f")
+  [ -n "${NEED[$n]:-}" ] || { DROPPED+=("$n"); rm -f "$f"; }
+done
 # strip
 find "$E" -type f \( -name '*.so' -o -name '*.so.*' -o -path '*/bin/*' \) -exec "$STRIP" --strip-unneeded {} \; 2>/dev/null
 
@@ -103,6 +120,9 @@ R="$OUT/engine-$ABI-report.txt"
   printf 'dependency_libs\t%s\n' "$(find "$E/lib" -maxdepth 1 -type f -printf '%s\n' | awk '{s+=$1} END{print s}')"
   printf 'share_darktable\t%s\n' "$(du -sb "$E/share/darktable" | cut -f1)"
   printf 'share_lensfun\t%s\n' "$(du -sb "$E/share/lensfun" 2>/dev/null | cut -f1)"
+  echo
+  echo "== sysroot libraries not needed by the engine (not shipped)"
+  echo "${DROPPED[*]:-none}"
   echo
   echo "== OpenMP"
   if "$READELF" -dW "$E/lib/darktable/libdarktable.so" | grep -q 'libomp.so'; then echo "libdarktable.so NEEDED libomp.so: yes"; else echo "libdarktable.so NEEDED libomp.so: NO"; fi

@@ -51,7 +51,7 @@ jobs:
 
       - name: Fetch sysroot release file
         run: |
-          gh release download "$DEPS_TAG" --pattern "sysroot-$ABI.tar.zst" --dir /tmp \
+          gh release download -R "$GITHUB_REPOSITORY" "$DEPS_TAG" --pattern "sysroot-$ABI.tar.zst" --dir /tmp \
             || { echo "no sysroot-$ABI.tar.zst in release $DEPS_TAG: run the deps workflow first"; exit 1; }
           zstd -dc "/tmp/sysroot-$ABI.tar.zst" | tar -x -C /opt/dta
 
@@ -73,10 +73,10 @@ jobs:
       - name: Publish engine release file
         run: |
           cd /home/runner/engine-out
-          gh release view "$ENGINE_TAG" >/dev/null 2>&1 || \
-            gh release create "$ENGINE_TAG" --prerelease --target "$GITHUB_SHA" --title "$ENGINE_TAG" \
+          gh release view -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --prerelease --target "$GITHUB_SHA" --title "$ENGINE_TAG" \
               --notes "darktable engine for Android (darktable-cli, libdarktable, plugins, data) built from commit $GITHUB_SHA. Experimental, brief S1. Not an official darktable release." || true
-          gh release upload "$ENGINE_TAG" "engine-$ABI.tar.gz" "engine-$ABI-report.txt" --clobber
+          gh release upload -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" "engine-$ABI.tar.gz" "engine-$ABI-report.txt" --clobber
 
       - name: Collect logs
         if: always()
