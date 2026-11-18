@@ -1,0 +1,15 @@
+   Compiling tinyvec v1.13.3
+note: link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms
+
+    Finished `release` profile [optimized] target(s) in 1m 01s
+    Building pkg-config files
+command: ['/home/runner/.cargo/bin/cargo', 'cbuild', '--locked', '--prefix', '/opt/dta/sysroot-arm64-v8a', '--libdir', '/opt/dta/sysroot-arm64-v8a/lib', '--library-type', 'staticlib', '--manifest-path', '/home/runner/dta-work/src/arm64-v8a/librsvg/Cargo.toml', '--target-dir', '/home/runner/dta-work/src/arm64-v8a/librsvg/_build-arm64-v8a/target', '--release', '--target', 'aarch64-linux-android', '-p', 'librsvg-c'], env: {'CARGO_PROFILE_RELEASE_OPT_LEVEL': '3'}
+[1/4] Compiling C object rsvg/librsvg-2.so.p/meson-generated_..__rsvg_dummy.c.o
+[3/4] Generating rsvg/librsvg-2.0.ver with a custom command (wrapped by meson to capture output)
+[4/4] Linking target rsvg/librsvg-2.so
+Installing rsvg/librsvg-2.so to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/lib
+Installing /home/runner/dta-work/src/arm64-v8a/librsvg/include/librsvg/rsvg.h to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/include/librsvg-2.0/librsvg
+Installing /home/runner/dta-work/src/arm64-v8a/librsvg/include/librsvg/rsvg-cairo.h to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/include/librsvg-2.0/librsvg
+Installing /home/runner/dta-work/src/arm64-v8a/librsvg/_build-arm64-v8a/include/librsvg/rsvg-features.h to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/include/librsvg-2.0/librsvg
+Installing /home/runner/dta-work/src/arm64-v8a/librsvg/_build-arm64-v8a/include/librsvg/rsvg-version.h to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/include/librsvg-2.0/librsvg
+Installing /home/runner/dta-work/src/arm64-v8a/librsvg/_build-arm64-v8a/meson-private/librsvg-2.0.pc to /home/runner/dta-work/stage/arm64-v8a/librsvg/opt/dta/sysroot-arm64-v8a/lib/pkgconfig

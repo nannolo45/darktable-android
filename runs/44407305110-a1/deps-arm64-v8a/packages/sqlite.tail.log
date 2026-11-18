@@ -1,0 +1,15 @@
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang -DNDEBUG -fPIC -O2 -fPIC -g0 -I/opt/dta/sysroot-arm64-v8a/include -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_ENABLE_PERCENTILE -DSQLITE_ENABLE_RTREE -DSQLITE_HAVE_ZLIB=1 -DSQLITE_THREADSAFE=1    -D_HAVE_SQLITE_CONFIG_H -DBUILD_sqlite -I. -I/home/runner/dta-work/src/arm64-v8a/sqlite/src -I/home/runner/dta-work/src/arm64-v8a/sqlite/ext/rtree -I/home/runner/dta-work/src/arm64-v8a/sqlite/ext/icu -I/home/runner/dta-work/src/arm64-v8a/sqlite/ext/fts3 -I/home/runner/dta-work/src/arm64-v8a/sqlite/ext/session -I/home/runner/dta-work/src/arm64-v8a/sqlite/ext/misc  -shared -o libsqlite3.so sqlite3.o -rpath /opt/dta/sysroot-arm64-v8a/lib  -lm  -lz   -L/opt/dta/sysroot-arm64-v8a/lib -Wl,-rpath-link=/opt/dta/sysroot-arm64-v8a/lib -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,--push-state,--as-needed -lintl -Wl,--pop-state \
+	 -Wl,-soname,libsqlite3.so.0
++ /usr/bin/install -d /home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/lib
+if [ x != "x" ] && [ -f "" ]; then \
+	/usr/bin/install  "/home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/lib"; \
+fi
+/usr/bin/install libsqlite3.so "/home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/lib"
+Setting up libsqlite3.so version symlinks...
+lrwxrwxrwx 1 runner runner      20 Nov 18 22:07 libsqlite3.so -> libsqlite3.so.3.54.1
+lrwxrwxrwx 1 runner runner      20 Nov 18 22:07 libsqlite3.so.0 -> libsqlite3.so.3.54.1
+-rwxr-xr-x 1 runner runner 1554640 Nov 18 22:07 libsqlite3.so.3.54.1
++ /usr/bin/install -d /home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/include
+/usr/bin/install -m 0644 sqlite3.h "/home/runner/dta-work/src/arm64-v8a/sqlite/src/sqlite3ext.h" "/home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/include"
++ /usr/bin/install -d /home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/lib/pkgconfig
+/usr/bin/install -m 0644 sqlite3.pc "/home/runner/dta-work/stage/arm64-v8a/sqlite/opt/dta/sysroot-arm64-v8a/lib/pkgconfig"
