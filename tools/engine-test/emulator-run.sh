@@ -31,7 +31,7 @@ adb shell "cd $D && tar -xzf engine.tar.gz && rm engine.tar.gz && ls"
 ROOT=$(adb shell "ls -d $D/engine-*" | tr -d '\r' | head -1)
 adb push "$TESTS" "$D/tests" >/dev/null
 adb push "$HERE/run-renders.sh" "$D/run-renders.sh" >/dev/null
-adb shell "$ROOT/bin/darktable-cli --version" 2>&1 | tr -d '\r' | tee "$OUT/version.txt"
+adb shell "LD_LIBRARY_PATH=$ROOT/lib:$ROOT/lib/darktable $ROOT/bin/darktable-cli --version" 2>&1 | tr -d '\r' | tee "$OUT/version.txt"
 
 rc=0
 for th in 1 all; do

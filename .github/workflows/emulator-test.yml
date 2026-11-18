@@ -155,6 +155,7 @@ jobs:
             python3 tools/render-compare.py /home/runner/ref/tall /home/runner/emu/t$th --label "emulator-t$th" --out /tmp/ci-out/compare-emulator-t$th || rc=1
           done
           python3 tools/render-compare.py /home/runner/ref/tall /home/runner/ref/t1 --label "linux-t1" --out /tmp/ci-out/compare-linux-t1-vs-tall || true
+          python3 tools/render-compare.py /home/runner/emu/tall /home/runner/emu/t1 --label "emulator-t1" --out /tmp/ci-out/compare-emulator-t1-vs-tall || true
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       - name: Collect logs
@@ -177,6 +178,7 @@ jobs:
             echo '## device'; echo '```'; cat "$L/device.txt" 2>/dev/null; echo '```'
             for th in 1 all; do echo; echo "## emulator, threads=$th vs Linux (all threads)"; cat "$L/compare-emulator-t$th.md" 2>/dev/null || echo "(no comparison)"; done
             echo; echo "## Linux 1 thread vs Linux all threads"; cat "$L/compare-linux-t1-vs-tall.md" 2>/dev/null
+            echo; echo "## emulator 1 thread vs emulator all threads"; cat "$L/compare-emulator-t1-vs-tall.md" 2>/dev/null
             echo; echo "## timings (ms)"; echo '```'
             paste "$L/emulator-results-t1.tsv" "$L/emulator-results-tall.tsv" 2>/dev/null
             echo '--- linux'
