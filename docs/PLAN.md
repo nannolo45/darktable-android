@@ -1,0 +1,301 @@
+# darktable for Android: port plan (public edition)
+
+Written 18 Nov 2026. Status: plan accepted; Phase 0 (experiments) started. This is the public edition; the owner keeps private notes with setup details.
+
+- Interface mockups (three rounds) were agreed before this plan and are kept privately; section 1 summarises them.
+- Code for the port: https://github.com/nannolo45/darktable-android (public); this file is `docs/PLAN.md` there.
+- LightPhotoLibrary (LPL) is a separate, private library app that this app works with.
+- Section 4 is the contract between this app and LPL.
+
+## 0. Summary
+
+1. The app is darktable's real processing engine running on the device, under a new touch interface that keeps darktable's look and its module stack. Edits are stored in the same XMP sidecar format, so phone, tablet and PC edit the same history.
+2. The engine is **upstream darktable built without source changes**. All the mobile work lives beside it: a small C bridge, a generated description of every module's controls, and a Kotlin app. Updating to a new darktable version is then mostly "move the pin, rebuild, run the tests".
+3. This is realistic because Termux already ships darktable 5.6.2 for Android arm64 with its whole dependency stack (F1).
+4. The Android app joins LPL as another **agent**, using the API the PC agent already uses. LPL needs a few small additions (section 4.3).
+5. Work is split into phases with gates. Phase 0 is a set of short experiments that can still stop or reshape the project cheaply.
+
+## 1. Goals and agreed design
+
+**Goals**
+- Edit RAW files on the phone or tablet with no other machine involved.
+- Same edits everywhere: an XMP written on Android opens in desktop darktable, and the other way round.
+- Module stack as in darktable: switch any module on and off, multiple instances (new, duplicate, move, delete), history stack, snapshots, masks and blending, presets.
+- Phone and tablet layouts.
+- Photos come from LPL on the NAS and edits go back through LPL. LPL and the darktable app are two apps.
+- Repeatable updates when darktable changes.
+- Colours and icons easy to change later (section 3.6).
+
+**Not goals for v1**
+- Lighttable, import, tagging, map, print, tethering: LPL covers the library side.
+- Lua scripting, the optional AI modules (`USE_AI`), G'MIC.
+- Publishing on Google Play.
+
+**Design agreed in the mockups**
+- Direction B (module stack) in darktable's own look: colours taken from darktable's default theme, mid-grey surround, flat sliders, lowercase labels.
+- Phone: photo on top, module groups, expandable modules, bottom tabs for modules and history. Instance, reset and preset icons appear on the expanded module.
+- Tablet: desktop-like layout with history and image information on the left, photo in the centre, modules on the right.
+- Filmstrip of the series in LPL's order, collapsible (hidden by default on the phone).
+- Quick access panel, masks and blending, crop with draggable corners **and a movable frame**, tone equalizer graph, snapshots with a split view, export.
+
+**Target setup**
+- Phone for tuning and hands-on checks: Snapdragon 865, 12 GB RAM, Android 13. The tablet layout is built, but checked on an emulator only for now.
+- Desktop side: darktable on the 5.7 development line, Windows and Linux.
+- A priority list of 29 modules orders the work (section 6). Module groups in the app are configurable.
+
+## 2. Findings that shape the plan
+
+Checked on 18 Nov 2026 against the darktable source (release 5.6.2 and the development branch at commit `04477d3`), the Termux package recipe and the LPL repository.
+
+| # | Finding | Consequence |
+|---|---|---|
+| F1 | Termux packages darktable 5.6.2 for Android arm64, built with the Android toolchain against GTK3 and about 30 libraries. Its recipe needs one linker addition (`libandroid-glob`) and turns OpenCL, OpenMP and G'MIC off. | The dependency stack is known to compile and run on Android. Termux's recipes are a reference for ours. |
+| F2 | In 5.6.2, 88 of the 118 files in `src/iop` include GTK headers: each module's processing code and its desktop controls share one file. | The engine cannot be compiled without GTK unless upstream files are edited. We link real GTK3 and never start it. |
+| F3 | `darktable-cli` starts the engine with `dt_init(..., init_gui = FALSE)`, and export uses `dt_dev_init(&dev, FALSE)`. | A supported no-interface path exists upstream. |
+| F4 | `dt_dev_add_history_item()` does nothing without the desktop interface; `dt_dev_add_history_item_ext()` is the variant for callers without one. | The bridge manages history through the `_ext` functions and its own locking. |
+| F5 | 5.6.2 has 93 processing modules, 16 of them deprecated. 73 create their controls with `dt_bauhaus_*_from_params` (498 controls), which ties each control to a named parameter. 26 have graph widgets and 11 draw or take input on the image. | Most controls can be generated. The graph and on-image parts are hand-built, module by module. |
+| F6 | Parameter ranges and defaults are in the source as annotations (`$MIN`, `$MAX`, `$DEFAULT`) and compiled into each module as introspection data. | The bridge reads and writes parameters by name. |
+| F7 | The engine takes `--configdir`, `--cachedir`, `--datadir`, `--moduledir`, `--library`, `--tmpdir`. Modules are separate libraries found by scanning the module folder. | Everything can live in the app's private storage with no source change. |
+| F8 | Every one of the 29 priority modules has an OpenCL path. OpenCL is not an official Android interface; where the device vendor ships it, an app must declare `libOpenCL.so` in its manifest. The target phone's Adreno 650 normally ships it. | GPU acceleration is a realistic later step on this phone, optional, after the CPU path works. |
+| F9 | The development branch still requires GTK3 (3.24.15) on 18 Nov 2026; the GTK4 migration is ongoing upstream. | 5.8 is very likely still GTK3. When upstream switches, the dependency recipes change, not the app. |
+| F10 | LPL's hand-off is an agent protocol over HTTP: heartbeat, jobs, `checkout`, `original`, `xmp` (GET and POST with `checkout_ts`), `preview`. The conflict rule runs on the server. | The Android app can be an LPL agent with almost no server change. |
+| F11 | The build workspace Claude uses can download the Android NDK and Google's Maven repository and install Ubuntu packages, but cannot reach gnome.org, Termux's package server or ghcr.io. It has 2 CPU cores. | Library sources come from GitHub mirrors. Heavy builds run in GitHub Actions. |
+| F12 | Between 5.6.2 and the development branch, 9 modules changed their parameter version, among them demosaic, white balance, input colour profile, AgX, color calibration and highlight reconstruction. 4 modules are new, among them **spektrafilm**, which is on the priority list. | A 5.6.2 engine cannot read edits made with a 5.7 nightly, because demosaic and white balance are in every RAW edit. The engine must match the PC's darktable (section 2.1). |
+
+### 2.1 Which darktable version the app carries
+
+darktable cannot read a module's settings written by a newer version of that module. So an edit travels safely between two installations only when **both know every module version used in it**. In practice the phone's engine and the PC's darktable must be the same version line.
+
+- **Now, for the experiments:** `upstream/darktable` is pinned to the development branch at `04477d3` (18 Nov 2026), close to the desktop's nightly.
+- **When 5.8.0 is released** (expected, not announced; recent feature releases came in June and December): pin to `release-5.8.0`. The PCs move to 5.8.0 as well. Real use of the app starts from this point (gate G2 comes after it).
+- **Afterwards:** PCs and app are updated together. If a PC runs a newer nightly than the app, photos touched there may not open on the phone until the app is rebuilt.
+- **Guard in the app (required, tested):** before opening a photo, the bridge checks every history entry in the XMP. If a module is unknown or its version is newer than the engine's, the photo opens for viewing only with a clear message, and its XMP is never rewritten. The app also keeps the XMP it downloaded as a local backup until the edit is synced.
+- A later option, made cheap by this design: an automatic weekly build of the app against the newest development branch for people who stay on nightlies. Not part of v1.
+
+## 3. Architecture
+
+```
+darktable Android app (Kotlin, Jetpack Compose)        LPL web app (browser, unchanged technology)
+  Working set (local photos, sync state, offline)   <-- link "Edit on this phone" / agent jobs
+  Darkroom: module stack, history, masks, crop, snapshots, export
+  Settings (LPL server, theme)
+  Theme tokens and icon registry
+        |  Kotlin interface "DarktableEngine" (also has a fake implementation for UI work and tests)
+  JNI layer (thin)
+        |
+  Engine bridge (C, ours): stable API "dtbridge.h"
+        |
+  libdarktable + module plugins, upstream, unmodified, started without interface
+  GTK3, GLib, exiv2, lensfun, lcms2, rawspeed, LibRaw ... built for arm64-v8a
+```
+
+### 3.1 Core: upstream, unmodified
+- `upstream/darktable` is a git submodule pinned to a commit or release tag. Nobody edits it in place.
+- It is built for `arm64-v8a` with the NDK, against real GTK3 that is linked but never initialised. First try GTK3 with only the "broadway" backend so no X11 libraries are needed; fall back to the X11 backend as Termux does.
+- Build options: Lua, AI, G'MIC, camera, map, print, colord, libsecret, kwallet, PortMidi and SDL2 off. OpenMP **on** (to be proven in Phase 0; Termux turns it off). OpenCL off at first.
+- `patches/` holds any unavoidable changes as an ordered series. Target is zero; every patch needs a written reason and an upstream issue or pull request where it makes sense.
+- Modules, kernels, colour profiles, lens and camera databases are packed in the APK and unpacked to app-private storage on first start, then passed with `--moduledir` and `--datadir`.
+
+### 3.2 Engine bridge (`engine/`, C)
+A small API of our own, the only thing the app talks to. Upstream changes are absorbed here.
+
+- Lifecycle: `dtb_init(paths, resources)`, `dtb_shutdown()`.
+- Session: `dtb_open(raw_path, xmp_path)` imports into a small private library and loads the sidecar after the version guard (2.1); `dtb_close()` writes it.
+- Stack: list module instances in pipeline order with name, instance label, on/off, parameters by name, blend settings; set a parameter; enable or disable; new, duplicate, delete, move, rename instance; reset; presets and styles.
+- History: list, go to a step, compress, undo and redo.
+- Render: asynchronous, cancellable. A fast low-resolution preview first, then the visible region at screen scale, the way darktable's two darkroom pipelines work. A new change cancels the render in flight.
+- Masks: create and edit circle, ellipse, gradient, path and brush shapes in image coordinates; group them; parametric settings through the blend parameters.
+- Snapshots, histogram and colour picker data, export to a file, write the XMP now.
+- Events to the app: render finished, history changed, error, log line.
+
+One engine thread owns the image being edited; all changes and renders are queued on it.
+
+### 3.3 Generated control descriptions (`schema/`)
+The labels, order, sections, tabs, units and soft ranges of each module's controls exist only in darktable's desktop code. To avoid copying them by hand:
+
+- An out-of-tree darktable plugin runs inside a normal Linux darktable in CI (virtual display), opens the darkroom and walks every module's control tree. For each control it records type, label, the parameter it is bound to, hard and soft range, step, digits, format and list entries, plus sections and tabs.
+- It then flips each list and switch through its values and records which other controls appear or disappear, giving visibility rules.
+- Output: `ui-schema.json` for that darktable version, with translations from darktable's `.po` files. The app builds controls from this file.
+- `schema/overrides/*.json` holds small hand corrections. A new upstream version produces a schema diff that shows exactly which controls changed.
+
+### 3.4 Module support tiers
+| Tier | What it means | Covers |
+|---|---|---|
+| 0 | Always renders exactly as on desktop, can be switched on and off, reset, duplicated, blended. No parameter editor. | Every module, including deprecated ones, from day one |
+| 1 | Generated sliders, lists, switches, tabs | Modules with bound controls |
+| 2 | Hand-built graph editor | Curves, levels, tone equalizer, contrast equalizer, color zones |
+| 3 | Hand-built on-image tool | Masks, crop, rotate and perspective, pickers, retouch |
+
+An edit made on desktop with a module the phone cannot edit yet is never lost or altered: it renders, and its parameters pass through untouched.
+
+### 3.5 App (`app/`, Kotlin + Jetpack Compose)
+- Working name `dt-android`, package `io.github.nannolo45.dtandroid`. It is an unofficial port and must not present itself as an official darktable release if it is ever shared.
+- Modules: `engine-jni`, `darkroom`, `lpl` (agent client and sync), `ui-theme`, `ui-icons`, `app`.
+- Screens depend on the `DarktableEngine` interface, never on JNI directly. A fake engine lets interface work and tests run without the native core.
+- Phone and tablet share all logic; only layout differs (window size classes).
+- Target device for tuning: Snapdragon 865, 12 GB, Android 13. Minimum Android version proposed: 10; arm64 only. Final floor after gate G0.
+
+### 3.6 Colours and icons that are easy to change
+- **Tokens**: every colour, text size, spacing, radius and control size is a named token in one file (`ui-theme/tokens.json`), initially darktable's default greys as mocked. Screens may only use tokens; CI fails on literal colours or sizes in screen code.
+- **Icons**: screens ask for icons by meaning (`Icon.Power`, `Icon.Instances`, `Icon.Reset`, `Icon.Presets`). The drawings are SVG files in one folder (`ui-icons/svg/`). Replacing an icon is replacing one file.
+- **Trying a palette without rebuilding**: debug builds also read an optional `theme.json` from the app's folder that overrides tokens.
+- Layout changes (where things sit) remain code changes.
+
+### 3.7 Storage and sync
+- App-private folders: `work/<lpl id>/<original filename>` and its `.xmp`; darktable's config, small library database and caches (cache size capped).
+- The RAW is downloaded once and never uploaded. Only the XMP and a rendered preview go back.
+- Downloads and uploads run in a foreground service with a notification, because the phone vendor's Android version stops background work aggressively. A background job retries pending syncs when LPL is reachable again; the app explains how to exempt it from battery optimisation if syncs are being stopped.
+
+### 3.8 Performance approach
+- Preview pipeline from a downscaled input for immediate feedback, full pipeline only for the visible region at screen scale, cancel on new input.
+- OpenMP on all cores; darktable's resource level tuned for phones; tiling for large images.
+- OpenCL later and opt-in per device (F8).
+- **Targets to confirm at gate G0 on the target phone** (targets, not measurements): preview after a slider move under 0.3 s; visible region under 3 s for a 40 MP RAF; full export under 60 s.
+
+## 4. LPL integration (for the LPL instance)
+
+Two apps: LPL in the browser, darktable as a native Android app. Neither embeds the other.
+
+### 4.1 What works with LPL as it is today
+The Android app behaves as an LPL agent, like `agent/lpl_agent.py`:
+
+| Step | Existing endpoint | Android behaviour |
+|---|---|---|
+| Identify | `POST /api/agents/heartbeat` | `id` = `android-<install uuid>`, `name` = device model, `os` = `"android"`. Heartbeat every 2 s **only while the app is in the foreground**; a last heartbeat when it leaves. `state.working_set` uses the same item shape and statuses as the PC agent (`downloading`, `opening`, `editing`, `dirty`, `syncing`, `synced`, `error`); `darktable_running` = darkroom open; `bridge_alive` = true; `version` = app version + engine version. |
+| Take a photo | `GET /api/photos/{id}/checkout`, `/original`, `/xmp` | Stores `server_time` as `checkout_ts`. Files keep the original filename inside a per-photo folder. |
+| Send the edit back | `POST /api/photos/{id}/xmp?checkout_ts=…` | On leaving the darkroom, on "sync now", and from the background job. If the response has `X-LPL-Merged: 1`, the app reloads rating, labels and tags from the returned XMP. |
+| Preview | `POST /api/photos/{id}/preview` | A 1920 px JPEG rendered by the engine after each synced edit. |
+| Jobs | jobs from the heartbeat, `POST /api/jobs/{id}/done` | Handles `edit`, `open`, `sync`, `release` addressed to its agent id, when the app is open. |
+| Auth | header `x-lpl-token` | Server address and password entered once in the app, kept in the Android keystore. Intended for LAN and Tailscale only, as today. |
+
+The conflict rule stays on the server and is unchanged: LPL wins for rating, labels and tags changed during the edit; darktable's history always comes from the editor.
+
+### 4.2 How the hand-off looks to the user
+- **From the phone or tablet:** in LPL's web UI on Android, a photo, a selection or a series shows **"Edit on this phone"** next to "Edit in darktable". It is a link that opens the darktable app (R1). The app downloads RAW + XMP with progress and opens the darkroom, with the rest of the list or series as filmstrip.
+- **From the PC:** "Edit in darktable" lets the user pick the phone as target (R3). The job waits and is taken the next time the darktable app is opened.
+- **Back to LPL:** "done" in the darkroom syncs and returns to the app's working set; "open in LightPhotoLibrary" opens the photo's page in the browser (R2).
+- Without a connection the photo shows "waiting to sync" in the app's working set and can still be opened and edited there.
+
+### 4.3 Changes requested from LPL
+| # | Where | Request | Needed for |
+|---|---|---|---|
+| R1 | Web UI | On Android browsers, show "Edit on this phone" on the photo page, the phone selection bar and the board. It navigates to: `intent://edit?server=<encoded origin>&ids=<comma list>&start=<id>&series=<id>&title=<encoded name>#Intent;scheme=lpldt;package=io.github.nannolo45.dtandroid;S.browser_fallback_url=<encoded help page>;end`. `ids` in display order (series order when a series is open, at most 200), `start` = the photo to open, `series` and `title` optional. No job is created. Never put the password in the link. | Phase 2 |
+| R2 | Web UI | Deep links: opening `<origin>/?photo=<id>` shows that photo's page, `<origin>/?series=<id>` opens that series. The web UI has no URL parameters today. | Phase 2 |
+| R3 | Web UI + server | Agent picker when more than one agent is known. Today `job_create` picks the agent only when exactly one is online, so with a PC and a phone the job has no target and the first heartbeat takes it. "Edit in darktable" should default to a PC agent (`os != "android"`); jobs for an Android agent may wait until it comes online. | Phase 2 |
+| R4 | Server | `GET /api/photos/{id}/original` must answer HTTP `Range` requests so interrupted mobile downloads can resume. Please verify with the installed Starlette version and add a test. | Phase 2 |
+| R5 | Server | Export upload: `POST /api/photos/{id}/export?filename=…` with the image as body, stored in an export location LPL owns (proposal: `EXPORT_ROOT`, default a folder that the scanner skips), returning the stored path. Optional `series_id` and `position` so series exports can be numbered later. | Phase 3 |
+| R6 | Web UI | Show per-photo state from any agent's `working_set` with the device name ("editing on <device name>", "waiting to sync"). This is how the web UI learns what the phone did. | Phase 2, small |
+| R7 | Server, later | Per-device tokens (`POST /api/agents/pair`) instead of the shared password in the header. | Later, optional |
+
+The Android app only accepts an `lpldt://edit` link whose `server` is one the user has added in the app; an unknown server asks for confirmation first.
+
+### 4.4 Rules both sides rely on
+- **XMP is the only thing that carries the edit.** The Android app never writes a RAW and never writes to the NAS except through LPL's API.
+- **Version rule (2.1):** phone engine and PC darktable must be the same version line. The agent reports its engine version in `state.version`; LPL may show it and may warn when two agents report different versions.
+- XMPs written by the app use darktable's sidecar format because the engine writes them. LPL keeps treating `darktable:history` and `darktable|…` tags as opaque.
+- Series order comes from LPL (the `ids` order in R1). The app does not reorder series.
+- The Lua bridge and the PC agent are unaffected.
+
+## 5. Repository and update procedure
+
+Repository: `nannolo45/darktable-android` (public, decided 18 Nov 2026), licence GPL-3.0-or-later like darktable.
+
+```
+upstream/darktable     git submodule at a pinned commit or release tag, never edited
+patches/               ordered patch series, target: empty
+deps/                  one pinned recipe per library (version, hash, options), NDK cross files
+engine/                bridge: include/dtbridge.h, src/, tests/
+schema/                control extractor plugin, overrides/
+app/                   Android project (modules in 3.5)
+tools/                 bump-upstream, render-compare, schema-diff
+.github/workflows/     deps, engine tests on Linux, schema, app build, release
+docs/                  PLAN.md (this file), UPDATE.md, briefs/, experiments/
+CLAUDE.md              rules for coding agents
+```
+
+- Prebuilt dependencies are cached as a release file keyed by the hash of `deps/`, so normal builds do not recompile GTK.
+- APKs are published as GitHub release files.
+- The repository is public, so the long dependency builds run on GitHub's standard runners without a minutes limit.
+
+**Updating to a new darktable version (`docs/UPDATE.md`)**
+1. `tools/bump-upstream <tag or commit>` moves the submodule and re-applies `patches/`.
+2. CI rebuilds; `deps/` only changes if upstream raised a minimum version.
+3. Engine tests on Linux: the reference set of RAW + XMP files must render the same through the bridge as through that version's `darktable-cli`.
+4. `schema-diff` lists new, removed and changed controls. Tier 1 picks them up automatically; Tier 2 and 3 modules that changed are flagged for manual work.
+5. Bridge compile errors show where internal functions changed; fixes stay inside `engine/`.
+6. Build the APK, run the device checklist, release. PCs and app move together (2.1).
+
+## 6. Phases and gates
+
+Each work package is one branch and one pull request with stated acceptance tests.
+
+**Phase 0: experiments (decide before building)**
+| | Experiment | Passes when | Where |
+|---|---|---|---|
+| S3 | Bridge prototype on Linux: open, change a parameter, render a region, add an instance, write the XMP, version guard | Output equals `darktable-cli`; desktop darktable opens the XMP with the same history | Workspace (started first) |
+| S5 | Control extractor | `ui-schema.json` covers the bound controls, with visibility rules for a sample checked by hand | Workspace, after S3 |
+| S1 | Build dependencies + darktable for arm64 from our own recipes | A command-line export runs on the phone and matches the desktop result | GitHub Actions |
+| S6 | GTK3 with the broadway backend only | Builds and links; else switch to the X11 backend and record the size cost | With S1 |
+| S2 | OpenMP with the NDK | Multi-core speed-up measured on the phone; no crashes over the reference set | With S1 |
+| S4 | Load module plugins unpacked from the APK into app storage | All plugins load on Android 13 | Test APK |
+
+**Gate G0:** the owner installs a test APK on the target phone that opens a RAF, moves exposure and exports. Decision on targets in 3.8 and whether to go on.
+
+**Phase 1: engine and build system.** Full bridge API with tests on Linux, JNI layer, dependency cache, CI. Gate G1: bridge test suite green; API reviewed and frozen for Phase 2.
+
+**Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
+
+Usable in Phase 2 with generated controls: lens correction, demosaic, white balance, exposure, AgX, spektrafilm (70 bound controls), grain, diffuse or sharpen, chromatic aberrations, denoise (profiled), blurs, color balance rgb, color balance, color equalizer, color harmonizer, rgb primaries, LUT 3D (file picker), orientation (four buttons). Their graphs are display-only on desktop or optional.
+
+**Phase 3: the hard parts, local adjustments first**
+1. Masks and blending on every module: drawn shapes (circle, ellipse, gradient, brush, path), parametric, show mask, mask manager for reuse across instances.
+2. Crop (corners and move), rotate and perspective (rotation and straighten first, perspective after).
+3. One shared curve editor: tone curve, rgb curve, rgb levels, tone equalizer (graph and drag on the photo).
+4. One shared band editor: contrast equalizer, color zones.
+5. Colour pickers and areas: color calibration, white balance, rgb levels, exposure spot.
+6. color look up table (patch grid), retouch.
+7. Snapshots, presets and styles, export with R5.
+
+Gate G3: checklist of these modules on the phone, and on the tablet layout in the emulator.
+
+**Phase 4: speed and robustness.** OpenCL opt-in on the Adreno 650, cache and tiling tuning, low-memory behaviour, interrupted downloads and syncs, local crash log.
+
+**Phase 5: maintenance.** `UPDATE.md` proven by a real version bump, remaining modules by demand, optional nightly-following build.
+
+## 7. How implementation runs
+
+- Coding is done by Opus agents, one work package each, from a written brief in `docs/briefs/`: scope, files they may touch, interfaces they must not change, acceptance tests, and the relevant sections of this plan.
+- Claude (this project's session) writes the briefs, reviews every pull request against the plan and the mockups, runs the tests, and decides merge or rework. Nothing merges without that review and green checks.
+- Agents may not change `dtbridge.h` after gate G1, the LPL contract in section 4, or anything under `upstream/` without approval.
+- Decisions and progress are logged in the owner's private project notes; contract changes are edited into section 4 of this file.
+- The owner is asked at the gates, and whenever a choice changes what the user sees or risks files.
+
+## 8. Testing
+
+- **Engine on Linux (every push):** bridge tests against a reference set of RAW + XMP pairs; pixel comparison with `darktable-cli`; XMP round trip (bridge writes, desktop reads, and back); history, instance and mask operations; the version guard.
+- **App without the native core:** unit and Compose tests against the fake engine; screenshot tests for phone and tablet layouts and for token changes.
+- **Android emulator in CI:** app start, LPL agent flow against a test LPL server, link hand-off, sync and conflict cases.
+- **Real devices:** a short checklist per gate that the owner runs with the release APK. Speed is only measured on real devices.
+- **Safety:** tests assert that the RAW's checksum never changes, that an XMP is only uploaded after it parses, and that a photo with unknown or newer module versions is never rewritten.
+
+## 9. Risks
+
+| Risk | Likelihood | Effect | Response |
+|---|---|---|---|
+| CPU-only editing is too slow on the Snapdragon 865 | Medium | High | S2 and G0 measure it before anything else is built; preview pipeline; OpenCL later |
+| Engine and PC versions drift apart and an edit cannot be read | High without discipline | High | Same version line on both sides (2.1); guard that never rewrites such an XMP; local XMP backup |
+| Following the development branch until 5.8.0 brings upstream bugs | Medium | Low to medium | Only experiments and Phase 1 run on it; real use starts on 5.8.0 |
+| OpenMP or a library misbehaves on Android | Medium | Medium | Termux proves the stack without OpenMP; S2 isolates it |
+| Running the engine without its interface hits code that assumes one (history, masks) | Medium | Medium | S3 exercises exactly these paths; small upstream patches as last resort |
+| Memory pressure with 40 MP files | Low on 12 GB | Medium | Region rendering, tiling, capped caches |
+| The phone vendor's Android version stops downloads or syncs in the background | High | Low | Foreground service, retry job, battery-optimisation hint |
+| Android stops allowing code to load from app storage | Low | High | Fallback: pack modules as regular native libraries and patch the module loader (one patch) |
+| Vendor OpenCL driver gives wrong results | Medium | Low | Opt-in, automatic comparison against the CPU result |
+| Control extraction misses conditional controls | Medium | Low | Overrides file; a control wrongly shown is harmless because the engine validates values |
+| Tablet layout is not tried on a real tablet | Certain for now | Low | Emulator and screenshot tests; real check when a tablet is available |
+| Scope of graph and on-image modules | Certain | Medium | Tiers; Tier 0 guarantees no edit is lost; order from the priority list |
+| Licence | Low | Low | Repository is GPL-3.0-or-later from the start; source must accompany any APK given to others |
+
+## 10. Settled points
+
+- Repository public; desktop darktable moves to 5.8.0 when it is released and is then updated together with the app; no tablet for now.
