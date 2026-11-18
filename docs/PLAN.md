@@ -129,7 +129,7 @@ The labels, order, sections, tabs, units and soft ranges of each module's contro
 An edit made on desktop with a module the phone cannot edit yet is never lost or altered: it renders, and its parameters pass through untouched.
 
 ### 3.5 App (`app/`, Kotlin + Jetpack Compose)
-- Working name `dt-android`, package `io.github.nannolo45.dtandroid`. It is an unofficial port and must not present itself as an official darktable release if it is ever shared.
+- Working name `dt-android`, package `app.dtandroid`. It is an unofficial port and must not present itself as an official darktable release if it is ever shared.
 - Modules: `engine-jni`, `darkroom`, `lpl` (agent client and sync), `ui-theme`, `ui-icons`, `app`.
 - Screens depend on the `DarktableEngine` interface, never on JNI directly. A fake engine lets interface work and tests run without the native core.
 - Phone and tablet share all logic; only layout differs (window size classes).
@@ -179,7 +179,7 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 ### 4.3 Changes requested from LPL
 | # | Where | Request | Needed for |
 |---|---|---|---|
-| R1 | Web UI | On Android browsers, show "Edit on this phone" on the photo page, the phone selection bar and the board. It navigates to: `intent://edit?server=<encoded origin>&ids=<comma list>&start=<id>&series=<id>&title=<encoded name>#Intent;scheme=lpldt;package=io.github.nannolo45.dtandroid;S.browser_fallback_url=<encoded help page>;end`. `ids` in display order (series order when a series is open, at most 200), `start` = the photo to open, `series` and `title` optional. No job is created. Never put the password in the link. | Phase 2 |
+| R1 | Web UI | On Android browsers, show "Edit on this phone" on the photo page, the phone selection bar and the board. It navigates to: `intent://edit?server=<encoded origin>&ids=<comma list>&start=<id>&series=<id>&title=<encoded name>#Intent;scheme=lpldt;package=app.dtandroid;S.browser_fallback_url=<encoded help page>;end`. `ids` in display order (series order when a series is open, at most 200), `start` = the photo to open, `series` and `title` optional. No job is created. Never put the password in the link. | Phase 2 |
 | R2 | Web UI | Deep links: opening `<origin>/?photo=<id>` shows that photo's page, `<origin>/?series=<id>` opens that series. The web UI has no URL parameters today. | Phase 2 |
 | R3 | Web UI + server | Agent picker when more than one agent is known. Today `job_create` picks the agent only when exactly one is online, so with a PC and a phone the job has no target and the first heartbeat takes it. "Edit in darktable" should default to a PC agent (`os != "android"`); jobs for an Android agent may wait until it comes online. | Phase 2 |
 | R4 | Server | `GET /api/photos/{id}/original` must answer HTTP `Range` requests so interrupted mobile downloads can resume. Please verify with the installed Starlette version and add a test. | Phase 2 |
