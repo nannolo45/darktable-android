@@ -234,9 +234,14 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
       }
     }
 
-  // a cancel only concerns a render in flight: clear what is left over
-  g_atomic_int_set(&g_cancel, 0);
   g_atomic_pointer_set(&g_active_pipe, &p->pipe);
+  // a cancel that came while the pipe was being synchronised
+  if(g_atomic_int_get(&g_cancel))
+  {
+    g_atomic_pointer_set(&g_active_pipe, NULL);
+    g_atomic_int_set(&g_cancel, 0);
+    return dtb__err(DTB_E_CANCELLED, "render cancelled");
+  }
 
   if(finalscale) finalscale->enabled = FALSE;
   const gboolean early = dt_dev_pixelpipe_process_no_gamma(&p->pipe, &S.dev, x, y, w, h, scale);
@@ -245,15 +250,18 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
   g_atomic_pointer_set(&g_active_pipe, NULL);
   // as dt_dev_process_image_job() (develop.c) does after each run
   const int stopper = dt_atomic_exch_int(&p->pipe.shutdown, DT_DEV_PIXELPIPE_STOP_NO);
-  const gboolean cancelled = g_atomic_int_get(&g_cancel);
-  g_atomic_int_set(&g_cancel, 0);
 
-  if(early || stopper > DT_DEV_PIXELPIPE_PROCESSING)
+  // a cancel that came after the pipe's last module (the CAS in
+  // dt_dev_pixelpipe_set_shutdown is then ignored) still cancels: the caller
+  // asked for this render to be dropped
+  if(g_atomic_int_get(&g_cancel))
   {
-    if(cancelled) return dtb__err(DTB_E_CANCELLED, "render cancelled");
+    g_atomic_int_set(&g_cancel, 0);
+    return dtb__err(DTB_E_CANCELLED, "render cancelled");
+  }
+  if(early || stopper > DT_DEV_PIXELPIPE_PROCESSING)
     return dtb__err(DTB_E_ENGINE, "pixelpipe stopped early (%s)",
                     dt_dev_pixelpipe_shutdown_to_str(stopper));
-  }
   if(!p->pipe.backbuf || p->pipe.backbuf_width != w || p->pipe.backbuf_height != h)
     return dtb__err(DTB_E_ENGINE, "no valid output buffer (%dx%d, asked %dx%d)",
                     p->pipe.backbuf_width, p->pipe.backbuf_height, w, h);
@@ -262,6 +270,11 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
   DT_OMP_FOR()
   for(int row = 0; row < h; row++)
     dt_display_to_8bit_pixels(in + (size_t)4 * w * row, out + (size_t)4 * w * row, w, FALSE);
+  if(g_atomic_int_get(&g_cancel))
+  {
+    g_atomic_int_set(&g_cancel, 0);
+    return dtb__err(DTB_E_CANCELLED, "render cancelled");
+  }
   return DTB_OK;
 }
 
@@ -282,6 +295,8 @@ int dtb_render(int x, int y, int w, int h, float scale, uint8_t *rgba8_out)
   NEED_SESSION();
   if(!rgba8_out || w <= 0 || h <= 0 || x < 0 || y < 0 || scale <= 0.0f)
     return dtb__err(DTB_E_ARG, "bad region");
+  // a cancel only concerns a render in flight: clear what is left over
+  g_atomic_int_set(&g_cancel, 0);
   int r = _pipe_ensure(&S.full, DT_MIPMAP_FULL);
   if(r) return r;
   const int pw = (int)floor(scale * S.full.pipe.processed_width);
@@ -296,6 +311,7 @@ int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
   NEED_SESSION();
   if(!out || max_size <= 0) return dtb__err(DTB_E_ARG, "bad arguments");
   *out = NULL;
+  g_atomic_int_set(&g_cancel, 0);
   // DT_MIPMAP_F is the downscaled float input the darkroom's preview pipe
   // runs on (dt_dev_process_image_job, develop.c)
   int r = _pipe_ensure(&S.preview, DT_MIPMAP_F);

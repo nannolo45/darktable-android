@@ -164,8 +164,11 @@ int dtb_render(int x, int y, int w, int h, float scale, uint8_t *rgba8_out);
 int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height);
 
 /* Ask the render running on the engine thread to stop. Safe from any thread.
- * The render then returns DTB_E_CANCELLED. A cancel that arrives while no
- * render runs is remembered and stops the next render at its start. */
+ * A cancel that arrives at any point during dtb_render() or
+ * dtb_render_preview() makes that call return DTB_E_CANCELLED (the output
+ * buffer is then undefined); the pipeline stops between modules. A cancel
+ * that arrives while no render runs has no effect: each render starts by
+ * clearing it. Must not be called concurrently with dtb_close(). */
 void dtb_render_cancel(void);
 
 /* --- output --- */
