@@ -1,0 +1,107 @@
+[dta 21:52:02] building ndk-zlib system (x86_64)
+[dta 21:52:02] building proxy-libintl 0.5 (x86_64)
+[dta 21:52:04] building libffi 3.8.1 (x86_64)
+[dta 21:52:09] building pcre2 10.49 (x86_64)
+[dta 21:52:17] building glib 2.90.1 (x86_64)
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf: error: '/tmp/tmp.cXaumRYyEL/share/gdb/auto-load/opt/dta/sysroot-x86_64/lib/libglib-2.0.so.0.9000.1-gdb.py': The file was not recognized as a valid object file
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf: error: '/tmp/tmp.cXaumRYyEL/share/gdb/auto-load/opt/dta/sysroot-x86_64/lib/libgobject-2.0.so.0.9000.1-gdb.py': The file was not recognized as a valid object file
+[dta 21:52:49] building expat 2.10.0 (x86_64)
+[dta 21:52:52] building libpng 1.6.59 (x86_64)
+[dta 21:52:54] building freetype 2.15.0 (x86_64)
+[dta 21:53:07] building fontconfig 2.18.4 (x86_64)
+[dta 21:53:31] building pixman 0.46.4 (x86_64)
+[dta 21:53:38] building cairo 1.18.6 (x86_64)
+[dta 21:53:58] building fribidi 1.0.18 (x86_64)
+[dta 21:54:01] building harfbuzz 15.1.0 (x86_64)
+[dta 21:54:46] building pango 1.58.2 (x86_64)
+[dta 21:54:53] building libjpeg-turbo 3.2.1 (x86_64)
+[dta 21:54:58] building libtiff 4.7.2 (x86_64)
+[dta 21:55:03] building gdk-pixbuf 2.44.8 (x86_64)
+[dta 21:55:07] building libepoxy 1.5.10 (x86_64)
+[dta 21:55:13] building atk 2.38.0 (x86_64)
+[dta 21:55:16] building gtk3 3.24.52 (x86_64)
+[dta 21:55:22] FAILED gtk3, see /home/runner/dta-work/logs/x86_64/gtk3.log
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:922:6: warning: 'gdk_screen_get_width' is deprecated [-Wdeprecated-declarations]
+  922 |                           gdk_screen_get_width (screen),
+      |                           ^
+../gdk/gdkscreen.h:57:1: note: 'gdk_screen_get_width' has been explicitly marked deprecated here
+   57 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+../gdk/broadway/gdkwindow-broadway.c:923:6: warning: 'gdk_screen_get_height' is deprecated [-Wdeprecated-declarations]
+  923 |                           gdk_screen_get_height (screen));
+      |                           ^
+../gdk/gdkscreen.h:59:1: note: 'gdk_screen_get_height' has been explicitly marked deprecated here
+   59 | GDK_DEPRECATED_IN_3_22
+      | ^
+./gdk/gdkversionmacros.h:412:47: note: expanded from macro 'GDK_DEPRECATED_IN_3_22'
+  412 | # define GDK_DEPRECATED_IN_3_22               GDK_DEPRECATED
+      |                                               ^
+./gdk/gdkversionmacros.h:48:24: note: expanded from macro 'GDK_DEPRECATED'
+   48 | #define GDK_DEPRECATED G_DEPRECATED _GDK_EXTERN
+      |                        ^
+/opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/glib-2.0/glib/gmacros.h:1303:37: note: expanded from macro 'G_DEPRECATED'
+ 1303 | #define G_DEPRECATED __attribute__((__deprecated__))
+      |                                     ^
+4 warnings generated.
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/local/bin/ninja -C /home/runner/dta-work/src/x86_64/gtk3/_build-x86_64 -j 4
+[dta 21:55:22] building libxml2 2.15.4 (x86_64)
+[dta 21:55:29] building json-glib 1.10.8 (x86_64)
+[dta 21:55:32] building sqlite 3.54.1 (x86_64)
+[dta 21:55:59] building lcms2 2.20 (x86_64)
+[dta 21:56:04] building lensfun 0.3.4 (x86_64)
+[dta 21:56:06] building potrace 1.16 (x86_64)
+[dta 21:56:09] building pugixml 1.16 (x86_64)
+[dta 21:56:13] building exiv2 0.28.9 (x86_64)
+[dta 21:56:48] building curl 8.23.0 (x86_64)
+[dta 21:57:08] building libarchive 3.8.11 (x86_64)
+[dta 21:57:35] building librsvg 2.63.4 (x86_64)
+package	version	status	seconds	so_files	so_bytes_stripped	not_16k_aligned	license
+ndk-zlib	system	ok	0	0	0	0	Zlib
+proxy-libintl	0.5	ok	2	1	5560	0	LGPL-2.1-or-later
+libffi	3.8.1	ok	5	1	38360	0	MIT
+pcre2	10.49	ok	8	2	445832	0	BSD-3-Clause
+glib	2.90.1	ok	32	8	3896499	0	LGPL-2.1-or-later
+expat	2.10.0	ok	3	1	190328	0	MIT
+libpng	1.6.59	ok	2	1	252480	0	libpng-2.0
+freetype	2.15.0	ok	12	1	761328	0	FTL
+fontconfig	2.18.4	ok	24	1	463968	0	HPND
+pixman	0.46.4	ok	7	1	781576	0	MIT
+cairo	1.18.6	ok	20	3	1232048	0	LGPL-2.1-only OR MPL-1.1
+fribidi	1.0.18	ok	3	1	118712	0	LGPL-2.1-or-later
+harfbuzz	15.1.0	ok	45	1	1447320	0	MIT
+pango	1.58.2	ok	7	3	594360	0	LGPL-2.1-or-later
+libjpeg-turbo	3.2.1	ok	5	1	865896	0	IJG AND BSD-3-Clause AND Zlib
+libtiff	4.7.2	ok	5	2	600488	0	libtiff
+gdk-pixbuf	2.44.8	ok	4	1	166280	0	LGPL-2.1-or-later
+libepoxy	1.5.10	ok	6	1	978240	0	MIT
+atk	2.38.0	ok	3	1	159976	0	LGPL-2.0-or-later
+gtk3	3.24.52	failed	6	-	-	-	LGPL-2.0-or-later
+libxml2	2.15.4	ok	7	1	1228424	0	MIT
+json-glib	1.10.8	ok	3	1	154576	0	LGPL-2.1-or-later
+sqlite	3.54.1	ok	27	1	1479056	0	blessing
+lcms2	2.20	ok	5	1	410304	0	MIT
+lensfun	0.3.4	ok	2	1	151176	0	LGPL-3.0-or-later
+potrace	1.16	ok	3	1	28368	0	GPL-2.0-or-later
+pugixml	1.16	ok	4	1	248144	0	MIT
+exiv2	0.28.9	ok	35	1	2592624	0	GPL-2.0-or-later
+curl	8.23.0	ok	20	1	688344	0	curl
+libarchive	3.8.11	ok	27	1	805768	0	BSD-2-Clause
+librsvg	2.63.4	ok	87	1	5228624	0	LGPL-2.1-or-later
+[dta 21:59:03] 1 package(s) failed or were skipped
