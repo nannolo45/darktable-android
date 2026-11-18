@@ -1,0 +1,15 @@
+    xinerama        : no
+
+Found ninja-1.13.2 at /usr/local/bin/ninja
+ninja: Entering directory `/home/runner/dta-work/src/x86_64/gtk3/_build-x86_64'
+[1/910] Generating gdk/broadway/clienthtml.h with a custom command
+[2/910] Generating gdk/gdkresources_c with a custom command
+FAILED: [code=127] gdk/gdkresources.c 
+/opt/dta/sysroot-x86_64/lib/pkgconfig/../../bin/glib-compile-resources gdk/gdk.gresource.xml --sourcedir ../gdk --c-name _gdk --internal --generate --target gdk/gdkresources.c --manual-register --dependency-file gdk/gdkresources.c.d
+/bin/sh: 1: /opt/dta/sysroot-x86_64/lib/pkgconfig/../../bin/glib-compile-resources: not found
+[3/910] Generating glib marshaller header gdk/gdkmarshalers_h
+[4/910] Generating gdk/broadway/broadwayjs.h with a custom command
+[5/910] Generating GObject enum file gdk/gdkenumtypes.h (wrapped by meson to capture output)
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/local/bin/ninja -C /home/runner/dta-work/src/x86_64/gtk3/_build-x86_64 -j 4

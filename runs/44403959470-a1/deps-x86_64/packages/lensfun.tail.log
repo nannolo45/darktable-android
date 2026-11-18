@@ -1,0 +1,15 @@
+      |                   ^~~~~~~~~~~
+<built-in>:99:21: note: expanded from macro '__INT_MAX__'
+   99 | #define __INT_MAX__ 2147483647
+      |                     ^~~~~~~~~~
+2 warnings generated.
+[12/15] Generating build/timestamp
+FAILED: [code=1] apps/build/timestamp /home/runner/dta-work/src/x86_64/lensfun/_build-x86_64/apps/build/timestamp 
+cd /home/runner/dta-work/src/x86_64/lensfun/_build-x86_64/apps && /home/runner/dta-host/dta-venv/bin/python3 /home/runner/dta-work/src/x86_64/lensfun/_build-x86_64/apps/setup.py build && /usr/local/bin/cmake -E touch /home/runner/dta-work/src/x86_64/lensfun/_build-x86_64/apps/build/timestamp
+Traceback (most recent call last):
+  File "/home/runner/dta-work/src/x86_64/lensfun/_build-x86_64/apps/setup.py", line 6, in <module>
+    from setuptools import setup
+ModuleNotFoundError: No module named 'setuptools'
+[13/15] Building CXX object libs/lensfun/CMakeFiles/lensfun.dir/mod-coord.cpp.o
+[14/15] Building CXX object libs/lensfun/CMakeFiles/lensfun.dir/auxfun.cpp.o
+ninja: build stopped: subcommand failed.

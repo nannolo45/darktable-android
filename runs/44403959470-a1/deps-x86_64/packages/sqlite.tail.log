@@ -1,0 +1,15 @@
+Library feature flags: -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_ENABLE_PERCENTILE -DSQLITE_ENABLE_RTREE -DSQLITE_HAVE_ZLIB=1 -DSQLITE_THREADSAFE=1
+Shell options: -DSQLITE_DQS=0 -DSQLITE_ENABLE_BYTECODE_VTAB -DSQLITE_ENABLE_DBPAGE_VTAB -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_EXPLAIN_COMMENTS -DSQLITE_ENABLE_FTS4 -DSQLITE_ENABLE_OFFSET_SQL_FUNC -DSQLITE_ENABLE_PERCENTILE -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_STMTVTAB -DSQLITE_ENABLE_UNKNOWN_SQL_FUNCTION -DSQLITE_HAVE_ZLIB=1 -DSQLITE_STRICT_SUBTYPE=1
+Created Makefile from Makefile.in
+Created sqlite3.pc from sqlite3.pc.in
+Created sqlite_cfg.h
+make: Nothing to be done for 'lib'.
+make: Nothing to be done for 'install-lib'.
+touch .main.mk.checks
+cc -g -o mksourceid /home/runner/dta-work/src/x86_64/sqlite/tool/mksourceid.c
+cc -g -o jimsh -O1 -DHAVE_REALPATH /home/runner/dta-work/src/x86_64/sqlite/autosetup/jimsh0.c
+./jimsh /home/runner/dta-work/src/x86_64/sqlite/tool/mksqlite3h.tcl /home/runner/dta-work/src/x86_64/sqlite -o sqlite3.h
++ /usr/bin/install -d /home/runner/dta-work/stage/x86_64/sqlite/opt/dta/sysroot-x86_64/include
+/usr/bin/install -m 0644 sqlite3.h "/home/runner/dta-work/src/x86_64/sqlite/src/sqlite3ext.h" "/home/runner/dta-work/stage/x86_64/sqlite/opt/dta/sysroot-x86_64/include"
++ /usr/bin/install -d /home/runner/dta-work/stage/x86_64/sqlite/opt/dta/sysroot-x86_64/lib/pkgconfig
+/usr/bin/install -m 0644 sqlite3.pc "/home/runner/dta-work/stage/x86_64/sqlite/opt/dta/sysroot-x86_64/lib/pkgconfig"
