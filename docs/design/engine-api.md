@@ -114,3 +114,12 @@ For `FakeEngine`: the same Kotlin test suite that later runs against the JNI imp
 - **`color_labels`** in `image_info()` is a list of darktable's label numbers (0 red, 1 yellow, 2 green, 3 blue, 4 purple).
 - **`modules()` size.** Array parameters make the full list large. If re-reading it after every change is too slow through JNI, a call returning one module instance may be added; measure first.
 
+## Clarifications after P2b (19 Nov 2026): what the real engine does
+The contract tests were run against the real engine; where they disagreed, the engine is the reference and the stand-in engine was corrected.
+- `set_threads(0)` restores the thread count chosen at init; a larger count than the device has is clamped. `set_thread_cpus([])` removes pinning. Neither is an error.
+- `history_goto` with a position outside the list fails with ARG.
+- `history_compress` keeps modules that end up switched off (as upstream documents) and drops the items above the end.
+- `in_history` of a module is true for any item in the list, also above the end.
+- Exif date and time are given as `YYYY-MM-DDTHH:MM:SS`.
+- **Known gaps in the bridge, to fix in the next engine package:** in a read-only session with an unknown module, `history().end` can be larger than the number of items and `history_goto(end)` is refused (the app clamps); within one process, `open(raw, NULL)` returns the history the private library still holds for that file, not the default edit.
+
