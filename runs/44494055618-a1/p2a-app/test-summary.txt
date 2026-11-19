@@ -1,0 +1,21 @@
+darkroom     app.dtandroid.darkroom.DarkroomControllerTest                          tests   7  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.LayoutDarkroomTest                              tests   7  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.NarrowPhoneScreenshots                          tests   1  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.PhoneScreenshots                                tests  23  failed  2  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.TabletScreenshots                               tests   8  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FakeEngineContractTest                        tests  18  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FakeEngineTest                                tests   6  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FileLayoutStoreTest                           tests   7  failed  0  errors  0  skipped  0
+schema       app.dtandroid.schema.SchemaTest                                        tests  12  failed  0  errors  0  skipped  0
+schema       app.dtandroid.schema.layout.LayoutTest                                 tests  13  failed  0  errors  0  skipped  0
+ui-theme     app.dtandroid.ui.theme.TokensTest                                      tests   5  failed  0  errors  0  skipped  0
+TOTAL tests 107  failed 2  errors 0  skipped 0
+FAILED darkroom: app.dtandroid.darkroom.PhoneScreenshots.searchLine: java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (ContentDescription = 'color calibration' (ignoreCase: false))
+
+FAILED darkroom: app.dtandroid.darkroom.PhoneScreenshots.editorUserLayout: java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but found '4' nodes that satisfy: (ContentDescription = 'move group down' (ignoreCase: false))
+Nodes found:
+1) Node #4140 at (l=576.0, t=3228.0, r=664.0, b=3316.0)px
+ContentDescription = '[move group down]'
+Focused = '

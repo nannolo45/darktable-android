@@ -1,0 +1,152 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:processTestFixturesResources NO-SOURCE
+> Task :engine-api:processTestResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :schema:processTestResources
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug
+> Task :ui-theme:javaPreCompileDebugUnitTest
+> Task :ui-theme:parseDebugLocalResources
+> Task :ui-theme:packTokens
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :checkScreenRules UP-TO-DATE
+> Task :darkroom:preBuild UP-TO-DATE
+> Task :darkroom:preDebugBuild UP-TO-DATE
+> Task :darkroom:generateDebugResValues
+> Task :darkroom:generateDebugResources
+> Task :ui-theme:generateDebugRFile
+> Task :darkroom:packageDebugResources
+> Task :darkroom:processDebugNavigationResources
+> Task :darkroom:parseDebugLocalResources
+> Task :ui-theme:generateDebugUnitTestStubRFile
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :darkroom:generateDebugRFile
+> Task :ui-icons:convertIcons
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-icons:javaPreCompileDebug
+> Task :darkroom:javaPreCompileDebug
+> Task :darkroom:preDebugUnitTestBuild UP-TO-DATE
+> Task :darkroom:writeDebugAarMetadata
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:writeDebugAarMetadata
+> Task :ui-icons:parseDebugLocalResources
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:124:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :engine-api:compileKotlin
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :darkroom:checkDebugUnitTestAarMetadata
+> Task :engine-api:jar
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :ui-theme:processDebugJavaRes
+> Task :ui-icons:generateDebugRFile
+> Task :ui-theme:compileDebugUnitTestKotlin
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:processDebugUnitTestJavaRes
+> Task :ui-icons:compileDebugKotlin
+> Task :engine-api:compileTestFixturesKotlin
+> Task :schema:compileKotlin
+> Task :ui-theme:testDebugUnitTest
+> Task :engine-api:compileTestFixturesJava NO-SOURCE
+> Task :engine-api:testFixturesClasses UP-TO-DATE
+> Task :engine-api:testFixturesJar
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes
+> Task :schema:jar
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :darkroom:compileDebugLibraryResources
+> Task :darkroom:generateDebugUnitTestResValues
+> Task :darkroom:mapDebugUnitTestSourceSetPaths
+> Task :darkroom:generateDebugUnitTestResources
+> Task :engine-api:compileTestKotlin
+> Task :engine-api:compileTestJava NO-SOURCE
+> Task :engine-api:testClasses UP-TO-DATE
+> Task :darkroom:mergeDebugUnitTestResources
+> Task :schema:compileTestKotlin
+> Task :engine-api:test
+> Task :schema:compileTestJava NO-SOURCE
+> Task :schema:testClasses
+> Task :schema:test
+> Task :darkroom:extractDeepLinksDebug
+> Task :ui-icons:extractDeepLinksDebug
+> Task :ui-theme:extractDeepLinksDebug
+> Task :darkroom:processDebugManifest
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:processDebugManifest
+> Task :ui-icons:compileDebugLibraryResources
+> Task :darkroom:processDebugUnitTestManifest
+> Task :ui-theme:compileDebugLibraryResources
+> Task :darkroom:javaPreCompileDebugUnitTest
+> Task :darkroom:generateDebugUnitTestAssets UP-TO-DATE
+> Task :darkroom:mergeDebugShaders
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets
+> Task :ui-icons:mergeDebugShaders
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets
+> Task :ui-theme:mergeDebugShaders
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets
+> Task :darkroom:mergeDebugUnitTestAssets
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :ui-icons:processDebugJavaRes
+> Task :darkroom:processDebugUnitTestResources
+> Task :darkroom:packageDebugUnitTestForUnitTest
+> Task :darkroom:generateDebugUnitTestConfig
+> Task :darkroom:compileDebugKotlin
+> Task :darkroom:compileDebugJavaWithJavac NO-SOURCE
+> Task :darkroom:bundleLibRuntimeToJarDebug
+> Task :darkroom:bundleLibCompileToJarDebug
+> Task :darkroom:processDebugJavaRes
+> Task :darkroom:compileDebugUnitTestKotlin
+> Task :darkroom:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :darkroom:processDebugUnitTestJavaRes
+
+> Task :darkroom:testDebugUnitTest
+
+PhoneScreenshots > searchLine FAILED
+    java.lang.AssertionError at DarkroomScreenshotTest.kt:171
+
+PhoneScreenshots > editorUserLayout FAILED
+    java.lang.AssertionError at DarkroomScreenshotTest.kt:197
+
+46 tests completed, 2 failed
+
+> Task :darkroom:testDebugUnitTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':darkroom:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 1m 37s
+86 actionable tasks: 85 executed, 1 up-to-date
