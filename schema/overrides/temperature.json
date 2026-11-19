@@ -1,0 +1,28 @@
+{
+  "op": "temperature",
+  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4).",
+  "bind_action": [
+    {
+      "node": 12,
+      "expect_label": "temperature",
+      "get": "get_wb",
+      "set": "set_wb",
+      "field": "temperature",
+      "fields": [
+        "temperature",
+        "tint"
+      ]
+    },
+    {
+      "node": 13,
+      "expect_label": "tint",
+      "get": "get_wb",
+      "set": "set_wb",
+      "field": "tint",
+      "fields": [
+        "temperature",
+        "tint"
+      ]
+    }
+  ]
+}

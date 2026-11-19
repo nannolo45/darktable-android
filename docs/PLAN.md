@@ -132,6 +132,7 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 ### 3.5 App (`app/`, Kotlin + Jetpack Compose)
 - Working name `dt-android`, package `app.dtandroid`. It is an unofficial port and must not present itself as an official darktable release if it is ever shared.
 - Modules: `engine-jni`, `darkroom`, `lpl` (agent client and sync), `ui-theme`, `ui-icons`, `app`.
+- A second, small app is built from the same project: the **LightPhotoLibrary shell** (module `lpl-shell`, package `app.dtandroid.lplshell`). It shows LPL's web interface full screen from its own icon, on the server address the user enters, so LPL behaves like an app on plain HTTP without certificates or special DNS (decided 19 Nov 2026; browsers only install a web app over HTTPS). It contains no darktable code and no engine. Brief: `docs/briefs/P2c-lpl-shell.md`.
 - Screens depend on the `DarktableEngine` interface, never on JNI directly. A fake engine lets interface work and tests run without the native core.
 - Phone and tablet share all logic; only layout differs (window size classes).
 - Target device for tuning: Snapdragon 865, 12 GB, Android 13. Minimum Android version proposed: 10; arm64 only. Final floor after gate G0.
@@ -145,6 +146,7 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 ### 3.7 Storage and sync
 - App-private folders: `work/<lpl id>/<original filename>` and its `.xmp`; darktable's config, small library database and caches (cache size capped).
 - The RAW is downloaded once and never uploaded. Only the XMP and a rendered preview go back.
+- The LPL server may be reached over plain HTTP (a home-network or Tailscale address, as today) or HTTPS. The app allows plain HTTP only for servers the user has added, and prefers HTTPS when the server offers it.
 - Downloads and uploads run in a foreground service with a notification, because the phone vendor's Android version stops background work aggressively. A background job retries pending syncs when LPL is reachable again; the app explains how to exempt it from battery optimisation if syncs are being stopped.
 
 ### 3.8 Performance approach
@@ -163,7 +165,7 @@ The Android app behaves as an LPL agent, like `agent/lpl_agent.py`:
 
 | Step | Existing endpoint | Android behaviour |
 |---|---|---|
-| Identify | `POST /api/agents/heartbeat` | `id` = `android-<install uuid>`, `name` = device model, `os` = `"android"`. Heartbeat every 2 s **only while the app is in the foreground**; a last heartbeat when it leaves. `state.working_set` uses the same item shape and statuses as the PC agent (`downloading`, `opening`, `editing`, `dirty`, `syncing`, `synced`, `error`); `darktable_running` = darkroom open; `bridge_alive` = true; `version` = app version + engine version. |
+| Identify | `POST /api/agents/heartbeat` | `id` = `android-<install uuid>`, `name` = the name the user gives this device in the app's settings (asked when the server is first added, for example "Phone"; never the hardware model), `os` = `"android"`. Heartbeat every 2 s **only while the app is in the foreground**; a last heartbeat when it leaves. `state.working_set` uses the same item shape and statuses as the PC agent (`downloading`, `opening`, `editing`, `dirty`, `syncing`, `synced`, `error`); `darktable_running` = darkroom open; `bridge_alive` = true; `version` = app version + engine version. |
 | Take a photo | `GET /api/photos/{id}/checkout`, `/original`, `/xmp` | Stores `server_time` as `checkout_ts`. Files keep the original filename inside a per-photo folder. |
 | Send the edit back | `POST /api/photos/{id}/xmp?checkout_ts=…` | On leaving the darkroom, on "sync now", and from the background job. If the response has `X-LPL-Merged: 1`, the app reloads rating, labels and tags from the returned XMP. |
 | Preview | `POST /api/photos/{id}/preview` | A 1920 px JPEG rendered by the engine after each synced edit. |
@@ -177,6 +179,7 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 - **From the PC:** "Edit in darktable" lets the user pick the phone as target (R3). The job waits and is taken the next time the darktable app is opened.
 - **Back to LPL:** "done" in the darkroom syncs and returns to the app's working set; "open in LightPhotoLibrary" opens the photo's page in the browser (R2).
 - Without a connection the photo shows "waiting to sync" in the app's working set and can still be opened and edited there.
+- **Two ways to run LPL on the phone:** in any browser, or in the LightPhotoLibrary shell app (3.5). The shell hands the "Edit on this phone" link to the darktable app itself; the darktable app's "open in LightPhotoLibrary" opens the shell when it is installed, otherwise the browser. The shell adds `LPLShell/<version>` to its user agent so LPL can tell it runs inside it (no install hints there).
 
 ### 4.3 Changes requested from LPL
 | # | Where | Request | Needed for |
@@ -187,6 +190,9 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 | R4 | Server | `GET /api/photos/{id}/original` must answer HTTP `Range` requests so interrupted mobile downloads can resume. Please verify with the installed Starlette version and add a test. | Phase 2 |
 | R5 | Server | Export upload: `POST /api/photos/{id}/export?filename=…` with the image as body, stored in an export location LPL owns (proposal: `EXPORT_ROOT`, default a folder that the scanner skips), returning the stored path. Optional `series_id` and `position` so series exports can be numbered later. | Phase 3 |
 | R6 | Web UI | Show per-photo state from any agent's `working_set` with the device name ("editing on <device name>", "waiting to sync"). This is how the web UI learns what the phone did. | Phase 2, small |
+| R8 | Web UI | Name the device everywhere instead of saying "PC". Each agent's own name (set by its user on that device: "Desktop", "Laptop", "Phone") is what LPL shows in actions, states and messages ("Send to Desktop", "Remove saved copies from Laptop", "on Phone: waiting to sync"); general texts say "device"; the "PC" tab becomes "Devices". Agents with equal names are told apart by operating system. LPL does not rename agents. | Phase 2 |
+| R9 | Web UI | Behave like an app on the phone: back button and back gesture step out of the current thing (sheet, photo, folder, tab list) through history states instead of leaving LPL; "Install app" in settings when the browser offers it, menu guidance where it does not (Firefox), and one line saying an install needs HTTPS when the page is on plain HTTP; safe-area and pull-to-refresh fixes where needed. Inside the shell app (user agent contains `LPLShell/`) no install hints; "Edit on this phone" stays. | Phase 2 |
+| R10 | Web UI | The desktop's tabs on the phone layout: a tabs button with the count, a list of the same tabs (same titles, switch, add, close, rename), each tab keeping its own view, filters and sort, state shared with desktop. | Phase 2 |
 | R7 | Server, later | Per-device tokens (`POST /api/agents/pair`) instead of the shared password in the header. | Later, optional |
 
 The Android app only accepts an `lpldt://edit` link whose `server` is one the user has added in the app; an unknown server asks for confirmation first.
@@ -245,7 +251,7 @@ Each work package is one branch and one pull request with stated acceptance test
 
 **Phase 1: engine and build system.** Full bridge API with tests on Linux, JNI layer, dependency cache, CI. Gate G1: bridge test suite green; API reviewed and frozen for Phase 2.
 
-**Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
+**Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; the LightPhotoLibrary shell app (3.5); darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
 
 What experiment S5 measured for the 29 priority modules (details in `docs/experiments/S5-control-schema.md` in the repository):
 - **Usable in Phase 2 from the generated schema alone (9):** demosaic, AgX, exposure, grain, blurs, diffuse or sharpen, chromatic aberrations, color balance rgb, rgb primaries.
