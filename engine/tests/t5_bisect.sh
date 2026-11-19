@@ -22,9 +22,11 @@ run() { # label xmp
 
 run all-on "$XMP"
 # demosaic cannot be switched off; try its passthrough method instead
-# (3 = Bayer passthrough, 1027 = X-Trans passthrough), which has no
-# neighbourhood
-DTB_TEST_DEMOSAIC_METHOD=${DEMOSAIC_PASSTHROUGH:-3} run demosaic-passthrough "$XMP"
+# (DT_IOP_DEMOSAIC_PASSTHROUGH_MONOCHROME for Bayer,
+# DT_IOP_DEMOSAIC_PASSTHR_MONOX for X-Trans), which has no neighbourhood
+DTB_TEST_DEMOSAIC_METHOD=${DEMOSAIC_PASSTHROUGH:-DT_IOP_DEMOSAIC_PASSTHROUGH_MONOCHROME} run demosaic-passthrough "$XMP"
+# the internal margin: none, and larger than the default
+for m in 0 16 64 256; do DTB_REGION_MARGIN=$m run "margin-$m" "$XMP"; done
 for op in $(grep -o 'darktable:operation="[^"]*"' "$XMP" | cut -d'"' -f2 | sort -u); do
   python3 -I - "$XMP" "$OUT/off-$op.xmp" "$op" <<'EOF'
 import re, sys
