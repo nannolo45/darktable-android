@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * Thin JNI layer over dtbridge.h (brief G0). Only the bridge's API is used
+ * Thin JNI layer over dtbridge.h (brief G0; adapted to Engine API v1 in P1a,
+ * keeping the Kotlin side of the G0 app unchanged where possible). Only the bridge's API is used
  * here; darktable's own headers are never included above the bridge.
  *
  * Also two helpers that are plain POSIX, not darktable:
@@ -195,6 +196,36 @@ static jstring _json(JNIEnv *env, char *s)
   return r;
 }
 
+/* the result of a bridge call that returns JSON through char **: the JSON,
+ * or NULL on failure (the message is in dtb_last_error) */
+typedef int (*_json_call_t)(char **);
+static jstring _json_call(JNIEnv *env, _json_call_t f)
+{
+  char *s = NULL;
+  if(f(&s) != DTB_OK) return NULL;
+  return _json(env, s);
+}
+
+/* the value after "key": in the bridge's compact JSON (no parser here: the G0
+ * layer only needs a few top-level fields of engine_info and image_info) */
+static const char *_json_field(const char *json, const char *key)
+{
+  char pat[64];
+  snprintf(pat, sizeof(pat), "\"%s\":", key);
+  const char *p = json ? strstr(json, pat) : NULL;
+  return p ? p + strlen(pat) : NULL;
+}
+
+static int _info_int(const char *key)
+{
+  char *s = NULL;
+  if(dtb_engine_info(&s) != DTB_OK) return -1;
+  const char *v = _json_field(s, key);
+  const int r = v ? atoi(v) : -1;
+  dtb_free(s);
+  return r;
+}
+
 /* ------------------------------------------------------------------ */
 /* lifecycle                                                          */
 
@@ -206,8 +237,8 @@ Java_app_dtandroid_engine_NativeBridge_init(JNIEnv *env, jclass cls, jstring con
   jstr_t c = _str(env, configdir), ca = _str(env, cachedir), d = _str(env, datadir),
          m = _str(env, moduledir), t = _str(env, tmpdir), l = _str(env, library);
   const dtb_paths_t p = { .configdir = c.s, .cachedir = ca.s, .datadir = d.s, .moduledir = m.s,
-                          .tmpdir = t.s, .library = l.s, .threads = threads };
-  const int r = dtb_init(&p);
+                          .tmpdir = t.s, .library = l.s };
+  const int r = dtb_init(&p, threads);
   _str_free(&c); _str_free(&ca); _str_free(&d); _str_free(&m); _str_free(&t); _str_free(&l);
   return r;
 }
@@ -227,25 +258,39 @@ Java_app_dtandroid_engine_NativeBridge_lastError(JNIEnv *env, jclass cls)
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_engineVersion(JNIEnv *env, jclass cls)
 {
-  return (*env)->NewStringUTF(env, dtb_engine_version());
+  char *s = NULL;
+  if(dtb_engine_info(&s) != DTB_OK) return (*env)->NewStringUTF(env, "?");
+  char version[128] = "?";
+  const char *v = _json_field(s, "darktable_version");
+  if(v && *v == '"')
+  {
+    size_t k = 0;
+    for(v++; *v && *v != '"' && k + 1 < sizeof(version); v++) version[k++] = *v;
+    version[k] = '\0';
+  }
+  dtb_free(s);
+  return (*env)->NewStringUTF(env, version);
 }
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_pluginsJson(JNIEnv *env, jclass cls)
 {
-  return _json(env, dtb_plugins_json());
+  // engine_info; the plugin report is its "plugins" member
+  return _json_call(env, dtb_engine_info);
 }
 
 JNIEXPORT jint JNICALL
 Java_app_dtandroid_engine_NativeBridge_setThreads(JNIEnv *env, jclass cls, jint n)
 {
-  return dtb_set_threads(n);
+  // returns the count now in effect, as the G0 benchmark expects
+  const int r = dtb_set_threads(n);
+  return r != DTB_OK ? r : _info_int("threads");
 }
 
 JNIEXPORT jint JNICALL
 Java_app_dtandroid_engine_NativeBridge_getThreads(JNIEnv *env, jclass cls)
 {
-  return dtb_get_threads();
+  return _info_int("threads");
 }
 
 JNIEXPORT jint JNICALL
@@ -261,8 +306,8 @@ JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_xmpCheck(JNIEnv *env, jclass cls, jstring path)
 {
   jstr_t p = _str(env, path);
-  int n = 0;
-  char *r = dtb_xmp_check(p.s, &n);
+  char *r = NULL;
+  dtb_xmp_check(p.s, &r);
   _str_free(&p);
   return _json(env, r);
 }
@@ -285,19 +330,24 @@ Java_app_dtandroid_engine_NativeBridge_close(JNIEnv *env, jclass cls)
 JNIEXPORT jboolean JNICALL
 Java_app_dtandroid_engine_NativeBridge_isReadOnly(JNIEnv *env, jclass cls)
 {
-  return dtb_is_read_only() ? JNI_TRUE : JNI_FALSE;
+  char *s = NULL;
+  if(dtb_image_info(&s) != DTB_OK) return JNI_FALSE;
+  const char *v = _json_field(s, "read_only");
+  const jboolean r = v && !strncmp(v, "true", 4) ? JNI_TRUE : JNI_FALSE;
+  dtb_free(s);
+  return r;
 }
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_modulesJson(JNIEnv *env, jclass cls)
 {
-  return _json(env, dtb_modules_json());
+  return _json_call(env, dtb_modules);
 }
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_historyJson(JNIEnv *env, jclass cls)
 {
-  return _json(env, dtb_history_json());
+  return _json_call(env, dtb_history);
 }
 
 JNIEXPORT jint JNICALL
@@ -305,7 +355,9 @@ Java_app_dtandroid_engine_NativeBridge_paramSetFloat(JNIEnv *env, jclass cls, js
                                                      jstring param, jfloat value)
 {
   jstr_t o = _str(env, op), p = _str(env, param);
-  const int r = dtb_param_set_float(o.s, prio, p.s, value);
+  char v[32];
+  snprintf(v, sizeof(v), "%.9g", (double)value);
+  const int r = dtb_param_set(o.s, prio, p.s, v);
   _str_free(&o); _str_free(&p);
   return r;
 }
@@ -323,7 +375,7 @@ Java_app_dtandroid_engine_NativeBridge_setEnabled(JNIEnv *env, jclass cls, jstri
 JNIEXPORT void JNICALL
 Java_app_dtandroid_engine_NativeBridge_historySeal(JNIEnv *env, jclass cls)
 {
-  dtb_history_seal();
+  (void)dtb_history_seal();
 }
 
 /* ------------------------------------------------------------------ */
@@ -347,7 +399,7 @@ Java_app_dtandroid_engine_NativeBridge_render(JNIEnv *env, jclass cls, jint x, j
   uint8_t *out = (*env)->GetDirectBufferAddress(env, buffer);
   const jlong cap = (*env)->GetDirectBufferCapacity(env, buffer);
   if(!out || w <= 0 || h <= 0 || cap < (jlong)w * h * 4) return DTB_E_ARG;
-  return dtb_render(x, y, w, h, scale, out);
+  return dtb_render_region(x, y, w, h, scale, out);
 }
 
 /* returns RGBA bytes, wh receives width and height; NULL on failure (the
@@ -398,7 +450,10 @@ Java_app_dtandroid_engine_NativeBridge_exportJpeg(JNIEnv *env, jclass cls, jstri
                                                   jint max_w, jint max_h)
 {
   jstr_t p = _str(env, path);
-  const int r = dtb_export_jpeg(p.s, quality, max_w, max_h);
+  char opts[160];
+  snprintf(opts, sizeof(opts), "{\"format\":\"jpeg\",\"quality\":%d,\"max_width\":%d,\"max_height\":%d}",
+           quality, max_w, max_h);
+  const int r = dtb_export(p.s, opts);
   _str_free(&p);
   return r;
 }

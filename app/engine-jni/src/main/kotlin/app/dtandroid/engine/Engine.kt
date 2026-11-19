@@ -175,7 +175,8 @@ object Engine {
         if (code == 0) {
             pj = NativeBridge.pluginsJson()
             pj?.let {
-                val o = JSONObject(it)
+                // engine_info (Engine API v1): the plugin report is under "plugins"
+                val o = JSONObject(it).getJSONObject("plugins")
                 listOf("iop", "format", "storage").forEachIndexed { i, k ->
                     val kind = o.getJSONObject(k)
                     counts[2 * i] = kind.getInt("files")
