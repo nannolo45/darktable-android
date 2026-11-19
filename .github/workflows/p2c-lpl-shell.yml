@@ -1,0 +1,267 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Brief P2c: the LightPhotoLibrary shell (app/lpl-shell). Rule check, unit
+# tests, the APK and its instrumented tests; the instrumented tests run on an
+# API 33 emulator against a stub server the tests start themselves. When all
+# of that passes, the APK is published as a release file under a tag derived
+# from the commit. Logs go to the ci-logs branch either way.
+name: p2c-lpl-shell
+
+on:
+  push:
+    branches: [main, p2c-lpl-shell]
+    paths:
+      - "app/lpl-shell/**"
+      - "app/ui-theme/**"
+      - "app/ui-icons/**"
+      - "app/*.gradle.kts"
+      - "app/gradle*.properties"
+      - "tools/app/**"
+      - ".github/workflows/p2c-lpl-shell.yml"
+  workflow_dispatch:
+
+# nothing by default; each job asks for what it needs
+permissions: {}
+
+concurrency:
+  group: p2c-lpl-shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write   # ci-logs branch
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      tests_rc: ${{ steps.tests.outputs.rc }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tag and version
+        id: tag
+        run: |
+          sha=$(git rev-parse HEAD | cut -c1-12)
+          echo "tag=lpl-shell-$sha" >> "$GITHUB_OUTPUT"
+          echo "SHELL_TAG=lpl-shell-$sha" >> "$GITHUB_ENV"
+          echo "SHELL_VERSION=0.1-$sha" >> "$GITHUB_ENV"
+
+      - name: Android SDK packages, Gradle and a fresh debug key
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0" > /tmp/sdkmanager.log 2>&1 || { tail -20 /tmp/sdkmanager.log; exit 1; }
+          echo "GRADLE=$(tools/app/setup-gradle.sh /home/runner/gradle)" >> "$GITHUB_ENV"
+          # the APK is signed with a debug key made here, on this run; it is never stored
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+
+      - name: Rule check (literal colours, sizes, icon drawings in screen code)
+        run: |
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 :checkScreenRulesSelfTest :checkScreenRules 2>&1 | tee /tmp/rules.log
+
+      - name: Unit tests
+        id: tests
+        run: |
+          set +e
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue :lpl-shell:testDebugUnitTest :ui-theme:testDebugUnitTest 2>&1 | tee /tmp/tests.log
+          echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
+          exit 0
+
+      - name: Build the shell APK and its instrumented tests
+        run: |
+          cd app
+          # Maven Central sometimes answers "could not find" for artifacts that exist (seen in run
+          # 44485279179); retry such resolution failures, nothing else
+          # (Gradle remembers a "not found" answer, so the retries ask again with --refresh-dependencies)
+          refresh=""
+          for attempt in 1 2 3; do
+            set +e
+            "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
+              :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
+            rc=${PIPESTATUS[0]}
+            set -e
+            [ "$rc" = 0 ] && break
+            grep -qE "Could not (find|resolve|GET)|status code 429" /tmp/gradle.log || exit "$rc"
+            [ "$attempt" = 3 ] && exit "$rc"
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30)); refresh="--refresh-dependencies"
+            cp /tmp/gradle.log "/tmp/gradle-attempt$attempt.log"
+          done
+          mkdir -p /home/runner/out
+          cp lpl-shell/build/outputs/apk/debug/lpl-shell-debug.apk /home/runner/out/lightphotolibrary-shell.apk
+          cp lpl-shell/build/outputs/apk/androidTest/debug/lpl-shell-debug-androidTest.apk /home/runner/out/lpl-shell-androidTest.apk
+
+      - name: Check the APK
+        run: |
+          A=/home/runner/out/lightphotolibrary-shell.apk
+          R=/home/runner/out/apk-report.txt
+          B="$ANDROID_HOME/build-tools/35.0.0"
+          {
+            echo "tag: $SHELL_TAG"; echo "commit: $GITHUB_SHA"
+            echo "apk_bytes $(stat -c %s "$A")"
+            "$B/aapt2" dump badging "$A" | grep -E "^package:|^application-label:|^application:|^sdkVersion|^targetSdkVersion|^launchable-activity|native-code" || true
+            echo "permissions:"; "$B/aapt2" dump permissions "$A" | sed 's/^/  /'
+            echo "native libraries:"; unzip -l "$A" | grep -E '\.so$' | sed 's/^/  /'
+            echo "signature:"; "$B/apksigner" verify --print-certs "$A" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/  /'
+          } | tee "$R"
+          "$B/aapt2" dump badging "$A" | grep -q "^package: name='app.dtandroid.lplshell'" || { echo "wrong application id"; exit 1; }
+          "$B/aapt2" dump badging "$A" | grep -q "^application-label:'LightPhotoLibrary'" || { echo "wrong label"; exit 1; }
+          # permissions: network only (plus androidx's internal receiver permission)
+          extra=$("$B/aapt2" dump permissions "$A" | grep -E "uses-permission" | grep -vE "android.permission.INTERNET|app.dtandroid.lplshell.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" || true)
+          if [ -n "$extra" ]; then echo "unexpected permission: $extra"; exit 1; fi
+          if unzip -l "$A" | grep -E '\.so$' | grep -v 'libandroidx\.'; then echo "native library not from androidx in APK"; exit 1; fi
+          if unzip -l "$A" | grep -iE '\.(jks|keystore|raf|cr2|nef|arw|dng|jpg|jpeg)$'; then echo "unexpected file in APK"; exit 1; fi
+          unzip -l "$A" | grep -q "res/mipmap-anydpi-v26/ic_launcher.xml" || { echo "launcher icon missing"; exit 1; }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lpl-shell-apks
+          path: /home/runner/out
+          retention-days: 14
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L"
+          {
+            echo "tag: $SHELL_TAG"
+            echo "unit_tests_exit: ${{ steps.tests.outputs.rc }}"
+            echo "runner_cores: $(nproc)"
+          } > "$L/summary.txt"
+          cp /tmp/test-summary.txt /tmp/rules.log /home/runner/out/apk-report.txt "$L/" 2>/dev/null || true
+          tail -n 200 /tmp/tests.log > "$L/tests.tail.log" 2>/dev/null || true
+          tail -n 100 /tmp/gradle.log > "$L/gradle.tail.log" 2>/dev/null || true
+          for f in /tmp/gradle-attempt*.log; do [ -e "$f" ] && tail -n 60 "$f" > "$L/$(basename "$f" .log).tail.log"; done
+          mkdir -p "$L/test-results"
+          for d in app/lpl-shell/build/test-results app/ui-theme/build/test-results; do
+            [ -d "$d" ] && find "$d" -name 'TEST-*.xml' -exec cp {} "$L/test-results/" \;
+          done
+          true
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out lpl-shell-build "${{ job.status }}-tests${{ steps.tests.outputs.rc }}"
+
+      - name: Fail if a unit test failed
+        if: steps.tests.outputs.rc != '0'
+        run: exit 1
+
+  emulator:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write   # ci-logs branch (and reading release files)
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      rc: ${{ steps.result.outputs.rc }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lpl-shell-apks
+          path: /home/runner/apk
+
+      - name: The darktable app's other builds, to install next to the shell
+        run: |
+          mkdir -p /home/runner/others
+          g0=$(gh release list -R "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("g0-app-"))] | sort_by(.createdAt) | last | .tagName' || true)
+          pv=$(gh release list -R "$GITHUB_REPOSITORY" --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("app-preview-"))] | sort_by(.createdAt) | last | .tagName' || true)
+          echo "g0: $g0, preview: $pv"
+          [ -n "$g0" ] && gh release download -R "$GITHUB_REPOSITORY" "$g0" --pattern "dt-android-g0-x86_64.apk" --dir /home/runner/others || true
+          [ -n "$pv" ] && gh release download -R "$GITHUB_REPOSITORY" "$pv" --pattern "dt-android-preview-arm64-v8a.apk" --dir /home/runner/others || true
+          ls -l /home/runner/others
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Instrumented tests in the emulator (API 33, x86_64)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 33
+          arch: x86_64
+          target: google_apis
+          cores: 4
+          ram-size: 4096M
+          disk-size: 6G
+          emulator-boot-timeout: 900
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash tools/app/emulator-lpl-shell.sh /home/runner/apk/lightphotolibrary-shell.apk /home/runner/apk/lpl-shell-androidTest.apk /home/runner/emu /home/runner/others/dt-android-g0-x86_64.apk /home/runner/others/dt-android-preview-arm64-v8a.apk; echo $? > /home/runner/emu-rc.txt
+
+      - name: Result
+        id: result
+        if: always()
+        run: echo "rc=$(cat /home/runner/emu-rc.txt 2>/dev/null || echo 1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lpl-shell-emulator
+          path: /home/runner/emu
+          retention-days: 14
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L"
+          E=/home/runner/emu
+          cp "$E/device.txt" "$E/results.txt" "$E/instrument.txt" "$E/crashes.txt" "$E/coexist.txt" "$L/" 2>/dev/null || true
+          mkdir -p "$L/shots"; cp "$E"/shots/*.png "$L/shots/" 2>/dev/null || true
+          grep -E " (LplShell|TestRunner|chromium|cr_)" "$E/logcat.txt" | tail -n 1500 > "$L/logcat-shell.txt" 2>/dev/null || true
+          tail -n 2000 "$E/logcat.txt" > "$L/logcat-tail.txt" 2>/dev/null || true
+          echo "test_rc: ${{ steps.result.outputs.rc }}" > "$L/summary.txt"
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out lpl-shell-emulator "${{ job.status }}-test${{ steps.result.outputs.rc }}"
+
+      - name: Fail if a test failed
+        if: steps.result.outputs.rc != '0'
+        run: exit 1
+
+  release:
+    needs: [build, emulator]
+    if: needs.build.outputs.tests_rc == '0' && needs.emulator.outputs.rc == '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write   # release files
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHELL_TAG: ${{ needs.build.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lpl-shell-apks
+          path: /home/runner/apk
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lpl-shell-emulator
+          path: /home/runner/emu
+
+      - name: Publish the APK as a release file
+        run: |
+          cd /home/runner/apk
+          cp /home/runner/emu/results.txt emulator-test-results.txt 2>/dev/null || true
+          shots=$(ls /home/runner/emu/shots/*.png 2>/dev/null || true)
+          gh release view -R "$GITHUB_REPOSITORY" "$SHELL_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$SHELL_TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "LightPhotoLibrary shell $SHELL_TAG" \
+              --notes "LightPhotoLibrary shell (brief P2c), built from commit $GITHUB_SHA: shows one LightPhotoLibrary server's web interface full screen and hands 'Edit on this phone' to the darktable app. Debug build, signed with a key made for this build only. Phone: lightphotolibrary-shell.apk (any Android 10 or newer). Unofficial, not a darktable release. Source: this repository at that commit (GPL-3.0-or-later)." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$SHELL_TAG" lightphotolibrary-shell.apk apk-report.txt emulator-test-results.txt $shots --clobber

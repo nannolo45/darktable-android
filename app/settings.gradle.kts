@@ -6,6 +6,8 @@
 //   ui-icons    icon registry; drawings in ui-icons/svg/, converted at build time
 //   darkroom    the darkroom screen (phone and tablet)
 //   app         the app shell, application id app.dtandroid (brief P2a: on the fake engine)
+//   lpl-shell   the LightPhotoLibrary shell, a second small app (app.dtandroid.lplshell, brief P2c);
+//               no darktable code: only ui-theme and ui-icons
 // engine-jni and g0 (brief G0) need the native engine archives and are only
 // included when -Pdta.engineDir is given, so the interface builds without them.
 pluginManagement {
@@ -23,7 +25,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "dt-android"
-include(":engine-api", ":schema", ":ui-theme", ":ui-icons", ":darkroom", ":app")
+include(":engine-api", ":schema", ":ui-theme", ":ui-icons", ":darkroom", ":app", ":lpl-shell")
 if (providers.gradleProperty("dta.engineDir").isPresent) {
     include(":engine-jni", ":g0")
 }
