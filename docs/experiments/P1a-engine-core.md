@@ -5,6 +5,9 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19: aligned with the engine-api.md clarifications of cedca8b; merged main; run 44483237019 started
+  (adds a t5_bisect diagnosis step). Run 44478936128: Linux 112 PASS, 9 FAIL (T5 raf corner, T5 arw x2,
+  C7 webp not built on the runner: the test now expects ARG there); emulator test passed with the new bridge.
 - 2026-11-19: CI run 44478936128 (commit 5a6275a) started: engine with the new bridge built for both ABIs
   (release `engine-04477d32-d0aab2b3cc28`, libdtbridge about 100 KB), G0 APKs built against the new header.
   Waiting for the Linux tests and the emulator test.
@@ -35,14 +38,14 @@ Renames and behaviour changes relative to the prototype (S3/G0):
 | — | `dtb_set_thread_cpus(ids, n)` | new |
 | `dtb_xmp_check(path, &n)` returned JSON | `dtb_xmp_check(path, &json)` | reason `newer_mask_version` renamed `newer_masks_version` (spec) |
 | `dtb_is_read_only()` | `image_info.read_only` | |
-| — | `dtb_image_info`, `dtb_metadata_reload` | new |
+| — | `dtb_image_info`, `dtb_metadata_reload` | new; `color_labels` are darktable's numbers 0..4 (cedca8b) |
 | `dtb_modules_json()` keys `operation`, `multi_priority`, scalar params only | `dtb_modules(&json)` keys `op`, `priority`, full parameter tree, flags `can_switch` … `in_history` | |
 | `dtb_param_set_float/_int/_bool(op, prio, name, v)` | `dtb_param_set(op, prio, path, value_json)` | paths into structs and arrays; enums by constant name only |
 | — | `dtb_params_set`, `dtb_module_reset`, `dtb_module_action` | new |
 | `dtb_set_enabled` always added an item | no-op when the state does not change | |
 | — | `dtb_instance_rename` | new |
 | `dtb_history_json()` keys `history_end`, `operation`, `multi_priority` | `dtb_history(&json)` keys `end`, `op`, `priority`, plus `name` | |
-| `dtb_history_goto` popped in memory | pops, writes the history, reloads the develop object | see 3.3 |
+| `dtb_history_goto` popped in memory | pops, writes the history, reloads the develop object; allowed read-only; not an undo step (cedca8b) | see 3.3 |
 | `void dtb_history_seal()` | returns int | |
 | — | `dtb_undo`, `dtb_redo`, `dtb_undo_state` | new |
 | `dtb_render(x, y, w, h, scale, out)` | `dtb_render_region(...)` | internal margin, see 3.4 |
