@@ -1,0 +1,63 @@
+PASS    app.dtandroid.lplshell.ShellTest.rotationAndBackgroundDoNotReloadThePage
+PASS    app.dtandroid.lplshell.ShellTest.handOffLinkStartsTheDarktableAppWithAnIntentBuiltByTheShell
+FAIL    app.dtandroid.lplshell.ShellTest.sameOriginLinkStaysInside
+        java.lang.AssertionError: expected:<[]> but was:<[Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=app.dtandroid.lplshell/.ShellActivity } handling packages:[[app.dtandroid.lplshell]]]>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.lplshell.ShellTest.sameOriginLinkStaysInside(ShellTest.kt:239)
+FAIL    app.dtandroid.lplshell.ShellTest.otherIntentLinksAreRefused
+        java.lang.AssertionError: expected:<[]> but was:<[Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 cmp=app.dtandroid.lplshell/.ShellActivity } handling packages:[[app.dtandroid.lplshell]]]>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.lplshell.ShellTest.otherIntentLinksAreRefused(ShellTest.kt:358)
+PASS    app.dtandroid.lplshell.ShellTest.firstStartWarnsWhenTheServerIsNotLplAndLetsTheUserContinue
+PASS    app.dtandroid.lplshell.ShellTest.firstStartWithNoServerShowsTheNativeScreenThenChangeAddress
+FAIL    app.dtandroid.lplshell.ShellTest.fileChooserIsOfferedAndSeveralFilesReachThePage
+        java.lang.AssertionError: timed out waiting for files in the page (title "upload")
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at app.dtandroid.lplshell.ShellTest.waitFor(ShellTest.kt:105)
+        	at app.dtandroid.lplshell.ShellTest.waitFor$default(ShellTest.kt:99)
+        	at app.dtandroid.lplshell.ShellTest.fileChooserIsOfferedAndSeveralFilesReachThePage(ShellTest.kt:304)
+FAIL    app.dtandroid.lplshell.ShellTest.openActionLoadsOnlyPagesOfTheSavedServer
+        java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "PAUSED")
+        	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+        	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+        	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+        	at app.dtandroid.lplshell.ShellTest.tearDown(ShellTest.kt:67)
+FAIL    app.dtandroid.lplshell.ShellTest.otherOriginOpensOutside
+        java.lang.IllegalStateException: #init was called twice in a row. Make sure to call #release after every #init
+        	at androidx.test.espresso.intent.Checks.checkState(Checks.java:70)
+        	at androidx.test.espresso.intent.Intents.internalInit(Intents.java:309)
+        	at androidx.test.espresso.intent.Intents.init(Intents.java:126)
+        	at app.dtandroid.lplshell.ShellTest.setUp(ShellTest.kt:62)
+PASS    app.dtandroid.lplshell.ShellTest.firstStartChecksTheAddressAndSavesIt
+PASS    app.dtandroid.lplshell.ShellTest.unreachableSavedServerShowsTheNativeScreenAndTryAgainRecovers
+PASS    app.dtandroid.lplshell.ShellTest.firstStartRefusesABadAddressWithoutAsking
+FAIL    app.dtandroid.lplshell.ShellTest.handOffWithoutTheDarktableAppShowsAMessageAndStaysOnThePage
+        androidx.test.espresso.base.RootViewPicker$RootViewWithoutFocusException: Waited for the root of the view hierarchy to have window focus and not request layout for 10 seconds. If you specified a non default root matcher, it may be picking a root that never takes focus. Root:
+        Root{application-window-token=android.view.ViewRootImpl$W@b2b0e36, window-token=android.view.ViewRootImpl$W@b2b0e36, has-window-focus=false, layout-params-type=1, layout-params-string={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} ty=BASE_APPLICATION wanim=0x10302fd
+          fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+          pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+          bhv=DEFAULT
+          fitSides=}, decor-view-string=DecorView{id=-1, visibility=VISIBLE, width=320, height=640, has-focus=false, has-focusable=true, has-window-focus=false, is-clickable=false, is-enabled=true, is-focused=false, is-focusable=false, is-layout-requested=false, is-selected=false, layout-params={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} ty=BASE_APPLICATION wanim=0x10302fd
+          fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+          pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+FAIL    app.dtandroid.lplshell.ShellTest.backGoesThroughHistoryStatesThenLeaves
+        androidx.test.espresso.base.RootViewPicker$RootViewWithoutFocusException: Waited for the root of the view hierarchy to have window focus and not request layout for 10 seconds. If you specified a non default root matcher, it may be picking a root that never takes focus. Root:
+        Root{application-window-token=android.view.ViewRootImpl$W@10d85fd, window-token=android.view.ViewRootImpl$W@10d85fd, has-window-focus=false, layout-params-type=1, layout-params-string={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} ty=BASE_APPLICATION wanim=0x10302fd
+          fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+          pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+          bhv=DEFAULT
+          fitSides=}, decor-view-string=DecorView{id=-1, visibility=VISIBLE, width=320, height=640, has-focus=false, has-focusable=true, has-window-focus=false, is-clickable=false, is-enabled=true, is-focused=false, is-focusable=false, is-layout-requested=false, is-selected=false, layout-params={(0,0)(fillxfill) sim={adjust=resize forwardNavigation} ty=BASE_APPLICATION wanim=0x10302fd
+          fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+          pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+passed 7, failed 7, total 14
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 14,  Failures: 7
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
