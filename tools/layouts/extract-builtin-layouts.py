@@ -266,9 +266,14 @@ def run(exe, workflow):
 
 def git_commit(src):
     r = subprocess.run(["git", "-C", src, "rev-parse", "HEAD"], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise Fail(f"{src} is not a git checkout: the upstream commit must be recorded")
-    return r.stdout.strip()
+    if r.returncode == 0:
+        return r.stdout.strip()
+    # Not a checkout: the files were downloaded one by one at a known commit (CI does this, because
+    # fetching the repository proved unreliable). The caller then names that commit.
+    c = os.environ.get("DT_UPSTREAM_COMMIT", "")
+    if len(c) == 40 and all(ch in "0123456789abcdef" for ch in c):
+        return c
+    raise Fail(f"{src} is not a git checkout and DT_UPSTREAM_COMMIT is not set: the upstream commit must be recorded")
 
 
 def main(argv):
