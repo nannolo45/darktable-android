@@ -74,13 +74,15 @@ jobs:
           git init -q /tmp/dt-src
           git -C /tmp/dt-src remote add origin https://github.com/darktable-org/darktable.git
           git -C /tmp/dt-src sparse-checkout set --no-cone src/libs/modulegroups.c src/common/utility.c data/darktableconfig.xml.in
+          # A plain shallow fetch (no blob filter): with a filter the checkout fetches the three files
+          # lazily, and that second fetch hung twice on 19 Nov 2026 (runs 44521157035, 44522306067).
           ok=0
           for i in 1 2 3; do
-            if timeout 300 git -C /tmp/dt-src fetch -q --depth 1 --filter=blob:none origin "$PIN"; then ok=1; break; fi
-            echo "fetch attempt $i failed or timed out"; sleep 10
+            if timeout 300 git -C /tmp/dt-src fetch -q --depth 1 origin "$PIN" \
+               && timeout 120 git -C /tmp/dt-src checkout -q FETCH_HEAD; then ok=1; break; fi
+            echo "fetch or checkout attempt $i failed or timed out"; sleep 10
           done
           [ "$ok" = 1 ] || { echo "could not fetch upstream $PIN"; exit 1; }
-          timeout 300 git -C /tmp/dt-src checkout -q FETCH_HEAD
           pkg-config --exists glib-2.0 || { sudo apt-get update -q >/dev/null && sudo apt-get install -y -q libglib2.0-dev >/dev/null; }
           python3 -I tools/layouts/extract-builtin-layouts.py /tmp/dt-src --check 2>&1 | tee /tmp/layouts-check.log
 
