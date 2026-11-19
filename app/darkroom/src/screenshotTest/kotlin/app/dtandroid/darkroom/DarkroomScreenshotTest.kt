@@ -4,6 +4,9 @@ package app.dtandroid.darkroom
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -46,8 +49,14 @@ abstract class ScreenshotBase {
 
     private val outDir = File(System.getProperty("dta.screenshots") ?: "build/outputs/screenshots").apply { mkdirs() }
 
-    protected fun show(index: Int = 0, filmstrip: Boolean = false, tokens: DtTokens = DtTokens.load(), setup: suspend DarkroomController.() -> Unit = {}): DarkroomController {
+    /**
+     * The darkroom after [setup]. P2a's screenshots start on the active modules ([group]); darktable's own
+     * opening group (the default layout's second group) is shown with `group = null`.
+     */
+    protected fun show(index: Int = 0, filmstrip: Boolean = false, tokens: DtTokens = DtTokens.load(), group: GroupTab? = GroupTab.Active,
+                       setup: suspend DarkroomController.() -> Unit = {}): DarkroomController {
         val (c, _) = TestSetup.controller(tmp.root, index, filmstrip)
+        if (group != null) c.selectGroup(group)
         runBlocking { c.setup() }
         compose.setContent {
             DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout) }
@@ -132,8 +141,99 @@ class PhoneScreenshots : ScreenshotBase() {
 
     @Test
     fun quickPanel() {
+        // P2a showed an invented quick panel here (with white balance temperature); now darktable's
+        // default layout's quick access panel: sigmoid first, color calibration, no white balance
         show { selectGroup(GroupTab.Quick) }
+        compose.onNodeWithContentDescription("go to the full version of the sigmoid module").assertExists()
+        assertEquals(0, compose.onAllNodesWithText("white balance").fetchSemanticsNodes().size)
         capture("phone-07-quick")
+    }
+
+    @Test
+    fun quickPanelFurtherDown() {
+        show { selectGroup(GroupTab.Quick) }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("go to the full version of the color calibration module"))
+        compose.waitForIdle()
+        capture("phone-14-quick-color-calibration")
+    }
+
+    @Test
+    fun defaultLayout() {
+        show(group = null)
+        for (d in listOf("active modules", "quick access panel", "group base", "group color", "group correct", "group effect", "search modules"))
+            compose.onNodeWithContentDescription(d).assertExists()
+        capture("phone-15-default-layout-color-group")
+    }
+
+    @Test
+    fun searchLine() {
+        show { setSearch("col") }
+        compose.onNodeWithContentDescription("color calibration").assertExists()
+        capture("phone-16-search")
+    }
+
+    @Test
+    fun layoutsMenu() {
+        show { setOverlay(Overlay.Layouts) }
+        compose.onNode(hasText("manage module layouts…")).assertExists()
+        compose.onNode(hasText("search only")).assertExists()
+        capture("phone-17-layouts-menu")
+    }
+
+    @Test
+    fun editorBuiltin() {
+        show { openLayoutEditor() }
+        compose.onNode(hasText("this is a built-in read-only preset. duplicate it if you want to make changes")).assertExists()
+        capture("phone-18-editor-builtin")
+    }
+
+    @Test
+    fun editorUserLayout() {
+        show {
+            openLayoutEditor()
+            layoutEditor.applyName(LayoutEditor.NameAction.DUPLICATE, "my layout")
+            layoutEditor.addWidget("agx/curve/contrast")
+        }
+        compose.onNodeWithContentDescription("move group down").assertExists()
+        capture("phone-19-editor-user-layout")
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("module groups"))
+        compose.waitForIdle()
+        capture("phone-20-editor-groups")
+    }
+
+    @Test
+    fun editorAddWidget() {
+        show {
+            openLayoutEditor()
+            layoutEditor.applyName(LayoutEditor.NameAction.DUPLICATE, "my layout")
+            layoutEditor.ask(LayoutEditor.Dialog.AddWidget)
+        }
+        compose.onNode(hasText("recommended")).assertExists()
+        capture("phone-21-editor-add-widget")
+    }
+
+    @Test
+    fun editorAddModule() {
+        show {
+            openLayoutEditor()
+            layoutEditor.applyName(LayoutEditor.NameAction.DUPLICATE, "my layout")
+            layoutEditor.ask(LayoutEditor.Dialog.AddModule(0))
+        }
+        capture("phone-22-editor-add-module")
+    }
+
+    @Test
+    fun importedLayout() {
+        val desk = javaClass.classLoader!!.getResourceAsStream("dtpreset/desktop-export.dtpreset")!!.readBytes()
+        show {
+            openLayoutEditor()
+            layoutEditor.import(listOf("modulegroups_probe layout.dtpreset" to desk))
+            closeLayoutEditor()
+            chooseLayout("probe layout")
+            selectGroup(GroupTab.Quick)
+        }
+        compose.onNodeWithContentDescription("group my edits").assertExists()
+        capture("phone-23-imported-layout")
     }
 
     @Test
@@ -269,5 +369,27 @@ class TabletScreenshots : ScreenshotBase() {
         show(index = InterfacePreview.READ_ONLY_INDEX, filmstrip = true)
         compose.onNodeWithContentDescription("read only").assertExists()
         capture("tablet-05-read-only")
+    }
+
+    @Test
+    fun defaultLayout() {
+        show(filmstrip = true, group = null)
+        compose.onNodeWithContentDescription("group color").assertExists()
+        capture("tablet-06-default-layout")
+    }
+
+    @Test
+    fun quickPanel() {
+        show(filmstrip = true) { selectGroup(GroupTab.Quick) }
+        capture("tablet-07-quick")
+    }
+
+    @Test
+    fun editor() {
+        show {
+            openLayoutEditor()
+            layoutEditor.applyName(LayoutEditor.NameAction.DUPLICATE, "my layout")
+        }
+        capture("tablet-08-editor")
     }
 }
