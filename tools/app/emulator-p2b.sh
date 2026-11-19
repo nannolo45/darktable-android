@@ -39,7 +39,7 @@ adb logcat -c || true
 t2=$(now)
 adb shell am instrument -w -r \
   -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" \
-  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest \
+  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest,app.dtandroid.real.P2fScenarioTest \
   "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | tr -d '\r' > "$OUT/instrument.txt"
 t3=$(now)
 python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true

@@ -175,8 +175,10 @@ class DarkroomController(
         try {
             val xmp = item.xmpPath.takeIf { File(it).isFile }
             val check = xmp?.let { engine.xmpCheck(it) }
+            Timeline.mark("darkroom: engine open start")
             engine.open(item.rawPath, xmp)
             val info = engine.imageInfo()
+            Timeline.mark("darkroom: engine open end")
             _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }
             refreshLocked()
         } catch (e: EngineException) {
@@ -455,6 +457,7 @@ class DarkroomController(
         }
         val info = _state.value.info ?: return
         _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null) }
+        Timeline.mark("darkroom: preview shown")
         // the filmstrip keeps a small copy, not the preview itself (a 1024 px preview is about 3 MB)
         val thumb = Thumbnails.downscale(img, thumbnailSize)
         val i = _state.value.index

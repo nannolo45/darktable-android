@@ -8,6 +8,7 @@ import app.dtandroid.darkroom.PhotoSource
 import app.dtandroid.darkroom.PhotoSourceException
 import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.darkroom.ThumbnailStore
+import app.dtandroid.darkroom.Timeline
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.ExportOptions
 import app.dtandroid.engine.api.ExportProfile
@@ -122,7 +123,10 @@ object AppHost {
             tmp.delete()
             return try {
                 controller.withPhotoSession(raw.path, xmp.path) { e ->
-                    e.export(tmp.path, ExportOptions(quality = 90, maxWidth = PREVIEW_SIZE, maxHeight = PREVIEW_SIZE, profile = ExportProfile.SRGB))
+                    Timeline.mark("LPL preview: render start")
+                    try {
+                        e.export(tmp.path, ExportOptions(quality = 90, maxWidth = PREVIEW_SIZE, maxHeight = PREVIEW_SIZE, profile = ExportProfile.SRGB))
+                    } finally { Timeline.mark("LPL preview: render end") }
                 } ?: return false
                 tmp.isFile && tmp.length() > 0 && tmp.renameTo(out)
             } catch (e: EngineException) {
