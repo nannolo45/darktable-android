@@ -3,7 +3,8 @@
 #
 # Brief P2b: install the x86_64 app on the real engine and its instrumented tests on a connected
 # emulator (adb), push one public test RAW and its XMP, run the engine contract suite
-# (JniEngineContractTest) and the scenario tests (RealEngineScenarioTest), pull the results.
+# (JniEngineContractTest) and the scenario tests (RealEngineScenarioTest), and (brief P2e) the
+# LightPhotoLibrary scenarios against the stub server (LplScenarioTest), pull the results.
 #
 #   tools/app/emulator-p2b.sh <app apk> <test apk> <raw> <xmp> <out dir>
 #
@@ -12,7 +13,7 @@
 # timings.txt. Exit status 0 only if every test passed.
 set -uo pipefail
 APK="${1:?}"; TAPK="${2:?}"; RAW="${3:?}"; XMP="${4:?}"; OUT="${5:?}"
-PKG=app.dtandroid.real   # app/app-engine/build.gradle.kts
+PKG=app.dtandroid   # app/app-engine/build.gradle.kts (app.dtandroid.real before brief P2e)
 D=/data/local/tmp/p2b
 mkdir -p "$OUT"
 now() { date +%s.%N; }
@@ -38,7 +39,7 @@ adb logcat -c || true
 t2=$(now)
 adb shell am instrument -w -r \
   -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" \
-  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest \
+  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest \
   "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | tr -d '\r' > "$OUT/instrument.txt"
 t3=$(now)
 python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true

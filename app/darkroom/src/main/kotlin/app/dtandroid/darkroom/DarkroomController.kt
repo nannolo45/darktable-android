@@ -100,8 +100,9 @@ class DarkroomController(
             lock.withLock {
                 for ((i, item) in series.items.withIndex()) {
                     if (i in thumbs) continue
-                    // brief P2e: a photo not downloaded yet has no thumbnail (the filmstrip shows its name)
-                    if (!File(item.rawPath).isFile) continue
+                    // brief P2e: a photo not downloaded yet has no thumbnail (the filmstrip shows its name); without a
+                    // source every photo is there (the stand-in engine's sample photos have no files at all)
+                    if (source != null && !File(item.rawPath).isFile) continue
                     try {
                         engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
                         val t = engine.renderPreview(thumbnailSize)

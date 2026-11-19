@@ -63,6 +63,12 @@ object TestFiles {
         AppEngine.engine
     }
 
+    /** Run a shell command as the shell user (brief P2e: start the background job now) and return its output. */
+    fun shell(cmd: String): String {
+        val pfd: ParcelFileDescriptor = instr.uiAutomation.executeShellCommand(cmd)
+        return ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes().decodeToString() }
+    }
+
     fun md5(f: File): String {
         val md = java.security.MessageDigest.getInstance("MD5")
         f.inputStream().use { s ->
