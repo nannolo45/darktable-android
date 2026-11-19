@@ -183,4 +183,73 @@ class P2fScenarioTest {
             runCatching { e.close() }
         }
     }
+
+    /**
+     * f3 (deliverable 4, the addendum): how the drag picture looks on a 1080 px wide screen. The test RAW is
+     * rendered as drag pictures of 320, 512 and 768 px and as the 1024 px preview, each scaled to 1080 px wide
+     * the way the screen scales it (bilinear); the PNGs go to the results for the owner to compare, with the
+     * render time of each size on the emulator (not a phone).
+     */
+    @Test
+    fun f3_dragPictureSizesOnA1080PxScreen() = kotlinx.coroutines.runBlocking<Unit> {
+        val e = TestFiles.engine()
+        runCatching { e.close() }
+        e.open(TestFiles.raw.path, TestFiles.xmp.path)
+        try {
+            e.renderPreview(1024)
+            val exp0 = (e.modules().first { it.op == "exposure" }.params["exposure"] as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+            var k = 0
+            for (size in listOf(320, 512, 768, 1024)) {
+                e.paramSet("exposure", 0, "exposure", app.dtandroid.engine.api.ParamValue.of(exp0 + 0.01 * (++k)))
+                val t0 = System.nanoTime()
+                val img = e.renderPreview(size)
+                val ms = (System.nanoTime() - t0) / 1_000_000
+                val bmp = android.graphics.Bitmap.createBitmap(img.width, img.height, android.graphics.Bitmap.Config.ARGB_8888)
+                bmp.copyPixelsFromBuffer(java.nio.ByteBuffer.wrap(img.rgba))
+                val h = Math.round(1080.0 * img.height / img.width).toInt()
+                val big = android.graphics.Bitmap.createScaledBitmap(bmp, 1080, h, true)
+                File(TestFiles.out, "p2f-drag-$size-on-1080.png").outputStream().use { big.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                TestFiles.record(res, "f3_drag_${size}", "${img.width}x${img.height} rendered in $ms ms (emulator), shown at 1080x$h")
+            }
+            e.historySeal()
+            TestFiles.record(res, "f3", "passed")
+        } finally {
+            runCatching { e.close() }
+        }
+    }
+
+    /**
+     * f4 (deliverable 4, the reviewer's addition): the timings run on a photo from LightPhotoLibrary, both from
+     * inside the darkroom ("timings…" keeps the photo open) and from the list after the darkroom was left (the
+     * last opened photo, not the working folder); the text names the source, the edit and the per-module times.
+     */
+    @Test
+    fun f4_timingsRunOnAPhotoFromLightPhotoLibrary() {
+        val s = StubLpl().also { stubs += it }
+        s.add(StubLpl.Photo(81, TestFiles.raw.name, TestFiles.raw.readBytes(), rating = 1))
+        AppHost.servers.put(s.origin, "Phone", null)
+        val v = openLink(s, 81)
+        // from inside the darkroom: the menu's "timings…" only switches the screen
+        scenario!!.onActivity { it.vm.openTimings() }
+        assertTrue("the photo stays open", v.controller.state.value.info != null)
+        scenario!!.onActivity { it.vm.runTimings(1080, 1500, "test") }
+        waitFor("timings text (open photo)", 600_000) { v.timings.value.text != null }
+        val t1 = v.timings.value.text!!
+        File(TestFiles.out, "p2f-f4-timings-open.txt").writeText(t1)
+        assertTrue(t1, t1.contains("photo source: LightPhotoLibrary"))
+        assertTrue(t1, t1.contains("history items"))
+        assertTrue(t1, t1.contains("modules on ("))
+        assertTrue(t1, t1.contains("pinning: "))
+        assertTrue(t1, t1.contains("per module, first preview, every module (ms, slowest first): sum "))
+        // from the list, after leaving the darkroom: the last opened photo (no file-picker photos needed)
+        scenario!!.onActivity { it.vm.leaveDarkroom() }
+        waitFor("darkroom closed") { v.controller.state.value.info == null }
+        scenario!!.onActivity { it.vm.show(Screen.TIMINGS); it.vm.runTimings(1080, 1500, "test") }
+        waitFor("timings text (last opened)", 600_000) { v.timings.value.text?.let { it != t1 } == true && v.timings.value.running == null }
+        val t2 = v.timings.value.text!!
+        File(TestFiles.out, "p2f-f4-timings-last.txt").writeText(t2)
+        assertTrue(t2, t2.contains("photo source: LightPhotoLibrary"))
+        assertTrue(t2, t2.contains("per module, sharp region at fit after an exposure change"))
+        TestFiles.record(res, "f4", "passed")
+    }
 }

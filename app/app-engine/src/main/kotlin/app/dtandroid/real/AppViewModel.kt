@@ -514,23 +514,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openTimings() { _screen.value = Screen.TIMINGS }
 
-    /** Run the fixed sequence on the open photo, or on the last opened (or first) photo of the working folder. */
+    /**
+     * Run the fixed sequence on the open photo, whatever its source; with none open, on the last photo the
+     * darkroom opened (LightPhotoLibrary or this phone's files), else on a photo of the working folder
+     * (brief P2f: before, only the working folder was considered, so photos from LightPhotoLibrary could
+     * not be measured unless open). "timings…" in the darkroom's menu keeps the photo open: it only
+     * switches the screen.
+     */
     fun runTimings(screenW: Int, screenH: Int, appVersion: String) {
         if (_timings.value.running != null) return
         AppEngine.scope.launch {
             val ready = AppEngine.status.value as? AppEngine.Status.Ready
             if (ready == null) { _timings.value = TimingsState(text = "the engine is not running"); return@launch }
             if (controller.state.value.info == null) {
-                val items = work.items()
-                if (items.isEmpty()) { _timings.value = TimingsState(text = "open a photo first: the timings run on a photo of the working folder"); return@launch }
-                val i = (lastIndex ?: 0).coerceIn(0, items.size - 1)
-                lastIndex = i
-                _timings.value = TimingsState(running = "opening ${items[i].fileName}", photo = items[i].fileName)
-                controller.start(work.series(), i, filmstrip = false, thumbnails = false)
+                val last = controller.lastOpened?.takeIf { (series, i) -> series.items.getOrNull(i)?.let { File(it.rawPath).isFile } == true }
+                val held = agent.photos.value.lastOrNull { AppHost.work.hasRaw(it) }
+                val (series, i) = when {
+                    last != null -> last
+                    work.items().isNotEmpty() -> work.series() to (lastIndex ?: 0).coerceIn(0, work.items().size - 1)
+                    held != null -> Series("LightPhotoLibrary", listOf(AppHost.itemFor(held.server, held.id))) to 0
+                    else -> { _timings.value = TimingsState(text = "open a photo first: the timings run on the open photo, or on the last one opened"); return@launch }
+                }
+                val name = series.items[i].fileName
+                _timings.value = TimingsState(running = "opening $name", photo = name)
+                controller.start(series, i, filmstrip = false, thumbnails = false)
             }
             val item = controller.state.value.current ?: return@launch
+            if (controller.state.value.info == null) { _timings.value = TimingsState(text = "${item.fileName} did not open: ${controller.state.value.message ?: "?"}"); return@launch }
             _timings.value = TimingsState(running = "starting", photo = item.fileName)
-            val t = Timings(AppEngine.engine, controller, scratch, screenW, screenH, appVersion, AppEngine.engineId, ready.cores)
+            val source = if (AppHost.lplPhotoOf(item) != null) "LightPhotoLibrary (a copy downloaded to this phone)" else "this phone's files (working folder)"
+            val t = Timings(AppEngine.engine, controller, scratch, screenW, screenH, appVersion, AppEngine.engineId, ready.cores, source)
             val r = t.run(item) { step -> _timings.update { it.copy(running = step) } }
             _timings.value = TimingsState(text = r.text, photo = item.fileName)
         }

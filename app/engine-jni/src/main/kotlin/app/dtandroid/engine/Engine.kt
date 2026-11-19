@@ -195,6 +195,9 @@ object Engine {
         Os.setenv("XDG_CONFIG_HOME", File(home, ".config").absolutePath, true)
         Os.setenv("XDG_CACHE_HOME", File(ctx.cacheDir, "xdg").absolutePath, true)
         Os.setenv("XDG_DATA_HOME", File(home, ".local/share").absolutePath, true)
+        // brief P2f: darktable's own per-module times ("-d perf": "[dev_pixelpipe] took … processed `exposure'"),
+        // read back from the captured log by the timings page; dtb_init reads it (engine/src/core.c)
+        Os.setenv("DTB_DT_DEBUG", "perf", false)
     }
 
     private fun startOnEngineThread(ctx: Context, log: (String) -> Unit): EngineStartReport {

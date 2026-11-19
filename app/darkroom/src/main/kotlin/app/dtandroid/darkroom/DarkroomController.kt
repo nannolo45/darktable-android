@@ -242,7 +242,10 @@ class DarkroomController(
             }
             if (generation != g) return
         }
-        if (_state.value.info != null) src?.opened(item, _state.value.series.items.getOrNull(index + 1))
+        if (_state.value.info != null) {
+            lastOpened = _state.value.series to index
+            src?.opened(item, _state.value.series.items.getOrNull(index + 1))
+        }
         requestRender()
     }
 
@@ -261,6 +264,10 @@ class DarkroomController(
         if (st.info == null) return
         thumbnailStore?.storePicture(item, Thumbnails.downscale(p, ThumbnailStore.PICTURE_SIZE))
     }
+
+    /** Brief P2f: the series and position of the last photo that opened, whatever its source (the timings run on it). */
+    @Volatile var lastOpened: Pair<Series, Int>? = null
+        private set
 
     /** brief P2e: counts photo switches and closes, so a fetch that finishes late opens nothing */
     @Volatile private var generation = 0
