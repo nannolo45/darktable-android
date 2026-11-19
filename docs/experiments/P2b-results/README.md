@@ -19,3 +19,9 @@ Output on the workspace (2026-11-19):
   previous session left in the private library, including items above its end:
   first open `end=11 items=11`; two changes; `goto 11` gives `end=11 items=13`; second open without XMP
   `end=11 items=13` (not the default edit).
+- `probe-goto-compress` (two copies of the RAW, `a.cr2 b.cr2`): after `history_goto(start+1)`, `modules()`
+  equals the state recorded at that step except `in_history` of color balance rgb (true: its item is
+  above the end). After compress, color balance rgb (switched off as the last change) keeps one item,
+  `enabled=false`: darktable's `dt_history_compress_on_image()` (src/common/history.c) keeps disabled
+  modules ("keep disabled modules as documented"). Both are the engine's truth; the contract and the
+  fake followed the old assumption and were corrected.

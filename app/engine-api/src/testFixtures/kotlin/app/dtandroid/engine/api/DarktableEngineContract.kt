@@ -265,7 +265,11 @@ abstract class DarktableEngineContract {
         engine.historyGoto(start + 1)
         assertEquals(start + 1, engine.history().end)
         assertEquals(start + 3, engine.history().items.size)
-        assertEquals(modsAt1, engine.modules())
+        // P2b: "in_history" means an item anywhere in the list, also above the end (the bridge's meaning):
+        // color balance rgb's item is above the end now; everything else equals the state at that step
+        val atGoto = engine.modules()
+        assertTrue(atGoto.first { it.op == "colorbalancergb" }.inHistory)
+        assertEquals(modsAt1.map { it.copy(inHistory = false) }, atGoto.map { it.copy(inHistory = false) })
         // P2b: the bridge answers ARG for an end outside 0..items (the real engine is the truth here)
         expect(EngineError.ARG) { engine.historyGoto(start + 10) }
 
@@ -299,7 +303,9 @@ abstract class DarktableEngineContract {
         assertTrue(h.items.size < n)
         assertEquals(h.items.size, h.end)
         assertEquals(1, h.items.count { it.op == "exposure" })
-        assertTrue("a module that ends up off is dropped", h.items.none { it.op == "colorbalancergb" })
+        // P2b: darktable's compress keeps disabled modules (dt_history_compress_on_image, "keep disabled modules
+        // as documented"); the real engine is the truth here, the contract said they were dropped
+        assertEquals("a module that ends up off keeps one item, off", listOf(false), h.items.filter { it.op == "colorbalancergb" }.map { it.enabled })
         assertEquals(mods, result())
     }
 
