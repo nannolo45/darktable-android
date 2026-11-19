@@ -307,7 +307,7 @@ jobs:
         run: |
           rc=$(cat /home/runner/emu-rc.txt 2>/dev/null || echo 1)
           echo "test_rc=$rc" >> "$GITHUB_OUTPUT"
-          sudo apt-get install -y -qq python3-numpy python3-pil > /dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq python3-numpy python3-pil > /dev/null
           # accepted: same size and PSNR >= 40 dB (JPEG quality 95, clang +
           # newer libraries on Android vs gcc + Ubuntu's on Linux, as in S1)
           out=$(python3 -I engine/tests/compare.py /home/runner/emu/g0-test/export.jpg "$REF/export.jpg" --tolerance 255 2>&1) || true
