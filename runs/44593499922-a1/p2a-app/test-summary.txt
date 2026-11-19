@@ -1,0 +1,38 @@
+darkroom     app.dtandroid.darkroom.DarkroomControllerTest                          tests   7  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.DragAndBeforeTest                               tests   3  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.DragPictureTest                                 tests   5  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.LayoutDarkroomTest                              tests   7  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.ListPhoneScreenshots                            tests   4  failed  1  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.ListTabletScreenshots                           tests   4  failed  1  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.NarrowPhoneScreenshots                          tests   1  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.PhoneScreenshots                                tests  24  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.PhotoSourceTest                                 tests   4  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.TabletScreenshots                               tests   8  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.TopBarScreenshots                               tests   2  failed  2  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.WordsTest                                       tests   1  failed  0  errors  0  skipped  0
+darkroom     app.dtandroid.darkroom.work.WorkFolderTest                             tests   6  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.EnginePinningTest                             tests  12  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FakeEngineContractTest                        tests  19  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FakeEngineTest                                tests   6  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.FileLayoutStoreTest                           tests   7  failed  0  errors  0  skipped  0
+engine-api   app.dtandroid.engine.api.ModuleTimesTest                               tests   2  failed  0  errors  0  skipped  0
+schema       app.dtandroid.schema.SchemaTest                                        tests  13  failed  0  errors  0  skipped  0
+schema       app.dtandroid.schema.layout.LayoutTest                                 tests  13  failed  0  errors  0  skipped  0
+ui-theme     app.dtandroid.ui.theme.TokensTest                                      tests   5  failed  0  errors  0  skipped  0
+TOTAL tests 153  failed 4  errors 0  skipped 0
+FAILED darkroom: app.dtandroid.darkroom.ListPhoneScreenshots.moreSheet: java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but found '2' nodes that satisfy: (Text + InputText + EditableText contains 'sync now' (ignoreCase: false))
+Nodes found:
+1) Node #208 at (l=616.0, t=114.0, r=772.0, b=202.0)px
+Focused = 'false'
+Role = 'Button'
+Text = '
+FAILED darkroom: app.dtandroid.darkroom.ListTabletScreenshots.moreSheet: java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but found '2' nodes that satisfy: (Text + InputText + EditableText contains 'sync now' (ignoreCase: false))
+Nodes found:
+1) Node #477 at (l=1797.0, t=86.0, r=1914.0, b=152.0)px
+Focused = 'false'
+Role = 'Button'
+Text = 
+FAILED darkroom: app.dtandroid.darkroom.TopBarScreenshots.longName: java.lang.NullPointerException: Cannot invoke "String.toLowerCase(java.util.Locale)" because "android.os.Build.FINGERPRINT" is null
+FAILED darkroom: app.dtandroid.darkroom.TopBarScreenshots.shortName: java.lang.NullPointerException: Cannot invoke "String.toLowerCase(java.util.Locale)" because "android.os.Build.FINGERPRINT" is null
