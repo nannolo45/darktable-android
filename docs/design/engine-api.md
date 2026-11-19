@@ -80,7 +80,7 @@ All renders return RGBA8, alpha 255, in sRGB for now.
 |---|---|
 | `render_size(scale)` → `{w, h}` | |
 | `render_preview(max_size)` → buffer, w, h | Whole image, from the downscaled input, for immediate feedback. |
-| `render_region(x, y, w, h, scale)` → buffer | Exactly the requested region. **The bridge renders with an internal margin of at least 16 px and crops it away**, because a bare region differs from the full render near its edges (S3, test T5). Callers never stitch a view from several regions. |
+| `render_region(x, y, w, h, scale)` → buffer | Exactly the requested region. **The bridge renders with an internal margin and crops it away**, because a bare region differs from the full render near its edges (S3, test T5): at least 32 px, wider (up to 256 px) when a switched-on module reaches further, and for raw images a window on the same colour filter phase as a full render (P1c). The differences that remain are listed with bounds in `engine/tests/t5_expected.txt`. Callers never stitch a view from several regions. |
 | `render_cancel()` | From any thread. The running render returns `CANCELLED`; cancel takes effect between modules. |
 
 The pipelines keep their caches between calls. `cache_drop()` exists for measurements.

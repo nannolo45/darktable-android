@@ -284,10 +284,14 @@ int dtb_render_size(float scale, int *width, int *height);
 int dtb_render_preview(int max_size, uint8_t **rgba8_out, int *width, int *height);
 
 /* Exactly the region (x, y, w, h) of the processed image at `scale` into
- * rgba8_out (w*h*4 bytes). The bridge renders a larger region, with an
- * internal margin of at least 16 px on every side that lies inside the
- * image, and crops it away, so that the region equals the same crop of a
- * full render. Do not stitch a view from several regions. */
+ * rgba8_out (w*h*4 bytes). The bridge renders a larger region and crops it
+ * away, so that the region equals the same crop of a full render: an
+ * internal margin of at least 32 px on every side that lies inside the
+ * image, wider (up to 256 px) when a switched-on module reaches further
+ * (its own tiling overlap), and, for raw images, a window moved so that
+ * demosaic starts on the same colour filter phase as in a full render.
+ * Known exceptions, with bounds: engine/tests/t5_expected.txt. Do not
+ * stitch a view from several regions. */
 int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out);
 
 /* Ask the render running on the engine thread to stop. Safe from any
