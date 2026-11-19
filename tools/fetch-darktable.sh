@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Put the pinned darktable source (with the submodules the build needs) in
-# <dir>. Uses upstream/darktable when the submodule is checked out, otherwise
-# fetches the commit from tools/darktable-pin.sh. Never modifies the source.
+# <dir>. The commit is the one the upstream/darktable submodule is pinned to
+# (read by tools/darktable-pin.sh). Uses the submodule's checkout when it is
+# present and at that commit, otherwise fetches the commit. Never modifies
+# the source.
 #   tools/fetch-darktable.sh <dir>
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -11,13 +13,21 @@ REPO="$(cd "$HERE/.." && pwd)"
 DEST="${1:?usage: fetch-darktable.sh <dir>}"
 NEEDED="src/external/rawspeed src/external/LibRaw src/external/whereami src/external/libxcf src/external/OpenCL"
 
+COMMIT=$DTA_DARKTABLE_COMMIT
 if [ -f "$REPO/upstream/darktable/CMakeLists.txt" ]; then
-  COMMIT=$(git -C "$REPO/upstream/darktable" rev-parse HEAD)
+  HAVE=$(git -C "$REPO/upstream/darktable" rev-parse HEAD)
+  if [ "$HAVE" != "$COMMIT" ]; then
+    echo "upstream/darktable is checked out at $HAVE, but the repository pins $COMMIT;" >&2
+    echo "run: git submodule update upstream/darktable" >&2
+    exit 1
+  fi
   echo "using upstream/darktable submodule at $COMMIT" >&2
   git -C "$REPO/upstream/darktable" submodule update --init --depth 1 $NEEDED >&2
+  CHECK="$REPO/upstream/darktable"
+  # the copy's .git is a link into the parent repository, so check the
+  # submodule itself (below) rather than the copy
   rm -rf "$DEST"; cp -a "$REPO/upstream/darktable" "$DEST"
 else
-  COMMIT=$DTA_DARKTABLE_COMMIT
   if [ ! -f "$DEST/CMakeLists.txt" ] || [ "$(git -C "$DEST" rev-parse HEAD 2>/dev/null)" != "$COMMIT" ]; then
     rm -rf "$DEST"; mkdir -p "$DEST"
     git -C "$DEST" init -q
@@ -26,10 +36,12 @@ else
     git -C "$DEST" -c advice.detachedHead=false checkout -q FETCH_HEAD
   fi
   git -C "$DEST" submodule update --init --depth 1 $NEEDED >&2
+  CHECK="$DEST"
 fi
 # refuse to build a modified tree
-if [ -n "$(git -C "$DEST" status --porcelain --ignore-submodules=none)" ]; then
-  git -C "$DEST" status --short >&2
+ST=$(git -C "$CHECK" status --porcelain --ignore-submodules=none) || { echo "cannot check $CHECK" >&2; exit 1; }
+if [ -n "$ST" ]; then
+  echo "$ST" >&2
   echo "darktable source tree is not clean" >&2; exit 1
 fi
 echo "$COMMIT"
