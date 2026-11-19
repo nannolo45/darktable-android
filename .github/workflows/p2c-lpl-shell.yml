@@ -76,8 +76,19 @@ jobs:
       - name: Build the shell APK and its instrumented tests
         run: |
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
-            :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
+          # Maven Central sometimes answers "could not find" for artifacts that exist (seen in run
+          # 44485279179); retry such resolution failures, nothing else
+          for attempt in 1 2 3; do
+            set +e
+            "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
+              :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
+            rc=${PIPESTATUS[0]}
+            set -e
+            [ "$rc" = 0 ] && break
+            grep -qE "Could not (find|resolve|GET)|status code 429" /tmp/gradle.log || exit "$rc"
+            [ "$attempt" = 3 ] && exit "$rc"
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30))
+          done
           mkdir -p /home/runner/out
           cp lpl-shell/build/outputs/apk/debug/lpl-shell-debug.apk /home/runner/out/lightphotolibrary-shell.apk
           cp lpl-shell/build/outputs/apk/androidTest/debug/lpl-shell-debug-androidTest.apk /home/runner/out/lpl-shell-androidTest.apk
