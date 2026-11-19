@@ -1920,6 +1920,150 @@ static int cmd_reopen(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* C9 (P1c item 5): consecutive parameter changes of one instance between
+ * seals (a slider drag) only resynchronise that item in the pipes
+ * (DT_DEV_PIPE_TOP_CHANGED, as desktop). After each drag the picture must
+ * equal a fresh session of the same edit, and at the end darktable-cli's. */
+static int cmd_drag(const char *raw, const char *xmp, const char *outdir)
+{
+  const char *klass = getenv("DTB_TEST_CLASS");
+  const gboolean bayer = klass && !strcmp(klass, "bayer");
+  struct { const char *op, *path, *v[3]; const char *before; int sealed; } cases[] = {
+    { "exposure", "exposure", { "0.3", "0.6", "0.9" }, NULL },
+    // three separate changes (a new item each, appended on top)
+    { "colorbalancergb", "saturation_global", { "0.1", "0.2", "0.3" }, NULL, 1 },
+    { "exposure", "black", { "0.001", "0.002", "0.003" }, NULL, 1 },
+    { "colorbalancergb", "vibrance", { "0.1", "0.2", "0.3" }, NULL },
+    { "sigmoid", "middle_grey_contrast", { "1.6", "1.8", "2.0" }, NULL },
+    { "temperature", "red", { "2.0", "1.9", "1.8" }, NULL },
+    // white balance dragged while color calibration adapts from it
+    { "temperature", "blue", { "1.3", "1.2", "1.1" }, "channelmixerrgb" },
+    { "colorin", "type", { "\"DT_COLORSPACE_STANDARD_MATRIX\"", "\"DT_COLORSPACE_LIN_REC709\"",
+                           "\"DT_COLORSPACE_ENHANCED_MATRIX\"" }, NULL },
+    { "demosaic", "demosaicing_method", { "\"DT_IOP_DEMOSAIC_RCD\"", "\"DT_IOP_DEMOSAIC_AMAZE\"",
+                                          "\"DT_IOP_DEMOSAIC_LMMSE\"" }, NULL },
+  };
+  char *tmpx = path_join(outdir, "drag_step.xmp");
+  MUST(dtb_open(raw, xmp));
+  int worst = 0, n = 0;
+  for(size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+  {
+    if(!strcmp(cases[c].op, "demosaic") && !bayer) continue;
+    if(cases[c].before) MUST(dtb_set_enabled(cases[c].before, 0, 1));
+    MUST(dtb_history_seal());
+    int items0 = history_count(NULL);
+    for(int k = 0; k < 3; k++)
+    {
+      MUST(dtb_param_set(cases[c].op, 0, cases[c].path, cases[c].v[k]));
+      if(cases[c].sealed) MUST(dtb_history_seal());
+      // the app renders the small picture after every step
+      int w, h;
+      uint8_t *p = preview_px(&w, &h);
+      free(p);
+    }
+    const int items1 = history_count(NULL);
+    int pw, ph, qw, qh;
+    uint8_t *probe = render_probe(&pw, &ph);
+    uint8_t *prev = preview_px(&qw, &qh);
+    MUST(dtb_history_seal());
+    MUST(dtb_xmp_write(tmpx));
+    MUST(dtb_close());
+    MUST(dtb_open(raw, tmpx));
+    int pw2, ph2, qw2, qh2;
+    uint8_t *probe2 = render_probe(&pw2, &ph2);
+    uint8_t *prev2 = preview_px(&qw2, &qh2);
+    const int d1 = (pw == pw2 && ph == ph2) ? probe_diff(probe, probe2, pw, ph) : 999;
+    const int d2 = (qw == qw2 && qh == qh2) ? probe_diff(prev, prev2, qw, qh) : 999;
+    fprintf(stdout, "RESULT %s %s.%s (3 steps, %d item%s): region vs fresh session max %d, preview max %d\n",
+            cases[c].sealed ? "sealed changes" : "drag", cases[c].op, cases[c].path, items1 - items0,
+            items1 - items0 == 1 ? "" : "s", d1, d2);
+    CHECK(items1 - items0 == (cases[c].sealed ? 3 : 1), "%s made %d items", cases[c].op, items1 - items0);
+    CHECK(d1 == 0 && d2 == 0, "after a drag of %s.%s the picture differs from a fresh session", cases[c].op,
+          cases[c].path);
+    worst = MAX(worst, MAX(d1, d2));
+    n++;
+    free(probe);
+    free(probe2);
+    free(prev);
+    free(prev2);
+  }
+  fprintf(stdout, "RESULT drag: %d drags, worst difference to a fresh session %d\n", n, worst);
+  MUST(dtb_xmp_write(path_join(outdir, "drag.xmp")));
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "drag_bridge.ppm"), buf, w, h);
+  free(buf);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* P1c item 5: where the time of a small preview render after a change goes.
+ * Prints per-step medians; run with DTB_TIMING=1 for the bridge's own step
+ * timers and DTB_DT_DEBUG=perf for darktable's per-module times. */
+static int cmp_dbl(const void *a, const void *b)
+{
+  const double x = *(const double *)a, y = *(const double *)b;
+  return x < y ? -1 : x > y;
+}
+
+static double median(double *v, int n)
+{
+  qsort(v, n, sizeof(double), cmp_dbl);
+  return n % 2 ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
+}
+
+static void cost_series(const char *label, const char *op, const char *path, double base, int seal, int size,
+                        int n)
+{
+  double tp[64], tr[64];
+  for(int i = 0; i < n; i++)
+  {
+    char v[32];
+    snprintf(v, sizeof(v), "%.4f", base + 0.01 * (i + 1));
+    double t0 = now();
+    if(op) MUST(dtb_param_set(op, 0, path, v));
+    if(op && seal) MUST(dtb_history_seal());
+    tp[i] = (now() - t0) * 1e3;
+    fprintf(stderr, "DTB_STEP %s %d %d\n", label, size, i);
+    fprintf(stdout, "DTB_STEP %s %d %d\n", label, size, i);
+    t0 = now();
+    uint8_t *px = NULL;
+    int w, h;
+    MUST(dtb_render_preview(size, &px, &w, &h));
+    tr[i] = (now() - t0) * 1e3;
+    dtb_free(px);
+  }
+  const double mp = median(tp, n), mr = median(tr, n);  // sorts both
+  fprintf(stdout, "RESULT cost %s size %d: change %.2f ms, preview render %.2f ms (medians of %d; min %.2f max %.2f)\n",
+          label, size, mp, mr, n, tr[0], tr[n - 1]);
+}
+
+static int cmd_cost(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  uint8_t *px = NULL;
+  int w, h;
+  // warm: input loaded, pipe built, caches filled
+  for(int k = 0; k < 3; k++)
+  {
+    MUST(dtb_render_preview(320, &px, &w, &h));
+    dtb_free(px);
+  }
+  fprintf(stdout, "RESULT cost preview size %dx%d\n", w, h);
+  const int n = 9;
+  cost_series("unchanged", NULL, NULL, 0, 0, 320, n);
+  // a late module: color balance rgb (P2b's late change), merged into one
+  // item as a slider drag does, then one item per step (sealed)
+  cost_series("late_drag", "colorbalancergb", "vibrance", 0.1, 0, 320, n);
+  cost_series("late_sealed", "colorbalancergb", "vibrance", 0.3, 1, 320, n);
+  cost_series("early_drag", "exposure", "exposure", 0.5, 0, 320, n);
+  cost_series("late_drag", "colorbalancergb", "vibrance", 0.1, 0, 1024, n);
+  cost_series("unchanged", NULL, NULL, 0, 0, 1024, n);
+  MUST(dtb_close());
+  return g_fail;
+}
+
 /* C7: atomic xmp_write, export options, metadata_reload */
 static int count_temp_files(const char *dir)
 {
@@ -2069,6 +2213,7 @@ int main(int argc, char **argv)
       { "api", cmd_api }, { "params", cmd_params }, { "undo", cmd_undo },
       { "actions", cmd_actions }, { "threads", cmd_threads }, { "readonly", cmd_readonly },
       { "output", cmd_output }, { "reopen", cmd_reopen },
+      { "cost", cmd_cost }, { "drag", cmd_drag },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

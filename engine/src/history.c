@@ -36,16 +36,55 @@
  * no pipes of its own; the bridge's pipes are flagged below), then does the
  * rest of what desktop does after it: the "darktable|changed" tag and the
  * change timestamp. */
-void dtb__history_add(dt_iop_module_t *m, const gboolean enable)
+static void _history_add(dt_iop_module_t *m, const gboolean enable, const gboolean params_only)
 {
   dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  const guint n0 = g_list_length(dtb_S.dev.history);
+  const int end0 = dtb_S.dev.history_end;
+  const GList *top0 = g_list_last(dtb_S.dev.history);
   dt_dev_add_history_item_ext(&dtb_S.dev, m, enable, TRUE);
+  const guint n1 = g_list_length(dtb_S.dev.history);
+  const GList *top1 = g_list_last(dtb_S.dev.history);
+  // Which pipe work the change needs. Desktop decides in
+  // _dev_add_history_item_ext() (develop.c): a change merged into the top
+  // item -> DT_DEV_PIPE_TOP_CHANGED (dt_dev_pixelpipe_synch_top commits that
+  // item's module only); a new item -> DT_DEV_PIPE_SYNCH
+  // (dt_dev_pixelpipe_synch_all resets every module to its defaults and
+  // replays the whole history). The bridge set SYNCH for both before P1c;
+  // synch_all is the largest fixed part of a small preview render (P1c
+  // write-up, item 5).
+  // - merged into the top item in effect: TOP_CHANGED, as desktop;
+  // - a parameter change (param_set, params_set) that appended one item on
+  //   top of a history whose end was at its top (nothing discarded): also
+  //   TOP_CHANGED. The pipe then differs from the previous state in that one
+  //   module, which synch_top commits from the new item, the same parameters
+  //   and switch a replay would end with. Desktop replays everything here;
+  //   test C9 compares both kinds with a fresh session.
+  // - everything else (instances, reset, actions, discarded items): SYNCH.
+  const gboolean at_top = end0 == (int)n0 && dtb_S.dev.history_end == (int)n1 && top1
+                          && ((dt_dev_history_item_t *)top1->data)->module == m;
+  const gboolean merged = at_top && n1 == n0 && top1 == top0;
+  const gboolean appended = at_top && n1 == n0 + 1 && params_only;
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
   guint tagid = 0;
   dt_tag_new("darktable|changed", &tagid);
   dt_tag_attach(tagid, dtb_S.imgid, FALSE, FALSE);
   dt_image_cache_set_change_timestamp(dtb_S.imgid);
-  dtb__pipes_dirty(DT_DEV_PIPE_SYNCH);
+  // DTB_FORCE_SYNCH_ALL: the behaviour before P1c, for the before/after
+  // measurement only (engine/tests/cost.sh)
+  static int force = -1;
+  if(force < 0) force = g_getenv("DTB_FORCE_SYNCH_ALL") != NULL;
+  dtb__pipes_dirty((merged || appended) && !force ? DT_DEV_PIPE_TOP_CHANGED : DT_DEV_PIPE_SYNCH);
+}
+
+void dtb__history_add(dt_iop_module_t *m, const gboolean enable)
+{
+  _history_add(m, enable, FALSE);
+}
+
+void dtb__history_add_params(dt_iop_module_t *m, const gboolean enable)
+{
+  _history_add(m, enable, TRUE);
 }
 
 /* ------------------------------------------------------------------ */

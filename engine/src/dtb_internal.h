@@ -95,6 +95,12 @@ JsonNode *dtb__json_parse(const char *text);
          return dtb__err(DTB_E_READ_ONLY, "session is read-only: its XMP failed the version guard"); \
   } while(0)
 
+/* Step timers for measurements (P1c item 5). With DTB_TIMING set in the
+ * environment, dtb__tlog() prints "DTB_TIMING <what> <ms>" to stderr; without
+ * it the timers cost a clock read and a branch. Not part of the API. */
+double dtb__t(void);
+void dtb__tlog(const char *what, double t0);
+
 /* guard.c: needs an initialised engine (compares with the loaded module
  * libraries). Returns a JSON string (g_malloc) or NULL if the file cannot be
  * read; *n_problems = -1 if it cannot be parsed. */
@@ -124,6 +130,9 @@ void dtb__change_end(dtb_change_t kind, dt_iop_module_t *m);
 /* record the module's state in history, as desktop's dt_dev_add_history_item
  * does without its interface work, and flag the pipes */
 void dtb__history_add(dt_iop_module_t *m, gboolean enable);
+/* the same for a change of the module's parameters only (param_set,
+ * params_set): lets the pipes resynchronise just that module */
+void dtb__history_add_params(dt_iop_module_t *m, gboolean enable);
 void dtb__undo_clear(void);
 
 /* render.c */

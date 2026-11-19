@@ -121,9 +121,14 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
   }
   else if(p->pipe.changed != DT_DEV_PIPE_UNCHANGED)
   {
+    const double t0 = dtb__t();
+    const dt_dev_pixelpipe_change_t what = p->pipe.changed;
     if(p->pipe.changed & DT_DEV_PIPE_REMOVE) dt_ioppr_resync_modules_order(&dtb_S.dev);
     // takes dev->history_mutex, rebuilds nodes on REMOVE, resynchs on SYNCH
     dt_dev_pixelpipe_change(&p->pipe, &dtb_S.dev);
+    dtb__tlog((what & DT_DEV_PIPE_REMOVE) ? "render.pipe_change_remove"
+              : (what & DT_DEV_PIPE_SYNCH) ? "render.pipe_change_synch_all"
+              : (what & DT_DEV_PIPE_TOP_CHANGED) ? "render.pipe_change_synch_top" : "render.pipe_change_other", t0);
   }
   return DTB_OK;
 }
@@ -163,7 +168,9 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
   }
 
   if(finalscale) finalscale->enabled = FALSE;
+  const double t0 = dtb__t();
   const gboolean early = dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
+  dtb__tlog("render.process", t0);
   if(finalscale) finalscale->enabled = TRUE;
 
   g_atomic_pointer_set(&g_active_pipe, NULL);
@@ -186,9 +193,11 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
                     p->pipe.backbuf_width, p->pipe.backbuf_height, w, h);
 
   const float *in = (const float *)p->pipe.backbuf;
+  const double t1 = dtb__t();
   DT_OMP_FOR()
   for(int row = 0; row < h; row++)
     dt_display_to_8bit_pixels(in + (size_t)4 * w * row, out + (size_t)4 * w * row, w, FALSE);
+  dtb__tlog("render.to_8bit", t1);
   if(g_atomic_int_get(&g_cancel))
   {
     g_atomic_int_set(&g_cancel, 0);
@@ -248,6 +257,7 @@ int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
   NEED_SESSION();
   if(!out || max_size <= 0) return dtb__err(DTB_E_ARG, "bad arguments");
   g_atomic_int_set(&g_cancel, 0);
+  const double t0 = dtb__t();
   // DT_MIPMAP_F is the downscaled float input the darkroom's preview pipe
   // runs on (dt_dev_process_image_job, develop.c)
   int r = _pipe_ensure(&dtb_S.preview, DT_MIPMAP_F);
@@ -266,6 +276,7 @@ int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
   *out = buf;
   if(width) *width = w;
   if(height) *height = h;
+  dtb__tlog("render.preview_total", t0);
   return DTB_OK;
 }
 

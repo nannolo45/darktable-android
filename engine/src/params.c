@@ -394,10 +394,14 @@ static int _find_writable(const char *op, int prio, dt_iop_module_t **out)
  * callbacks); modules without a switch keep their state */
 static void _commit_params(dt_iop_module_t *m, const void *params)
 {
+  const double t0 = dtb__t();
   dtb__change_begin(DTB_CHANGE_PARAMS, m);
+  dtb__tlog("param.change_begin", t0);
+  const double t1 = dtb__t();
   memcpy(m->params, params, m->params_size);
-  dtb__history_add(m, _can_switch(m));
+  dtb__history_add_params(m, _can_switch(m));
   dtb__change_end(DTB_CHANGE_PARAMS, m);
+  dtb__tlog("param.history_add", t1);
 }
 
 int dtb_param_set(const char *op, int prio, const char *path, const char *value_json)
