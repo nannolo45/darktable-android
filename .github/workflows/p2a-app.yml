@@ -8,8 +8,8 @@ name: p2a-app
 
 on:
   push:
-    branches: [p2a-app-foundation]
-    paths-ignore: ["docs/**", "*.md"]
+    branches: [main, p2a-app-foundation]
+    paths: ["app/**", "schema/**", "tools/app/**", ".github/workflows/p2a-app.yml"]
   workflow_dispatch:
 
 # nothing by default; the job asks for what it needs

@@ -62,13 +62,13 @@ Error codes: `STATE -1`, `ARG -2`, `NOT_FOUND -3`, `TYPE -4`, `RANGE -5`, `IO -6
 History grouping: consecutive `param_set` calls on the same instance merge into one history item until `history_seal()`; any other mutating call seals first. The app seals when the finger lifts.
 
 ### 2.5 Instances
-`instance_new`, `instance_duplicate` (→ new priority), `instance_delete`, `instance_move(direction ±1)`, `instance_rename(name)`. Behaviour follows desktop darktable as documented in `S3-bridge-prototype.md` section 6. `one_instance` modules refuse `new` and `duplicate`.
+`instance_new`, `instance_duplicate` (→ new priority), `instance_delete`, `instance_move(direction ±1)`, `instance_rename(name)`. Behaviour follows desktop darktable as documented in `S3-bridge-prototype.md` section 6. `one_instance` modules refuse `new` and `duplicate`. `instance_move(+1)` moves the instance one step later in the pipeline (up in the module list, which shows the pipeline last-first, as on desktop); `-1` earlier. `iop_order` in `modules()` is an integer.
 
 ### 2.6 History
 | Function | Meaning |
 |---|---|
 | `history()` → JSON | `{ "end", "items": [ { "num", "op", "priority", "name", "instance_name", "enabled" } ] }` |
-| `history_goto(end)` | State after the first `end` items; a following change discards the items above, as on desktop. |
+| `history_goto(end)` | State after the first `end` items; a following change discards the items above, as on desktop. It is navigation: allowed in a read-only session, and not an undo step (undo and redo cover edits only; this differs from desktop on purpose). |
 | `history_compress()` | |
 | `history_seal()` | |
 | `undo()` / `redo()` / `undo_state()` → `{can_undo, can_redo}` | Step through whole-history states recorded before each sealed change (at least 50 steps). After `undo`, `modules()`, `history()` and renders equal the earlier state exactly. |
@@ -107,3 +107,9 @@ Specified in outline; P1b turns it into exact signatures and JSON for review bef
 For the C bridge, on Linux in CI, against `darktable-cli` of the same build (see `engine/tests/`): render parity, parameter change, instances, history, guard, cancel, drawn mask, exports, plus new ones for each function above (arrays through `param_set`, `params_set` as one step, `can_switch`, `module_reset`, each `module_action`, undo/redo equality, region equals the crop of the full render **now required to pass** thanks to the internal margin for demosaic; a remaining difference from another module is reported per module, not hidden), thread limits, read-only refusal for every mutating call.
 
 For `FakeEngine`: the same Kotlin test suite that later runs against the JNI implementation on the emulator, minus pixel parity.
+
+## Clarifications after P2a (19 Nov 2026)
+- **"before" view.** There is no call that renders another history position without moving the history end. The app shows "before" by `history_goto(0)`, `render_preview`, `history_goto(end)` under one lock, and keeps that picture for the session, because the state at position 0 does not change while a photo is open. A call that renders a history position or a snapshot without touching the session belongs to the extended part (snapshots, section 3).
+- **`color_labels`** in `image_info()` is a list of darktable's label numbers (0 red, 1 yellow, 2 green, 3 blue, 4 purple).
+- **`modules()` size.** Array parameters make the full list large. If re-reading it after every change is too slow through JNI, a call returning one module instance may be added; measure first.
+
