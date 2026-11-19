@@ -230,6 +230,12 @@ class P2fScenarioTest {
         s.add(StubLpl.Photo(81, TestFiles.raw.name, TestFiles.raw.readBytes(), rating = 1))
         AppHost.servers.put(s.origin, "Phone", null)
         val v = openLink(s, 81)
+        // the heavy edit of f1, so the per-module tables show where its time goes (deliverable 4)
+        val c = v.controller
+        for (op in heavy) {
+            val j = c.launch { setEnabled(InstanceKey(op, 0), true) }
+            waitFor("$op on") { j.isCompleted && c.state.value.modules.any { it.op == op && it.enabled } }
+        }
         // from inside the darkroom: the menu's "timings…" only switches the screen
         scenario!!.onActivity { it.vm.openTimings() }
         assertTrue("the photo stays open", v.controller.state.value.info != null)
