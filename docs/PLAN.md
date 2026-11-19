@@ -117,6 +117,7 @@ The labels, order, sections, tabs, units and soft ranges of each module's contro
 - It then flips each list and switch through its values and records which other controls appear or disappear, giving visibility rules.
 - Output: `ui-schema.json` for that darktable version, with translations from darktable's `.po` files. The app builds controls from this file.
 - `schema/overrides/*.json` holds small hand corrections. A new upstream version produces a schema diff that shows exactly which controls changed.
+- Measured in experiment S5: 87 % of sliders, lists and switches are bound to a named parameter and come out complete; 143 of 145 visibility rules were plain conditions that held in every observed state. The panel also depends on the kind of image (Bayer, X-Trans and non-raw differ in 11 modules), so one schema per image class is generated. A few widget details have no public accessor in darktable; the extractor reads them from a generated copy of darktable's private widget structures and its build fails if they change.
 
 ### 3.4 Module support tiers
 | Tier | What it means | Covers |
@@ -245,7 +246,10 @@ Each work package is one branch and one pull request with stated acceptance test
 
 **Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
 
-Usable in Phase 2 with generated controls: lens correction, demosaic, white balance, exposure, AgX, spektrafilm (70 bound controls), grain, diffuse or sharpen, chromatic aberrations, denoise (profiled), blurs, color balance rgb, color balance, color equalizer, color harmonizer, rgb primaries, LUT 3D (file picker), orientation (four buttons). Their graphs are display-only on desktop or optional.
+What experiment S5 measured for the 29 priority modules (details in `docs/experiments/S5-control-schema.md` in the repository):
+- **Usable in Phase 2 from the generated schema alone (9):** demosaic, AgX, exposure, grain, blurs, diffuse or sharpen, chromatic aberrations, color balance rgb, rgb primaries.
+- **Mostly generated, with small hand-written overrides in Phase 2 (12):** color calibration, crop, rotate and perspective, lens correction, white balance, spektrafilm, tone equalizer, denoise (profiled), LUT 3D, color equalizer, color balance, color harmonizer. Typical gaps: a list filled at run time (lens, profile, film stock, presets), a file chooser, sliders derived from other parameters. Their on-image and graph parts still wait for Phase 3.
+- **Hand-built editor needed (8):** orientation (four buttons, done in Phase 2), and in Phase 3 tone curve, rgb curve, rgb levels, contrast equalizer, color zones, color look up table, retouch.
 
 **Phase 3: the hard parts, local adjustments first**
 1. Masks and blending on every module: drawn shapes (circle, ellipse, gradient, brush, path), parametric, show mask, mask manager for reuse across instances.
