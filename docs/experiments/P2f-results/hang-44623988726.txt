@@ -1,0 +1,85 @@
+# Run 44623988726 (1a997dc), emulator: the dump written when l2 failed (darkroom scheduler, timeline, the engine thread) and the app's log lines around the start of the hang. Workspace CI emulator, not a phone.
+l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt(app.dtandroid.real.LplScenarioTest): java.lang.AssertionError: timed out: darkroom with the photo open
+
+## darkroom scheduler
+lock held, interactive 1, background running, dragging false, quiet false, photo mire1.cr2 open false, loading false, fetching false, working null
+
+## timeline
++0 ms	darkroom: open mire1.cr2 asked
++2 ms	darkroom: engine open start
++515 ms	darkroom: engine open end
++745 ms	darkroom: preview shown
++1392 ms	darkroom: preview shown
++1630 ms	darkroom: open mire1.cr2 asked
++1631 ms	darkroom: engine open start
++1837 ms	darkroom: engine open end
++2240 ms	darkroom: preview shown
++2404 ms	darkroom: preview shown
++2880 ms	darkroom: preview shown
++3430 ms	darkroom: open mire1.cr2 asked
++3433 ms	darkroom: engine open start
++3744 ms	darkroom: engine open end
++21483 ms	darkroom: open mire1.cr2 asked
++21492 ms	darkroom: engine open start
++21799 ms	darkroom: engine open end
++22908 ms	LPL preview: render start
++24079 ms	LPL preview: render end
+
+## threads
+"Signal Catcher" WAITING
+"HeapTaskDaemon" WAITING
+"ReferenceQueueDaemon" WAITING
+"dt-engine" RUNNABLE
+    at app.dtandroid.engine.NativeBridge.renderPreview(Native Method)
+    at app.dtandroid.engine.JniEngine.renderPreview$lambda$0(JniEngine.kt:257)
+    at app.dtandroid.engine.JniEngine.$r8$lambda$T9EMezl5dKKgUtYtXhQ-kJ638Hg(Unknown Source:0)
+    at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda27.invoke(D8$$SyntheticClass:0)
+    at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:77)
+    at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+    at app.dtandroid.engine.Engine.$r8$lambda$oDRF5EH_LtHKI5kZ_J83oB6ZCGc(Unknown Source:0)
+    at app.dtandroid.engine.Engine$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+    at java.lang.Thread.run(Thread.java:1012)
+"RenderThread" RUNNABLE
+
+## app log 22:08:02 to 22:08:03.7
+11-19 22:08:02.701  3672  4478 I darktable:     31.2950 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: The file contains d
+11-19 22:08:02.739  3672  4478 I darktable:     31.3325 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: The file contains d
+11-19 22:08:02.739  3672  4478 I darktable:     31.3327 [rawspeed] OTHER_0023.CR2 corrupt: virtual std::unique_ptr<RawDecoder> rawspeed::RawParser::getDecoder(const CameraMetaData *), line 97: No decoder found. Sorry.
+11-19 22:08:02.739  3672  4478 I darktable:     31.3329 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_34603/23/OTHER_0023.CR2: The file contains d
+11-19 22:08:02.740  3672  4478 I darktable:     31.3336 [dt_dev_load_raw] loading the image. took 0.015 secs (0.040 CPU)
+11-19 22:08:02.749  3672  4478 I darktable:     31.3423 [mimpmap _init_f] for ID=4 load_status=3
+11-19 22:08:02.782  3672  4478 I darktable: s_glBindAttribLocation: bind attrib 0 name position
+11-19 22:08:02.782  3672  4478 I darktable: s_glBindAttribLocation: bind attrib 1 name localCoord
+11-19 22:08:02.934  3672  4478 I darktable:     31.5249 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+11-19 22:08:03.289  3672  4478 I darktable:     31.8787 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+11-19 22:08:03.299  3672  4478 I darktable:     31.8928 [rawprepare] got wrong crop parameters left=0, right=0, top=0, bottom=0 for size=0x0
+11-19 22:08:03.299  3672  4478 I darktable: 
+11-19 22:08:03.299  3672  4478 I darktable:     31.8928 Trouble: [raw black/white point] 'invalid crop parameters' (OTHER_0023.CR2 4)
+11-19 22:08:03.299  3672  4478 I darktable:     31.8931 Trouble: [raw black/white point] 'white point not above black level, using maximum' (OTHER_0023.CR2 4)
+11-19 22:08:03.340  3672  4478 I darktable:     31.9335 [colorin] `(null) (null)' color matrix not found, !
+11-19 22:08:03.389  3672  4478 I darktable:     31.9827 [rawprepare] got wrong crop parameters left=0, right=0, top=0, bottom=0 for size=0x0
+11-19 22:08:03.389  3672  4478 I darktable: 
+11-19 22:08:03.389  3672  4478 I darktable:     31.9827 Trouble: [raw black/white point] 'invalid crop parameters' (OTHER_0023.CR2 4)
+11-19 22:08:03.390  3672  4478 I darktable:     31.9833 Trouble: [raw black/white point] 'white point not above black level, using maximum' (OTHER_0023.CR2 4)
+11-19 22:08:03.390  3672  4478 I darktable:     31.9834 [colorin] `(null) (null)' color matrix not found, !
+11-19 22:08:03.399  3672  4478 I darktable:     31.9926 [resample_plain] took 0.000 secs (0.000 CPU) 1:1 copy/crop of 17x25 pixels
+11-19 22:08:03.638  3672  3785 I TestRunner: finished: l1_linkDownloadDarkroomChangeDoneSync(app.dtandroid.real.LplScenarioTest)
+11-19 22:08:03.641  3672  3785 I TestRunner: started: l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt(app.dtandroid.real.LplScenarioTest)
+
+## run 44616800258 (2f2f375): the process's end
+11-19 21:49:42.083  3574  3591 F libc    : Fatal signal 6 (SIGABRT), code 0 (SI_USER) in tid 3591 (ReferenceQueueD), pid 3574 (app.dtandroid)
+11-19 21:49:42.564  7947  7947 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+11-19 21:49:42.564  7947  7947 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_x86_64/emu64x:13/TE1A.240213.009/12342917:userdebug/dev-keys'
+11-19 21:49:42.564  7947  7947 F DEBUG   : Revision: '0'
+11-19 21:49:42.564  7947  7947 F DEBUG   : ABI: 'x86_64'
+11-19 21:49:42.564  7947  7947 F DEBUG   : Timestamp: 2026-11-19 21:49:42.177958942+0000
+11-19 21:49:42.564  7947  7947 F DEBUG   : Process uptime: 1551s
+11-19 21:49:42.564  7947  7947 F DEBUG   : Cmdline: app.dtandroid
+11-19 21:49:42.564  7947  7947 F DEBUG   : pid: 3574, tid: 3591, name: ReferenceQueueD  >>> app.dtandroid <<<
+11-19 21:49:42.564  7947  7947 F DEBUG   : uid: 10174
+11-19 21:49:42.564  7947  7947 F DEBUG   : signal 6 (SIGABRT), code 0 (SI_USER), fault addr --------
+11-19 21:49:42.564  7947  7947 F DEBUG   : Abort message: 'Scudo ERROR: corrupted chunk header at address 0x7e36ba982920'
+11-19 21:49:42.564  7947  7947 F DEBUG   :     rax 0000000000000000  rbx 0000000000000df6  rcx 00007e3831cfa70f  rdx 0000000000000006
+11-19 21:49:42.564  7947  7947 F DEBUG   :     r8  0000000000000000  r9  0000000000000000  r10 00007e3536372370  r11 0000000000000207
+11-19 21:49:42.564  7947  7947 F DEBUG   :     r12 000000006faf6350  r13 00007e3536372648  r14 00007e3536372368  r15 0000000000000e07
+11-19 21:49:42.564  7947  7947 F DEBUG   :     rdi 0000000000000df6  rsi 0000000000000e07

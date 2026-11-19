@@ -228,8 +228,12 @@ class DarkroomController(
             val t = try {
                 bg("thumbnail ${item.fileName}") { e ->
                     if (_state.value.info != null || fetching) return@bg null
+                    if (item.rawPath in unreadable) return@bg null
                     e.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
-                    try { e.renderPreview(thumbnailSize) } finally { runCatching { e.close() } }
+                    try {
+                        if (!hasPicture(e, item)) return@bg null
+                        e.renderPreview(thumbnailSize)
+                    } finally { runCatching { e.close() } }
                 }
             } catch (e: EngineException) { null } ?: continue
             thumbnailStore?.store(item, t)
@@ -276,6 +280,22 @@ class DarkroomController(
             src?.opened(item, _state.value.series.items.getOrNull(index + 1))
         }
         requestRender()
+    }
+
+    /**
+     * Brief P2f: files darktable opened but found no picture in (an undecodable or truncated RAW: size 0 x 0).
+     * Rendering such a session hung the engine thread inside darktable's pipe and was followed by native heap
+     * corruption on the emulator (runs 44616800258 and 44623988726, a test file of junk bytes the background
+     * thumbnail pass picked up); the app never renders them. See the P2f report for the engine side.
+     */
+    private val unreadable: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    private suspend fun hasPicture(e: DarktableEngine, item: SeriesItem): Boolean {
+        val i = e.imageInfo()
+        if (i.width > 0 && i.height > 0 && i.rawWidth >= 0 && i.rawHeight >= 0) return true
+        unreadable += item.rawPath
+        Timeline.mark("darkroom: ${item.fileName} has no picture (${i.width}x${i.height}), not rendered")
+        return false
     }
 
     /** Brief P2f: the photo's last picture, else its thumbnail, while it opens; and what happens, in words. */
@@ -325,6 +345,10 @@ class DarkroomController(
             val check = xmp?.let { engine.xmpCheck(it) }
             Timeline.mark("darkroom: engine open start")
             engine.open(item.rawPath, xmp)
+            if (!hasPicture(engine, item)) {
+                runCatching { engine.close() }
+                throw EngineException(EngineError.IO, "darktable found no picture in this file (not a RAW it can read, or a broken download)")
+            }
             val info = engine.imageInfo()
             Timeline.mark("darkroom: engine open end")
             _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }

@@ -10,6 +10,7 @@ import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.darkroom.ThumbnailStore
 import app.dtandroid.darkroom.Timeline
 import app.dtandroid.darkroom.RgbaFile
+import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.FileLayoutStore
 import app.dtandroid.engine.api.RenderedImage
@@ -204,6 +205,9 @@ object AppHost {
     suspend fun previewPicture(e: app.dtandroid.engine.api.DarktableEngine): RenderedImage {
         Timeline.mark("LPL preview: render start")
         try {
+            // brief P2f: never render a file darktable found no picture in (see DarkroomController.hasPicture)
+            val info = e.imageInfo()
+            if (info.width <= 0 || info.height <= 0) throw EngineException(EngineError.IO, "no picture in this file")
             val full = e.renderSize(1.0)
             val scale = minOf(1.0, PREVIEW_SIZE.toDouble() / maxOf(full.w, full.h))
             val sz = e.renderSize(scale)

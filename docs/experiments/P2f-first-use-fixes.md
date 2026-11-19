@@ -38,6 +38,24 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 23:10 UTC: **run 44623988726 (1a997dc), emulator red, and the cause found.** The new dump (kept in
+  `P2f-results/hang-44623988726.txt`) shows, at l2's failure: darkroom lock held by a background task, one
+  interactive task waiting, and the engine thread inside `NativeBridge.renderPreview` (native) for minutes. The app
+  log just before: the background thumbnail pass (new in P2f) opened `OTHER_0023.CR2`, l1's placeholder photo, which
+  is 2000 bytes of junk on purpose: rawspeed "No decoder found", `rawprepare` "invalid crop parameters ... for size
+  0x0", `[mimpmap _init_f] load_status=3`, and the engine's render of that session never returned. Every later test
+  waited behind it. Run 44616800258's heap corruption ("Scudo ERROR: corrupted chunk header") came after the same
+  pattern (same placeholder file, same tests timing out). So: `dtb_open` accepts a file darktable cannot decode, and a
+  render of that session hangs (and, by all signs, damages the native heap). Before P2f the app rendered only photos the
+  user opened; P2f's background pass rendered every held photo with a file, including this one. Not a slow test and not
+  the new scheduler: an engine bug the app newly walked into. On the phone the same would happen with a broken or
+  partial download or a non-RAW file.
+  Fixed in the app now: after `open`, `image_info` must report a picture larger than 0 x 0, else the photo is never
+  rendered (darkroom: "darktable found no picture in this file"; thumbnails and the LightPhotoLibrary preview: skipped,
+  and remembered). Also: the bridge is now called strictly as `dtbridge.h` allows (cancel only while a render runs,
+  never alongside open/close; a counter of overlapping bridge calls, asserted 0 by the new test f9). Pushed; next:
+  read the rerun, then the report.
+
 - 2026-11-19 22:15 UTC: a reading that fits l2's timeline (photo opened, no preview after it, and none for any later
   photo): the canceller of a waiting interactive task cancelled *every* render while a background task was marked
   active, so a cancel issued just as the background task ended could land on the interactive render that took the

@@ -353,4 +353,18 @@ class P2fScenarioTest {
         }
         TestFiles.record(res, "f6", "passed")
     }
+
+    /**
+     * f9 (the reviewer's question on the heap corruption of run 44616800258): over every test of this run, no
+     * two bridge calls overlapped (dtbridge.h: one engine thread), and every cancel passed to the bridge came
+     * while a render ran. Runs last (name order) so it covers the whole process.
+     */
+    @Test
+    fun f9_theBridgeWasCalledAsItsHeaderAllows() {
+        val e = TestFiles.engine()
+        TestFiles.record(res, "f9_bridge_overlaps", e.bridgeOverlaps)
+        TestFiles.record(res, "f9_cancels_outside_a_render_not_passed_on", e.cancelsOutsideRender)
+        assertEquals("bridge calls that overlapped", 0L, e.bridgeOverlaps)
+        TestFiles.record(res, "f9", "passed")
+    }
 }
