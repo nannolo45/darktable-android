@@ -174,7 +174,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
 
   if want T7; then
     if "$DTB" "$W" timing "$RAW" "$XMP" "$D" > "$D/T7.log" 2>&1; then
-      note "INFO T7 $C (x86_64, 2 cores): $(grep '^RESULT' "$D/T7.log" | grep -v 'engine\|exit' | cut -d' ' -f2- | tr '\n' ';')"
+      note "INFO T7 $C ($(uname -m), $(nproc) cores): $(grep '^RESULT' "$D/T7.log" | grep -v 'engine\|exit' | cut -d' ' -f2- | tr '\n' ';')"
     else
       fail T7 "$C" "driver failed, see $D/T7.log"
     fi

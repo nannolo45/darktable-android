@@ -1532,8 +1532,8 @@ static int cmd_threads(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_set_threads(0));
   CHECK(info_int("threads") == max, "threads not restored");
   CHECK(probe_diff(ref, all, pw, ph) == 0, "render with all threads differs");
-  fprintf(stdout, "RESULT threads max %ld; probe render 1 thread %.3f s, %ld threads %.3f s (x86_64, 2 cores); 1 vs all max diff %d\n",
-          max, t1, max, t3, probe_diff(one, all, pw, ph) /* black differs */);
+  fprintf(stdout, "RESULT threads max %ld; probe render 1 thread %.3f s, %ld threads %.3f s (%s); 1 vs all max diff %d\n",
+          max, t1, max, t3, "build workspace or CI runner, not a phone", probe_diff(one, all, pw, ph) /* black differs */);
 
   // pinning: every engine thread on CPU 0
   EXPECT(dtb_set_thread_cpus((int[]){ 4096 }, 1), DTB_E_ARG);
@@ -1669,7 +1669,9 @@ static int cmd_output(const char *raw, const char *xmp, const char *outdir)
     { "e_16.png", "{\"format\": \"png\", \"bit_depth\": 16, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
     { "e_16.tif", "{\"format\": \"tiff\", \"bit_depth\": 16, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
     { "e_32.tif", "{\"format\": \"tiff\", \"bit_depth\": 32, \"max_width\": 400, \"max_height\": 400}", DTB_OK },
-    { "e.webp", "{\"format\": \"webp\", \"quality\": 90, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    // webp only where darktable was built with libwebp (its plugin file
+    // exists); otherwise the specification asks for ARG with a message
+    { "e.webp", "{\"format\": \"webp\", \"quality\": 90, \"max_width\": 800, \"max_height\": 800}", -100 },
     { "e_adobe.jpg", "{\"profile\": \"adobergb\", \"max_width\": 800, \"max_height\": 800}", DTB_OK },
     { "e_p3.jpg", "{\"profile\": \"displayp3\", \"max_width\": 800, \"max_height\": 800}", DTB_OK },
     { "e_srgb.jpg", "{\"profile\": \"srgb\", \"max_width\": 800, \"max_height\": 800, \"high_quality\": false}", DTB_OK },
@@ -1681,8 +1683,13 @@ static int cmd_output(const char *raw, const char *xmp, const char *outdir)
     { "bad5.jpg", "{\"profile\": \"prophoto\"}", DTB_E_ARG },
     { "bad6.jpg", "{\"upscale\": 1}", DTB_E_TYPE },
   };
+  gchar *webp_plugin = g_build_filename(getenv("DT_PREFIX"), "lib/darktable/plugins/imageio/format/libwebp.so", NULL);
+  const int webp_expect = g_file_test(webp_plugin, G_FILE_TEST_EXISTS) ? DTB_OK : DTB_E_ARG;
+  fprintf(stdout, "RESULT webp format plugin %s\n", webp_expect == DTB_OK ? "built" : "not built: ARG expected");
+  g_free(webp_plugin);
   for(size_t i = 0; i < sizeof(ex) / sizeof(ex[0]); i++)
   {
+    if(ex[i].expect == -100) ex[i].expect = webp_expect;
     char *p = path_join(outdir, ex[i].name);
     unlink(p);
     const int r = dtb_export(p, ex[i].opts);
