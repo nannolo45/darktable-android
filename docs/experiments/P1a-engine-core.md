@@ -5,6 +5,7 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19: run 44489957409 (024151b): APKs built; Linux tests and emulator test running.
 - 2026-11-19: run 44483237019: Linux 115 PASS, 6 FAIL (all T5, see 3.4); engine and APKs built; the
   emulator test failed only because tools/app/emulator-g0.sh still used the G0 app's old application id
   after the merge of main (P2a changed it). Fixed in 024151b; run on that commit pending.
