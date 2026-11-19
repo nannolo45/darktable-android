@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import app.dtandroid.darkroom.ui.DarkroomLayout
 import app.dtandroid.darkroom.ui.DarkroomScreen
+import app.dtandroid.darkroom.ui.LayoutFiles
 import app.dtandroid.schema.Control
 import app.dtandroid.ui.theme.DtTheme
 import app.dtandroid.ui.theme.DtTokens
@@ -59,10 +60,16 @@ abstract class ScreenshotBase {
         if (group != null) c.selectGroup(group)
         runBlocking { c.setup() }
         compose.setContent {
-            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout) }
+            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout, layoutFiles = NoFiles) }
         }
         settle(c)
         return c
+    }
+
+    /** The app shell's file picker stands in as a no-op, so the editor shows "import…" and "export…" as in the app. */
+    private object NoFiles : LayoutFiles {
+        override fun pickImport() = Unit
+        override fun export(fileName: String, bytes: ByteArray) = Unit
     }
 
     protected fun settle(c: DarkroomController) {
@@ -204,6 +211,8 @@ class PhoneScreenshots : ScreenshotBase() {
         val groups = ctl.layoutEditor.state.value.layout.groups.size
         assertEquals(4, groups)
         assertEquals(groups, compose.onAllNodesWithContentDescription("move group down").fetchSemanticsNodes().size)
+        compose.onNode(hasText("import…")).assertExists()
+        compose.onNode(hasText("export…")).assertExists()
         capture("phone-19-editor-user-layout")
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("module groups"))
         compose.waitForIdle()
