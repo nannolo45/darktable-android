@@ -66,6 +66,36 @@ const char *dtb_last_error(void);
 const char *dtb_engine_version(void);   /* darktable's version string */
 void dtb_free(void *p);
 
+/* --- engine information and tuning (brief G0) --- */
+
+/* Module plugins found in the module directory and loaded by the engine:
+ * { "moduledir": s,
+ *   "iop":     { "files": n, "loaded": n, "not_loaded": [ "<name>", ... ] },
+ *   "format":  { ... },          plugins/imageio/format
+ *   "storage": { ... },          plugins/imageio/storage
+ *   "not_loaded_total": n,       sum over iop, format and storage
+ *   "gui_only": { "views": n, "lighttable": n } }
+ * Without the desktop interface darktable loads only processing modules
+ * (iop), export formats and storages; view and lighttable plugins are only
+ * counted. A plugin that exists as a file but did not load is listed by its
+ * file name without "lib" and ".so". */
+char *dtb_plugins_json(void);
+
+/* Set the number of threads darktable's parallel loops use (OpenMP), as
+ * dt_init's --threads does, while the engine runs. n <= 0 restores the count
+ * in effect after dtb_init. Never more than that count: darktable sizes some
+ * per-thread buffers at start-up. Returns the count now in effect, or a
+ * negative DTB_E_* code. Engine thread, no render in flight. */
+int dtb_set_threads(int n);
+/* The count of OpenMP threads in effect now. */
+int dtb_get_threads(void);
+
+/* Drop the decoded images of the last opened image from the engine's memory
+ * caches (full, downscaled and thumbnail sizes), so the next dtb_open() and
+ * render start from the RAW file again. Only while no image is open. For
+ * benchmarks; never touches the RAW or the XMP. */
+int dtb_cache_drop(void);
+
 /* --- version guard (PLAN.md 2.1) --- */
 
 /* Check an XMP sidecar without opening the image. Returns a JSON object:

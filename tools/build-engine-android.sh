@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Cross-compile darktable (library, module plugins, darktable-cli, data) for
-# one Android ABI against the sysroot from deps/build-sysroot.sh, then pack
-# a stripped, self-contained engine tree (brief S1, workflow "engine").
+# one Android ABI against the sysroot from deps/build-sysroot.sh, then the
+# engine bridge (engine/, libdtbridge) against darktable's own build tree,
+# and pack a stripped, self-contained engine tree (briefs S1 and G0, workflow
+# "engine").
 #
 #   tools/build-engine-android.sh <abi> <darktable source> <output dir>
 #
@@ -67,10 +69,24 @@ t2=$(date +%s)
 rm -rf "$STAGE"
 DESTDIR="$STAGE" cmake --install "$BUILD" > "$OUT/engine-$ABI-install.log" 2>&1
 
+# ---- the bridge, from darktable's build tree -------------------------------
+# engine/CMakeLists.txt reads the compile definitions and include paths of
+# src/common/darktable.c from this build tree (ninja -t commands), so the
+# bridge sees darktable's structs exactly as libdarktable does (S3 condition 4).
+BRIDGE_BUILD="$DTA_WORK/bridge-build-$ABI"
+rm -rf "$BRIDGE_BUILD"
+cmake -S "$REPO/engine" -B "$BRIDGE_BUILD" -G Ninja "${CM[@]}" \
+  -DDT_SOURCE_DIR="$DT_SRC" -DDT_BUILD_DIR="$BUILD" -DDT_INSTALL_PREFIX="$STAGE$ENGINE_PREFIX" \
+  -DDTB_BUILD_TESTS=OFF 2>&1 | tee "$OUT/bridge-$ABI-cmake.log"
+cmake --build "$BRIDGE_BUILD" -j "$DTA_JOBS" 2>&1 | tee "$OUT/bridge-$ABI-build.log"
+[ -f "$BRIDGE_BUILD/libdtbridge.so" ] || dta_die "bridge build failed (see bridge-$ABI-build.log)"
+t3=$(date +%s)
+
 # ---- assemble a self-contained engine tree ---------------------------------
 E="$DTA_WORK/engine-$ABI"
 rm -rf "$E"; mkdir -p "$E/bin" "$E/lib" "$E/share"
 cp -a "$STAGE$ENGINE_PREFIX/bin/darktable-cli" "$E/bin/"
+cp "$BRIDGE_BUILD/libdtbridge.so" "$E/lib/"
 cp -a "$STAGE$ENGINE_PREFIX/lib/darktable" "$E/lib/"
 cp -a "$STAGE$ENGINE_PREFIX/share/darktable" "$E/share/"
 # OpenCL kernels are unused (OpenCL off); translations are not needed by the engine
@@ -89,6 +105,7 @@ cp "$OMP" "$E/lib/"
 declare -A NEED=()
 queue=()
 while IFS= read -r f; do queue+=("$f"); done < <(find "$E/bin" "$E/lib/darktable" -type f \( -name '*.so' -o -path '*/bin/*' \))
+NEED[libdtbridge.so]=1; queue+=("$E/lib/libdtbridge.so")
 while [ ${#queue[@]} -gt 0 ]; do
   f="${queue[0]}"; queue=("${queue[@]:1}")
   for n in $("$READELF" -dW "$f" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'); do
@@ -103,6 +120,12 @@ done
 # strip
 find "$E" -type f \( -name '*.so' -o -name '*.so.*' -o -path '*/bin/*' \) -exec "$STRIP" --strip-unneeded {} \; 2>/dev/null
 
+# Load order for an app (brief G0): an Android app cannot point the dynamic
+# linker at its own storage, so it loads every library of lib/ and
+# libdarktable by absolute path, dependencies first; darktable's plugins
+# then find them by soname. One path per line, relative to the engine root.
+"$HERE/engine-load-order.sh" "$E" "$READELF" > "$E/lib/load-order.txt" || dta_die "load order failed"
+
 # ---- checks and report -----------------------------------------------------
 R="$OUT/engine-$ABI-report.txt"
 {
@@ -110,6 +133,7 @@ R="$OUT/engine-$ABI-report.txt"
   echo "NDK $DTA_NDK_VERSION, API $DTA_API"
   echo "configure_seconds $((t1 - t0))"
   echo "build_seconds $((t2 - t1))"
+  echo "bridge_build_seconds $((t3 - t2))"
   echo "jobs $DTA_JOBS"
   echo
   echo "== sizes (stripped, bytes)"
@@ -120,6 +144,12 @@ R="$OUT/engine-$ABI-report.txt"
   printf 'dependency_libs\t%s\n' "$(find "$E/lib" -maxdepth 1 -type f -printf '%s\n' | awk '{s+=$1} END{print s}')"
   printf 'share_darktable\t%s\n' "$(du -sb "$E/share/darktable" | cut -f1)"
   printf 'share_lensfun\t%s\n' "$(du -sb "$E/share/lensfun" 2>/dev/null | cut -f1)"
+  echo
+  printf 'libdtbridge\t%s\n' "$(stat -c %s "$E/lib/libdtbridge.so")"
+  printf 'load_order_entries\t%s\n' "$(wc -l < "$E/lib/load-order.txt")"
+  echo
+  echo "== bridge: darktable compile definitions it was built with"
+  grep -m1 "darktable definitions:" "$OUT/bridge-$ABI-cmake.log" || echo "NOT FOUND"
   echo
   echo "== sysroot libraries not needed by the engine (not shipped)"
   echo "${DROPPED[*]:-none}"
