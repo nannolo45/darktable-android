@@ -5,6 +5,8 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 08:3x: waiting for run 44483237019 (engine for both ABIs and APKs built; Linux tests running, then
+  the t5_bisect diagnosis). Report draft in P1a-engine-core-REPORT.md; numbers filled in from that run.
 - 2026-11-19: aligned with the engine-api.md clarifications of cedca8b; merged main; run 44483237019 started
   (adds a t5_bisect diagnosis step). Run 44478936128: Linux 112 PASS, 9 FAIL (T5 raf corner, T5 arw x2,
   C7 webp not built on the runner: the test now expects ARG there); emulator test passed with the new bridge.
