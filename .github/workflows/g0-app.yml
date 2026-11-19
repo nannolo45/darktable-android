@@ -213,6 +213,9 @@ jobs:
               unzip -l "$a" | awk '$4 ~ /^(lib\/|assets\/engine\/)/ {print "  " $1 "\t" $4}'
               # no RAW images and no keystores inside
               if unzip -l "$a" | grep -iE '\.(cr2|cr3|nef|arw|raf|dng|orf|rw2|pef|srw|jks|keystore)$'; then echo "FORBIDDEN FILE IN APK"; exit 1; fi
+              # permissions: nothing is sent anywhere, so no network permission
+              "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/  /'
+              if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
               # the bridge must not be in lib/: it is loaded from the unpacked engine
               if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
               echo "  engine archive: $(stat -c %s /home/runner/engines/engine-$abi.tar.gz) bytes (tar.gz)"

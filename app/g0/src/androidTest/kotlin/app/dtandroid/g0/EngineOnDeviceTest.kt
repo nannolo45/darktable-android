@@ -126,15 +126,24 @@ class EngineOnDeviceTest {
             record("region_after_change_ms", rc.ms)
             assertEquals(r.w, rc.value.width)
 
-            // cancel: a render cancelled from another thread returns DTB_E_CANCELLED
+            // cancel: a full-size render cancelled from another thread 200 ms
+            // after it started returns DTB_E_CANCELLED. The pipeline is
+            // synchronised first (dtb_render_size), because a cancel that
+            // arrives before dtb_render starts has no effect by design.
             EngineOps.setExposure(e0 + 0.7f)
-            val canceller = Thread { Thread.sleep(30); NativeBridge.renderCancel() }
-            canceller.start()
+            val (cw, ch) = EngineOps.fullSize()
+            val cbuf = java.nio.ByteBuffer.allocateDirect(cw * ch * 4)
+            val canceller = Thread { Thread.sleep(200); NativeBridge.renderCancel() }
             val t0 = System.nanoTime()
-            val cancelCode = try { EngineOps.fullRender(null); 0 } catch (e: BridgeException) { e.code }
+            canceller.start()
+            val cancelCode = NativeBridge.render(0, 0, cw, ch, 1f, cbuf)
+            val cancelMs = (System.nanoTime() - t0) / 1e6
             canceller.join()
             record("cancel_result", NativeBridge.codeName(cancelCode))
-            record("cancel_return_ms", (System.nanoTime() - t0) / 1e6)
+            record("cancel_return_ms_after_start", cancelMs)
+            assertEquals("cancel", NativeBridge.E_CANCELLED, cancelCode)
+            // the next render after a cancel is complete
+            check(NativeBridge.render(0, 0, cw, ch, 1f, cbuf), "render after cancel")
 
             // switch the first module of the history off and on again
             val mods = EngineOps.historyModules()

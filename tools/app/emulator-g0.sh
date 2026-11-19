@@ -53,7 +53,7 @@ for f in $(adb shell run-as $PKG ls files/g0-test 2>/dev/null | tr -d '\r'); do
 done
 adb shell run-as $PKG du -sk files/engine 2>/dev/null | tr -d '\r' > "$OUT/g0-test/unpacked-du-kb.txt"
 adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
-grep -E "F DEBUG|Fatal signal|FATAL EXCEPTION|AndroidRuntime: " "$OUT/logcat.txt" > "$OUT/crashes.txt" || true
+grep -E " F DEBUG|Fatal signal|FATAL EXCEPTION| E AndroidRuntime" "$OUT/logcat.txt" > "$OUT/crashes.txt" || true
 {
   echo "install_s $(el "$t0" "$t1")"
   echo "instrumentation_s $(el "$t2" "$t3")"
