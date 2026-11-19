@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Merge the extractor's per-module output into one schema file.
 
-    merge.py <raw dir> <ui-schema.json>
+    merge.py <raw dir> <ui-schema.json> [--replace <path>=<token> ...]
+
+--replace swaps machine-specific paths that darktable puts into some tooltips
+(its config directory, its install prefix) for a fixed token, so the file does
+not depend on where it was generated.
 
 <raw dir> holds _run.json and one <op>.json per module, as written by the
 extractor plugin. This script
@@ -182,6 +186,16 @@ def module_stats(m, flat):
 
 def main():
     raw, out = sys.argv[1], sys.argv[2]
+    replace = []
+    args = sys.argv[3:]
+    while args:
+        if args[0] == "--replace" and len(args) > 1:
+            path, token = args[1].rsplit("=", 1)
+            replace.append((path, token))
+            args = args[2:]
+        else:
+            sys.exit("unknown argument %s" % args[0])
+    replace.sort(key=lambda pt: -len(pt[0]))
     run = json.load(open(os.path.join(raw, "_run.json")))
     modules = {}
     for fn in sorted(os.listdir(raw)):
@@ -235,8 +249,11 @@ def main():
         "strings": "untranslated (C locale); labels have any gettext context removed",
         "modules": dict(sorted(modules.items(), key=lambda kv: kv[1].get("pipe_position", 0))),
     }
+    text = json.dumps(schema, indent=1, ensure_ascii=False, sort_keys=False)
+    for path, token in replace:
+        text = text.replace(path, token)
     with open(out, "w", encoding="utf-8") as f:
-        json.dump(schema, f, indent=1, ensure_ascii=False, sort_keys=False)
+        f.write(text)
         f.write("\n")
 
 

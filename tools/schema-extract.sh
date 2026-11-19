@@ -108,5 +108,6 @@ for attempt in $(seq 1 40); do
 done
 
 echo "== merge"
-python3 -I "$REPO/schema/extractor/merge.py" "$RAW" "$OUT"
+python3 -I "$REPO/schema/extractor/merge.py" "$RAW" "$OUT" \
+  --replace "$WORK/config=<configdir>" --replace "$DT_PREFIX=<prefix>"
 echo "schema written to $OUT"
