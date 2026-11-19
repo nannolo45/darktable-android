@@ -1,0 +1,117 @@
+T1 cr2 bridge.ppm vs cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T2 cr2 param_bridge.ppm vs param_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 cr2 instances_reopen.ppm vs instances_bridge.ppm --tolerance 0: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 cr2 instances_bridge.ppm vs instances_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 cr2 history_back.ppm vs history_back_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 cr2 history_compressed.ppm vs history_compressed_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region0-vs-cli region0.ppm vs cli.png --crop 1698 1045 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region1-vs-cli region1.ppm vs cli.png --crop 0 0 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/base/region2-vs-cli region2.ppm vs cli.png --crop 3359 2067 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-shadhi/region0 region0.ppm vs region0_crop.ppm --tolerance 2 --mean-tolerance 0.0781: size 512x512 max 2 mean 0.07795 psnr 59.21 differing_values_pct 7.7947
+T5 cr2/on-shadhi/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0731: size 512x512 max 1 mean 0.07291 psnr 59.50 differing_values_pct 7.2910
+T5 cr2/on-shadhi/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0257: size 512x512 max 1 mean 0.02558 psnr 64.05 differing_values_pct 2.5580
+T5 cr2/on-lowpass/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0019: size 512x512 max 1 mean 0.00181 psnr 75.55 differing_values_pct 0.1812
+T5 cr2/on-lowpass/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0003: size 512x512 max 1 mean 0.00024 psnr 84.37 differing_values_pct 0.0238
+T5 cr2/on-lowpass/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0003: size 512x512 max 1 mean 0.00019 psnr 85.44 differing_values_pct 0.0186
+T5 cr2/on-soften/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0004: size 512x512 max 1 mean 0.00026 psnr 83.91 differing_values_pct 0.0264
+T5 cr2/on-soften/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0003: size 512x512 max 1 mean 0.00017 psnr 85.88 differing_values_pct 0.0168
+T5 cr2/on-soften/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0002: size 512x512 max 1 mean 0.00010 psnr 87.95 differing_values_pct 0.0104
+T5 cr2/on-bloom/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0010: size 512x512 max 1 mean 0.00089 psnr 78.66 differing_values_pct 0.0885
+T5 cr2/on-bloom/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0003: size 512x512 max 1 mean 0.00019 psnr 85.41 differing_values_pct 0.0187
+T5 cr2/on-bloom/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0005: size 512x512 max 1 mean 0.00034 psnr 82.77 differing_values_pct 0.0343
+T5 cr2/on-denoiseprofile/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0260: size 512x512 max 1 mean 0.02589 psnr 64.00 differing_values_pct 2.5885
+T5 cr2/on-denoiseprofile/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0406: size 512x512 max 1 mean 0.04047 psnr 62.06 differing_values_pct 4.0474
+T5 cr2/on-denoiseprofile/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0398: size 512x512 max 1 mean 0.03958 psnr 62.16 differing_values_pct 3.9584
+T5 cr2/on-monochrome/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0098: size 512x512 max 1 mean 0.00974 psnr 68.24 differing_values_pct 0.9744
+T5 cr2/on-monochrome/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0004: size 512x512 max 1 mean 0.00028 psnr 83.66 differing_values_pct 0.0280
+T5 cr2/on-monochrome/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0002: size 512x512 max 1 mean 0.00012 psnr 87.22 differing_values_pct 0.0123
+T5 cr2/on-bilat/region0 region0.ppm vs region0_crop.ppm --tolerance 9 --mean-tolerance 1.6134: size 512x512 max 9 mean 1.61334 psnr 42.82 differing_values_pct 88.9704
+T5 cr2/on-bilat/region1 region1.ppm vs region1_crop.ppm --tolerance 4 --mean-tolerance 1.0405: size 512x512 max 4 mean 1.04038 psnr 46.55 differing_values_pct 84.0754
+T5 cr2/on-bilat/region2 region2.ppm vs region2_crop.ppm --tolerance 5 --mean-tolerance 1.5362: size 512x512 max 5 mean 1.53604 psnr 43.75 differing_values_pct 97.7556
+T5 cr2/on-bilateral/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00000 psnr 107.09 differing_values_pct 0.0001
+T5 cr2/on-bilateral/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00000 psnr 102.32 differing_values_pct 0.0004
+T5 cr2/on-bilateral/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00001 psnr 101.07 differing_values_pct 0.0005
+T5 cr2/on-sharpen/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-sharpen/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-sharpen/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-diffuse/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-diffuse/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-diffuse/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-filmicrgb/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-filmicrgb/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-filmicrgb/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-atrous/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-atrous/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-atrous/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-colorequal/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-colorequal/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-colorequal/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 cr2/on-nlmeans/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00001 psnr 98.06 differing_values_pct 0.0010
+T5 cr2/on-nlmeans/region1 region1.ppm vs region1_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00001 psnr 100.10 differing_values_pct 0.0006
+T5 cr2/on-nlmeans/region2 region2.ppm vs region2_crop.ppm --tolerance 1 --mean-tolerance 0.0001: size 512x512 max 1 mean 0.00001 psnr 97.09 differing_values_pct 0.0013
+T5 cr2/on-defringe/region0 region0.ppm vs region0_crop.ppm --tolerance 81 --mean-tolerance 0.2194: size 512x512 max 81 mean 0.21871 psnr 43.36 differing_values_pct 4.9220
+T5 cr2/on-defringe/region1 region1.ppm vs region1_crop.ppm --tolerance 92 --mean-tolerance 0.6026: size 512x512 max 92 mean 0.60243 psnr 40.01 differing_values_pct 10.3161
+T5 cr2/on-defringe/region2 region2.ppm vs region2_crop.ppm --tolerance 92 --mean-tolerance 1.4550: size 512x512 max 92 mean 1.45511 psnr 35.51 differing_values_pct 21.7406
+T5 cr2/on-globaltonemap/region0 region0.ppm vs region0_crop.ppm --tolerance 1 --mean-tolerance 0.2162: size 512x512 max 1 mean 0.21606 psnr 54.78 differing_values_pct 21.6063
+T5 cr2/on-globaltonemap/region1 region1.ppm vs region1_crop.ppm --tolerance 70 --mean-tolerance 63.7601: size 512x512 max 70 mean 63.76000 psnr 11.99 differing_values_pct 99.9966
+T5 cr2/on-globaltonemap/region2 region2.ppm vs region2_crop.ppm --tolerance 48 --mean-tolerance 30.9887: size 512x512 max 48 mean 30.98857 psnr 18.00 differing_values_pct 99.7434
+T9 cr2 mask_bridge.ppm vs mask_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 cr2 x_move_bridge.ppm vs x_move_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 cr2 x_delete_bridge.ppm vs x_delete_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 cr2 x_export.jpg vs x_export_cli.jpg : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 cr2 params_bridge.ppm vs params_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 cr2 reset_bridge.ppm vs reset_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C3 cr2 undo_bridge.ppm vs undo_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C4 cr2 actions_bridge.ppm vs actions_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C9 cr2 drag_bridge.ppm vs drag_cli.png : size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 cr2 e_8.png vs c7_cli.png --tolerance 0: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 cr2 e_default.jpg vs c7_cli.jpg --tolerance 0: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T1 raf bridge.ppm vs cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T2 raf param_bridge.ppm vs param_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 raf instances_reopen.ppm vs instances_bridge.ppm --tolerance 0: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 raf instances_bridge.ppm vs instances_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 raf history_back.ppm vs history_back_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 raf history_compressed.ppm vs history_compressed_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 raf/base/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 raf/base/region1 region1.ppm vs region1_crop.ppm --tolerance 11 --mean-tolerance 0.0077: size 512x512 max 11 mean 0.00756 psnr 66.54 differing_values_pct 0.5334
+T5 raf/base/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 raf/base/region0-vs-cli region0.ppm vs cli.png --crop 2869 1828 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 raf/base/region1-vs-cli region1.ppm vs cli.png --crop 0 0 512 512 --tolerance 11 --mean-tolerance 0.0077: size 512x512 max 11 mean 0.00756 psnr 66.54 differing_values_pct 0.5334
+T5 raf/base/region2-vs-cli region2.ppm vs cli.png --crop 5701 3633 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T9 raf mask_bridge.ppm vs mask_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 raf x_move_bridge.ppm vs x_move_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 raf x_delete_bridge.ppm vs x_delete_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 raf x_export.jpg vs x_export_cli.jpg : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 raf params_bridge.ppm vs params_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 raf reset_bridge.ppm vs reset_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C3 raf undo_bridge.ppm vs undo_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C4 raf actions_bridge.ppm vs actions_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C9 raf drag_bridge.ppm vs drag_cli.png : size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 raf e_8.png vs c7_cli.png --tolerance 0: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 raf e_default.jpg vs c7_cli.jpg --tolerance 0: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T1 arw bridge.ppm vs cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T2 arw param_bridge.ppm vs param_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 arw instances_reopen.ppm vs instances_bridge.ppm --tolerance 0: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T3 arw instances_bridge.ppm vs instances_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 arw history_back.ppm vs history_back_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T4 arw history_compressed.ppm vs history_compressed_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 arw/base/region0 region0.ppm vs region0_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 arw/base/region1 region1.ppm vs region1_crop.ppm --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 arw/base/region2 region2.ppm vs region2_crop.ppm --tolerance 0: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+T5 arw/base/region0-vs-cli region0.ppm vs cli.png --crop 2490 1580 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 arw/base/region1-vs-cli region1.ppm vs cli.png --crop 0 0 512 512 --tolerance 0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+T5 arw/base/region2-vs-cli region2.ppm vs cli.png --crop 4943 3137 512 512 --tolerance 0: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+T9 arw mask_bridge.ppm vs mask_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 arw x_move_bridge.ppm vs x_move_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 arw x_delete_bridge.ppm vs x_delete_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+X1 arw x_export.jpg vs x_export_cli.jpg : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 arw params_bridge.ppm vs params_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C2 arw reset_bridge.ppm vs reset_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C3 arw undo_bridge.ppm vs undo_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C4 arw actions_bridge.ppm vs actions_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C9 arw drag_bridge.ppm vs drag_cli.png : size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 arw e_8.png vs c7_cli.png --tolerance 0: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+C7 arw e_default.jpg vs c7_cli.jpg --tolerance 0: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
