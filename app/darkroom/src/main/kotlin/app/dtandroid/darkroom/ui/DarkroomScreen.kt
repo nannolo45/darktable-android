@@ -106,9 +106,9 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
 private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
     val c = DtTheme.colors
     Row(
-        Modifier.fillMaxWidth().padding(start = DtTheme.space.xs, end = DtTheme.space.l, top = DtTheme.space.s, bottom = DtTheme.space.s),
+        Modifier.fillMaxWidth().padding(start = DtTheme.space.xs, end = DtTheme.space.m, top = DtTheme.space.s, bottom = DtTheme.space.s),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s),
+        horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xs),
     ) {
         DtIconButton(DtIcon.Back, "Back", c.text, onBack, iconSize = DtTheme.sizes.iconLarge)
         Row(
@@ -128,9 +128,9 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
             DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
                 Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
         }
-        BeforeButton(controller, s)
+        BeforeButton(controller, s, compact = true)
         if (menu) MoreButton(controller)
-        DtTextButton("done", onDone)
+        DtTextButton("done", onDone, compact = true)
     }
 }
 
@@ -147,8 +147,8 @@ fun seriesLine(s: DarkroomState) =
     if (s.series.items.isEmpty()) "" else "${s.series.name} · ${s.index + 1} of ${s.series.items.size}"
 
 @Composable
-private fun BeforeButton(controller: DarkroomController, s: DarkroomState) {
-    DtTextButton("before", { controller.launch { setBefore(!s.before) } }, selected = s.before,
+private fun BeforeButton(controller: DarkroomController, s: DarkroomState, compact: Boolean = false) {
+    DtTextButton("before", { controller.launch { setBefore(!s.before) } }, selected = s.before, compact = compact,
         modifier = Modifier.semantics { stateDescription = if (s.before) "on" else "off" })
 }
 

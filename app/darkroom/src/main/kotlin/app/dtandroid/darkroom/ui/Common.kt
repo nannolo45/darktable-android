@@ -82,6 +82,8 @@ fun DtTextButton(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     enabled: Boolean = true,
+    /** brief P2f: less padding, where a title needs the room (the phone's top bar) */
+    compact: Boolean = false,
 ) {
     val c = DtTheme.colors
     Box(
@@ -90,7 +92,7 @@ fun DtTextButton(
             .clip(RoundedCornerShape(DtTheme.sizes.radiusControl))
             .background(if (selected) c.selected else c.header)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = DtTheme.space.xl),
+            .padding(horizontal = if (compact) DtTheme.space.m else DtTheme.space.xl),
         contentAlignment = Alignment.Center,
     ) {
         DtText(label, DtTheme.type.label, when {

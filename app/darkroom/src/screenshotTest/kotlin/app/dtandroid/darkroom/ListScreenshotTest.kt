@@ -153,7 +153,7 @@ class TopBarScreenshots {
 
     private val outDir = File(System.getProperty("dta.screenshots") ?: "build/outputs/screenshots").apply { mkdirs() }
 
-    private fun topBar(name: String, file: String) {
+    private fun topBar(name: String, file: String, whole: Boolean = false) {
         val (c, _) = TestSetup.controller(tmp.root)
         val item = c.state.value.current!!
         c.replaceItem(0, item.copy(fileName = name))
@@ -162,7 +162,7 @@ class TopBarScreenshots {
             DtTheme(DtTokens.load()) {
                 // the narrowest the title may show: three letters, the ellipsis, the last four characters
                 val tm = rememberTextMeasurer()
-                needed = tm.measure(name.take(3) + "…" + name.takeLast(4), DtTheme.type.title).size.width
+                needed = tm.measure(if (whole) name else name.take(3) + "…" + name.takeLast(4), DtTheme.type.title).size.width
                 DarkroomScreen(c, onBack = {}, onDone = {}, layout = DarkroomLayout.PHONE,
                     actions = listOf(HostAction("export JPEG…") {}, HostAction("timings…") {}))
             }
@@ -172,11 +172,12 @@ class TopBarScreenshots {
         compose.waitForIdle()
         compose.onNodeWithContentDescription("more").assertExists()
         val w = compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode().size.width
-        assertTrue("title is $w px wide, needs $needed px for \"${name.take(3)}…${name.takeLast(4)}\"", w >= needed)
+        assertTrue("title is $w px wide, needs $needed px", w >= needed)
         compose.onRoot().captureRoboImage(File(outDir, "topbar-$file.png").path)
     }
 
-    @Test fun shortName() = topBar("PHOTO04261.RAW", "360dp-short-name")
+    /** a 14-character name (camera names are usually 12) is shown whole at 360 dp */
+    @Test fun shortName() = topBar("PHOTO04261.RAW", "360dp-short-name", whole = true)
 
     @Test fun longName() = topBar("IMG_20261119_LONG_EXPORT_NAME_04261.ARW", "360dp-long-name")
 }
