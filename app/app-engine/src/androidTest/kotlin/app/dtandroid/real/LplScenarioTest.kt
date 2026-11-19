@@ -73,10 +73,15 @@ class LplScenarioTest {
 
     private fun change(v: AppViewModel, ev: Double) {
         val c = v.controller
-        val before = c.state.value.history.items.size
         val j = c.launch { setParam(InstanceKey("exposure", 0), "exposure", JsonPrimitive(ev)) }
         waitFor("change applied") { j.isCompleted }
-        waitFor("history grows") { c.state.value.history.items.size > before }
+        // the engine has the new value (the history may grow, or darktable may fold the change into its top item)
+        fun value() = (c.state.value.modules.firstOrNull { it.op == "exposure" }?.params?.get("exposure") as? JsonPrimitive)?.content?.toDoubleOrNull()
+        try {
+            waitFor("exposure is $ev", 30_000) { value()?.let { Math.abs(it - ev) < 1e-6 } == true }
+        } catch (e: AssertionError) {
+            throw AssertionError("${e.message}; value ${value()}, darkroom message: ${c.state.value.message}, history ${c.state.value.history.end}/${c.state.value.history.items.size}")
+        }
     }
 
     @Test

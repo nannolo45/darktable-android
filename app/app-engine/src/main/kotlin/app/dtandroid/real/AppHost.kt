@@ -229,7 +229,8 @@ object AppHost {
             while (isActive) {
                 if (servers.list().isNotEmpty()) {
                     val jobs = agent.heartbeat()
-                    for ((origin, job) in jobs) launch { jobLock.withLock { runJob(origin, job) } }
+                    // in the order LPL gave them, one after the other
+                    if (jobs.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
                 }
                 delay(HEARTBEAT_MS)
             }
@@ -245,10 +246,11 @@ object AppHost {
             if (servers.list().isNotEmpty()) {
                 // LPL hands a job out once. Jobs that come with this last heartbeat: sync and release are
                 // done now; edit and open need the screen and are kept (on disk) until the app is open again
+                val now = ArrayList<Pair<ServerOrigin, Job>>()
                 for ((origin, job) in agent.heartbeat()) {
-                    if (job.kind == "sync" || job.kind == "release") launch { jobLock.withLock { runJob(origin, job) } }
-                    else keepJob(origin, job)
+                    if (job.kind == "sync" || job.kind == "release") now += origin to job else keepJob(origin, job)
                 }
+                if (now.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in now) runJob(origin, job) } }
             }
             // a photo left open in the darkroom has its edit written by the activity; if the process ends
             // before the user comes back, the job sends it
@@ -301,7 +303,8 @@ object AppHost {
     /** Run jobs kept from the last heartbeat (called when the app is in the foreground again). */
     fun runKeptJobs() {
         AppEngine.scope.launch {
-            for ((origin, job) in takeKeptJobs()) launch { jobLock.withLock { runJob(origin, job) } }
+            val kept = takeKeptJobs()
+            if (kept.isNotEmpty()) jobLock.withLock { for ((origin, job) in kept) runJob(origin, job) }
         }
     }
 

@@ -4,6 +4,14 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
 
 ## Running log (newest first)
 
+- 2026-11-19 16:25: run 44550752839 (f08a8e4): JVM green, APK published, emulator 28/31: l1 now passes
+  (done → list 9 ms, done → XMP and preview at the stub 1.9 s, preview 1920x1278), l3, l5, l6 pass.
+  Failures: the known bridge gap; l4: jobs of one heartbeat ran in parallel coroutines, so `edit` could run
+  before `open` (fixed: one heartbeat's jobs run one after the other, in LPL's order); l2: the exposure
+  change did not show in the history count within 3 min (passed in the run before; the test now waits for
+  the engine's value and reports the darkroom's message if it does not come). Run 44549705769 stopped on a
+  Maven Central "could not find" (retry added to the workflow).
+
 - 2026-11-19 15:40: run 44546873879 (5c0fa48): JVM 158 tests pass (1 skipped: the real-server run needs a
   server), APK `dt-android-5c0fa48ef5f6` published (app.dtandroid, owner key, INTERNET + network state +
   boot completed only); preview run 44546873563 green under `app.dtandroid.preview`. Emulator 28/31: the
