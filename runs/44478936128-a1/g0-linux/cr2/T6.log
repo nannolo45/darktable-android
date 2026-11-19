@@ -1,0 +1,12 @@
+RESULT engine 04477d3
+RESULT check newer.xmp problems 1 {"problems":[{"num":8,"operation":"exposure","modversion":8,"engine_version":7,"reason":"newer_module_version"}],"ok":false,"parsed":true,"xmp_version":4,"entries":9}
+RESULT write_over_newer.xmp -7
+RESULT write_elsewhere_from_newer.xmp -7
+RESULT healthy_session_write_over_newer.xmp -7
+RESULT check unknown.xmp problems 1 {"problems":[{"num":8,"operation":"s3notamodule","modversion":5,"engine_version":null,"reason":"unknown_operation"}],"ok":false,"parsed":true,"xmp_version":4,"entries":9}
+     0.4665 cannot get iop-order for s3notamodule instance 0
+RESULT write_over_unknown.xmp -7
+RESULT write_elsewhere_from_unknown.xmp -7
+RESULT healthy_session_write_over_unknown.xmp -7
+RESULT check original problems 0
+RESULT exit 0
