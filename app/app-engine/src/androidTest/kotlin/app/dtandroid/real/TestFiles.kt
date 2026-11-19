@@ -42,6 +42,14 @@ object TestFiles {
         File(dir, "test-edit.xmp").also { copyFromShell(src, it) }
     }
 
+    /** Brief P2f: the public spektrafilm case of darktable-tests (RAW and its XMP), or null when not given. */
+    val spektrafilm: Pair<File, File>? by lazy {
+        val r = args.getString("sfraw") ?: return@lazy null
+        val x = args.getString("sfxmp") ?: return@lazy null
+        File(dir, File(r).name).also { copyFromShell(r, it); it.setWritable(false, false) } to
+            File(dir, "spektrafilm-test.xmp").also { copyFromShell(x, it) }
+    }
+
     /** [xmp] with its first history entry's operation renamed to one no darktable knows. */
     fun writeXmpWithUnknownModule(f: File) {
         val text = xmp.readText()

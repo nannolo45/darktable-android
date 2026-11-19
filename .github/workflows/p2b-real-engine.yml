@@ -26,6 +26,11 @@ env:
   # the public test image and edit the G0 comparison uses (darktable-tests)
   P2B_RAW: images/mire1.cr2
   P2B_XMP: 0001-exposure/exposure.xmp
+  # brief P2f: darktable-tests' spektrafilm case, and the spektrafilm data pack (darktable-org/darktable-spektrafilm,
+  # CC BY-SA 4.0) at a fixed commit, carried in the APK and given to darktable-cli for the comparison
+  P2F_SF_RAW: images/hlrecovery.arw
+  P2F_SF_XMP: 0179-spektrafilm/spektrafilm.xmp
+  SF_REF: b15cfe18fb35ec15084f78c986b0ebc730338e6e
 
 jobs:
   tag:
@@ -104,7 +109,7 @@ jobs:
           mkdir -p /tmp/ci-out
           ok=0
           for i in 1 2 3; do
-            if tools/engine-test/fetch-paths.sh /home/runner/dtt "$P2B_RAW" "$P2B_XMP" 2>&1 | tee -a /tmp/ci-out/fetch.log; then ok=1; break; fi
+            if tools/engine-test/fetch-paths.sh /home/runner/dtt "$P2B_RAW" "$P2B_XMP" "$P2F_SF_RAW" "$P2F_SF_XMP" 2>&1 | tee -a /tmp/ci-out/fetch.log; then ok=1; break; fi
             echo "fetch attempt $i failed" | tee -a /tmp/ci-out/fetch.log; rm -rf /home/runner/dtt; sleep 10
           done
           [ "$ok" = 1 ]
@@ -122,6 +127,18 @@ jobs:
           ls -l /home/runner/ref | tee /tmp/ci-out/ref.txt
           echo "darktable-cli exit $rc" | tee -a /tmp/ci-out/ref.txt
           [ -s /home/runner/ref/export.jpg ]
+
+      - name: Spektrafilm reference (brief P2f; darktable-cli with the same data pack as the app)
+        run: |
+          set +e
+          for i in 1 2 3; do python3 -I schema/extractor/fetch_spektrafilm_pack.py /home/runner/sfxdg "$SF_REF" > /tmp/ci-out/sf-pack.log 2>&1 && break; sleep 10; done
+          cat /tmp/ci-out/sf-pack.log
+          XDG_DATA_HOME=/home/runner/sfxdg /home/runner/dt-linux/bin/darktable-cli "/home/runner/dtt/$P2F_SF_RAW" "/home/runner/dtt/$P2F_SF_XMP" /home/runner/ref/spektrafilm.jpg \
+            --core --configdir /tmp/cli-config-sf --cachedir /tmp/cli-cache-sf \
+            --conf plugins/imageio/format/jpeg/quality=95 > /tmp/ci-out/cli-spektrafilm.log 2>&1
+          echo "darktable-cli (spektrafilm) exit $?" | tee -a /tmp/ci-out/ref.txt
+          ls -l /home/runner/ref/spektrafilm.jpg | tee -a /tmp/ci-out/ref.txt
+          exit 0
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -185,6 +202,13 @@ jobs:
             echo "signing: temporary key for this run (this run was given no SIGNING_KEYSTORE_B64 secret)" | tee /tmp/signing.txt
           fi
 
+      - name: Spektrafilm data pack for the APK (brief P2f)
+        run: |
+          for i in 1 2 3; do python3 -I schema/extractor/fetch_spektrafilm_pack.py /home/runner/sf "$SF_REF" && break; echo "pack fetch attempt $i failed"; sleep 10; done
+          curl -fsSL --retry 5 --retry-all-errors -o /home/runner/sf/LICENSE "https://raw.githubusercontent.com/darktable-org/darktable-spektrafilm/$SF_REF/LICENSE"
+          du -sb /home/runner/sf/darktable/spektrafilm; ls /home/runner/sf/darktable/spektrafilm | head
+          echo "DTA_SF_ARG=-Pdta.spektrafilmDir=/home/runner/sf" >> "$GITHUB_ENV"
+
       - name: Rule check and JVM tests (fake engine, screenshots included)
         id: tests
         run: |
@@ -212,7 +236,7 @@ jobs:
         run: |
           start=$(date +%s)
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG \
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG $DTA_SF_ARG \
             :app-engine:assembleArm64Debug :app-engine:assembleX86_64Debug :app-engine:assembleX86_64DebugAndroidTest :g0:assembleX86_64Debug 2>&1 | tee /tmp/gradle.log
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
           mkdir -p /home/runner/apk
@@ -339,7 +363,7 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: bash tools/app/emulator-p2b.sh /home/runner/apk/dt-android-x86_64.apk /home/runner/apk/app-engine-x86_64-androidTest.apk "$DTT/$P2B_RAW" "$DTT/$P2B_XMP" /home/runner/emu; echo $? > /home/runner/emu-rc.txt
+          script: bash tools/app/emulator-p2b.sh /home/runner/apk/dt-android-x86_64.apk /home/runner/apk/app-engine-x86_64-androidTest.apk "$DTT/$P2B_RAW" "$DTT/$P2B_XMP" /home/runner/emu "$DTT/$P2F_SF_RAW" "$DTT/$P2F_SF_XMP"; echo $? > /home/runner/emu-rc.txt
 
       - name: Result
         id: r
@@ -423,6 +447,9 @@ jobs:
             if echo "$out" | grep -q '^size' && { [ "$psnr" = inf ] || awk "BEGIN{exit !($psnr >= 40)}"; }; then echo ok; else echo bad; fi
           }
           g0=$(check "$A/export.jpg" "$R/export.jpg" "test XMP: app export vs darktable-cli" | tail -1)
+          # brief P2f: spektrafilm with its data pack on both sides
+          sf=$(check "$A/spektrafilm.jpg" "$R/spektrafilm.jpg" "spektrafilm test (0179): app export vs darktable-cli, same data pack" | tail -1)
+          echo "sf=$sf" >> "$GITHUB_OUTPUT"
           ed=$(check "$A/app-edit.jpg" /tmp/cli-app-edit.jpg "app-written XMP: app export vs darktable-cli" | tail -1)
           echo "g0=$g0" >> "$GITHUB_OUTPUT"; echo "edit=$ed" >> "$GITHUB_OUTPUT"
           cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
@@ -431,8 +458,8 @@ jobs:
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok'
         run: exit 1

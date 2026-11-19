@@ -55,6 +55,48 @@ abstract class PackEngine : DefaultTask() {
     }
 }
 
+/**
+ * Brief P2f deliverable 8: darktable's spektrafilm data pack (film and paper profiles, the spectral table),
+ * zipped into assets/spektrafilm/ with its licence and an id (SHA-256 of the zip, first 16 hex digits).
+ * The app unpacks it into the folder darktable reads a hand-installed pack from
+ * (<XDG_DATA_HOME>/darktable/spektrafilm, src/common/spektra_fetch.c), because the engine cannot fetch it
+ * (curl is built without TLS). -Pdta.spektrafilmDir=<dir> names a folder holding darktable/spektrafilm/ (as
+ * schema/extractor/fetch_spektrafilm_pack.py leaves it) and LICENSE; without it the app carries no pack.
+ */
+abstract class PackSpektrafilm : DefaultTask() {
+    @get:InputDirectory abstract val source: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun pack() {
+        val root = source.get().asFile
+        val pack = File(root, "darktable/spektrafilm")
+        val out = File(outputDir.get().asFile, "spektrafilm").apply { deleteRecursively(); mkdirs() }
+        val files = pack.walkTopDown().filter { it.isFile }.map { it.relativeTo(pack).invariantSeparatorsPath }
+            .filter { !it.startsWith("packs/") }.sorted().toList()
+        require(files.isNotEmpty()) { "$pack holds no spektrafilm pack" }
+        val zip = File(out, "spektrafilm.zip")
+        ZipOutputStream(zip.outputStream().buffered()).use { z ->
+            for (rel in files) {
+                val e = ZipEntry(rel)
+                e.time = 0L
+                z.putNextEntry(e)
+                File(pack, rel).inputStream().use { it.copyTo(z) }
+                z.closeEntry()
+            }
+        }
+        File(root, "LICENSE").takeIf { it.isFile }?.copyTo(File(out, "LICENSE"), overwrite = true)
+        val md = MessageDigest.getInstance("SHA-256")
+        zip.inputStream().use { st ->
+            val buf = ByteArray(1 shl 16)
+            while (true) { val n = st.read(buf); if (n < 0) break; md.update(buf, 0, n) }
+        }
+        File(out, "spektrafilm.id").writeText(md.digest().joinToString("") { "%02x".format(it) }.take(16) + "\n")
+    }
+}
+
+val spektrafilmDir: String? = providers.gradleProperty("dta.spektrafilmDir").orNull
+
 val abiOfFlavor = mapOf("arm64" to "arm64-v8a", "x86_64" to "x86_64")
 
 android {
@@ -134,6 +176,10 @@ androidComponents {
             engineTree.set(File(engineDir, "engine-$abi"))
         }
         variant.sources.assets?.addGeneratedSourceDirectory(task, PackEngine::outputDir)
+        if (spektrafilmDir != null) {
+            val sf = tasks.register<PackSpektrafilm>("packSpektrafilm$cap") { source.set(File(spektrafilmDir)) }
+            variant.sources.assets?.addGeneratedSourceDirectory(sf, PackSpektrafilm::outputDir)
+        }
     }
 }
 

@@ -132,6 +132,8 @@ object AppEngine {
                     _status.value = Status.Failed(r.summary())
                     return@launch
                 }
+                // brief P2f: spektrafilm's data, where darktable looks for a hand-installed pack
+                SpektrafilmPack.install(app).also { android.util.Log.i("dt-android", it.text) }
                 _status.value = Status.Starting
                 val t0 = System.nanoTime()
                 // a retry after a failure later in the start finds darktable already started (once per process)

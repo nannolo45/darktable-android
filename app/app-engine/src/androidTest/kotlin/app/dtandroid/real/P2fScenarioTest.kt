@@ -252,4 +252,53 @@ class P2fScenarioTest {
         assertTrue(t2, t2.contains("per module, sharp region at fit after an exposure change"))
         TestFiles.record(res, "f4", "passed")
     }
+
+    /**
+     * f5 (deliverable 8): spektrafilm. Its data pack is in the app (About says so); the public test case
+     * (darktable-tests 0179-spektrafilm) exports to spektrafilm.jpg, which the workflow compares with
+     * darktable-cli given the same pack. In the darkroom the search line finds the module, and the default
+     * layout lists it in the group desktop puts it in.
+     */
+    @Test
+    fun f5_spektrafilmHasItsDataAndIsFound() = kotlinx.coroutines.runBlocking<Unit> {
+        val (raw, xmp) = TestFiles.spektrafilm ?: run { TestFiles.record(res, "f5", "skipped: no spektrafilm case given"); return@runBlocking }
+        val e = TestFiles.engine()
+        val pack = SpektrafilmPack.state
+        TestFiles.record(res, "f5_pack", "${pack.text}, ${pack.bytes} bytes")
+        assertTrue(pack.text, pack.id != null)
+        assertTrue(File(SpektrafilmPack.dir(TestFiles.ctx), "LICENSE").isFile)
+        runCatching { e.close() }
+        e.open(raw.path, xmp.path)
+        try {
+            val sf = e.modules().filter { it.op == "spektrafilm" }
+            TestFiles.record(res, "f5_module", sf.joinToString { "enabled=${it.enabled} hidden=${it.hidden}" })
+            assertTrue("spektrafilm is on in the test edit", sf.any { it.enabled })
+            val jpg = File(TestFiles.out, "spektrafilm.jpg").apply { delete() }
+            val t0 = System.nanoTime()
+            e.export(jpg.path, app.dtandroid.engine.api.ExportOptions(quality = 95, profile = app.dtandroid.engine.api.ExportProfile.IMAGE))
+            TestFiles.record(res, "f5_export_ms_emulator", (System.nanoTime() - t0) / 1_000_000)
+            assertTrue(jpg.length() > 0)
+        } finally {
+            runCatching { e.close() }
+        }
+        // where it appears in the darkroom
+        val c = AppHost.controller
+        c.start(app.dtandroid.darkroom.Series("spektrafilm", listOf(app.dtandroid.darkroom.SeriesItem(raw.name, raw.path, xmp.path))), 0, filmstrip = false, thumbnails = false)
+        try {
+            c.setSearch("spektra")
+            assertTrue("the search line finds it", c.visibleModules(c.state.value).any { it.op == "spektrafilm" })
+            c.setSearch("film simulation")
+            assertTrue("and by its aliases", c.visibleModules(c.state.value).any { it.op == "spektrafilm" })
+            c.setSearch("")
+            val groups = c.state.value.layout.groups
+            val gi = groups.indexOfFirst { "spektrafilm" in it.modules }
+            TestFiles.record(res, "f5_layout", "${c.state.value.layoutName}: group ${if (gi >= 0) "\"${groups[gi].name}\" (${gi + 1} of ${groups.size})" else "none"}")
+            assertTrue("the default layout has spektrafilm in a group", gi >= 0)
+            c.selectGroup(app.dtandroid.darkroom.GroupTab.Group(gi))
+            assertTrue(c.visibleModules(c.state.value).any { it.op == "spektrafilm" })
+        } finally {
+            c.closePhoto()
+        }
+        TestFiles.record(res, "f5", "passed")
+    }
 }

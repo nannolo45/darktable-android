@@ -246,6 +246,7 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
                 "Licence GPL-3.0-or-later; source: the darktable-android repository at the commit in the version.")
             Paragraph("engine: darktable ${ready.info.darktableVersion}, engine API ${ready.info.apiVersion}, package ${AppEngine.engineId}")
             Paragraph("plugins: ${ready.info.pluginsLoaded} of ${ready.info.pluginFiles} loaded")
+            Paragraph(SpektrafilmPack.state.let { st -> st.text + if (st.id != null) String.format(Locale.ROOT, ", %.1f MB; data licence CC BY-SA 4.0 (spektrafilm profiles)", st.bytes / 1e6) else "" })
             val pin by AppEngine.pinning.collectAsState()
             Paragraph("threads: ${ready.info.threads}; ${ready.cores.describe()}")
             // brief P2g: what the engine runs on, in plain words
