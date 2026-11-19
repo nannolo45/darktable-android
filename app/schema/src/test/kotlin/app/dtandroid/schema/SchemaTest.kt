@@ -37,6 +37,25 @@ class SchemaTest {
         assertTrue(m("demosaic").controls.isNotEmpty())
     }
 
+    /** P1c: colour stops as desktop sets them, and the sliders whose stops desktop recomputes. */
+    @Test
+    fun sliderColourStops() {
+        val all = schema.modules.values.flatMap { it.allControls() }.filterIsInstance<Control.Slider>()
+        assertEquals(114, all.count { it.gradient.isNotEmpty() })
+        val cb = m("colorbalancergb").allControls().filterIsInstance<Control.Slider>()
+        val hue = cb.first { it.label == "hue" && it.gradient.isNotEmpty() }
+        assertEquals(20, hue.gradient.size)
+        // positions run over 0..1 of the hard range; the first hue stop is a red
+        assertEquals(0.0, hue.gradient.first().position, 1e-9)
+        assertEquals(1.0, hue.gradient.last().position, 1e-9)
+        assertEquals(1.0, hue.gradient.first().red, 1e-9)
+        // color balance rgb repaints its chroma sliders from the hue (gui_changed): recomputed
+        assertTrue(cb.filter { it.label == "chroma" && it.gradient.isNotEmpty() }.any { it.gradientRecomputed })
+        assertFalse(hue.gradientRecomputed)
+        // a plain slider has none
+        assertTrue(m("exposure").allControls().filterIsInstance<Control.Slider>().first { it.label == "exposure" }.gradient.isEmpty())
+    }
+
     @Test
     fun exposureSliderAndItsStackRule() {
         val e = m("exposure")

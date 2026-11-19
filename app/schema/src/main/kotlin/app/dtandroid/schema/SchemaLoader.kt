@@ -165,6 +165,12 @@ object SchemaLoader {
                     digits = c.int("digits") ?: 2, factor = c.dbl("factor") ?: 1.0, offset = c.dbl("offset") ?: 0.0,
                     format = c.str("format") ?: "", textDefault = c.str("text_default"),
                     integer = pt != null && pt != "float",
+                    gradient = (c["gradient"] as? JsonArray)?.mapNotNull { st ->
+                        val v = (st as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull }
+                        if (v != null && v.size == 4) Control.GradientStop(v[0], v[1], v[2], v[3]) else null
+                    } ?: emptyList(),
+                    gradientRecomputed = (c["gradient_recomputed"] as? JsonArray)?.isNotEmpty() == true,
+                    fillFeedback = c.bool("fill_feedback") ?: true,
                 )
             }
             "combobox" -> Control.ComboBox(

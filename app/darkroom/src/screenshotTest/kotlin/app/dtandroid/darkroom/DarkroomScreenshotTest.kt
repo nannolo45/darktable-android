@@ -264,6 +264,29 @@ class PhoneScreenshots : ScreenshotBase() {
         capture("phone-08-tabs-color-balance-rgb")
     }
 
+    /**
+     * P1c: color balance rgb's "4 ways" tab, whose hue, chroma and luminance sliders carry colour stops
+     * in desktop's panel: their tracks show the gradient from the schema, with marker and value.
+     */
+    @Test
+    fun sliderColours() {
+        val c = show {
+            selectGroup(GroupTab.Group(1)) // "color" in the default layout
+            toggleExpanded(InstanceKey("colorbalancergb", 0))
+        }
+        settle(c)
+        compose.onAllNodesWithText("4 ways")[0].performClick()
+        settle(c)
+        val fourWays = TestSetup.schema.modules.getValue("colorbalancergb").allControls()
+            .filterIsInstance<Control.Page>().first { it.label == "4 ways" }
+        fun all(c: Control): List<Control> = listOf(c) + c.children.flatMap { all(it) }
+        val coloured = all(fourWays).filterIsInstance<Control.Slider>().filter { it.gradient.isNotEmpty() }
+        org.junit.Assert.assertTrue("4 ways has sliders with colour stops: ${coloured.size}", coloured.size >= 8)
+        // the first hue slider is on screen
+        compose.onAllNodesWithContentDescription("hue")[0].assertExists()
+        capture("phone-17-slider-colours-4-ways")
+    }
+
     @Test
     fun listSheet() {
         val c = show {
