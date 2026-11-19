@@ -284,7 +284,7 @@ class PhoneScreenshots : ScreenshotBase() {
         org.junit.Assert.assertTrue("4 ways has sliders with colour stops: ${coloured.size}", coloured.size >= 8)
         // the first hue slider is on screen
         compose.onAllNodesWithContentDescription("hue")[0].assertExists()
-        capture("phone-17-slider-colours-4-ways")
+        capture("phone-24-slider-colours-4-ways")
     }
 
     @Test
