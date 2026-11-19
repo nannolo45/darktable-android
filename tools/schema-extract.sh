@@ -43,6 +43,13 @@ LIBDIR="$DT_PREFIX/lib/darktable"
 cp -as "$LIBDIR" "$MODDIR"
 cp "$WORK/ext-build/libschema_extractor.so" "$MODDIR/plugins/lighttable/"
 
+echo "== spektrafilm data pack (public, from GitHub; set SKIP_SPEKTRAFILM_PACK=1 to skip)"
+XDG_DATA="$WORK/xdg-data"
+mkdir -p "$XDG_DATA"
+if [ -z "${SKIP_SPEKTRAFILM_PACK:-}" ]; then
+  python3 -I "$REPO/schema/extractor/fetch_spektrafilm_pack.py" "$XDG_DATA" | tee "$WORK/spektrafilm-pack.txt"
+fi
+
 RAW="$WORK/raw"
 rm -rf "$RAW"
 mkdir -p "$RAW"
@@ -54,7 +61,7 @@ for attempt in $(seq 1 40); do
   mkdir -p "$WORK/config" "$WORK/cache"
   rm -f "$RAW/progress"
   echo "== darktable run $attempt${skip:+ (skipping $skip)}"
-  DT_SCHEMA_OUT="$RAW" DT_SCHEMA_SKIP="$skip" LANG=C.UTF-8 LANGUAGE=C LC_ALL=C.UTF-8 \
+  DT_SCHEMA_OUT="$RAW" DT_SCHEMA_SKIP="$skip" XDG_DATA_HOME="$XDG_DATA" LANG=C.UTF-8 LANGUAGE=C LC_ALL=C.UTF-8 \
     xvfb-run -a -s "-screen 0 1920x1080x24" \
     "$DT_PREFIX/bin/darktable" --moduledir "$MODDIR" --configdir "$WORK/config" \
       --cachedir "$WORK/cache" --library :memory: \
