@@ -5,10 +5,16 @@ Brief: `docs/briefs/P2g-engine-start.md`. Branch `p2g-engine-start` (from `main`
 
 ## Running log (newest first)
 
+- 2026-11-19 19:30: run 44587806953 (a4def3f) green: JVM 183 (EnginePinningTest 12/12), emulator 33/33 including
+  `t1b` (the real bridge refuses CPU 4 with the phone's message; the engine stays unpinned and renders), comparisons
+  pass; APK `dt-android-a4def3fc8008`. Report written (`P2g-engine-start-REPORT.md`); emulator lines kept in
+  `P2g-results/emulator-44587806953.txt`. P2g is ready for review; going on with P2f.
+
 - 2026-11-19 18:30: code written; on the workspace `:engine-api:test` passes (44 tests, 12 new in
   `EnginePinningTest`) and `:app-engine` compiles (Kotlin, x86_64, main and instrumented tests, against the
   released engine `engine-04477d32-6a4466ffd1f4`). Workflows `p2a-app` and `p2b-real-engine` now also run on
-  `p2g-engine-start` and `p2f-first-use-fixes`. Pushing for CI.
+  `p2g-engine-start` and `p2f-first-use-fixes`. Pushing for CI. (Run 44586629446 then stopped on Maven Central
+  "could not find"; a4def3f waits longer between the workflow's dependency retries.)
   Two additions from the reviewer for P2f arrived meanwhile and are noted in the P2f running log once that
   branch exists (they are not part of P2g): (a) deliverable 4: the timings must run on the open photo whatever
   its source (LightPhotoLibrary included; today `AppViewModel.runTimings` falls back to the file-picker working
