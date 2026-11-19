@@ -53,9 +53,15 @@ fun DarkroomScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
     layout: DarkroomLayout? = null,
+    /** import and export of module layouts; null where there is no file picker (tests) */
+    layoutFiles: LayoutFiles? = null,
 ) {
     val s by controller.state.collectAsState()
     val live by controller.liveValues.collectAsState()
+    if (s.layoutEditor) {
+        LayoutEditorScreen(controller, layoutFiles, modifier)
+        return
+    }
     BoxWithConstraints(modifier.fillMaxSize().background(DtTheme.colors.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
         val tablet = when (layout) {
             null -> maxWidth >= DtTheme.sizes.tabletMinWidth && maxHeight >= DtTheme.sizes.tabletMinHeight

@@ -37,6 +37,8 @@ data class ModuleSchema(
     val params: Map<String, ParamField>,
     /** names of the override files applied to this module */
     val overrides: List<String> = emptyList(),
+    /** position in darktable's default pipeline order (the module list shows the highest on top) */
+    val pipePosition: Int = 0,
     /** search aliases darktable matches besides the name (`dt_iop_get_localized_aliases`), comma separated */
     val aliases: String = "",
     /**

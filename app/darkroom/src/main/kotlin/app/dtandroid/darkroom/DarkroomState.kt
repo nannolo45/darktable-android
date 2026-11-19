@@ -6,6 +6,9 @@ import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
+import app.dtandroid.engine.api.StoredLayout
+import app.dtandroid.schema.layout.Layout
+import app.dtandroid.schema.layout.QuickAccess
 import kotlinx.serialization.json.JsonObject
 
 /** One photo of the series the darkroom was opened with, in the caller's order. */
@@ -23,10 +26,17 @@ data class InstanceKey(val op: String, val priority: Int)
 
 val ModuleInstance.key get() = InstanceKey(op, priority)
 
+/**
+ * What the module list shows, as darktable's module groups bar
+ * (`src/libs/modulegroups.c`): the active modules, the quick access panel, one
+ * of the layout's groups (by position: names may repeat), or, after tapping the
+ * selected tab again, all modules of all groups (`DT_MODULEGROUP_NONE`).
+ */
 sealed interface GroupTab {
     data object Active : GroupTab
     data object Quick : GroupTab
-    data class Configured(val id: String) : GroupTab
+    data object AllModules : GroupTab
+    data class Group(val index: Int) : GroupTab
 }
 
 enum class BottomView { MODULES, HISTORY }
@@ -40,6 +50,8 @@ sealed interface Overlay {
     /** exact numeric entry for a slider */
     data class NumberEntry(val key: InstanceKey, val controlId: Int) : Overlay
     data class Rename(val key: InstanceKey) : Overlay
+    /** the layouts menu next to the group tabs: choose a layout, "manage module layouts…" */
+    data object Layouts : Overlay
 }
 
 /** A rendered picture and where it sits in the processed image at its scale. */
@@ -64,6 +76,19 @@ data class DarkroomState(
     val thumbnails: Map<Int, RenderedImage> = emptyMap(),
     val filmstrip: Boolean = false,
     val group: GroupTab = GroupTab.Active,
+    /** the current module layout's name and content (PLAN.md 3.9) */
+    val layoutName: String = "",
+    val layout: Layout = Layout(),
+    /** every layout, for the layouts menu */
+    val layoutList: List<StoredLayout> = emptyList(),
+    /** the layout's quick access entries resolved against the control schema, in the layout's order */
+    val quick: List<QuickAccess.Entry> = emptyList(),
+    /** the search line's text (only when the layout shows the search line) */
+    val search: String = "",
+    /** a module shown alone because "go to the full module" found it in no group */
+    val forceShow: InstanceKey? = null,
+    /** "manage module layouts" is open */
+    val layoutEditor: Boolean = false,
     val expanded: InstanceKey? = null,
     val view: BottomView = BottomView.MODULES,
     val overlay: Overlay? = null,

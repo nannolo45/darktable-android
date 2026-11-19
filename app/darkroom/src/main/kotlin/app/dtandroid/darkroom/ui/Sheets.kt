@@ -50,7 +50,7 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /** The bottom sheet over the screen: a scrim that closes it, a title, "close", then content. */
 @Composable
-fun BoxScope.Sheet(title: String, onClose: () -> Unit, maxWidth: androidx.compose.ui.unit.Dp?, content: @Composable ColumnScope.() -> Unit) {
+fun BoxScope.Sheet(title: String, onClose: () -> Unit, maxWidth: androidx.compose.ui.unit.Dp?, scroll: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val c = DtTheme.colors
     Box(
         Modifier.matchParentSize().background(c.scrim)
@@ -73,9 +73,9 @@ fun BoxScope.Sheet(title: String, onClose: () -> Unit, maxWidth: androidx.compos
                 contentAlignment = Alignment.Center,
             ) { DtText("close", DtTheme.type.label, c.text) }
         }
-        Column(Modifier.heightIn(max = DtTheme.sizes.sheetMaxHeight).verticalScroll(rememberScrollState())) {
+        if (scroll) Column(Modifier.heightIn(max = DtTheme.sizes.sheetMaxHeight).verticalScroll(rememberScrollState())) {
             content()
-        }
+        } else Column { content() }
     }
 }
 
@@ -161,6 +161,13 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 }
             }
         }
+        Overlay.Layouts -> Sheet("module layouts", close, maxW) {
+            // desktop's presets menu next to the module groups: built-in layouts first, then the user's
+            for (l in s.layoutList) {
+                SheetItem(l.name, enabled = true, selected = l.name == s.layoutName) { controller.launch { chooseLayout(l.name) } }
+            }
+            SheetItem("manage module layouts…", enabled = true) { controller.launch { openLayoutEditor() } }
+        }
         is Overlay.Rename -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             TextEntrySheet("rename ${fullName(m)}", "instance name", m.instanceName, number = false, onClose = close) { text ->
@@ -173,7 +180,7 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
 
 /** A sheet with one text field; [onSet] returns an error text or null when done. */
 @Composable
-private fun BoxScope.TextEntrySheet(title: String, hint: String, initial: String, number: Boolean, onClose: () -> Unit, onSet: (String) -> String?) {
+internal fun BoxScope.TextEntrySheet(title: String, hint: String, initial: String, number: Boolean, onClose: () -> Unit, onSet: (String) -> String?) {
     val c = DtTheme.colors
     var text by remember { mutableStateOf(initial) }
     var error by remember { mutableStateOf<String?>(null) }

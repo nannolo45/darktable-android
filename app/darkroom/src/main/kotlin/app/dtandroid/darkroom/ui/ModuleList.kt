@@ -32,24 +32,85 @@ import app.dtandroid.darkroom.Overlay
 import app.dtandroid.darkroom.key
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.schema.Control
+import app.dtandroid.schema.layout.GroupIcons
+import app.dtandroid.schema.layout.QuickAccess
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import app.dtandroid.schema.ParamRuleInputs
 import app.dtandroid.schema.Rules
 import app.dtandroid.ui.icons.DtIcon
 import app.dtandroid.ui.icons.DtIconImage
 import app.dtandroid.ui.theme.DtTheme
 
-/** Group tabs: active (power icon), quick, then the configured groups. */
+/**
+ * darktable's module groups bar for the current layout: active modules (power icon), the
+ * quick access panel when the layout shows it, then the layout's groups with their icons and
+ * names; at the end the layouts menu, where desktop has its presets button.
+ */
 @Composable
 fun GroupTabs(controller: DarkroomController, s: DarkroomState) {
-    val tabs = listOf<GroupTab>(GroupTab.Active, GroupTab.Quick) + controller.groups.groups.map { GroupTab.Configured(it.id) }
-    DtTabRow(tabs, s.group, { controller.selectGroup(it) }, DtTheme.sizes.groupTabs) { tab, sel ->
-        val col = if (sel) DtTheme.colors.textBright else DtTheme.colors.textDim
-        when (tab) {
-            GroupTab.Active -> DtIconImage(DtIcon.Power, "active modules", col, DtTheme.sizes.icon)
-            GroupTab.Quick -> DtText("quick", DtTheme.type.label, col)
-            is GroupTab.Configured -> DtText(controller.groups.groups.first { it.id == tab.id }.label, DtTheme.type.label, col)
-        }
+    val tabs = buildList<GroupTab> {
+        add(GroupTab.Active)
+        if (s.layout.quickAccessShown) add(GroupTab.Quick)
+        s.layout.groups.indices.forEach { add(GroupTab.Group(it)) }
     }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        DtTabRow(tabs, s.group, { controller.selectGroup(it) }, DtTheme.sizes.groupTabs, Modifier.weight(1f)) { tab, sel ->
+            val col = if (sel && s.search.isEmpty() && s.forceShow == null) DtTheme.colors.textBright else DtTheme.colors.textDim
+            when (tab) {
+                GroupTab.Active -> TabFace(DtIcon.Power, "active", "active modules", col)
+                GroupTab.Quick -> TabFace(DtIcon.QuickAccess, "quick", "quick access panel", col)
+                is GroupTab.Group -> s.layout.groups.getOrNull(tab.index)?.let { g ->
+                    TabFace(groupIcon(g.icon), g.name, "group ${g.name}", col)
+                }
+                GroupTab.AllModules -> Unit
+            }
+        }
+        DtIconButton(DtIcon.Presets, "module layouts: ${s.layoutName}", DtTheme.colors.text, onClick = {
+            controller.setOverlay(if (s.overlay == Overlay.Layouts) null else Overlay.Layouts)
+        })
+    }
+    if (s.layout.showSearch) SearchLine(controller, s)
+}
+
+/** The icon of a group's icon name; names darktable does not know draw as "basic", as on desktop. */
+fun groupIcon(name: String): DtIcon =
+    DtIcon.byKey("group" + GroupIcons.drawn(name).replaceFirstChar { it.uppercase() }) ?: DtIcon.GroupBasic
+
+@Composable
+private fun TabFace(icon: DtIcon, name: String, description: String, col: androidx.compose.ui.graphics.Color) {
+    Column(Modifier.semantics { contentDescription = description }, horizontalAlignment = Alignment.CenterHorizontally) {
+        DtIconImage(icon, null, col, DtTheme.sizes.icon)
+        DtText(name, DtTheme.type.tiny, col, Modifier.padding(horizontal = DtTheme.space.xxs))
+    }
+}
+
+/** "search modules by name or tag": shown when the layout has "show search line" on. */
+@Composable
+private fun SearchLine(controller: DarkroomController, s: DarkroomState) {
+    val c = DtTheme.colors
+    Row(
+        Modifier.fillMaxWidth().height(DtTheme.sizes.touch).background(c.bg).padding(start = DtTheme.space.panel),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DtIconImage(DtIcon.Search, null, c.textMuted, DtTheme.sizes.icon)
+        Box(Modifier.weight(1f).padding(horizontal = DtTheme.space.m), contentAlignment = Alignment.CenterStart) {
+            if (s.search.isEmpty()) DtText("search modules by name or tag", DtTheme.type.label, c.textMuted)
+            BasicTextField(
+                value = s.search,
+                onValueChange = { controller.setSearch(it) },
+                singleLine = true,
+                textStyle = DtTheme.type.label.copy(color = c.textBright),
+                cursorBrush = SolidColor(c.textBright),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "search modules" },
+            )
+        }
+        if (s.search.isNotEmpty()) DtIconButton(DtIcon.Close, "clear text", c.text, onClick = { controller.setSearch("") })
+    }
+    Divider()
 }
 
 /** The scrolling module list of the current group, or the quick panel. */
@@ -64,12 +125,17 @@ fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<
     }
     LazyColumn(modifier.fillMaxSize().background(DtTheme.colors.bg), state = listState) {
         item { Spacer(Modifier.height(DtTheme.space.xxs)) }
-        if (s.group == GroupTab.Quick) {
+        if (s.group == GroupTab.Quick && s.search.isEmpty() && s.forceShow == null) {
             item { QuickPanel(controller, s, live) }
         } else {
             if (mods.isEmpty()) item {
                 DtText(
-                    if (s.group == GroupTab.Active) "No module is active at this point in the history." else "No module in this group.",
+                    when {
+                        s.search.isNotEmpty() -> "No module matches \"${s.search}\"."
+                        s.group == GroupTab.Active -> "No module is active at this point in the history."
+                        s.group == GroupTab.AllModules -> "No module in any group of this layout."
+                        else -> "No module in this group."
+                    },
                     DtTheme.type.label, DtTheme.colors.textMuted,
                     Modifier.padding(horizontal = DtTheme.space.xxl, vertical = DtTheme.space.xxxl), maxLines = 3,
                 )
@@ -176,26 +242,69 @@ private fun InstancesMenuInline(controller: DarkroomController, s: DarkroomState
     }
 }
 
-/** Selected single controls of several modules, labelled "module · control". */
+/**
+ * The quick access panel (darktable manual, "quick access panel"): per module a header with
+ * its on-off button when the layout lists it, the module name, reset, presets and "go to the
+ * full module", then the module's listed widgets. A module with several instances has its
+ * widgets disabled, as on desktop. Entries the app cannot use are shown greyed with their name.
+ */
 @Composable
 private fun QuickPanel(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>) {
     val sp = DtTheme.space
-    Column(Modifier.fillMaxWidth().background(DtTheme.colors.panel).padding(start = sp.panel, end = sp.panel, top = sp.s, bottom = sp.m)) {
-        for (q in controller.groups.quick) {
-            val key = InstanceKey(q.op, 0)
-            val m = s.modules.firstOrNull { it.key == key } ?: continue
-            val schema = controller.schema.modules[q.op] ?: continue
-            val c = schema.control(q.controlId) as? Control.Slider ?: continue
-            val inputs = ParamRuleInputs(schema, m.params)
-            val enabled = !s.readOnly && Rules.isSensitive(schema, c, inputs) && c.isEditable
-            val value = controller.sliderValue(s, key, c, live) ?: c.default
-            SliderControl(
-                label = q.label, slider = c, value = value, enabled = enabled,
-                onDrag = { v -> controller.drag(key, c.id, c.binding, v, c.integer) },
-                onDragEnd = { controller.endDrag(key, c.id, c.binding, c.integer) },
-                onReset = { controller.launch { setSlider(key, c.binding, c.default, c.integer) } },
-                onExact = { controller.setOverlay(Overlay.NumberEntry(key, c.id)) },
+    val blocks = controller.quickPanel(s)
+    Column(Modifier.fillMaxWidth()) {
+        if (blocks.isEmpty()) DtText(
+            "The quick access panel of this layout is empty. Add widgets in \"manage module layouts\" (the menu at the end of the tabs).",
+            DtTheme.type.label, DtTheme.colors.textMuted, Modifier.padding(horizontal = sp.xxl, vertical = sp.xxxl), maxLines = 4,
+        )
+        for (b in blocks) {
+            QuickHeader(controller, s, b)
+            Column(Modifier.fillMaxWidth().background(DtTheme.colors.panel).padding(start = sp.panel, end = sp.panel, top = sp.xs, bottom = sp.s)) {
+                if (b.severalInstances) DtText(
+                    "this quick access widget is disabled as there are multiple instances of this module present. Please use the full module to access this widget...",
+                    DtTheme.type.tiny, DtTheme.colors.textMuted, Modifier.padding(vertical = sp.xs), maxLines = 3,
+                )
+                val m = b.instance
+                for (e in b.entries) {
+                    val ms = e.module
+                    val c = e.control
+                    if (m == null || ms == null || c == null || e.kind != QuickAccess.Kind.CONTROL) {
+                        UnavailableControl(e.label, e.reason)
+                        continue
+                    }
+                    if (!controller.quickVisible(m, e)) continue
+                    SingleControl(c, PanelContext(controller, s, live, ms, m, s.readOnly), e.label, disabled = b.severalInstances)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickHeader(controller: DarkroomController, s: DarkroomState, b: DarkroomController.QuickBlock) {
+    val c = DtTheme.colors
+    val m = b.instance
+    Row(
+        Modifier.fillMaxWidth().height(DtTheme.sizes.moduleHeader).background(c.header).padding(top = DtTheme.space.xxs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (b.onOff != null && m != null && m.canSwitch) {
+            DtIconButton(
+                DtIcon.Power, (if (m.enabled) "Turn off " else "Turn on ") + b.moduleName,
+                if (m.enabled) c.textBright else c.textDisabled,
+                enabled = !s.readOnly && !b.severalInstances, keepTint = true,
+                onClick = { controller.launch { setEnabled(m.key, !m.enabled) } },
+                modifier = Modifier.semantics { stateDescription = if (m.enabled) "on" else "off" },
             )
+        } else {
+            Spacer(Modifier.width(DtTheme.space.panel))
+        }
+        DtText(b.moduleName, DtTheme.type.body, if (m?.enabled == true) c.textStrong else c.textDim, Modifier.weight(1f))
+        if (m != null) {
+            DtIconButton(DtIcon.Reset, "Reset ${b.moduleName}", c.text, enabled = !s.readOnly && !b.severalInstances,
+                onClick = { controller.launch { reset(m.key) } })
+            DtIconButton(DtIcon.Presets, "Presets for ${b.moduleName}", c.text, onClick = { controller.setOverlay(Overlay.Presets(m.key)) })
+            DtIconButton(DtIcon.Link, "go to the full version of the ${b.moduleName} module", c.text, onClick = { controller.goToModule(m.key) })
         }
     }
 }

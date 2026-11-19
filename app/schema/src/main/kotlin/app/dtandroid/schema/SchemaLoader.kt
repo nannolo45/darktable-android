@@ -98,6 +98,7 @@ object SchemaLoader {
             insensitiveInEveryState = sens?.get("insensitive_in_every_state")?.ints()?.toSet() ?: emptySet(),
             params = params,
             aliases = o.str("aliases") ?: "",
+            pipePosition = o.int("pipe_position") ?: 0,
             actionPaths = actions.mapValues { it.value.first },
             actionKinds = actions.mapValues { it.value.second },
         )

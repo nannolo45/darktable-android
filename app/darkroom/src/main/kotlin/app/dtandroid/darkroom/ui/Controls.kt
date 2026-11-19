@@ -122,15 +122,39 @@ private fun ControlView(c: Control, ctx: PanelContext) {
     }
 }
 
+/**
+ * One slider, list or switch on its own, as the quick access panel shows it: with
+ * darktable's widget name as label; [disabled] greys it out (several instances, read-only).
+ */
+@Composable
+fun SingleControl(c: Control, ctx: PanelContext, label: String, disabled: Boolean) {
+    val sensitive = !disabled && Rules.isSensitive(ctx.module, c, ctx.inputs)
+    when (c) {
+        is Control.Slider -> GeneratedSlider(c, ctx, sensitive, label)
+        is Control.ComboBox -> GeneratedList(c, ctx, sensitive, label)
+        is Control.Toggle -> GeneratedToggle(c, ctx, sensitive, label)
+        else -> UnavailableControl(label, null)
+    }
+}
+
+/** A quick access entry the app cannot use yet: its name, greyed out, and why. */
+@Composable
+fun UnavailableControl(label: String, reason: String?) {
+    Column(Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.sliderRow).padding(vertical = DtTheme.space.xs), verticalArrangement = Arrangement.Center) {
+        DtText(label, DtTheme.type.label, DtTheme.colors.textDisabled)
+        if (reason != null) DtText(reason, DtTheme.type.tiny, DtTheme.colors.textDisabled, maxLines = 2)
+    }
+}
+
 // ----------------------------------------------------------------------- slider
 
 /** A generated slider bound to the schema's parameter (or action). */
 @Composable
-private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean) {
+private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val value = ctx.controller.sliderValue(ctx.state, ctx.key, c, ctx.live) ?: c.default
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None
     SliderControl(
-        label = c.label ?: "",
+        label = label ?: c.label ?: "",
         slider = c,
         value = value,
         enabled = enabled,
@@ -213,14 +237,14 @@ fun SliderControl(
 // ----------------------------------------------------------------------- list and switch
 
 @Composable
-private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boolean) {
+private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val current = when (val b = c.binding) {
         is Binding.Param -> ctx.inputs.param(b.path)
         else -> c.entries.getOrNull(c.currentPos)?.value
     }
     val entry = c.entries.firstOrNull { it.value == current }?.label ?: current?.toString() ?: ""
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && c.entries.isNotEmpty()
-    ListControl(c.label ?: "", entry, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
+    ListControl(label ?: c.label ?: "", entry, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
 }
 
 /** Label left, current entry right; opens a sheet with the entries. */
@@ -240,14 +264,14 @@ fun ListControl(label: String, entry: String, enabled: Boolean, onOpen: () -> Un
 }
 
 @Composable
-private fun GeneratedToggle(c: Control.Toggle, ctx: PanelContext, sensitive: Boolean) {
+private fun GeneratedToggle(c: Control.Toggle, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val b = c.binding
     val on = when (b) {
         is Binding.Param -> (ctx.instance.params.paramAt(b.path) as? JsonPrimitive)?.booleanOrNull ?: c.default
         else -> c.default
     }
     val enabled = sensitive && !ctx.readOnly && b is Binding.Param
-    ToggleControl(c.label ?: "", on, enabled) {
+    ToggleControl(label ?: c.label ?: "", on, enabled) {
         if (b is Binding.Param) ctx.controller.launch { setParam(ctx.key, b.path, JsonPrimitive(!on)) }
     }
 }

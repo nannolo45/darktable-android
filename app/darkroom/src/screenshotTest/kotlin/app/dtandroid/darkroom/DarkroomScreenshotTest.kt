@@ -139,7 +139,7 @@ class PhoneScreenshots : ScreenshotBase() {
     @Test
     fun tabsModule() {
         val c = show {
-            selectGroup(GroupTab.Configured("color"))
+            selectGroup(GroupTab.Group(1)) // "color" in the default layout
             toggleExpanded(InstanceKey("colorbalancergb", 0))
         }
         settle(c)
