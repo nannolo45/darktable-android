@@ -342,10 +342,12 @@ static gboolean _has_class(GtkWidget *w, const char *cls)
 // GtkGrid children sorted by row, then column
 static gint _grid_cmp(gconstpointer a, gconstpointer b, gpointer user)
 {
+  // g_ptr_array_sort_with_data passes pointers to the array slots
   GtkContainer *c = user;
+  GtkWidget *wa = *(GtkWidget *const *)a, *wb = *(GtkWidget *const *)b;
   int ta, la, tb, lb;
-  gtk_container_child_get(c, (GtkWidget *)a, "top-attach", &ta, "left-attach", &la, NULL);
-  gtk_container_child_get(c, (GtkWidget *)b, "top-attach", &tb, "left-attach", &lb, NULL);
+  gtk_container_child_get(c, wa, "top-attach", &ta, "left-attach", &la, NULL);
+  gtk_container_child_get(c, wb, "top-attach", &tb, "left-attach", &lb, NULL);
   return ta != tb ? ta - tb : la - lb;
 }
 

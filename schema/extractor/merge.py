@@ -239,7 +239,7 @@ def main():
         out_m["sensitivity"] = {"rules": srules, "unexplained": sunexp,
                                 "insensitive_in_every_state": salways}
         out_m["stats"] = module_stats(m, flat)
-        out_m["seconds"] = m.get("seconds")
+        # timings stay in the raw output: they would make every regenerated file differ
         modules[op] = out_m
     schema = {
         "schema_format": 1,

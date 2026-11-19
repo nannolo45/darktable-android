@@ -442,8 +442,7 @@
     "array_templates_touched": [
      "raw_black_level_separate[0]"
     ]
-   },
-   "seconds": 0.15603
+   }
   },
   "invert": {
    "op": "invert",
@@ -569,8 +568,7 @@
     "array_param_values": 4,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.00023
+   }
   },
   "temperature": {
    "op": "temperature",
@@ -1232,8 +1230,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.067595
+   }
   },
   "rasterfile": {
    "op": "rasterfile",
@@ -1543,8 +1540,7 @@
     "array_param_values": 4224,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.035671
+   }
   },
   "highlights": {
    "op": "highlights",
@@ -2722,8 +2718,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.229965
+   }
   },
   "cacorrect": {
    "op": "cacorrect",
@@ -2964,8 +2959,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.004119
+   }
   },
   "hotpixels": {
    "op": "hotpixels",
@@ -3255,8 +3249,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.077311
+   }
   },
   "rawdenoise": {
    "op": "rawdenoise",
@@ -3490,8 +3483,7 @@
     "array_param_values": 40,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.010855
+   }
   },
   "demosaic": {
    "op": "demosaic",
@@ -4941,8 +4933,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.532088
+   }
   },
   "demosaicscale": {
    "schema_format": 1,
@@ -6328,8 +6319,7 @@
     "array_param_values": 90,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 1.074001
+   }
   },
   "bilateral": {
    "op": "bilateral",
@@ -6611,8 +6601,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.008268
+   }
   },
   "rotatepixels": {
    "schema_format": 1,
@@ -6749,8 +6738,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000145
+   }
   },
   "lens": {
    "op": "lens",
@@ -8619,8 +8607,7 @@
     "array_param_values": 258,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.3072
+   }
   },
   "cacorrectrgb": {
    "op": "cacorrectrgb",
@@ -8975,8 +8962,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.033985
+   }
   },
   "hazeremoval": {
    "op": "hazeremoval",
@@ -9171,8 +9157,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.010431
+   }
   },
   "ashift": {
    "op": "ashift",
@@ -9508,46 +9493,24 @@
      "children": [
       {
        "id": 4,
-       "kind": "button",
-       "gtk_type": "GtkDarktableButton",
-       "label": null,
-       "tooltip": "automatically correct for horizontal perspective distortion\nctrl+click to only fit rotation\nshift+click to only fit lens shift",
-       "icon": true,
-       "action_path": "fit/horizontal",
-       "action_label": "horizontal",
-       "insensitive_by_default": true
-      },
-      {
-       "id": 5,
-       "kind": "button",
-       "gtk_type": "GtkDarktableButton",
-       "label": null,
-       "tooltip": "automatically correct for vertical and horizontal perspective distortions, fitting rotation, lens shift in both directions, and shear\nctrl+click to only fit rotation\nshift+click to only fit lens shift\nctrl+shift+click to only fit rotation and lens shift",
-       "icon": true,
-       "action_path": "fit/both",
-       "action_label": "both",
-       "insensitive_by_default": true
-      },
-      {
-       "id": 6,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "fit",
+       "label": "structure",
        "tooltip": null
       },
       {
-       "id": 7,
-       "kind": "button",
-       "gtk_type": "GtkDarktableButton",
+       "id": 5,
+       "kind": "togglebutton",
+       "gtk_type": "GtkDarktableToggleButton",
        "label": null,
-       "tooltip": "automatically correct for vertical perspective distortion\nctrl+click to only fit rotation\nshift+click to only fit lens shift",
+       "tooltip": "manually draw structure lines",
        "icon": true,
-       "action_path": "fit/vertical",
-       "action_label": "vertical",
-       "insensitive_by_default": true
+       "active": false,
+       "action_path": "structure/lines",
+       "action_label": "lines"
       },
       {
-       "id": 8,
+       "id": 6,
        "kind": "togglebutton",
        "gtk_type": "GtkDarktableToggleButton",
        "label": null,
@@ -9558,7 +9521,7 @@
        "action_label": "rectangle"
       },
       {
-       "id": 9,
+       "id": 7,
        "kind": "togglebutton",
        "gtk_type": "GtkDarktableToggleButton",
        "label": null,
@@ -9569,22 +9532,44 @@
        "action_label": "auto"
       },
       {
-       "id": 10,
+       "id": 8,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "structure",
+       "label": "fit",
        "tooltip": null
       },
       {
-       "id": 11,
-       "kind": "togglebutton",
-       "gtk_type": "GtkDarktableToggleButton",
+       "id": 9,
+       "kind": "button",
+       "gtk_type": "GtkDarktableButton",
        "label": null,
-       "tooltip": "manually draw structure lines",
+       "tooltip": "automatically correct for vertical perspective distortion\nctrl+click to only fit rotation\nshift+click to only fit lens shift",
        "icon": true,
-       "active": false,
-       "action_path": "structure/lines",
-       "action_label": "lines"
+       "action_path": "fit/vertical",
+       "action_label": "vertical",
+       "insensitive_by_default": true
+      },
+      {
+       "id": 10,
+       "kind": "button",
+       "gtk_type": "GtkDarktableButton",
+       "label": null,
+       "tooltip": "automatically correct for horizontal perspective distortion\nctrl+click to only fit rotation\nshift+click to only fit lens shift",
+       "icon": true,
+       "action_path": "fit/horizontal",
+       "action_label": "horizontal",
+       "insensitive_by_default": true
+      },
+      {
+       "id": 11,
+       "kind": "button",
+       "gtk_type": "GtkDarktableButton",
+       "label": null,
+       "tooltip": "automatically correct for vertical and horizontal perspective distortions, fitting rotation, lens shift in both directions, and shear\nctrl+click to only fit rotation\nshift+click to only fit lens shift\nctrl+shift+click to only fit rotation and lens shift",
+       "icon": true,
+       "action_path": "fit/both",
+       "action_label": "both",
+       "insensitive_by_default": true
       }
      ]
     },
@@ -10005,9 +9990,9 @@
     "rules": [],
     "unexplained": [],
     "insensitive_in_every_state": [
-     4,
-     5,
-     7
+     9,
+     10,
+     11
     ]
    },
    "stats": {
@@ -10039,8 +10024,7 @@
     "array_param_values": 208,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.060818
+   }
   },
   "flip": {
    "op": "flip",
@@ -10249,8 +10233,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.022366
+   }
   },
   "enlargecanvas": {
    "op": "enlargecanvas",
@@ -10616,8 +10599,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.031399
+   }
   },
   "overlay": {
    "op": "overlay",
@@ -11122,12 +11104,10 @@
      "children": [
       {
        "id": 9,
-       "kind": "togglebutton",
-       "gtk_type": "GtkDarktableToggleButton",
-       "label": null,
-       "tooltip": null,
-       "icon": true,
-       "active": false
+       "kind": "label",
+       "gtk_type": "GtkLabel",
+       "label": "alignment",
+       "tooltip": null
       },
       {
        "id": 10,
@@ -11163,7 +11143,7 @@
        "label": null,
        "tooltip": null,
        "icon": true,
-       "active": true
+       "active": false
       },
       {
        "id": 14,
@@ -11172,7 +11152,7 @@
        "label": null,
        "tooltip": null,
        "icon": true,
-       "active": false
+       "active": true
       },
       {
        "id": 15,
@@ -11203,10 +11183,12 @@
       },
       {
        "id": 18,
-       "kind": "label",
-       "gtk_type": "GtkLabel",
-       "label": "alignment",
-       "tooltip": null
+       "kind": "togglebutton",
+       "gtk_type": "GtkDarktableToggleButton",
+       "label": null,
+       "tooltip": null,
+       "icon": true,
+       "active": false
       }
      ]
     },
@@ -11389,8 +11371,7 @@
     "array_param_values": 1024,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.1851
+   }
   },
   "clipping": {
    "op": "clipping",
@@ -12237,8 +12218,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.012925
+   }
   },
   "liquify": {
    "op": "liquify",
@@ -12789,8 +12769,7 @@
     "array_param_values": 1100,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.00046
+   }
   },
   "spots": {
    "op": "spots",
@@ -12958,8 +12937,7 @@
     "array_param_values": 128,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000423
+   }
   },
   "retouch": {
    "op": "retouch",
@@ -13452,42 +13430,42 @@
        "id": 17,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "0",
+       "label": "scales:",
        "tooltip": null
       },
       {
        "id": 18,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "merge from:",
+       "label": "0",
        "tooltip": null
       },
       {
        "id": 19,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "0",
+       "label": "current:",
        "tooltip": null
       },
       {
        "id": 20,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "current:",
+       "label": "0",
        "tooltip": null
       },
       {
        "id": 21,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "0",
+       "label": "merge from:",
        "tooltip": null
       },
       {
        "id": 22,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "scales:",
+       "label": "0",
        "tooltip": null
       }
      ]
@@ -13935,8 +13913,7 @@
     "array_param_values": 3306,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.06443
+   }
   },
   "exposure": {
    "op": "exposure",
@@ -14563,8 +14540,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.095811
+   }
   },
   "mask_manager": {
    "schema_format": 1,
@@ -14749,8 +14725,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.013486
+   }
   },
   "toneequal": {
    "op": "toneequal",
@@ -16020,8 +15995,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.55469
+   }
   },
   "crop": {
    "op": "crop",
@@ -16473,8 +16447,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000259
+   }
   },
   "graduatednd": {
    "op": "graduatednd",
@@ -16808,8 +16781,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.006571
+   }
   },
   "profile_gamma": {
    "op": "profile_gamma",
@@ -17341,8 +17313,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.06222
+   }
   },
   "equalizer": {
    "op": "equalizer",
@@ -17452,8 +17423,7 @@
     "array_param_values": 36,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000164
+   }
   },
   "colorin": {
    "op": "colorin",
@@ -18220,8 +18190,7 @@
     "array_param_values": 1024,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.932247
+   }
   },
   "channelmixerrgb": {
    "op": "channelmixerrgb",
@@ -21057,8 +21026,7 @@
      "red[0]",
      "saturation[0]"
     ]
-   },
-   "seconds": 2.685881
+   }
   },
   "contrastntexture": {
    "op": "contrastntexture",
@@ -21554,8 +21522,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.03211
+   }
   },
   "diffuse": {
    "op": "diffuse",
@@ -22376,8 +22343,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000991
+   }
   },
   "censorize": {
    "op": "censorize",
@@ -22647,8 +22613,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000448
+   }
   },
   "negadoctor": {
    "op": "negadoctor",
@@ -23652,8 +23617,7 @@
      "wb_high[0]",
      "wb_low[0]"
     ]
-   },
-   "seconds": 0.004674
+   }
   },
   "blurs": {
    "op": "blurs",
@@ -24374,8 +24338,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.375726
+   }
   },
   "primaries": {
    "op": "primaries",
@@ -24833,8 +24796,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.002819
+   }
   },
   "nlmeans": {
    "op": "nlmeans",
@@ -25104,8 +25066,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.037265
+   }
   },
   "colorchecker": {
    "op": "colorchecker",
@@ -25584,8 +25545,7 @@
     "array_param_values": 294,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.043808
+   }
   },
   "defringe": {
    "op": "defringe",
@@ -25833,8 +25793,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.042494
+   }
   },
   "atrous": {
    "op": "atrous",
@@ -26038,8 +25997,7 @@
     "array_param_values": 60,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000497
+   }
   },
   "lowpass": {
    "op": "lowpass",
@@ -26409,8 +26367,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.202689
+   }
   },
   "highpass": {
    "op": "highpass",
@@ -26586,8 +26543,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.003031
+   }
   },
   "sharpen": {
    "op": "sharpen",
@@ -26810,8 +26766,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000609
+   }
   },
   "colortransfer": {
    "op": "colortransfer",
@@ -26965,8 +26920,7 @@
     "array_param_values": 2048,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.034815
+   }
   },
   "colormapping": {
    "op": "colormapping",
@@ -27334,8 +27288,7 @@
     "array_param_values": 4106,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.114782
+   }
   },
   "channelmixer": {
    "op": "channelmixer",
@@ -27634,8 +27587,7 @@
     "array_param_values": 21,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.20025
+   }
   },
   "basicadj": {
    "op": "basicadj",
@@ -28281,8 +28233,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.084365
+   }
   },
   "colorharmonizer": {
    "op": "colorharmonizer",
@@ -29722,8 +29673,7 @@
     "array_param_values": 8,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.682069
+   }
   },
   "colorbalance": {
    "op": "colorbalance",
@@ -31522,8 +31472,7 @@
      "gamma[0]",
      "lift[0]"
     ]
-   },
-   "seconds": 0.238776
+   }
   },
   "colorequal": {
    "op": "colorequal",
@@ -33324,8 +33273,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.09036
+   }
   },
   "colorbalancergb": {
    "op": "colorbalancergb",
@@ -35166,8 +35114,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.123826
+   }
   },
   "satcurvergb": {
    "op": "satcurvergb",
@@ -35831,8 +35778,7 @@
     "array_param_values": 84,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.165576
+   }
   },
   "rgbcurve": {
    "op": "rgbcurve",
@@ -36293,8 +36239,7 @@
     "array_param_values": 126,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.520109
+   }
   },
   "rgblevels": {
    "op": "rgblevels",
@@ -36693,8 +36638,7 @@
     "array_param_values": 9,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.049585
+   }
   },
   "basecurve": {
    "op": "basecurve",
@@ -37175,8 +37119,7 @@
     "array_param_values": 126,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.429668
+   }
   },
   "filmic": {
    "op": "filmic",
@@ -37977,8 +37920,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.185594
+   }
   },
   "sigmoid": {
    "op": "sigmoid",
@@ -38878,8 +38820,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.168759
+   }
   },
   "agx": {
    "op": "agx",
@@ -41517,8 +41458,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 1.01782
+   }
   },
   "filmicrgb": {
    "op": "filmicrgb",
@@ -43331,8 +43271,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 2.668977
+   }
   },
   "spektrafilm": {
    "op": "spektrafilm",
@@ -50263,8 +50202,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 5.88711
+   }
   },
   "lut3d": {
    "op": "lut3d",
@@ -50589,8 +50527,7 @@
     "array_param_values": 12928,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.082898
+   }
   },
   "colisa": {
    "op": "colisa",
@@ -50814,8 +50751,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.00062
+   }
   },
   "tonecurve": {
    "op": "tonecurve",
@@ -51313,8 +51249,7 @@
     "array_param_values": 126,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.359566
+   }
   },
   "levels": {
    "op": "levels",
@@ -51739,8 +51674,7 @@
     "array_param_values": 3,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.061344
+   }
   },
   "shadhi": {
    "op": "shadhi",
@@ -52273,8 +52207,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.123534
+   }
   },
   "zonesystem": {
    "op": "zonesystem",
@@ -52395,8 +52328,7 @@
     "array_param_values": 25,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000416
+   }
   },
   "globaltonemap": {
    "op": "globaltonemap",
@@ -52742,8 +52674,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.276982
+   }
   },
   "relight": {
    "op": "relight",
@@ -52956,8 +52887,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000594
+   }
   },
   "bilat": {
    "op": "bilat",
@@ -53485,8 +53415,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.048665
+   }
   },
   "colorcorrection": {
    "op": "colorcorrection",
@@ -53670,8 +53599,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000586
+   }
   },
   "colorcontrast": {
    "op": "colorcontrast",
@@ -53881,8 +53809,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000578
+   }
   },
   "velvia": {
    "op": "velvia",
@@ -54058,8 +53985,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000501
+   }
   },
   "vibrance": {
    "op": "vibrance",
@@ -54189,8 +54115,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000386
+   }
   },
   "colorzones": {
    "op": "colorzones",
@@ -54670,8 +54595,7 @@
     "array_param_values": 126,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.381377
+   }
   },
   "bloom": {
    "op": "bloom",
@@ -54894,8 +54818,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.034642
+   }
   },
   "colorize": {
    "op": "colorize",
@@ -55177,8 +55100,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.108857
+   }
   },
   "lowlight": {
    "op": "lowlight",
@@ -55337,8 +55259,7 @@
     "array_param_values": 12,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000521
+   }
   },
   "monochrome": {
    "op": "monochrome",
@@ -55511,8 +55432,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000513
+   }
   },
   "grain": {
    "op": "grain",
@@ -55768,8 +55688,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000443
+   }
   },
   "soften": {
    "op": "soften",
@@ -56039,8 +55958,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000437
+   }
   },
   "splittoning": {
    "op": "splittoning",
@@ -56460,8 +56378,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000538
+   }
   },
   "vignette": {
    "op": "vignette",
@@ -57063,8 +56980,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.096373
+   }
   },
   "colorreconstruct": {
    "op": "colorreconstruct",
@@ -57469,8 +57385,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.349413
+   }
   },
   "finalscale": {
    "schema_format": 1,
@@ -57906,8 +57821,7 @@
     "array_param_values": 512,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.467786
+   }
   },
   "clahe": {
    "op": "clahe",
@@ -58053,8 +57967,7 @@
     "array_param_values": 0,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.000217
+   }
   },
   "overexposed": {
    "schema_format": 1,
@@ -58495,8 +58408,7 @@
     "array_param_values": 4,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.203572
+   }
   },
   "borders": {
    "op": "borders",
@@ -59378,8 +59290,7 @@
     "array_param_values": 66,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.468322
+   }
   },
   "watermark": {
    "op": "watermark",
@@ -59605,70 +59516,13 @@
      "children": [
       {
        "id": 1,
-       "kind": "colorpicker_button",
-       "gtk_type": "GtkDarktableToggleButton",
-       "label": null,
-       "tooltip": "pick color from image",
-       "icon": true,
-       "active": false,
-       "action_path": "pick color",
-       "action_label": "pick color"
+       "kind": "label",
+       "gtk_type": "GtkLabel",
+       "label": "marker",
+       "tooltip": null
       },
       {
        "id": 2,
-       "kind": "button",
-       "gtk_type": "GtkColorButton",
-       "label": null,
-       "tooltip": "watermark color, tag:\n$(WATERMARK_COLOR)",
-       "icon": false
-      },
-      {
-       "id": 3,
-       "kind": "label",
-       "gtk_type": "GtkLabel",
-       "label": "color",
-       "tooltip": null
-      },
-      {
-       "id": 4,
-       "kind": "button",
-       "gtk_type": "GtkFontButton",
-       "label": null,
-       "tooltip": "text font, tags:\n$(WATERMARK_FONT_FAMILY)\n$(WATERMARK_FONT_STYLE)\n$(WATERMARK_FONT_WEIGHT)",
-       "icon": false
-      },
-      {
-       "id": 5,
-       "kind": "label",
-       "gtk_type": "GtkLabel",
-       "label": "font",
-       "tooltip": null
-      },
-      {
-       "id": 6,
-       "kind": "other",
-       "gtk_type": "GtkEntry",
-       "tooltip": "text string, tag: $(WATERMARK_TEXT)\nuse $(NL) to insert a line break",
-       "action_path": "text",
-       "action_label": "text"
-      },
-      {
-       "id": 7,
-       "kind": "label",
-       "gtk_type": "GtkLabel",
-       "label": "text",
-       "tooltip": null
-      },
-      {
-       "id": 8,
-       "kind": "button",
-       "gtk_type": "GtkDarktableButton",
-       "label": null,
-       "tooltip": null,
-       "icon": true
-      },
-      {
-       "id": 9,
        "kind": "combobox",
        "gtk_type": "DtBauhausWidget",
        "label": null,
@@ -59725,11 +59579,68 @@
        ]
       },
       {
-       "id": 10,
+       "id": 3,
+       "kind": "button",
+       "gtk_type": "GtkDarktableButton",
+       "label": null,
+       "tooltip": null,
+       "icon": true
+      },
+      {
+       "id": 4,
        "kind": "label",
        "gtk_type": "GtkLabel",
-       "label": "marker",
+       "label": "text",
        "tooltip": null
+      },
+      {
+       "id": 5,
+       "kind": "other",
+       "gtk_type": "GtkEntry",
+       "tooltip": "text string, tag: $(WATERMARK_TEXT)\nuse $(NL) to insert a line break",
+       "action_path": "text",
+       "action_label": "text"
+      },
+      {
+       "id": 6,
+       "kind": "label",
+       "gtk_type": "GtkLabel",
+       "label": "font",
+       "tooltip": null
+      },
+      {
+       "id": 7,
+       "kind": "button",
+       "gtk_type": "GtkFontButton",
+       "label": null,
+       "tooltip": "text font, tags:\n$(WATERMARK_FONT_FAMILY)\n$(WATERMARK_FONT_STYLE)\n$(WATERMARK_FONT_WEIGHT)",
+       "icon": false
+      },
+      {
+       "id": 8,
+       "kind": "label",
+       "gtk_type": "GtkLabel",
+       "label": "color",
+       "tooltip": null
+      },
+      {
+       "id": 9,
+       "kind": "button",
+       "gtk_type": "GtkColorButton",
+       "label": null,
+       "tooltip": "watermark color, tag:\n$(WATERMARK_COLOR)",
+       "icon": false
+      },
+      {
+       "id": 10,
+       "kind": "colorpicker_button",
+       "gtk_type": "GtkDarktableToggleButton",
+       "label": null,
+       "tooltip": "pick color from image",
+       "icon": true,
+       "active": false,
+       "action_path": "pick color",
+       "action_label": "pick color"
       }
      ]
     },
@@ -60004,12 +59915,10 @@
      "children": [
       {
        "id": 19,
-       "kind": "togglebutton",
-       "gtk_type": "GtkDarktableToggleButton",
-       "label": null,
-       "tooltip": null,
-       "icon": true,
-       "active": false
+       "kind": "label",
+       "gtk_type": "GtkLabel",
+       "label": "alignment",
+       "tooltip": null
       },
       {
        "id": 20,
@@ -60045,7 +59954,7 @@
        "label": null,
        "tooltip": null,
        "icon": true,
-       "active": true
+       "active": false
       },
       {
        "id": 24,
@@ -60054,7 +59963,7 @@
        "label": null,
        "tooltip": null,
        "icon": true,
-       "active": false
+       "active": true
       },
       {
        "id": 25,
@@ -60085,10 +59994,12 @@
       },
       {
        "id": 28,
-       "kind": "label",
-       "gtk_type": "GtkLabel",
-       "label": "alignment",
-       "tooltip": null
+       "kind": "togglebutton",
+       "gtk_type": "GtkDarktableToggleButton",
+       "label": null,
+       "tooltip": null,
+       "icon": true,
+       "active": false
       }
      ]
     },
@@ -60172,7 +60083,7 @@
    "nodes_destroyed": 0,
    "visibility": {
     "drivers": [
-     9,
+     2,
      15,
      16,
      17
@@ -60270,8 +60181,7 @@
     "array_param_values": 835,
     "array_param_values_bound": 0,
     "array_templates_touched": []
-   },
-   "seconds": 0.736256
+   }
   },
   "gamma": {
    "schema_format": 1,
