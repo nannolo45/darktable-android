@@ -868,6 +868,8 @@ static int cmd_api(const char *raw, const char *xmp, const char *outdir)
     if(json_object_get_boolean_member(o, "in_history")) in_hist++;
     if(json_object_get_boolean_member(o, "deprecated")) deprecated++;
     if(json_object_get_boolean_member(o, "one_instance")) one++;
+    JsonNode *on = json_object_get_member(o, "iop_order");
+    if(json_node_get_value_type(on) != G_TYPE_INT64) order_ok = 0;
     const int order = json_object_get_int_member(o, "iop_order");
     if(order < last_order) order_ok = 0;
     last_order = order;
@@ -886,7 +888,20 @@ static int cmd_api(const char *raw, const char *xmp, const char *outdir)
   fprintf(stdout, "RESULT modules %u, without switch %d, in history %d, deprecated %d, one_instance %d; params: %d struct, %d array, %d enum-like fields\n",
           json_array_get_length(a), no_switch, in_hist, deprecated, one, structs, arrays, enums);
   CHECK(missing == 0, "%d missing keys", missing);
-  CHECK(order_ok, "modules not in pipeline order");
+  CHECK(order_ok, "modules not in pipeline order, or iop_order not an integer");
+  {
+    // what re-reading the list costs the app (x86_64, 2 cores; JNI not included)
+    size_t bytes = 0;
+    const double t0 = now();
+    for(int i = 0; i < 10; i++)
+    {
+      char *js = get_modules_str();
+      bytes = strlen(js);
+      dtb_free(js);
+    }
+    const double t = (now() - t0) / 10.0;
+    fprintf(stdout, "RESULT modules() JSON %zu bytes, %.1f ms per call (x86_64)\n", bytes, t * 1000.0);
+  }
   CHECK(no_switch > 0 && in_hist > 0 && deprecated > 0 && arrays > 0 && enums > 0, "flags or param tree incomplete");
 
   // the nested shapes the specification names
@@ -1028,6 +1043,20 @@ static int cmd_params(const char *raw, const char *xmp, const char *outdir)
   EXPECT(dtb_module_reset("exposure", 42), DTB_E_NOT_FOUND);
   fprintf(stdout, "RESULT exposure before %g, reset to defaults\n", ev0);
   MUST(dtb_instance_delete("exposure", np));
+  // instance_move(+1): one step later in the pipeline, iop_order grows
+  m = get_modules();
+  const gint64 o0 = json_object_get_int_member(find_mod(m, "exposure", 0), "iop_order");
+  json_node_unref(m);
+  MUST(dtb_instance_move("exposure", 0, 1));
+  m = get_modules();
+  const gint64 o1 = json_object_get_int_member(find_mod(m, "exposure", 0), "iop_order");
+  json_node_unref(m);
+  MUST(dtb_instance_move("exposure", 0, -1));
+  m = get_modules();
+  const gint64 o2 = json_object_get_int_member(find_mod(m, "exposure", 0), "iop_order");
+  json_node_unref(m);
+  fprintf(stdout, "RESULT exposure iop_order %ld, after move +1 %ld, after -1 %ld\n", (long)o0, (long)o1, (long)o2);
+  CHECK(o1 > o0 && o2 < o1, "move +1 did not go later in the pipeline, or -1 not earlier");
   MUST(dtb_xmp_write(path_join(outdir, "reset.xmp")));
   buf = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "reset_bridge.ppm"), buf, w, h);
@@ -1099,7 +1128,7 @@ static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
   EXPECT(dtb_undo(), DTB_E_STATE);
   EXPECT(dtb_redo(), DTB_E_STATE);
 
-#define NSTEPS 12
+#define NSTEPS 11
   state_t st[NSTEPS + 1];
   const char *what[NSTEPS];
   int k = 0, p = -1;
@@ -1136,12 +1165,19 @@ static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
   what[k] = "module_reset";
   MUST(dtb_module_reset("vignette", 0));
   st[++k] = state_take();
-  what[k] = "history_goto";
+  what[k] = "history_compress";
+  // history_goto is navigation, not an undo step (engine-api.md 2.6): undo
+  // of the following compress returns to the state at the goto; the undo
+  // before that returns to the state before the reset, end included
   int end;
   history_count(&end);
+  int can_u0 = 0, can_r0 = 0;
+  can_u0 = undo_can(&can_r0);
   MUST(dtb_history_goto(end - 3));
-  st[++k] = state_take();
-  what[k] = "history_compress";
+  int can_u1 = 0, can_r1 = 0;
+  can_u1 = undo_can(&can_r1);
+  CHECK(can_u0 == can_u1 && can_r0 == can_r1, "history_goto changed the undo state");
+  state_t at_goto = state_take();
   MUST(dtb_history_compress());
   st[++k] = state_take();
   fprintf(stdout, "RESULT states %d\n", k + 1);
@@ -1152,8 +1188,8 @@ static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
   {
     MUST(dtb_undo());
     char label[160];
-    snprintf(label, sizeof(label), "undo of '%s' (state %d)", what[i], i);
-    ok &= state_equal(&st[i], label);
+    snprintf(label, sizeof(label), "undo of '%s' (state %d%s)", what[i], i, i == k - 1 ? ", at the goto" : "");
+    ok &= state_equal(i == k - 1 ? &at_goto : &st[i], label);
   }
   CHECK(ok, "undo did not restore every state exactly");
   CHECK(!undo_can(&redo) && redo, "after undoing everything: can_undo or not can_redo");
@@ -1164,8 +1200,10 @@ static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
   {
     MUST(dtb_redo());
     char label[160];
-    snprintf(label, sizeof(label), "redo of '%s' (state %d)", what[i - 1], i);
-    ok &= state_equal(&st[i], label);
+    // redo returns to the state undo left: after the reset that is the
+    // position the goto had moved to
+    snprintf(label, sizeof(label), "redo of '%s' (state %d%s)", what[i - 1], i, i == k - 1 ? ", at the goto" : "");
+    ok &= state_equal(i == k - 1 ? &at_goto : &st[i], label);
   }
   CHECK(ok, "redo did not restore every state exactly");
   EXPECT(dtb_redo(), DTB_E_STATE);
@@ -1181,6 +1219,7 @@ static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
   write_ppm(path_join(outdir, "undo_bridge.ppm"), buf, w, h);
   free(buf);
   for(int i = 0; i <= k; i++) state_free(&st[i]);
+  state_free(&at_goto);
 
   // depth: 60 sealed changes, at least 50 undo steps
   int steps = 0;
@@ -1558,7 +1597,6 @@ static int cmd_readonly(const char *raw, const char *xmp, const char *outdir)
   RO(dtb_instance_delete("exposure", 0));
   RO(dtb_instance_move("exposure", 0, 1));
   RO(dtb_instance_rename("exposure", 0, "x"));
-  RO(dtb_history_goto(0));
   RO(dtb_history_compress());
   RO(dtb_undo());
   RO(dtb_redo());
@@ -1566,7 +1604,18 @@ static int cmd_readonly(const char *raw, const char *xmp, const char *outdir)
   RO(dtb_metadata_reload(bad));
   RO(dtb_xmp_write(path_join(outdir, "ro_out.xmp")));
   fprintf(stdout, "RESULT read-only session: %d of %d mutating calls refused\n", refused, n);
-  // what stays allowed: reading, rendering, export
+  // what stays allowed: navigation, reading, rendering, export
+  {
+    int end = 0;
+    const int items = history_count(&end);
+    MUST(dtb_history_goto(0));
+    int e0 = -1;
+    history_count(&e0);
+    CHECK(e0 == 0, "goto 0 in a read-only session did not move the end");
+    MUST(dtb_history_goto(end));
+    CHECK(history_count(NULL) == items, "goto lost items");
+    fprintf(stdout, "RESULT read-only session: history_goto 0 and back to %d allowed\n", end);
+  }
   JsonNode *m = get_modules();
   json_node_unref(m);
   JsonNode *h = get_history();
@@ -1676,12 +1725,12 @@ static int cmd_output(const char *raw, const char *xmp, const char *outdir)
   JsonNode *ii = get_json(dtb_image_info);
   JsonObject *im = json_node_get_object(ii);
   JsonArray *labels = json_object_get_array_member(im, "color_labels");
-  fprintf(stdout, "RESULT metadata_reload: rating %ld, labels %u%s%s\n", (long)json_object_get_int_member(im, "rating"),
-          json_array_get_length(labels),
-          json_array_get_length(labels) > 0 ? " first " : "",
-          json_array_get_length(labels) > 0 ? json_array_get_string_element(labels, 0) : "");
+  const guint nl = json_array_get_length(labels);
+  fprintf(stdout, "RESULT metadata_reload: rating %ld, labels [%ld, %ld]\n", (long)json_object_get_int_member(im, "rating"),
+          nl > 0 ? (long)json_array_get_int_element(labels, 0) : -1L, nl > 1 ? (long)json_array_get_int_element(labels, 1) : -1L);
   CHECK(json_object_get_int_member(im, "rating") == 4, "rating not reloaded");
-  CHECK(json_array_get_length(labels) == 2, "colour labels not reloaded");
+  CHECK(nl == 2 && json_array_get_int_element(labels, 0) == 0 && json_array_get_int_element(labels, 1) == 3,
+        "colour labels not reloaded as numbers [0, 3]");
   json_node_unref(ii);
   // the reloaded metadata go out with the next write, the edit as before
   MUST(dtb_xmp_write(path_join(outdir, "meta_out.xmp")));

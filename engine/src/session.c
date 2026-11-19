@@ -219,7 +219,7 @@ int dtb_image_info(char **json)
   const dt_imgid_t imgid = img->id;
   dt_image_cache_read_release(img);
 
-  // as the lighttable shows them: common/ratings.c, common/colorlabels.c
+  // as darktable stores them: common/ratings.c, common/colorlabels.c (0 red .. 4 purple)
   const int rating = dt_ratings_get(imgid);
   json_builder_set_member_name(b, "rating");
   json_builder_add_int_value(b, rating == DT_VIEW_REJECT ? -1 : rating);
@@ -227,7 +227,7 @@ int dtb_image_info(char **json)
   json_builder_begin_array(b);
   const int labels = dt_colorlabels_get_labels(imgid);
   for(int k = 0; k < DT_COLORLABELS_LAST; k++)
-    if(labels & (1 << k)) json_builder_add_string_value(b, dt_colorlabels_to_string(k));
+    if(labels & (1 << k)) json_builder_add_int_value(b, k);
   json_builder_end_array(b);
   json_builder_end_object(b);
   *json = dtb__json_finish(b);

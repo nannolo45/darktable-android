@@ -205,17 +205,21 @@ int dtb_history(char **json)
  * compensate_hilite_pres), which an instance delete or move changes. */
 int dtb_history_goto(int end)
 {
-  NEED_WRITABLE();
+  // navigation (engine-api.md 2.6): allowed in a read-only session (it only
+  // writes the private library, never an XMP) and not an undo step. The
+  // next edit records the state it starts from, with this end, and then
+  // discards the items above it, as on desktop.
+  NEED_SESSION();
   const int n = g_list_length(dtb_S.dev.history);
   if(end < 0 || end > n) return dtb__err(DTB_E_ARG, "end %d outside 0..%d", end, n);
-  dtb__change_begin(DTB_CHANGE_OTHER, NULL);
   dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
   dt_dev_pop_history_items_ext(&dtb_S.dev, end);
   dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
   dt_dev_write_history(&dtb_S.dev);
   dtb__reload_dev();
-  dtb__change_end(DTB_CHANGE_OTHER, NULL);
+  dtb_S.merge_module = NULL;
+  dt_dev_history_seal(&dtb_S.dev, TRUE);
   return DTB_OK;
 }
 

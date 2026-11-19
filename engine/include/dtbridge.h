@@ -142,7 +142,8 @@ int dtb_close(void);
  *   "read_only": bool,
  *   "exif": { "maker", "model", "lens", "iso", "aperture", "exposure",
  *             "focal_length", "datetime" },   datetime "YYYY-MM-DDTHH:MM:SS" or null
- *   "rating": -1 (rejected) .. 5, "color_labels": [ "red" | "yellow" | "green" | "blue" | "purple" ] }
+ *   "rating": -1 (rejected) .. 5,
+ *   "color_labels": [ n, ... ] }   darktable's numbers: 0 red, 1 yellow, 2 green, 3 blue, 4 purple
  * Loads the full image if no render has done so yet. */
 int dtb_image_info(char **json);
 
@@ -215,8 +216,9 @@ int dtb_instance_duplicate(const char *op, int priority, int *new_priority);
  * desktop does. The last instance of a module cannot be deleted (DTB_E_ARG).
  * If priority 0 is deleted, the next instance becomes priority 0. */
 int dtb_instance_delete(const char *op, int priority);
-/* [M] Move one step in the pipeline: direction +1 = later (up in
- * darktable's panel), -1 = earlier. Skips hidden modules; refuses moves the
+/* [M] Move one step in the pipeline: direction +1 = later in the pipeline
+ * (up in darktable's module list, which shows the pipeline last-first),
+ * -1 = earlier. iop_order in dtb_modules() grows along the pipeline. Skips hidden modules; refuses moves the
  * pipeline rules forbid (DTB_E_ARG). As on desktop, moving switches the
  * module on. */
 int dtb_instance_move(const char *op, int priority, int direction);
@@ -230,8 +232,10 @@ int dtb_instance_rename(const char *op, int priority, const char *name);
 /* { "end": n, "items": [ { "num", "op", "priority", "name",
  *                          "instance_name", "enabled" } ] } */
 int dtb_history(char **json);
-/* [M] Show the state after the first `end` items (0 = original). A
- * following change discards the items above `end`, as on desktop. */
+/* Show the state after the first `end` items (0 = original). A following
+ * change discards the items above `end`, as on desktop. Navigation: allowed
+ * in a read-only session, and not an undo step (undo and redo cover edits
+ * only, unlike desktop). */
 int dtb_history_goto(int end);
 /* [M] Compress history (darktable's dt_history_compress_on_image). */
 int dtb_history_compress(void);
