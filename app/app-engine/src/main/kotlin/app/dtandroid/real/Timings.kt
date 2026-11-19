@@ -125,7 +125,10 @@ class Timings(
                     val ts = ArrayList<Long>()
                     for (r in 0 until 3) {
                         e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.3 + (k++) * 0.01))
-                        ts += timed { e.renderPreview(size) }.second
+                        val (img, t) = timed { e.renderPreview(size) }
+                        // these renders of several sizes let the drag picture's line be fitted (DragPicture)
+                        controller.dragPicture.record(img.width * img.height, t, drag = true)
+                        ts += t
                     }
                     table.append("$size px ${ms(median(ts))}; ")
                 }
