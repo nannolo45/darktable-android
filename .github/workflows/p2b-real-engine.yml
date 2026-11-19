@@ -1,0 +1,387 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Brief P2b: the app on the real engine. Builds it for arm64-v8a and x86_64 from the released engine
+# archives, runs the rule check and the JVM tests, publishes the arm64 APK as a release file
+# ("dt-android-engine-..."), runs the engine contract suite and the scenario tests on an API 33
+# x86_64 emulator, and compares the app's exports with darktable-cli on Linux (the same commit):
+# the G0 comparison (test RAW + test XMP) and an XMP written by the app. Logs go to the ci-logs branch.
+name: p2b-real-engine
+
+on:
+  push:
+    branches: [main, p2b-real-engine]
+    paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", ".github/workflows/p2b-real-engine.yml"]
+  workflow_dispatch:
+
+# nothing by default; jobs ask for what they need
+permissions: {}
+
+concurrency:
+  group: p2b-real-engine-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # the public test image and edit the G0 comparison uses (darktable-tests)
+  P2B_RAW: images/mire1.cr2
+  P2B_XMP: 0001-exposure/exposure.xmp
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      engine_tag: ${{ steps.t.outputs.ENGINE_TAG }}
+      dt_commit: ${{ steps.t.outputs.DT_COMMIT }}
+      app_tag: ${{ steps.a.outputs.APP_TAG }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: t
+        run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
+      - id: a
+        run: echo "APP_TAG=app-engine-$(git rev-parse HEAD | cut -c1-12)" | tee -a "$GITHUB_OUTPUT"
+
+  # both skip an ABI whose release file already exists
+  deps:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/deps.yml
+
+  engine:
+    needs: deps
+    permissions:
+      contents: write
+    uses: ./.github/workflows/engine.yml
+
+  linux:
+    # darktable-cli of the same commit on Linux, for the comparisons after the emulator test
+    needs: tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      DTA_WORK: /home/runner/dta-work
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Linux build
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/dt-linux
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
+
+      - name: Build darktable for Linux
+        run: |
+          if [ "${{ steps.cache.outputs.cache-hit }}" = true ]; then
+            tools/build-engine-linux.sh --deps-only
+          else
+            tools/fetch-darktable.sh /home/runner/darktable
+            tools/build-engine-linux.sh /home/runner/darktable /home/runner/dt-linux 2>&1 | tail -n 60
+          fi
+          /home/runner/dt-linux/bin/darktable-cli --version | head -2
+
+      - name: Save Linux build
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/dt-linux
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
+
+      - name: Fetch the test image and reference export (darktable-cli, JPEG quality 95)
+        run: |
+          tools/engine-test/fetch-paths.sh /home/runner/dtt "$P2B_RAW" "$P2B_XMP"
+          rm -rf /home/runner/dtt/.git-dtt
+          mkdir -p /home/runner/ref
+          /home/runner/dt-linux/bin/darktable-cli "/home/runner/dtt/$P2B_RAW" "/home/runner/dtt/$P2B_XMP" /home/runner/ref/export.jpg \
+            --core --configdir /tmp/cli-config --cachedir /tmp/cli-cache \
+            --conf plugins/imageio/format/jpeg/quality=95 > /home/runner/ref/cli.log 2>&1
+          ls -l /home/runner/ref
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: p2b-reference
+          path: |
+            /home/runner/ref
+            /home/runner/dtt
+          retention-days: 7
+
+  apk:
+    needs: [tag, engine]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write   # release files, ci-logs branch
+    env:
+      ENGINE_TAG: ${{ needs.tag.outputs.engine_tag }}
+      APP_TAG: ${{ needs.tag.outputs.app_tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch both engine archives
+        run: |
+          mkdir -p /home/runner/engines
+          for abi in arm64-v8a x86_64; do
+            gh release download -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --pattern "engine-$abi.tar.gz" --dir /home/runner/engines
+            tar -xzf "/home/runner/engines/engine-$abi.tar.gz" -C /home/runner/engines
+          done
+
+      - name: Android SDK packages, Gradle and the signing key
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0" "ndk;30.0.16248370" "cmake;3.22.1" > /tmp/sdkmanager.log 2>&1 || { tail -20 /tmp/sdkmanager.log; exit 1; }
+          echo "GRADLE=$(tools/app/setup-gradle.sh /home/runner/gradle)" >> "$GITHUB_ENV"
+          # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
+          # debug-keystore form) every build has the same signature, so a newer build installs over an older one
+          # and keeps its data. Without the secret a key is made here for this run only and never stored.
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          if [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
+              || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
+            echo "signing: owner key"
+          else
+            "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+          fi
+
+      - name: Rule check and JVM tests (fake engine, screenshots included)
+        id: tests
+        run: |
+          set +e
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue \
+            :checkScreenRulesSelfTest :checkScreenRules \
+            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest :app:assembleDebug 2>&1 | tee /tmp/tests.log
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
+          exit 0
+
+      - name: Build the APKs (debug, one per ABI) and the instrumented tests
+        id: build
+        run: |
+          start=$(date +%s)
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" \
+            :app-engine:assembleArm64Debug :app-engine:assembleX86_64Debug :app-engine:assembleX86_64DebugAndroidTest :g0:assembleX86_64Debug 2>&1 | tee /tmp/gradle.log
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          mkdir -p /home/runner/apk
+          cp app-engine/build/outputs/apk/arm64/debug/app-engine-arm64-debug.apk /home/runner/apk/dt-android-engine-arm64-v8a.apk
+          cp app-engine/build/outputs/apk/x86_64/debug/app-engine-x86_64-debug.apk /home/runner/apk/dt-android-engine-x86_64.apk
+          cp app-engine/build/outputs/apk/androidTest/x86_64/debug/app-engine-x86_64-debug-androidTest.apk /home/runner/apk/app-engine-x86_64-androidTest.apk
+
+      - name: Check and measure the APKs
+        run: |
+          R=/home/runner/apk/apk-report.txt
+          {
+            echo "app tag: $APP_TAG"; echo "engine: $ENGINE_TAG"; echo "commit: $GITHUB_SHA"
+            for abi in arm64-v8a x86_64; do
+              a=/home/runner/apk/dt-android-engine-$abi.apk
+              echo; echo "== $abi"
+              echo "apk_bytes $(stat -c %s "$a")"
+              "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$a" | grep -E "^package:|^application-label:|native-code" || true
+              unzip -l "$a" | awk '$4 ~ /^(lib\/|assets\/engine\/)/ {print "  " $1 "\t" $4}'
+              if unzip -l "$a" | grep -iE '\.(cr2|cr3|nef|arw|raf|dng|orf|rw2|pef|srw|jks|keystore)$'; then echo "FORBIDDEN FILE IN APK"; exit 1; fi
+              echo "  permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/    /'
+              if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
+              if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
+              echo "  signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$a" | grep -E "Signer #1 certificate SHA-256" | sed 's/^/    /'
+            done
+          } | tee "$R"
+
+      - name: Publish the phone APK as a release file
+        if: steps.tests.outputs.rc == '0'
+        run: |
+          cd /home/runner/apk
+          cp /tmp/test-summary.txt test-summary.txt
+          gh release view -R "$GITHUB_REPOSITORY" "$APP_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$APP_TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "dt-android engine $APP_TAG (real engine)" \
+              --notes "The app on darktable's real engine (brief P2b), built from commit $GITHUB_SHA with engine $ENGINE_TAG: opens your RAW files through the file picker and edits them with darktable's pipeline. Not the interface preview. Unofficial port of darktable, debug build, not a darktable release. Phone: dt-android-engine-arm64-v8a.apk. Source: this repository at that commit (GPL-3.0-or-later)." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$APP_TAG" dt-android-engine-arm64-v8a.apk apk-report.txt test-summary.txt --clobber
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: p2b-apks
+          path: |
+            /home/runner/apk/dt-android-engine-x86_64.apk
+            /home/runner/apk/app-engine-x86_64-androidTest.apk
+          retention-days: 7
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L"
+          {
+            echo "tests_exit: ${{ steps.tests.outputs.rc }}"
+            echo "gradle_seconds: ${{ steps.build.outputs.seconds }}"
+            echo "runner_cores: $(nproc)"
+          } > "$L/summary.txt"
+          cp /home/runner/apk/apk-report.txt /tmp/test-summary.txt "$L/" 2>/dev/null || true
+          tail -n 300 /tmp/tests.log > "$L/tests.tail.log" 2>/dev/null || true
+          tail -n 200 /tmp/gradle.log > "$L/gradle.tail.log" 2>/dev/null || true
+          grep -E "^e: |^w: |error:|warning:" /tmp/gradle.log > "$L/gradle-messages.log" 2>/dev/null || true
+          mkdir -p "$L/test-results" "$L/screenshots"
+          cp app/darkroom/build/outputs/screenshots/*.png "$L/screenshots/" 2>/dev/null || true
+          for d in app/*/build/test-results; do
+            m=$(basename "$(dirname "$(dirname "$d")")"); mkdir -p "$L/test-results/$m"
+            find "$d" -name 'TEST-*.xml' -exec cp {} "$L/test-results/$m/" \; 2>/dev/null || true
+          done
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-apk "${{ job.status }}-tests${{ steps.tests.outputs.rc }}"
+
+      - name: Fail if a JVM test or the rule check failed
+        if: steps.tests.outputs.rc != '0'
+        run: exit 1
+
+  emulator:
+    needs: [apk, linux]
+    if: ${{ !cancelled() && needs.apk.result == 'success' && needs.linux.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: write   # ci-logs branch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: p2b-apks
+          path: /home/runner/apk
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: p2b-reference
+          path: /home/runner/refart
+
+      - name: Locate the test files
+        run: |
+          T=$(dirname "$(dirname "$(find /home/runner/refart -name mire1.cr2 | head -1)")")
+          echo "DTT=$T" >> "$GITHUB_ENV"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Contract suite and scenario tests in the emulator (API 33, x86_64)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 33
+          arch: x86_64
+          target: google_apis
+          cores: 4
+          ram-size: 6144M
+          disk-size: 8G
+          emulator-boot-timeout: 900
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash tools/app/emulator-p2b.sh /home/runner/apk/dt-android-engine-x86_64.apk /home/runner/apk/app-engine-x86_64-androidTest.apk "$DTT/$P2B_RAW" "$DTT/$P2B_XMP" /home/runner/emu; echo $? > /home/runner/emu-rc.txt
+
+      - name: Result
+        id: r
+        if: always()
+        run: echo "test_rc=$(cat /home/runner/emu-rc.txt 2>/dev/null || echo 1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: p2b-emulator
+          path: /home/runner/emu/p2b-test
+          retention-days: 7
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L/p2b-test"
+          E=/home/runner/emu
+          cp "$E/device.txt" "$E/instrument.txt" "$E/instrument-summary.txt" "$E/crashes.txt" "$E/timings.txt" "$L/" 2>/dev/null || true
+          for f in "$E"/p2b-test/*; do case "$f" in *.jpg) ;; *) cp "$f" "$L/p2b-test/" ;; esac; done
+          tail -n 4000 "$E/logcat.txt" > "$L/logcat-tail.txt" 2>/dev/null || true
+          echo "test_rc: ${{ steps.r.outputs.test_rc }}" > "$L/summary.txt"
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-emulator "${{ job.status }}-test${{ steps.r.outputs.test_rc }}"
+
+      - name: Fail if a test failed
+        if: steps.r.outputs.test_rc != '0'
+        run: exit 1
+
+  compare:
+    # the app's exports against darktable-cli on Linux: the G0 comparison, and an XMP the app wrote
+    needs: [tag, emulator]
+    if: ${{ !cancelled() && needs.emulator.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write   # ci-logs branch
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Linux build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/dt-linux
+          fail-on-cache-miss: true
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: p2b-reference
+          path: /home/runner/refart
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: p2b-emulator
+          path: /home/runner/app
+
+      - name: Compare
+        id: c
+        run: |
+          tools/build-engine-linux.sh --deps-only
+          R=$(dirname "$(find /home/runner/refart -name export.jpg | head -1)")
+          T=$(dirname "$(dirname "$(find /home/runner/refart -name mire1.cr2 | head -1)")")
+          A=/home/runner/app
+          ls -l "$A" "$R"
+          mkdir -p /tmp/ci-out
+          # the XMP the app wrote (an edit with an undo in it), rendered by darktable-cli as the PC would
+          /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/app-edit.xmp" /tmp/cli-app-edit.jpg \
+            --core --configdir /tmp/cli-config --cachedir /tmp/cli-cache \
+            --conf plugins/imageio/format/jpeg/quality=95 > /tmp/ci-out/cli-app-edit.log 2>&1 || true
+          # accepted, as in G0: same size and PSNR >= 40 dB (JPEG quality 95; clang and newer libraries on
+          # Android, gcc and Ubuntu's libraries on Linux)
+          check() {
+            out=$(python3 -I engine/tests/compare.py "$1" "$2" --tolerance 255 2>&1) || true
+            echo "$3: $out" | tee -a /tmp/ci-out/compare.txt
+            psnr=$(echo "$out" | sed -n 's/.* psnr \([0-9.inf]*\).*/\1/p')
+            if echo "$out" | grep -q '^size' && { [ "$psnr" = inf ] || awk "BEGIN{exit !($psnr >= 40)}"; }; then echo ok; else echo bad; fi
+          }
+          g0=$(check "$A/export.jpg" "$R/export.jpg" "test XMP: app export vs darktable-cli" | tail -1)
+          ed=$(check "$A/app-edit.jpg" /tmp/cli-app-edit.jpg "app-written XMP: app export vs darktable-cli" | tail -1)
+          echo "g0=$g0" >> "$GITHUB_OUTPUT"; echo "edit=$ed" >> "$GITHUB_OUTPUT"
+          cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}"
+
+      - name: Fail if a comparison failed
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok'
+        run: exit 1
