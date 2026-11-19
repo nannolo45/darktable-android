@@ -61,6 +61,8 @@ jobs:
 
       - name: Built-in module layouts match the pinned upstream (brief P2d)
         id: layouts
+        # a fetch from github.com once hung for over 15 minutes (run 44497441293); bound it and retry
+        timeout-minutes: 20
         run: |
           set -o pipefail
           PIN=$(git ls-tree HEAD upstream/darktable | awk '{print $3}')
@@ -69,8 +71,13 @@ jobs:
           git init -q /tmp/dt-src
           git -C /tmp/dt-src remote add origin https://github.com/darktable-org/darktable.git
           git -C /tmp/dt-src sparse-checkout set --no-cone src/libs/modulegroups.c src/common/utility.c data/darktableconfig.xml.in
-          git -C /tmp/dt-src fetch -q --depth 1 --filter=blob:none origin "$PIN"
-          git -C /tmp/dt-src checkout -q FETCH_HEAD
+          ok=0
+          for i in 1 2 3; do
+            if timeout 300 git -C /tmp/dt-src fetch -q --depth 1 --filter=blob:none origin "$PIN"; then ok=1; break; fi
+            echo "fetch attempt $i failed or timed out"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "could not fetch upstream $PIN"; exit 1; }
+          timeout 300 git -C /tmp/dt-src checkout -q FETCH_HEAD
           pkg-config --exists glib-2.0 || { sudo apt-get update -q >/dev/null && sudo apt-get install -y -q libglib2.0-dev >/dev/null; }
           python3 -I tools/layouts/extract-builtin-layouts.py /tmp/dt-src --check 2>&1 | tee /tmp/layouts-check.log
 
