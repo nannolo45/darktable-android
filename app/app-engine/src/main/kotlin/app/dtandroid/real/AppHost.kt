@@ -99,6 +99,16 @@ object AppHost {
         DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
             c.source = Source
             // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
+            // brief P2f: what a job from LightPhotoLibrary did with the open photo, said in the darkroom once
+            AppEngine.scope.launch {
+                var said: String? = null
+                agent.notes.collect { notes ->
+                    val item = c.state.value.current?.takeIf { c.state.value.info != null } ?: return@collect
+                    val (origin, id) = lplPhotoOf(item) ?: return@collect
+                    val n = notes[origin to id]
+                    if (n != null && n != said) { said = n; c.showMessage(n) }
+                }
+            }
             AppEngine.scope.launch {
                 kotlinx.coroutines.flow.combine(c.state, agent.steps, agent.photos) { st, steps, _ -> st.current to steps }.collect { (item, steps) ->
                     val it0 = item ?: return@collect

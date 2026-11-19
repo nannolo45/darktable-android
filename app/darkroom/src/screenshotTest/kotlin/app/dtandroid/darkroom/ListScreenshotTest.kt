@@ -75,7 +75,8 @@ abstract class ListScreenshotBase {
         PhotoList.Row("1", "IMG_20261119_000123.CR2", "downloading 40 %", progress = 0.4f, thumb = null, actions = more),
         PhotoList.Row("2", "IMG_20261119_000124.CR2", "ready to edit", thumb = thumb(2), actions = more,
             lastEdit = "last edited on Desktop · 18 Nov · exposure, color balance rgb"),
-        PhotoList.Row("3", "IMG_20261119_000125.CR2", "open in the darkroom", thumb = thumb(3), actions = more, lastEdit = "edited here, not synced yet"),
+        PhotoList.Row("3", "IMG_20261119_000125.CR2", "open in the darkroom", thumb = thumb(3), actions = more,
+            note = "saved your open changes and sent them · as LightPhotoLibrary asked", lastEdit = "last edited on this phone · today 14:05 · exposure"),
         PhotoList.Row("4", "IMG_20261119_000126.CR2", "syncing: making the preview", progress = 0f, thumb = thumb(4), actions = more,
             lastEdit = "edited here, not synced yet"),
         PhotoList.Row("5", "IMG_20261119_000127.CR2", "waiting to sync · the server is not reachable", thumb = thumb(5), actions = more,
@@ -104,7 +105,8 @@ abstract class ListScreenshotBase {
     }
 
     @Test fun photosInEachState() {
-        showList(listOf(server(allStates(), "this phone is \"Phone\" · connected · 2 photos waiting to sync"), local(emptyList())),
+        showList(listOf(server(allStates(), "this phone is \"Phone\" · connected · 2 photos waiting to sync")
+            .copy(note = "LightPhotoLibrary asked to save 1 photo: 1 photo sent"), local(emptyList())),
             messages = listOf("1 photo arrived from LightPhotoLibrary"))
         // one "more" per row, no row of buttons
         compose.onNodeWithContentDescription("more for IMG_20261119_000124.CR2").assertExists()
@@ -115,7 +117,9 @@ abstract class ListScreenshotBase {
         showList(listOf(server(allStates().take(3), "this phone is \"Phone\" · connected"), local(emptyList())))
         compose.onNodeWithContentDescription("more for IMG_20261119_000124.CR2").performClick()
         compose.waitForIdle()
-        for (t in listOf("sync now", "open in LightPhotoLibrary", "remove from this phone")) compose.onNode(hasText(t)).assertExists()
+        // "sync now" is also the server header's button: at least one node each
+        for (t in listOf("sync now", "open in LightPhotoLibrary", "remove from this phone"))
+            assertTrue(t, compose.onAllNodes(hasText(t)).fetchSemanticsNodes().isNotEmpty())
         capture("03-more-sheet")
     }
 
@@ -140,6 +144,7 @@ class ListTabletScreenshots : ListScreenshotBase() { override val prefix = "list
  * "before", "more" (an icon), "done". The title must have room for at least the first letters and the
  * last four characters of the name.
  */
+@RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w360dp-h740dp-port-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class TopBarScreenshots {

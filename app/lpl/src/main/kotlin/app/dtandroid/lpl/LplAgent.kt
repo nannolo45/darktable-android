@@ -417,7 +417,10 @@ class LplAgent(
             // PLAN.md 2.1: an edit made with a newer darktable is never rewritten or sent back
             return SyncOutcome.READ_ONLY
         }
+        val before = if (xmp.isFile) WorkStore.sha256(xmp) else ""
         editor.writeIfOpen(raw, xmp)
+        // brief P2f: whether the darkroom's open changes were written just now (for what the user is told)
+        lastWroteOpen[r.key] = editor.isOpen(raw) && xmp.isFile && WorkStore.sha256(xmp) != before
         if (!xmp.isFile) return SyncOutcome.SYNCED
         val bytes = xmp.readBytes()
         val hash = WorkStore.sha256(bytes)
@@ -602,15 +605,69 @@ class LplAgent(
      */
     suspend fun runSyncOrRelease(origin: ServerOrigin, job: Job): Boolean {
         var ok = true
-        for (id in jobIds(origin, job)) {
+        val ids = jobIds(origin, job)
+        val what = if (job.kind == "release") "save and remove" else "save"
+        var sent = 0; var waiting = 0; var kept = 0; var removed = 0
+        serverNote(origin, "LightPhotoLibrary asked to $what ${count(ids.size)}…")
+        for (id in ids) {
+            val name = record(origin, id)?.filename ?: continue
+            val wasOpen = record(origin, id)?.let { editor.isOpen(work.raw(it)) } == true
+            val hadChanges = record(origin, id)?.let { isDirty(it) } == true
+            note(origin, id, "LightPhotoLibrary asked to $what this photo: sending…")
             val o = sync(origin, id, force = job.kind == "sync")
-            if (o == SyncOutcome.WAITING || o == SyncOutcome.FAILED) { ok = false; continue }
+            val wroteOpen = lastWroteOpen.remove(origin to id) == true
+            val sentText = when {
+                wroteOpen -> "saved your open changes and sent them"
+                wasOpen -> "sent the edit as of your last \"done\" (no changes since)"
+                hadChanges -> "sent the edit"
+                else -> "sent the edit again (LightPhotoLibrary had it already)"
+            }
+            when (o) {
+                SyncOutcome.WAITING, SyncOutcome.FAILED -> {
+                    ok = false; waiting++
+                    note(origin, id, "LightPhotoLibrary asked for this photo; not sent: ${record(origin, id)?.error?.ifEmpty { null } ?: "the server did not answer"}" +
+                        if (o == SyncOutcome.WAITING) "; tried again later" else "")
+                    continue
+                }
+                SyncOutcome.READ_ONLY -> { note(origin, id, "LightPhotoLibrary asked for this photo; not sent: ${UserText.NEWER_DARKTABLE}"); continue }
+                SyncOutcome.NOT_HELD -> continue
+                SyncOutcome.SYNCED -> { sent++; note(origin, id, "$sentText · as LightPhotoLibrary asked") }
+            }
             if (job.kind == "release") {
-                if (remove(origin, id) != RemoveResult.Removed) ok = false
+                when (remove(origin, id)) {
+                    RemoveResult.Removed -> { removed++; note(origin, id, null); serverNote(origin, "$name: $sentText, then removed from this phone, as LightPhotoLibrary asked") }
+                    RemoveResult.OpenInDarkroom -> { ok = false; kept++; note(origin, id, "$sentText; LightPhotoLibrary asked to remove it from this phone: it stays while it is open in the darkroom") }
+                    RemoveResult.Unsynced -> { ok = false; kept++; note(origin, id, "LightPhotoLibrary asked to remove it from this phone: it stays, it has changes LightPhotoLibrary does not have yet") }
+                }
             }
         }
+        val parts = listOfNotNull(
+            if (sent > 0) "${count(sent)} sent" else null,
+            if (removed > 0) "$removed removed from this phone" else null,
+            if (kept > 0) "$kept kept on this phone" else null,
+            if (waiting > 0) "$waiting waiting to sync" else null,
+        )
+        serverNote(origin, "LightPhotoLibrary asked to $what ${count(ids.size)}: " + (parts.joinToString(", ").ifEmpty { "nothing to do" }))
         return ok
     }
+
+    private fun count(n: Int) = if (n == 1) "1 photo" else "$n photos"
+
+    private val lastWroteOpen = ConcurrentHashMap<Pair<ServerOrigin, Long>, Boolean>()
+
+    private val _notes = MutableStateFlow<Map<Pair<ServerOrigin, Long>, String>>(emptyMap())
+    /** Brief P2f: what a job from LightPhotoLibrary did with a photo, in plain words, for its row and the darkroom. */
+    val notes: StateFlow<Map<Pair<ServerOrigin, Long>, String>> = _notes.asStateFlow()
+
+    private val _serverNotes = MutableStateFlow<Map<ServerOrigin, String>>(emptyMap())
+    /** Brief P2f: the last job from each server and how it went, for the list's header. */
+    val serverNotes: StateFlow<Map<ServerOrigin, String>> = _serverNotes.asStateFlow()
+
+    private fun note(o: ServerOrigin, id: Long, text: String?) = _notes.update { if (text == null) it - (o to id) else it + ((o to id) to text) }
+    private fun serverNote(o: ServerOrigin, text: String) = _serverNotes.update { it + (o to text) }
+
+    /** The user saw the note (opened the photo, synced it by hand): drop it. */
+    fun clearNote(o: ServerOrigin, id: Long) = note(o, id, null)
 }
 
 /** The ids of jobs this app ran, with their result, kept on disk (the last [MAX] of them). */

@@ -48,6 +48,8 @@ data class ModuleSchema(
     val actionPaths: Map<Int, String> = emptyMap(),
     /** the extractor's kind of each control with an action path (slider, combobox, button, graph, ...) */
     val actionKinds: Map<Int, String> = emptyMap(),
+    /** brief P2f: an aspect list made usable by an override (crop), with the parameters it drives */
+    val aspect: AspectSpec? = null,
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {
@@ -91,6 +93,12 @@ sealed interface Binding {
 
     /** Not editable: the schema has no parameter for it (S5 "unbound"). */
     data object None : Binding
+
+    /**
+     * Brief P2f: crop's aspect list (override `aspect_list`): an entry sets the ratio parameters and
+     * reshapes the frame as desktop does ([AspectSpec], [CropAspect]).
+     */
+    data object Aspect : Binding
 }
 
 sealed class Control {
@@ -293,3 +301,23 @@ data class Condition(
 
 /** Variables are parameter names or `control <id>` for interface-only controls. */
 data class Table(val variables: List<String>, val visibleFor: Set<List<Int>>, val hiddenFor: Set<List<Int>>)
+
+/**
+ * Brief P2f: crop's aspect list as `schema/overrides/crop.json` describes it: the entries with their
+ * ratio (d:n, as in src/iop/crop.c; 0:0 freehand, 1:0 the image's own ratio), the parameters the list
+ * writes and the frame's four margins (left, top, right, bottom as fractions of the input).
+ */
+data class AspectSpec(
+    val controlId: Int,
+    val ratioD: String,
+    val ratioN: String,
+    val left: String,
+    val top: String,
+    val right: String,
+    val bottom: String,
+    val entries: List<AspectEntry>,
+    val flipLabel: String,
+    val flipIcon: String,
+)
+
+data class AspectEntry(val label: String, val d: Int, val n: Int)

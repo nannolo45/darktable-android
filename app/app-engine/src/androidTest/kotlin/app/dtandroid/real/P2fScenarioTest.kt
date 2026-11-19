@@ -10,6 +10,7 @@ import app.dtandroid.darkroom.Timeline
 import app.dtandroid.lpl.StubLpl
 import kotlinx.coroutines.async
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.FixMethodOrder
 import org.junit.Test
@@ -300,5 +301,47 @@ class P2fScenarioTest {
             c.closePhoto()
         }
         TestFiles.record(res, "f5", "passed")
+    }
+
+    /**
+     * f6 (deliverable 10): crop's aspect list on the real engine. "square" chosen in the darkroom crops the
+     * picture square; the flip and 3:2 follow; the XMP written and opened again keeps ratio and frame. The XMP
+     * is kept (p2f-crop.xmp) and the workflow renders it with darktable-cli to check desktop reads the same crop.
+     */
+    @Test
+    fun f6_cropAspectOnTheRealEngine() = kotlinx.coroutines.runBlocking<Unit> {
+        TestFiles.engine()
+        val dir = File(TestFiles.ctx.filesDir, "p2f-crop").apply { deleteRecursively(); mkdirs() }
+        val raw = File(dir, TestFiles.raw.name).also { TestFiles.raw.copyTo(it); it.setWritable(false, false) }
+        val item = app.dtandroid.darkroom.SeriesItem(raw.name, raw.path, File(dir, raw.name + ".xmp").path)
+        val c = AppHost.controller
+        c.start(app.dtandroid.darkroom.Series("crop", listOf(item)), 0, filmstrip = false, thumbnails = false)
+        try {
+            val key = InstanceKey("crop", 0)
+            val spec = AppHost.schema.modules.getValue("crop").aspect!!
+            val w0 = c.state.value.info!!.width; val h0 = c.state.value.info!!.height
+            c.chooseAspect(key, spec.entries.indexOfFirst { it.label.startsWith("square") })
+            val i1 = c.state.value.info!!
+            TestFiles.record(res, "f6_square", "${w0}x$h0 -> ${i1.width}x${i1.height}")
+            assertTrue("square: ${i1.width}x${i1.height}", Math.abs(i1.width - i1.height) <= 2)
+            c.chooseAspect(key, spec.entries.indexOfFirst { it.label.startsWith("3:2") })
+            c.flipAspect(key)
+            val i2 = c.state.value.info!!
+            TestFiles.record(res, "f6_3to2_flipped", "${i2.width}x${i2.height}")
+            assertTrue("portrait 2:3: ${i2.width}x${i2.height}", Math.abs(i2.width * 3.0 / (i2.height * 2.0) - 1.0) < 0.01)
+            c.save()
+            File(item.xmpPath).copyTo(File(TestFiles.out, "p2f-crop.xmp"), overwrite = true)
+            c.closePhoto()
+            c.openPhoto(0)
+            val m = c.state.value.modules.first { it.op == "crop" }
+            fun p(n: String) = (m.params[n] as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+            TestFiles.record(res, "f6_reopened", "ratio_d ${p("ratio_d")} ratio_n ${p("ratio_n")} ${c.state.value.info!!.width}x${c.state.value.info!!.height}")
+            assertEquals(-3.0, p("ratio_d"), 0.0); assertEquals(2.0, p("ratio_n"), 0.0)
+            assertEquals("3:2, 4x6, 35mm  1.50", app.dtandroid.schema.CropAspect.label(spec, p("ratio_d").toInt(), p("ratio_n").toInt()))
+            assertEquals(i2.width, c.state.value.info!!.width); assertEquals(i2.height, c.state.value.info!!.height)
+        } finally {
+            c.closePhoto()
+        }
+        TestFiles.record(res, "f6", "passed")
     }
 }

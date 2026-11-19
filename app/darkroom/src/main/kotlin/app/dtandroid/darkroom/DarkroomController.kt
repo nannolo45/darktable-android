@@ -8,7 +8,9 @@ import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblemReason
+import app.dtandroid.schema.AspectSpec
 import app.dtandroid.schema.Binding
+import app.dtandroid.schema.CropAspect
 import app.dtandroid.schema.Control
 import app.dtandroid.engine.api.LayoutStore
 import app.dtandroid.engine.api.LayoutStoreException
@@ -424,8 +426,11 @@ class DarkroomController(
 
     private suspend fun writeBinding(key: InstanceKey, binding: Binding, value: Double, integer: Boolean) {
         when (binding) {
-            is Binding.Param -> engine.paramSet(key.op, key.priority, binding.path,
-                if (integer) JsonPrimitive(Math.round(value)) else JsonPrimitive(value))
+            is Binding.Param -> {
+                engine.paramSet(key.op, key.priority, binding.path, if (integer) JsonPrimitive(Math.round(value)) else JsonPrimitive(value))
+                keepAspect(key, binding.path, value)
+            }
+            Binding.Aspect -> throw EngineException(EngineError.ARG, "the aspect list is chosen from its entries")
             is Binding.Action -> {
                 val cur = _state.value.actionValues[key] ?: (engine.moduleAction(key.op, key.priority, binding.get) as? JsonObject) ?: JsonObject(emptyMap())
                 val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap()
@@ -433,6 +438,62 @@ class DarkroomController(
                 engine.moduleAction(key.op, key.priority, binding.set, JsonObject(args))
             }
             Binding.None -> throw EngineException(EngineError.ARG, "this control has no parameter")
+        }
+    }
+
+    // ------------------------------------------------------------------ brief P2f: crop's aspect (override aspect_list)
+
+    private fun aspectState(key: InstanceKey): Triple<AspectSpec, ModuleInstance, Pair<Double, Double>>? {
+        val spec = schema.modules[key.op]?.aspect ?: return null
+        val m = _state.value.modules.firstOrNull { it.key == key } ?: return null
+        val info = _state.value.info ?: return null
+        val f = frameOf(spec, m.params)
+        return Triple(spec, m, CropAspect.inputSize(info.width, info.height, f, m.enabled))
+    }
+
+    private fun num(params: JsonObject, name: String): Double? = (params.paramAt(name) as? JsonPrimitive)?.doubleOrNull
+
+    private fun frameOf(spec: AspectSpec, p: JsonObject) =
+        CropAspect.Frame(num(p, spec.left) ?: 0.0, num(p, spec.top) ?: 0.0, num(p, spec.right) ?: 1.0, num(p, spec.bottom) ?: 1.0)
+
+    private fun ratioOf(spec: AspectSpec, p: JsonObject) = (num(p, spec.ratioD)?.toInt() ?: -1) to (num(p, spec.ratioN)?.toInt() ?: -1)
+
+    private suspend fun writeAspect(key: InstanceKey, spec: AspectSpec, c: CropAspect.Change) {
+        engine.paramsSet(key.op, key.priority, mapOf(
+            spec.ratioD to JsonPrimitive(c.ratioD), spec.ratioN to JsonPrimitive(c.ratioN),
+            spec.left to JsonPrimitive(c.frame.left), spec.top to JsonPrimitive(c.frame.top),
+            spec.right to JsonPrimitive(c.frame.right), spec.bottom to JsonPrimitive(c.frame.bottom),
+        ))
+    }
+
+    /** An entry of the aspect list chosen: the ratio and the frame as desktop sets them, one history step. */
+    suspend fun chooseAspect(key: InstanceKey, entry: Int) = change {
+        val (spec, m, size) = aspectState(key) ?: throw EngineException(EngineError.STATE, "no aspect list here")
+        val (d, _) = ratioOf(spec, m.params)
+        writeAspect(key, spec, CropAspect.choose(spec, entry, d, frameOf(spec, m.params), size.first, size.second))
+        engine.historySeal()
+    }
+
+    /** The aspect's flip button: portrait and landscape swapped, one history step. */
+    suspend fun flipAspect(key: InstanceKey) = change {
+        val (spec, m, size) = aspectState(key) ?: throw EngineException(EngineError.STATE, "no aspect list here")
+        val (d, n) = ratioOf(spec, m.params)
+        writeAspect(key, spec, CropAspect.flip(spec, d, n, frameOf(spec, m.params), size.first, size.second))
+        engine.historySeal()
+    }
+
+    /** A margin moved while a ratio is chosen: the other margins follow (desktop's gui_changed). */
+    private suspend fun keepAspect(key: InstanceKey, path: String, value: Double) {
+        val (spec, m, size) = aspectState(key) ?: return
+        if (path !in listOf(spec.left, spec.top, spec.right, spec.bottom)) return
+        val (d, n) = ratioOf(spec, m.params)
+        if (CropAspect.aspect(spec, d, n, size.first, size.second) <= 0.0) return
+        val p = JsonObject(m.params + (path to JsonPrimitive(value)))
+        val before = frameOf(spec, p)
+        val f = CropAspect.keep(spec, path, d, n, before, size.first, size.second)
+        // as single fields, so a drag's steps still merge into one history item
+        for ((name, v) in listOf(spec.left to f.left, spec.top to f.top, spec.right to f.right, spec.bottom to f.bottom)) {
+            if (name != path || v != value) engine.paramSet(key.op, key.priority, name, JsonPrimitive(v))
         }
     }
 
@@ -978,7 +1039,7 @@ class DarkroomController(
                 (paramValue(m, b.path) as? JsonPrimitive)?.doubleOrNull
             }
             is Binding.Action -> (s.actionValues[key]?.get(b.field) as? JsonPrimitive)?.doubleOrNull
-            Binding.None -> c.default
+            Binding.None, Binding.Aspect -> c.default
         }
     }
 

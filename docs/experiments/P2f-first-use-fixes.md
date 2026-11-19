@@ -30,7 +30,20 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
   is reported done again, not run twice. R14: `GET /api/auth/token` with `x-lpl-token` → 200
   `{"required", "ok"}`, 401 when wrong or missing; on 404 fall back to today's check.
 
+- **Jobs from LightPhotoLibrary made visible** (reviewer, for deliverable 6): when a `sync` or `release` job
+  arrives, say so where the user is (list header, the photo's row, the darkroom), with step and progress, and the
+  outcome; establish what happens when the job's photo is open (with and without changes since the last "done"),
+  tell the user which edit was sent; a `release` never removes a photo with unsent changes; follow PLAN.md 4.1 or
+  propose the rule; tests.
+
 ## Running log (newest first)
+
+- 2026-11-19 22:30: deliverable 10 (crop's aspect list through override `aspect_list`, `CropAspect` with crop.c's
+  arithmetic, flip, margins keep the ratio; JVM tests both directions; emulator f6 with an XMP round trip and a
+  darktable-cli check of the app's crop) and the jobs note above (the agent says per photo and per server what a
+  job did; texts in the list, header and darkroom; JVM tests for open with/without changes and release). Run
+  44593499922 (65a0ef1) failed only on my new screenshot tests (a missing test runner annotation, a two-node text
+  match); fixed. Its screenshots of the list look as intended.
 
 - 2026-11-19 20:40: **deliverable 1, the cause, measured before any fix** (run 44588278381, b263e06, emulator, test
   RAW with denoise (profiled), diffuse or sharpen, local contrast and sharpen on): done → XMP posted 122 ms → LPL

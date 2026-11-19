@@ -450,6 +450,13 @@ jobs:
           # brief P2f: spektrafilm with its data pack on both sides
           sf=$(check "$A/spektrafilm.jpg" "$R/spektrafilm.jpg" "spektrafilm test (0179): app export vs darktable-cli, same data pack" | tail -1)
           echo "sf=$sf" >> "$GITHUB_OUTPUT"
+          # brief P2f deliverable 10: the app's crop with a chosen ratio (2:3 portrait), as darktable-cli reads it
+          if [ -f "$A/p2f-crop.xmp" ]; then
+            /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/p2f-crop.xmp" /tmp/cli-crop.jpg --core --configdir /tmp/cli-config-crop \
+              --cachedir /tmp/cli-cache-crop > /tmp/ci-out/cli-crop.log 2>&1 || true
+            if python3 -I tools/app/jpeg-ratio.py /tmp/cli-crop.jpg 0.66667 >> /tmp/ci-out/compare.txt 2>&1; then echo "crop=ok" >> "$GITHUB_OUTPUT"; else echo "crop=bad" >> "$GITHUB_OUTPUT"; fi
+            tail -1 /tmp/ci-out/compare.txt
+          fi
           ed=$(check "$A/app-edit.jpg" /tmp/cli-app-edit.jpg "app-written XMP: app export vs darktable-cli" | tail -1)
           echo "g0=$g0" >> "$GITHUB_OUTPUT"; echo "edit=$ed" >> "$GITHUB_OUTPUT"
           cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
@@ -458,8 +465,8 @@ jobs:
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok'
         run: exit 1

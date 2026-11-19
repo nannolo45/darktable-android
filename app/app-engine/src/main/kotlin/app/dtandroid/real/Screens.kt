@@ -122,6 +122,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
     val steps by vm.agent.steps.collectAsState()
     val errors by vm.agent.lastError.collectAsState()
     val lplThumbs by vm.lplThumbs.collectAsState()
+    val notes by vm.agent.notes.collectAsState()
+    val serverNotes by vm.agent.serverNotes.collectAsState()
     val servers = remember(photos, lib) { vm.servers.list() }
     val sections = ArrayList<PhotoList.Section>()
     for (srv in servers) {
@@ -138,7 +140,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             key = srv.origin.url, title = "LightPhotoLibrary", line = line,
             action = HostAction("sync now", enabled = mine.isNotEmpty()) { vm.syncAll() },
             empty = "No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".",
-            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl) },
+            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl).copy(note = notes[r.key]) },
+            note = serverNotes[srv.origin],
         )
     }
     if (servers.isEmpty()) sections += PhotoList.Section(

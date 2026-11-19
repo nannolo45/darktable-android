@@ -124,6 +124,20 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return
             val c = ms.control(o.controlId) as? Control.ComboBox ?: return
+            // brief P2f: crop's aspect list: darktable's entries in its order; an entry sets ratio and frame
+            ms.aspect?.takeIf { c.binding == Binding.Aspect && it.controlId == c.id }?.let { spec ->
+                fun int(n: String) = (m.params[n] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: -1
+                val cur = app.dtandroid.schema.CropAspect.entryOf(spec, int(spec.ratioD), int(spec.ratioN))
+                Sheet("${fullName(m)} · ${c.label ?: ""}", close, maxW) {
+                    for ((i, e) in spec.entries.withIndex()) {
+                        SheetItem(e.label, !s.readOnly, selected = i == cur) {
+                            controller.setOverlay(null)
+                            controller.launch { chooseAspect(o.key, i) }
+                        }
+                    }
+                }
+                return
+            }
             val b = c.binding as? Binding.Param ?: return
             val field = ms.params[b.path]
             val cur = app.dtandroid.schema.ParamRuleInputs(ms, m.params).param(b.path)

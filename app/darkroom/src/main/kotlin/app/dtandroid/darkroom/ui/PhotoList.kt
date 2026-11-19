@@ -46,6 +46,8 @@ object PhotoList {
         val progress: Float? = null,
         /** R15: "last edited on Desktop · 18 Nov · exposure, color balance rgb", or null */
         val lastEdit: String? = null,
+        /** what a request from LightPhotoLibrary did with the photo ("saved your open changes and sent them"), or null */
+        val note: String? = null,
         val thumb: RenderedImage? = null,
         val actions: List<HostAction> = emptyList(),
         val onOpen: () -> Unit = {},
@@ -61,6 +63,8 @@ object PhotoList {
         val action: HostAction? = null,
         /** shown only while the section has no photos */
         val empty: String? = null,
+        /** the last request from the server and how it went, or null */
+        val note: String? = null,
         val rows: List<Row> = emptyList(),
     )
 }
@@ -138,6 +142,7 @@ private fun SectionHeader(sec: PhotoList.Section) {
             Column(Modifier.weight(1f).padding(vertical = DtTheme.space.xs)) {
                 DtText(sec.title, DtTheme.type.body, c.textStrong)
                 sec.line?.let { DtText(it, DtTheme.type.small, c.textMuted, maxLines = 2) }
+                sec.note?.let { DtText(it, DtTheme.type.small, c.text, maxLines = 3) }
             }
             sec.action?.let { a -> DtTextButton(a.label, a.run, enabled = a.enabled) }
         }
@@ -167,6 +172,7 @@ private fun PhotoRow(r: PhotoList.Row, onMore: () -> Unit) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DtTheme.space.xxs)) {
             DtText(r.name, DtTheme.type.body, c.textStrong, middle = true)
             DtText(r.status, DtTheme.type.small, c.textMuted)
+            r.note?.let { DtText(it, DtTheme.type.small, c.text, maxLines = 2) }
             r.lastEdit?.let { DtText(it, DtTheme.type.small, c.textMuted) }
             r.progress?.let { ProgressLine(it, Modifier.padding(top = DtTheme.space.xs)) }
         }

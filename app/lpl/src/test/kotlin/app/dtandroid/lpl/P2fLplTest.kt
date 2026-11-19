@@ -139,4 +139,60 @@ class P2fLplTest {
         assertEquals(ServerCheckResult.Lpl(true, false, null), LplClient(o, { null }).check("wrong"))
         assertEquals("R14 answered: no status call", before, stub.seen("GET", "/api/status").size)
     }
+
+    // ------------------------------------------------------------------ jobs from LightPhotoLibrary (reviewer's note on deliverable 6)
+
+    private suspend fun takeAndOpen(): PhotoRecord {
+        val r = agent.take(o, 11)
+        editor.openRaw = agent.work.raw(r); agent.opened(o, 11)
+        return r
+    }
+
+    @Test fun syncJobWhileOpenWithChangesSavesAndSendsThem() = runBlocking {
+        takeAndOpen()
+        editor.unsavedChanges = true
+        assertTrue(agent.runSyncOrRelease(o, Job(1, "sync", listOf(11), false)))
+        assertEquals(1, stub.photos[11]!!.xmpPosts)
+        assertTrue(stub.photos[11]!!.xmp!!.decodeToString().contains("<!-- edit 1 -->"))
+        assertEquals("saved your open changes and sent them · as LightPhotoLibrary asked", agent.notes.value[o to 11L])
+        assertEquals("LightPhotoLibrary asked to save 1 photo: 1 photo sent", agent.serverNotes.value[o])
+        assertEquals("still open in the darkroom", PhotoStatus.EDITING, agent.record(o, 11)!!.status)
+    }
+
+    @Test fun syncJobWhileOpenWithoutChangesSendsTheLastDone() = runBlocking {
+        val r = takeAndOpen()
+        editor.edit(agent.work.xmp(r))      // a "done" earlier...
+        agent.sync(o, 11)                    // ...already synced
+        assertTrue(agent.runSyncOrRelease(o, Job(2, "sync", listOf(11), false)))
+        assertEquals(2, stub.photos[11]!!.xmpPosts)
+        assertEquals("sent the edit as of your last \"done\" (no changes since) · as LightPhotoLibrary asked", agent.notes.value[o to 11L])
+    }
+
+    @Test fun releaseNeverRemovesAPhotoWithUnsentChanges() = runBlocking {
+        val r = agent.take(o, 11)
+        editor.edit(agent.work.xmp(r))
+        stub.stop()   // the edit cannot be sent
+        assertFalse(agent.runSyncOrRelease(o, Job(3, "release", listOf(11), false)))
+        assertTrue("still on the phone", agent.work.hasRaw(agent.record(o, 11)!!))
+        assertTrue(agent.notes.value[o to 11L]!!, agent.notes.value[o to 11L]!!.startsWith("LightPhotoLibrary asked for this photo; not sent: "))
+        stub.start()
+    }
+
+    @Test fun releaseOfTheOpenPhotoSendsItAndKeepsIt() = runBlocking {
+        takeAndOpen()
+        editor.unsavedChanges = true
+        assertFalse(agent.runSyncOrRelease(o, Job(4, "release", listOf(11), false)))
+        assertEquals(1, stub.photos[11]!!.xmpPosts)
+        assertTrue(agent.work.hasRaw(agent.record(o, 11)!!))
+        assertEquals("saved your open changes and sent them; LightPhotoLibrary asked to remove it from this phone: it stays while it is open in the darkroom",
+            agent.notes.value[o to 11L])
+    }
+
+    @Test fun releaseOfASyncedPhotoRemovesItAndSaysSo() = runBlocking {
+        val r = agent.take(o, 11)
+        editor.edit(agent.work.xmp(r))
+        assertTrue(agent.runSyncOrRelease(o, Job(5, "release", listOf(11), false)))
+        assertNull(agent.record(o, 11))
+        assertEquals("LightPhotoLibrary asked to save and remove 1 photo: 1 photo sent, 1 removed from this phone", agent.serverNotes.value[o])
+    }
 }

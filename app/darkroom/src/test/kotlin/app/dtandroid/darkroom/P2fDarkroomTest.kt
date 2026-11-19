@@ -165,4 +165,34 @@ class P2fDarkroomTest {
         // the app's default layout is desktop's: no group lists it, as on desktop
         assertTrue(c.state.value.layout.groups.none { "spektrafilm" in it.modules })
     }
+
+    /** Deliverable 10: crop's aspect list chosen in the app survives writing and reopening the XMP. */
+    @Test fun cropAspectIsChosenAndSurvivesTheXmp() = runBlocking {
+        val (c, _) = controller(FakeEngine.Timing.NONE)
+        waitFor("preview") { c.state.value.preview != null }
+        val key = InstanceKey("crop", 0)
+        val spec = TestSetup.schema.modules.getValue("crop").aspect!!
+        val sq = spec.entries.indexOfFirst { it.label.startsWith("square") }
+        c.chooseAspect(key, sq)
+        fun crop() = c.state.value.modules.first { it.key == key }
+        fun p(n: String) = (crop().params[n] as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+        assertTrue("crop switched on", crop().enabled)
+        assertEquals(1.0, p("ratio_d"), 0.0); assertEquals(1.0, p("ratio_n"), 0.0)
+        // the frame is square in pixels of the crop's input (the stand-in does not crop its picture; the emulator test does)
+        val info = c.state.value.info!!
+        assertEquals(1.0, (p("cw") - p("cx")) * info.width / ((p("ch") - p("cy")) * info.height), 1e-6)
+        val hist = c.state.value.history.items.size
+        c.flipAspect(key)
+        assertEquals(-1.0, p("ratio_d"), 0.0)
+        assertEquals("one history step each", hist + 1, c.state.value.history.items.size)
+        c.chooseAspect(key, spec.entries.indexOfFirst { it.label.startsWith("3:2") })
+        val item = c.state.value.current!!
+        c.save()
+        c.closePhoto()
+        c.openPhoto(0)
+        waitFor("reopened") { c.state.value.info != null }
+        assertEquals(3.0, p("ratio_d"), 0.0); assertEquals(2.0, p("ratio_n"), 0.0)
+        assertEquals("3:2, 4x6, 35mm  1.50", app.dtandroid.schema.CropAspect.label(spec, p("ratio_d").toInt(), p("ratio_n").toInt()))
+        assertTrue(File(item.xmpPath).isFile)
+    }
 }

@@ -66,7 +66,32 @@ internal object Overrides {
             )
             controls = replace(controls, node) { (it as Control.Slider).copy(binding = binding) }
         }
-        return m.copy(controls = controls, overrides = m.overrides + file)
+        var aspect = m.aspect
+        (o["aspect_list"] as? JsonArray)?.forEach { ae ->
+            val a = ae.jsonObject
+            val node = a.int("node") ?: throw SchemaException("$file: aspect_list without node")
+            val target = m.control(node) as? Control.ComboBox ?: throw SchemaException("$file: node $node of ${m.op} is not a list")
+            val expectLabel = a.str("expect_label")
+            if (expectLabel != null && target.label != expectLabel) throw SchemaException("$file: node $node is \"${target.label}\", expected \"$expectLabel\"")
+            if (target.binding !is Binding.None) throw SchemaException("$file: node $node is already bound")
+            val entries = (a["entries"] as? JsonArray)?.map { ee ->
+                val e = ee.jsonObject
+                AspectEntry(e.str("label") ?: throw SchemaException("$file: aspect entry without label"),
+                    e.int("d") ?: throw SchemaException("$file: aspect entry without d"), e.int("n") ?: throw SchemaException("$file: aspect entry without n"))
+            } ?: emptyList()
+            // the table must be the list desktop shows, in its order
+            if (entries.map { it.label } != target.entries.map { it.label })
+                throw SchemaException("$file: the aspect entries differ from the schema's list ${target.entries.map { it.label }}")
+            fun param(k: String): String {
+                val name = a.str(k) ?: throw SchemaException("$file: aspect_list without $k")
+                if (name !in m.params) throw SchemaException("$file: ${m.op} has no parameter $name")
+                return name
+            }
+            aspect = AspectSpec(node, param("ratio_d"), param("ratio_n"), param("left"), param("top"), param("right"), param("bottom"),
+                entries, a.str("flip_label") ?: "swap", a.str("flip_icon") ?: "aspectFlip")
+            controls = replace(controls, node) { (it as Control.ComboBox).copy(binding = Binding.Aspect) }
+        }
+        return m.copy(controls = controls, overrides = m.overrides + file, aspect = aspect)
     }
 
     private fun replace(cs: List<Control>, id: Int, f: (Control) -> Control): List<Control> = cs.map { c ->

@@ -376,6 +376,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Open a photo of the working set; the server's other photos are the filmstrip. */
     fun openLplPhoto(r: PhotoRecord) {
+        agent.clearNote(r.server, r.id)
         val list = AppHost.records(r.server)
         val ids = list.map { it.id }
         val h = HandOff(r.server, ids, r.id)
@@ -391,6 +392,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun syncNow(r: PhotoRecord) {
+        agent.clearNote(r.server, r.id)
         AppEngine.scope.launch {
             agent.sync(r.server, r.id)
             if (agent.pending().isNotEmpty()) SyncJob.schedule(getApplication())
