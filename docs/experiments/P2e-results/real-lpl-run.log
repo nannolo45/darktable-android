@@ -1,0 +1,108 @@
+# P2e: the lpl client against a real LightPhotoLibrary server on the build workspace
+# (x86_64, 2 cores; a throwaway LPL instance of the owner's current version on localhost, port 18790,
+#  with a password, on one public test RAW (darktable-tests images/mire1.cr2) and three generated JPEGs).
+# Produced by: gradle :lpl:test --tests '*RealServerRun*' -Pdta.lplUrl=http://127.0.0.1:18790 -Pdta.lplPassword=... -Pdta.lplLog=<this file>
+# 2026-11-19T14:26Z, commit of the client: see git log of app/lpl
+
+server: http://127.0.0.1:18790 (local test instance), password set: true
+  call: GET /api/auth -> 200 (19 ms)
+  call: GET /api/status -> 401 (4 ms)
+check without password -> Lpl(passwordRequired=true, passwordOk=false, photos=null)
+  call: GET /api/auth -> 200 (7 ms)
+  call: GET /api/status -> 401 (1 ms)
+check with a wrong password -> Lpl(passwordRequired=true, passwordOk=false, photos=null)
+  call: GET /api/auth -> 200 (1 ms)
+  call: GET /api/status -> 200 (1 ms)
+check with the right password -> Lpl(passwordRequired=true, passwordOk=true, photos=4)
+  call: GET /api/photos/1/checkout -> 401 (1 ms)
+checkout with a wrong password -> UNAUTHORIZED (user sees: "wrong password for LightPhotoLibrary")
+  call: GET /api/photos/1/checkout -> 200 (2 ms)
+  call: GET /api/photos/2/checkout -> 200 (1 ms)
+  call: GET /api/photos/3/checkout -> 200 (2 ms)
+  call: GET /api/photos/4/checkout -> 200 (2 ms)
+  call: GET /api/photos/5/checkout -> 404 (1 ms)
+  call: GET /api/photos/6/checkout -> 404 (2 ms)
+  call: GET /api/photos/7/checkout -> 404 (2 ms)
+  call: GET /api/photos/8/checkout -> 404 (2 ms)
+  call: GET /api/photos/9/checkout -> 404 (1 ms)
+  call: GET /api/photos/10/checkout -> 404 (1 ms)
+  call: GET /api/photos/11/checkout -> 404 (2 ms)
+  call: GET /api/photos/12/checkout -> 404 (1 ms)
+  call: GET /api/photos/13/checkout -> 404 (1 ms)
+  call: GET /api/photos/14/checkout -> 404 (2 ms)
+  call: GET /api/photos/15/checkout -> 404 (2 ms)
+  call: GET /api/photos/16/checkout -> 404 (2 ms)
+  call: GET /api/photos/17/checkout -> 404 (2 ms)
+  call: GET /api/photos/18/checkout -> 404 (1 ms)
+  call: GET /api/photos/19/checkout -> 404 (3 ms)
+  call: GET /api/photos/20/checkout -> 404 (2 ms)
+  call: GET /api/photos/21/checkout -> 404 (2 ms)
+  call: GET /api/photos/22/checkout -> 404 (2 ms)
+  call: GET /api/photos/23/checkout -> 404 (3 ms)
+  call: GET /api/photos/24/checkout -> 404 (2 ms)
+  call: GET /api/photos/25/checkout -> 404 (2 ms)
+  call: GET /api/photos/26/checkout -> 404 (2 ms)
+  call: GET /api/photos/27/checkout -> 404 (1 ms)
+  call: GET /api/photos/28/checkout -> 404 (1 ms)
+  call: GET /api/photos/29/checkout -> 404 (1 ms)
+  call: GET /api/photos/30/checkout -> 404 (1 ms)
+photos found by checkout: 1=IMG_0001.jpg (4217 bytes), 2=IMG_0003.jpg (4210 bytes), 3=mire1.cr2 (15855600 bytes), 4=IMG_0002.jpg (4229 bytes)
+  call: GET /api/photos/3/checkout -> 200 (1 ms)
+checkout 3 -> filename mire1.cr2, size 15855600, mtime 1.7950982445218349E9, server_time 1.7950983712819505E9
+  call: GET /api/photos/999999/checkout -> 404 (2 ms)
+checkout 999999 -> NOT_FOUND (user sees: "this photo is gone from the library")
+  call: GET /api/photos/3/original -> 200 (3 ms to the answer)
+  call: GET /api/photos/3/original: 15855600 bytes on disk after 143 ms
+original complete: 15855600 bytes, sha256 578dc1b45add995b
+  call: GET /api/photos/3/original -> 200 (8 ms to the answer)
+download stopped on purpose at 5308416 bytes -> CANCELLED
+  call: GET /api/photos/3/original (Range from 5308416) -> 206 (3 ms to the answer)
+  call: GET /api/photos/3/original: 15855600 bytes on disk after 50 ms
+resumed from 5308416: now 15855600 bytes, sha256 578dc1b45add995b, same as the complete download: true
+  call: GET /api/photos/3/original (Range from 15855600) -> 416 (4 ms to the answer)
+  call: GET /api/photos/3/original -> 200 (3 ms to the answer)
+  call: GET /api/photos/3/original: 15855600 bytes on disk after 82 ms
+download with the whole file already on disk and no size known -> 15855600 bytes
+  call: GET /api/photos/3/xmp -> 200 (2 ms)
+xmp get -> 487 bytes
+  call: POST /api/photos/3/xmp -> 200 (5 ms)
+xmp post with checkout_ts=1795098371.2819505 -> merged=false, 520 bytes back
+(setup) POST /api/meta -> 200
+  call: POST /api/photos/3/xmp -> 200 (8 ms)
+xmp post after LPL changed the rating -> merged=true, rating in the answer: 4
+  call: POST /api/photos/3/xmp -> 200 (5 ms)
+xmp post with checkout_ts=0 -> merged=false
+  call: POST /api/photos/3/xmp -> 400 (4 ms)
+xmp post of something that is not an XMP -> REFUSED 400
+  call: POST /api/photos/3/preview -> 200 (7 ms)
+preview post (631 bytes JPEG) -> ok
+  call: POST /api/photos/3/preview -> 400 (3 ms)
+preview post of something that is not an image -> REFUSED 400
+  call: POST /api/agents/heartbeat -> 200 (3 ms)
+heartbeat -> 0 jobs, server_time 1.7950983730610852E9
+(setup) POST /api/jobs -> 200
+  call: POST /api/agents/heartbeat -> 200 (4 ms)
+heartbeat after an unaddressed job was created -> 0 jobs (an android agent only takes jobs addressed to it)
+(setup) POST /api/jobs -> 200
+  (setup) answer: {"id":4,"agent_id":"android-00000000-0000-4000-8000-000000000e2e"}
+  call: POST /api/agents/heartbeat -> 200 (3 ms)
+heartbeat after a job addressed to this device -> jobs [Job(id=4, kind=sync, ids=[3], all=false)]
+  call: POST /api/agents/heartbeat -> 200 (3 ms)
+next heartbeat -> 0 jobs (handed out once)
+  call: POST /api/jobs/4/done -> 200 (7 ms)
+(setup) GET /api/jobs -> 200
+job 4 after jobs/done -> status done
+(setup) GET /api/agents -> 200
+  LPL lists the device: name Phone true, os android true, dirty in its working set true
+  agent call: GET /api/photos/3/checkout -> 200 (2 ms)
+  agent call: GET /api/photos/3/xmp -> 200 (2 ms)
+  agent call: GET /api/photos/3/original -> 200 (3 ms to the answer)
+  agent call: GET /api/photos/3/original: 15855600 bytes on disk after 97 ms
+agent take -> mire1.cr2 OPENING, 15855600 bytes, read-only false
+agent after an edit -> DIRTY
+  agent call: POST /api/photos/3/xmp -> 200 (5 ms)
+  agent call: POST /api/photos/3/preview -> 200 (7 ms)
+agent sync -> SYNCED, status SYNCED, preview pending false
+  agent call: POST /api/agents/heartbeat -> 200 (3 ms)
+agent heartbeat -> 0 jobs
+done: every call answered as expected

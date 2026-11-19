@@ -33,6 +33,8 @@ class FakeEditor : EditorPort {
     @Volatile var openRaw: File? = null
     @Volatile var busy = false
     @Volatile var edits = 0
+    /** what a rendered preview contains (a few JPEG-looking bytes; a real JPEG for a real server) */
+    @Volatile var previewBytes: ByteArray = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 1, 2, 3, 0xFF.toByte(), 0xD9.toByte())
     val reloads = java.util.Collections.synchronizedList(ArrayList<File>())
     val renders = java.util.Collections.synchronizedList(ArrayList<File>())
     val writes = java.util.Collections.synchronizedList(ArrayList<File>())
@@ -50,7 +52,7 @@ class FakeEditor : EditorPort {
     override suspend fun renderPreview(raw: File, xmp: File, out: File): Boolean {
         if (busy) return false
         renders += raw
-        out.writeBytes(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 1, 2, 3, 0xFF.toByte(), 0xD9.toByte()))
+        out.writeBytes(previewBytes)
         return true
     }
     override fun isOpen(raw: File) = openRaw == raw
