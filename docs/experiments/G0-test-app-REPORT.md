@@ -45,7 +45,38 @@ tools/app/emulator-g0.sh g0/build/outputs/apk/x86_64/debug/g0-x86_64-debug.apk \
 
 ## 3. Results (CI)
 
-RESULTS_PLACEHOLDER
+Reference run: **44436928523** (commit `4a62f05`), all jobs green. Logs: branch `ci-logs`, `runs/44436928523-a1/`.
+Release `g0-app-4a62f055331d`:
+- phone APK: https://github.com/nannolo45/darktable-android/releases/download/g0-app-4a62f055331d/dt-android-g0-arm64-v8a.apk
+  (32,246,619 bytes); x86_64 APK 33,358,305 bytes; `apk-report.txt`.
+- Engine release `engine-04477d32-ace24815f94e` (with the bridge), built in run 44429110671; later runs reused it.
+
+| | arm64-v8a | x86_64 |
+|---|---|---|
+| APK | 32.2 MB | 33.4 MB |
+| engine.zip inside | 21.9 MB | 23.0 MB |
+| engine unpacked | 61.3 MB (as built) | 63.46 MB, 991 files (emulator) |
+| libdtbridge.so | built, in archive | 40 KB |
+
+Emulator (x86_64 API 33, 4 cores; cloud numbers, not phone numbers):
+- S4: 42/42 libraries loaded from app storage, 152/152 plugin files `dlopen()`ed, darktable 111/111 plugins
+  (97 iop, 8 formats, 6 storages). Unpack 3.9 s, `dtb_init` 3.3 s.
+- open 339 ms, first preview 845 ms, preview after change 189 ms, 1080x2400 region 182 / 304 ms (first / after
+  change), full JPEG export 3.0 s; cancel returns `DTB_E_CANCELLED`; saved XMP passes the guard; RAW unchanged.
+- Export vs darktable-cli on Linux (`mire1.cr2`, `0001-exposure`): same size 3908x2602, PSNR 75.7 dB, max 26,
+  0.064 % of values differ. Accepted threshold in CI: same size and PSNR >= 40 dB.
+- Benchmark (ms, 1 / 4 threads): open 190 / 117, preview first 344 / 215, preview after change 200 / 82,
+  region first 368 / 143, region after change 409 / 161, full-size render 1790 / 512, export 2220 / 835.
+  Run-to-run spread on shared runners is large (full-size render 1155 / 1390 and 4074 / 1596 in the two earlier
+  runs).
+- No crash in logcat.
+
+Linux bridge tests (S3) against the Linux reference build with the bridge built from its build tree: 67 checks
+pass; only T5 fails, with S3's numbers.
+
+Earlier runs: 44429110671 (all green, but its cancel check did not actually cancel: test bug, fixed);
+44433614716 (tests passed, the comparison step failed installing packages: CI bug, fixed).
+
 
 ## 4. Changes to `engine/include/dtbridge.h`
 
@@ -108,4 +139,5 @@ Also `engine/CMakeLists.txt`: `NO_CMAKE_FIND_ROOT_PATH` for libdarktable (cross 
 2. The engine tag no longer covers all of `tools/`; is that the intended meaning?
 3. Should the arm64 APK eventually be signed with a stable key (stored as a repository secret) so the owner can
    update without uninstalling? Not done: the brief allows a CI-generated debug key and asks for no secrets.
-4. 4 threads were slower than 1 for the full-size render on the emulator (one run); worth watching on the phone.
+4. Emulator timings vary by up to 3x between runs; is a per-run spread worth recording on the phone too (run
+   the benchmark twice)?

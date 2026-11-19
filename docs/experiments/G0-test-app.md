@@ -4,7 +4,10 @@ Brief: `docs/briefs/G0-test-app.md`. Branch `g0-test-app`.
 
 ## Running log (newest first)
 
-- 2026-11-19: run 44433614716 (commit 873e4a3): cancel check fixed, permission check added.
+- 2026-11-19: run 44436928523 (commit 4a62f05): **all jobs green**. Release `g0-app-4a62f055331d` holds the APKs.
+  This is the reference run for the numbers below.
+- 2026-11-19: run 44433614716 (commit 873e4a3): cancel check fixed and passing, permission check added; the
+  instrumented test passed, but the comparison step failed to install numpy/PIL (stale apt index, 404). Fixed.
 - 2026-11-19: first CI run 44429110671 (commit 0791818): all jobs green. Engine with bridge for both ABIs, APKs
   published as `g0-app-0791818be8ac`, emulator test passed, Linux bridge tests as in S3 (only T5 fails). The
   cancel check in that run did not exercise a cancel (cancel sent before dtb_render started); fixed.
@@ -27,6 +30,8 @@ Nothing is sent anywhere: the app has no internet permission.
 2. Find the newest entry whose title starts with **"G0 test app"**.
 3. Under "Assets", tap **dt-android-g0-arm64-v8a.apk** (about 32 MB). Do not take the "x86_64" file: that one is
    for the test computer.
+   The first build to try is
+   https://github.com/nannolo45/darktable-android/releases/download/g0-app-4a62f055331d/dt-android-g0-arm64-v8a.apk
 
 ### 2. Install
 
@@ -122,42 +127,45 @@ The archive now holds `lib/libdtbridge.so` (40 KB on x86_64) and `lib/load-order
 - Environment set before `dtb_init`: `HOME`, `TMPDIR`, `XDG_*` into app storage. Library: `:memory:`, so each
   start reads the XMP the user picked rather than an older history.
 
-### Sizes (run 44429110671)
+### Sizes (run 44436928523)
 | | arm64-v8a | x86_64 |
 |---|---|---|
-| APK (debug, dex compressed) | 32.2 MB (32,246,615 B) | 33.4 MB (33,358,301 B) |
+| APK (debug, dex compressed) | 32.2 MB (32,246,619 B) | 33.4 MB (33,358,305 B) |
 | of which `assets/engine/engine.zip` | 21.9 MB | 23.0 MB |
 | of which app code and libdtjni | about 10.3 MB | about 10.3 MB |
-| engine tree, unpacked into app storage | about 61.3 MB (tree incl. a 24 KB darktable-cli that is not packed) | 63.46 MB, 991 files (measured on the emulator; `du` 67.8 MB on disk) |
+| engine tree unpacked into app storage | 61.3 MB as built (not measured on a device) | 63.46 MB, 991 files (on the emulator; `du` 67.8 MB on disk) |
 
-The arm64 unpacked size is the size of the engine tree as built; it was not measured on a device.
+The APKs contain no RAW image, no keystore and no network permission (checked in the `apk` job:
+`apk-report.txt`). `libdtbridge.so` is not in the APK's `lib/`.
 
-### What the emulator test showed (run 44429110671, API 33 x86_64, 4 cores, 6 GB)
-`EngineOnDeviceTest` (four tests, all passed, 24.9 s in total) on `mire1.cr2` with `0001-exposure`:
+### What the emulator test showed (run 44436928523, API 33 x86_64, 4 cores, 6 GB)
+`EngineOnDeviceTest` (four tests, all passed, 26.2 s in total) on `mire1.cr2` with `0001-exposure`:
 - **S4: loading from app storage works on Android 13 (emulator).** 42 of 42 libraries loaded by path, 152 of
   152 plugin files accepted by `dlopen()`, darktable loaded 97 of 97 processing modules, 8 of 8 formats and 6 of
-  6 storages (111 of 111). Fresh unpack 4.2 s, `dtb_init` 2.4 s.
-- Open 454 ms, first preview (1024 x 681) 853 ms, preview after an exposure change 252 ms, a 1080 x 2400 region
-  at 100 % 279 ms first and 217 ms after a change.
-- Full-size JPEG export 2.9 s. **The export matches darktable-cli on Linux**: same size (3908 x 2602), PSNR
+  6 storages (111 of 111). Fresh unpack 3.9 s, `dtb_init` 3.3 s.
+- Open 339 ms, first preview (1024 x 681) 845 ms, preview after an exposure change 189 ms, a 1080 x 2400 region
+  at 100 % 182 ms first and 304 ms after a change.
+- Cancel: a full-size render cancelled 200 ms after it started returned `DTB_E_CANCELLED` 413 ms after the start;
+  the next render completed.
+- Full-size JPEG export 3.0 s. **The export matches darktable-cli on Linux**: same size (3908 x 2602), PSNR
   75.7 dB, max difference 26 levels in 0.064 % of the values (both JPEG quality 95; clang and newer libraries on
-  Android, gcc and Ubuntu's libraries on Linux, as in S1).
+  Android, gcc and Ubuntu's libraries on Linux, as in S1). Identical in all three runs.
 - XMP written by the bridge passes the version guard; the RAW copy's MD5 is unchanged.
-- No native crash in logcat.
+- No native crash and no Java crash in logcat.
 - Benchmark inside the test (1 and 4 threads; ms):
 
 | | 1 thread | 4 threads |
 |---|---|---|
-| open | 114 | 122 |
-| preview 1024 px, first | 291 | 260 |
-| preview after exposure change | 187 | 85 |
-| screen region, first | 319 | 136 |
-| screen region after exposure change | 296 | 145 |
-| full-size render after exposure change | 1155 | 1390 |
-| export JPEG full size | 1812 | 979 |
+| open | 190 | 117 |
+| preview 1024 px, first | 344 | 215 |
+| preview after exposure change | 200 | 82 |
+| screen region, first | 368 | 143 |
+| screen region after exposure change | 409 | 161 |
+| full-size render after exposure change | 1790 | 512 |
+| export JPEG full size | 2220 | 835 |
 
-The full-size render being slower with 4 threads than with 1 is unexplained; it is one run on a shared cloud
-runner and the emulator's cores are virtual. It must be measured on the phone.
+Timings vary a lot between runs on shared runners: the same full-size render took 1155 / 1390 ms (1 / 4
+threads) in run 44429110671 and 4074 / 1596 ms in run 44433614716. Only the phone's numbers mean anything.
 
 Engine log lines worth knowing: darktable derives its locale and share directories from the executable, which
 in an app is `/system/bin/app_process64`, so it logs that `/system/bin/../share/locale` and `/system/bin/../share`
@@ -165,7 +173,7 @@ do not exist. Data, modules and the lens database come from `--datadir`/`--modul
 share directory is only used for `XDG_DATA_DIRS` and desktop shortcuts.
 
 ### Linux bridge tests (S3) in CI
-Run 44429110671, job `linux`: 67 checks pass; the only failures are T5 (region = crop of the full render) with
+Runs 44429110671, 44433614716 and 44436928523, job `linux`: 67 checks pass; the only failures are T5 (region = crop of the full render) with
 the same numbers as in S3 (cr2 max 182 / 75 / 64, raf 40 / 12 / 17, arw 21). The job fails on any other failure.
 
 ### What could not be checked without the real phone
