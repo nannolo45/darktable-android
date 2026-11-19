@@ -240,6 +240,8 @@ fun Filmstrip(controller: DarkroomController, s: DarkroomState, height: Dp, thum
                     .semantics { contentDescription = "Photo ${i + 1} of ${s.series.items.size}, ${item.fileName}" },
             ) {
                 if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                // brief P2e: a photo not on the phone yet (or without a thumbnail) shows its name
+                else DtText(item.fileName, DtTheme.type.tiny, c.textMuted, Modifier.align(Alignment.Center).padding(DtTheme.space.xs), maxLines = 3)
             }
         }
     }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The app on the real engine (brief P2b): the darkroom of the interface preview, driven by
 // upstream darktable's engine through the JNI layer over dtbridge.h. Photos come in and go out
-// through Android's file picker (no LightPhotoLibrary yet). One APK per ABI (flavors arm64 and
+// through Android's file picker, and (brief P2e) from and to LightPhotoLibrary through app/lpl.
+// Since P2e this is the product: application id app.dtandroid, label "dt-android". One APK per ABI (flavors arm64 and
 // x86_64), each carrying the engine tree of its ABI as assets/engine/engine.zip, packed and
 // unpacked exactly as the G0 app does.
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -61,11 +62,13 @@ android {
     compileSdk = 36
     ndkVersion = "30.0.16248370"
     defaultConfig {
-        // its own id: installs next to the interface preview (app.dtandroid) and the G0 test app
-        applicationId = "app.dtandroid.real"
+        // brief P2e item 8 (reviewer's decision): the product's id. Until P2e it was app.dtandroid.real and
+        // app.dtandroid was the interface preview (now app.dtandroid.preview). versionCode 2 > the old
+        // preview's 1, so this installs over a left-over preview as an update (same owner key).
+        applicationId = "app.dtandroid"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
+        versionCode = 2
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -137,6 +140,7 @@ androidComponents {
 dependencies {
     implementation(project(":engine-jni"))
     implementation(project(":darkroom"))
+    implementation(project(":lpl"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
@@ -145,6 +149,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     androidTestImplementation(testFixtures(project(":engine-api")))
+    androidTestImplementation(testFixtures(project(":lpl")))
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test:rules:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")

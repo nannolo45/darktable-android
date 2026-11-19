@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- brief P2e, PLAN.md 3.7: LightPhotoLibrary is often reached over plain HTTP (home network, Tailscale).
+     Android cannot allow plain HTTP per host chosen at run time, so it is allowed here and the app itself
+     contacts only servers the user added (app/lpl: ServerStore, LplAgent). Certificates: the system's only. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

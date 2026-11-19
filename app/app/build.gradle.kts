@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The app shell (PLAN.md 3.5), application id app.dtandroid. Brief P2a: it
-// opens the darkroom on the fake engine's sample series; no working set and
-// no LightPhotoLibrary connection yet. Debug builds are the interface preview.
+// The interface preview (brief P2a): the darkroom on the fake engine's sample series; no working set
+// and no LightPhotoLibrary connection. Application id app.dtandroid.preview since P2e (brief P2e item 8:
+// app.dtandroid is now the real-engine app, module app-engine), so both install side by side.
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -16,7 +16,7 @@ android {
     namespace = "app.dtandroid"
     compileSdk = 36
     defaultConfig {
-        applicationId = "app.dtandroid"
+        applicationId = "app.dtandroid.preview"
         minSdk = 29
         targetSdk = 34
         versionCode = 1
