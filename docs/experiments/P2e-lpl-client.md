@@ -28,6 +28,56 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
 Next: module `app/lpl` (client, pure Kotlin) with JVM tests against a stub server, then the same client
 against a real LPL server on the workspace.
 
+## Write-up
+
+### LPL as the app sees it (in our words; from reading and running the real server)
+
+Learned by reading LPL's agent endpoints and running a throwaway instance of its current version on the
+workspace (Starlette 1.10.0); nothing of LPL is copied here. The stub server in the tests
+(`app/lpl/src/testFixtures/.../StubLpl.kt`) imitates exactly these points.
+
+| Call | What LPL does |
+|---|---|
+| auth | Every `/api/...` call except `/api/auth` and `/api/login` needs the password when LPL has one: header `x-lpl-token` with the password itself (or the login cookie); otherwise 401 `{"detail": "login required"}`. `GET /api/auth` answers without a password with `{"required": true/false, ...}`. |
+| `POST /api/agents/heartbeat` | Stores `name`, `os` and `state` as sent, marks the device online for 15 s. Answers `{"jobs": [...], "server_time": ...}`. An agent with `os == "android"` gets only queued jobs addressed to its id; each job is handed out once (status `taken`) and never again, even if it is not reported done. |
+| jobs | `{"id", "kind", "payload"}`; kinds `edit`, `open`, `sync`, `release`; payload `{"ids": [...]}` or `{"all": true}` (the Devices screen's "save edits to NAS" for every photo). `POST /api/jobs/{id}/done` with `{"status": "done"}` or `"failed"`. |
+| `GET /api/photos/{id}/checkout` | `{"id", "relpath", "filename", "size", "mtime", "meta_mtime", "server_time"}`; 404 `photo not found`. Changes nothing on the server (the app uses it for file names of filmstrip placeholders too). |
+| `GET .../original` | The file; `Range`, `If-Range` (ETag) and 416 work as LPL's hand-off notes say (checked: 200, 206 resume, 416 with the whole file on disk). 404 `file missing on NAS`. |
+| `GET .../xmp` | The NAS sidecar, or one made from LPL's metadata when there is none. |
+| `POST .../xmp?checkout_ts=` | Must be a parseable XMP (else 400). LPL stores it (its own backup first), sets the file name it derives from, and answers with the stored XMP and `X-LPL-Merged: 1` or `0`. It merges its own rating, labels and tags only when `checkout_ts > 0` and its metadata changed after `checkout_ts`. |
+| `POST .../preview` | Any image it can decode (else 400 `bad image`); LPL makes its own thumbnail and large preview from it. |
+
+No call answers with a redirect. Measured on the workspace (localhost, not a phone): a 15.9 MB RAW in 67 to 97 ms.
+
+### How the app does it
+- **`app/lpl`** (pure Kotlin, no Android classes): `LplClient` (one per server; `java.net.HttpURLConnection`,
+  redirects never followed, connect 5 s, read 20 s, heartbeat 5 s, download stall 30 s; GETs and the XMP post
+  repeated twice after a transient failure, a broken download resumed up to 5 times with `Range` and `If-Range`;
+  errors in classes with short user texts; the log line names method, path, status and time only), `HandOff`
+  (the link, checked part by part), `ServerStore` (servers as a list, password sealed by a `SecretBox`, install
+  id `android-<uuid>` made once), `WorkStore` (`<files>/lpl/work/<server>/<id>/` with the RAW under its own
+  name, read-only, its `.xmp`, `downloaded.xmp` until the first sync, `preview.jpg` while pending, `state.json`),
+  `LplAgent` (take, sync, remove, heartbeat state, sync and release jobs).
+- **Order when syncing:** the darkroom writes the XMP (if the photo is open), the XMP is posted with the
+  checkout time, a merged answer replaces the local XMP and the open photo re-reads rating, labels and tags,
+  then the engine renders the preview (darktable's export, 1920 px, JPEG 90, sRGB) and it is posted. The XMP is
+  what counts: a photo whose XMP reached LPL is `synced` even when the preview still waits.
+- **One engine session:** darktable holds one photo. The preview is rendered on the darkroom's own session
+  when that photo is open, in a session of its own when no photo is open, and waits (and is sent later)
+  while another photo is open; the darkroom's photo is never closed for it.
+- **Never blocking the darkroom:** "done" returns to the list at once; syncs run in the process.
+- **Process death:** state files are written atomically; after a restart `editing`, `opening` and
+  `syncing` become `dirty` or `synced` from the XMP's hash; a half-downloaded RAW resumes from its bytes.
+- **Heartbeat** every 2 s only while the activity is started, a last one when it stops; jobs from that last
+  heartbeat: `sync`/`release` are done at once, `edit`/`open` are kept on disk until the app is open again
+  (LPL hands a job out only once). **Background:** only the JobScheduler job, which only syncs.
+- **Filmstrip:** photos not on the phone are items with a path that does not exist; the darkroom asks the app
+  to fetch them before opening (`PhotoSource`) and shows their name instead of a thumbnail; names come from
+  `checkout` in the background; only the start photo and the next one are downloaded.
+- **Held photos are refreshed** when opened from a link: if the phone has no unsynced edit, a newer XMP from
+  LPL (edited on a PC meanwhile) replaces the phone's, and a changed original is downloaded again. An unsynced
+  edit on the phone is never replaced.
+
 ---
 
 ## For the owner: editing photos from LightPhotoLibrary on the phone
