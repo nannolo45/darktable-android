@@ -73,11 +73,19 @@ jobs:
 
       - name: Build darktable for Linux
         run: |
-          if [ "${{ steps.cache.outputs.cache-hit }}" = true ]; then
-            tools/build-engine-linux.sh --deps-only
-          else
+          set -o pipefail
+          mkdir -p /tmp/ci-out
+          echo "cache hit: ${{ steps.cache.outputs.cache-hit }}" | tee /tmp/ci-out/build.log
+          # the package mirrors have failed or stalled in some runs: bounded, three attempts
+          ok=0
+          for i in 1 2 3; do
+            if timeout 900 tools/build-engine-linux.sh --deps-only >> /tmp/ci-out/build.log 2>&1; then ok=1; break; fi
+            echo "package install attempt $i failed" | tee -a /tmp/ci-out/build.log; sleep 30
+          done
+          [ "$ok" = 1 ] || { tail -n 40 /tmp/ci-out/build.log; exit 1; }
+          if [ "${{ steps.cache.outputs.cache-hit }}" != true ]; then
             tools/fetch-darktable.sh /home/runner/darktable
-            tools/build-engine-linux.sh /home/runner/darktable /home/runner/dt-linux 2>&1 | tail -n 60
+            NO_APT=1 tools/build-engine-linux.sh /home/runner/darktable /home/runner/dt-linux 2>&1 | tail -n 60 | tee -a /tmp/ci-out/build.log
           fi
           /home/runner/dt-linux/bin/darktable-cli --version | head -2
 
@@ -380,7 +388,7 @@ jobs:
       - name: Compare
         id: c
         run: |
-          tools/build-engine-linux.sh --deps-only
+          for i in 1 2 3; do timeout 900 tools/build-engine-linux.sh --deps-only && break; echo "package install attempt $i failed"; sleep 30; done
           R=$(dirname "$(find /home/runner/refart -name export.jpg | head -1)")
           T=$(dirname "$(dirname "$(find /home/runner/refart -name mire1.cr2 | head -1)")")
           A=/home/runner/app

@@ -4,6 +4,14 @@ Brief: `docs/briefs/P2b-real-engine.md`. Branch `p2b-real-engine`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 13:35: run 44531388217 (a1b11aa): Linux job failed while installing Ubuntu packages (cache hit,
+  10 min in `--deps-only`); package install now bounded and retried, its log pushed. Before that, run
+  44528584881 (e412254): emulator 22 of 25 passed; the three failures analysed on the Linux bridge
+  (`docs/experiments/P2b-results/`): compress keeps disabled modules and `in_history` covers items above
+  the end (contract and fake corrected), read-only `history()` end > items (bridge gap, test stays failing).
+  Run 44525769883 (e9d1064): 19 of 25; both darktable-cli comparisons passed (75.7 dB, 74.4 dB).
+- 2026-11-19: merged main (owner-key signing, 0071d6a); app-engine and its test APK are signed the same way.
+
 - 2026-11-19: instrumented tests (contract suite on the real engine, scenarios), emulator script
   `tools/app/emulator-p2b.sh`, workflow `.github/workflows/p2b-real-engine.yml`. First CI run started.
 - 2026-11-19: `app/app-engine` (application id `app.dtandroid.real`, label "dt-android engine") builds locally for
