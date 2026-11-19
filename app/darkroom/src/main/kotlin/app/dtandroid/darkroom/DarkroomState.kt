@@ -29,10 +29,11 @@ data class Series(val name: String, val items: List<SeriesItem>)
 interface PhotoSource {
     /**
      * Make [item]'s files ready (download them) and return the item with its final paths. [progress]
-     * takes a short text to show ("downloading NAME… 40 %"). Throws [PhotoSourceException] with a text
-     * for the user when the photo cannot be opened now.
+     * takes a short text to show ("downloading NAME… 40 %") and the share done (0..1) when known (brief
+     * P2f: a thin progress bar). Throws [PhotoSourceException] with a text for the user when the photo
+     * cannot be opened now.
      */
-    suspend fun prepare(item: SeriesItem, progress: (String) -> Unit): SeriesItem
+    suspend fun prepare(item: SeriesItem, progress: (String, Float?) -> Unit): SeriesItem
 
     /** The darkroom opened [item]; [next] is the photo after it in the series (worth fetching ahead). */
     fun opened(item: SeriesItem, next: SeriesItem?) {}
@@ -121,6 +122,15 @@ data class DarkroomState(
     val overlay: Overlay? = null,
     /** last engine error, shown until the next action */
     val message: String? = null,
+    /**
+     * Brief P2f: the best picture already available while the photo opens or its preview renders (its
+     * last picture or thumbnail, kept from an earlier visit), shown scaled instead of a black frame.
+     */
+    val placeholder: RenderedImage? = null,
+    /** Brief P2f: what the darkroom is doing for the photo, in plain words ("downloading… 40 %", "opening", "rendering"). */
+    val working: String? = null,
+    /** Brief P2f: the share done of [working] (0..1) when known, for a thin progress bar. */
+    val workingProgress: Float? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

@@ -175,7 +175,7 @@ class LplAgent(
     private fun recover(dir: File, added: Long): PhotoRecord? {
         val id = dir.name.toLongOrNull() ?: return null
         val origin = servers.list().firstOrNull { it.origin.key == dir.parentFile?.name }?.origin ?: return null
-        val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba")
+        val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba", "picture.rgba")
         val name = dir.list().orEmpty().filter { n ->
             n !in known && !n.endsWith(".xmp") && !n.endsWith(".part") && !n.endsWith(".etag") && !n.endsWith(".tmp") && !n.startsWith(".")
         }.singleOrNull() ?: return null

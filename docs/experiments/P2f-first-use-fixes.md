@@ -19,7 +19,28 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
   and an emulator or contract test for the round trip. Also list (not fix) other interface-only controls without a
   parameter binding in the built-in "workflow: scene-referred" layout's modules.
 
+- **R13 to R16 on LightPhotoLibrary's side** (reviewer, 19 Nov): build the client to these shapes; it must still work
+  when the server answers 404 or leaves fields out; do not edit PLAN.md section 4. XMP post adds `agent=<agent id>`
+  (URL-encoded). `GET /api/photos/{id}/edits` (optional `limit`) → `{"edits": [event…]}` newest first;
+  `GET /api/photos/{id}` carries `"last_edit": event | null`; an event has `time` (seconds, number; the only field to
+  rely on), `source` (`agent`, `outside`, `import`, `local`), `device`, `device_os`, `modules`, `changes`, `summary`;
+  the line is "last edited on <device> · <time> · <summary>", `outside` said in plain words. Heartbeat items may add
+  `step` (`downloading`, `sending edit`, `rendering preview`, `sending preview`) and `progress` 0..1, left out when the
+  step ends. R13: a job never reported done comes back with the same id; report every job, and a job id already run
+  is reported done again, not run twice. R14: `GET /api/auth/token` with `x-lpl-token` → 200
+  `{"required", "ok"}`, 401 when wrong or missing; on 404 fall back to today's check.
+
 ## Running log (newest first)
+
+- 2026-11-19 19:45 (local, not pushed yet: the "before" run is still on the emulator and a push would cancel it):
+  deliverables 2 and 3 in code. Interactive work goes first (`DarkroomController.fg`/`bg`, order described in the
+  controller and in the report); the LightPhotoLibrary preview is rendered through the full pipe (cancellable) and
+  encoded with Android's JPEG encoder instead of `dtb_export` (not cancellable); thumbnails are no longer rendered
+  before the photo opens (background, when no photo is open); a stored last picture (1024 px) and the thumbnail are
+  shown while a photo opens, with a line saying what happens and a thin bar for downloads; thumbnails older than
+  the XMP are shown (and refreshed in the background) instead of black. Darkroom and LPL JVM tests pass on the
+  workspace; tests that asserted all thumbnails right after `start` now assert the new order (open photo first,
+  the others in the background).
 
 - 2026-11-19 19:00: branch created from `p2g-engine-start` (a4def3f). First step, deliverable 1 before any fix:
   a timeline recorder (`darkroom/Timeline.kt`, marks in the darkroom's open and preview and around the LPL preview

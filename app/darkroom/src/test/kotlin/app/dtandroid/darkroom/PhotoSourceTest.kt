@@ -31,9 +31,9 @@ class PhotoSourceTest {
         val opened = ArrayList<String>()
         val left = ArrayList<String>()
         var nextSeen: String? = null
-        override suspend fun prepare(item: SeriesItem, progress: (String) -> Unit): SeriesItem {
+        override suspend fun prepare(item: SeriesItem, progress: (String, Float?) -> Unit): SeriesItem {
             prepared += item.fileName
-            progress("downloading ${item.fileName}… 50 %")
+            progress("downloading ${item.fileName}… 50 %", 0.5f)
             gate.await()
             if (item.fileName.startsWith("GONE")) throw PhotoSourceException("${item.fileName}: this photo is gone from the library")
             val f = File(File(item.rawPath).parentFile, item.fileName.removePrefix("photo ").ifEmpty { "x" })
@@ -69,6 +69,8 @@ class PhotoSourceTest {
         val c = setup(src, emptyList())
         val items = listOf(local(names[0]), remote(names[1]), remote(names[2]))
         c.start(Series("s", items), 0, filmstrip = true)
+        // brief P2f: no thumbnails are rendered before the photo opens; the open photo gets one from its preview
+        until("preview of the open photo") { c.state.value.preview != null }
         assertEquals("only the local photo has a thumbnail", setOf(0), c.state.value.thumbnails.keys)
         assertEquals(emptyList<String>(), src.prepared)
         assertEquals(listOf(names[0]), src.opened)
@@ -101,7 +103,9 @@ class PhotoSourceTest {
         c.start(Series("s", listOf(local(names[0]), remote(names[1]))), 0, filmstrip = true)
         val j = CoroutineScope(Dispatchers.Default).launch { c.openPhoto(1) }
         until("fetch started") { src.prepared.isNotEmpty() }
-        assertEquals("downloading ${names[1]}… 50 %", c.state.value.message)
+        // brief P2f: what happens is shown with the photo (with the share done), not as a message
+        assertEquals("downloading ${names[1]}… 50 %", c.state.value.working)
+        assertEquals(0.5f, c.state.value.workingProgress)
         // while the photo is fetched no session is open: a preview of another photo can be rendered
         val other = local(names[2])
         val done = c.withPhotoSession(other.rawPath, other.xmpPath) { e ->

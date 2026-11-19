@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Timeline
 import app.dtandroid.lpl.StubLpl
+import kotlinx.coroutines.async
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.FixMethodOrder
@@ -65,8 +66,11 @@ class P2fScenarioTest {
 
     private fun ms(t0: Long, t: Long?) = t?.let { (it - t0) / 1_000_000 }
 
-    /** Whether the darkroom shows a picture of the photo (a preview, or a stored picture while it opens). */
-    private fun pictureShown(v: AppViewModel): Boolean = v.controller.state.value.preview != null
+    /**
+     * Whether the darkroom shows a picture of the photo: a preview, or (since the P2f fix) the photo's
+     * stored last picture while it opens. Before the fix only the preview counted (there was nothing else).
+     */
+    private fun pictureShown(v: AppViewModel): Boolean = v.controller.state.value.let { it.preview != null || it.placeholder != null }
 
     @Test
     fun f1_openRightAfterDoneTimeline() {
@@ -124,5 +128,59 @@ class P2fScenarioTest {
         if (renderEnd != null && renderEnd > tOpen)
             assertTrue("the real preview waited for the LPL preview render", tReal < renderEnd)
         TestFiles.record(res, "f1", "passed")
+    }
+
+    /**
+     * f2: the LightPhotoLibrary preview now comes from the full pipe (cancellable) instead of dtb_export.
+     * Both are darktable's export pipe type; this measures how far the two pictures are apart (test RAW and
+     * test XMP, the photo's own output profile is sRGB there) and that a cancel stops the new one.
+     */
+    @Test
+    fun f2_previewFromTheFullPipeMatchesTheExport() = kotlinx.coroutines.runBlocking<Unit> {
+        val e = TestFiles.engine()
+        runCatching { e.close() }
+        e.open(TestFiles.raw.path, TestFiles.xmp.path)
+        try {
+            val jpg = File(TestFiles.out, "p2f-f2-export.jpg").apply { delete() }
+            val t0 = System.nanoTime()
+            e.export(jpg.path, app.dtandroid.engine.api.ExportOptions(quality = 90, maxWidth = AppHost.PREVIEW_SIZE, maxHeight = AppHost.PREVIEW_SIZE,
+                profile = app.dtandroid.engine.api.ExportProfile.SRGB))
+            val tExport = (System.nanoTime() - t0) / 1_000_000
+            val t1 = System.nanoTime()
+            val img = AppHost.previewPicture(e)
+            val tRegion = (System.nanoTime() - t1) / 1_000_000
+            val mine = File(TestFiles.out, "p2f-f2-region.jpg").apply { delete() }
+            PreviewJpeg.write(img, mine, AppHost.PREVIEW_QUALITY)
+            val a = android.graphics.BitmapFactory.decodeFile(jpg.path)
+            val b = android.graphics.BitmapFactory.decodeFile(mine.path)
+            TestFiles.record(res, "f2_export", "${a.width}x${a.height} ${jpg.length()} bytes $tExport ms")
+            TestFiles.record(res, "f2_full_pipe", "${b.width}x${b.height} ${mine.length()} bytes $tRegion ms (pipe cached from the export's input)")
+            assertTrue("same size ${a.width}x${a.height} vs ${b.width}x${b.height}", Math.abs(a.width - b.width) <= 1 && Math.abs(a.height - b.height) <= 1)
+            val w = minOf(a.width, b.width); val h = minOf(a.height, b.height)
+            var se = 0.0
+            val pa = IntArray(w); val pb = IntArray(w)
+            for (y in 0 until h) {
+                a.getPixels(pa, 0, w, 0, y, w, 1); b.getPixels(pb, 0, w, 0, y, w, 1)
+                for (x in 0 until w) for (sh in intArrayOf(0, 8, 16)) {
+                    val d = ((pa[x] shr sh) and 0xff) - ((pb[x] shr sh) and 0xff); se += d * d
+                }
+            }
+            val mse = se / (w.toDouble() * h * 3)
+            val psnr = if (mse == 0.0) Double.POSITIVE_INFINITY else 10 * Math.log10(255.0 * 255.0 / mse)
+            TestFiles.record(res, "f2_psnr_db", String.format(java.util.Locale.ROOT, "%.2f", psnr))
+            // a cancel from another thread stops the new preview render
+            val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).async {
+                runCatching { e.cacheDrop() }
+                runCatching { AppHost.previewPicture(e) }
+            }
+            kotlinx.coroutines.delay(30)
+            e.renderCancel()
+            val r = job.await()
+            TestFiles.record(res, "f2_cancel", r.exceptionOrNull()?.message ?: "finished before the cancel")
+            assertTrue("PSNR $psnr dB (want >= 40, as the G0 comparison)", psnr >= 40)
+            TestFiles.record(res, "f2", "passed")
+        } finally {
+            runCatching { e.close() }
+        }
     }
 }

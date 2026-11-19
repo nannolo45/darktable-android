@@ -131,7 +131,7 @@ class WorkStore(val root: File) {
                 val ext = n.substringAfterLast('.', "").take(10)
                 n = n.take(110) + if (ext.isNotEmpty()) ".$ext" else ""
             }
-            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || n == "preview.jpg" ||
+            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || n == "preview.jpg" || n == "thumb.rgba" || n == "picture.rgba" ||
                 n.endsWith(".xmp", ignoreCase = true) || n.endsWith(".part") || n.endsWith(".tmp") || n.endsWith(".etag")
             ) return "photo-$id"
             return n

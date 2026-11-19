@@ -83,7 +83,7 @@ data class TimingsState(val running: String? = null, val text: String? = null, v
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     val schema get() = AppHost.schema
     val work = WorkFolder(File(app.filesDir, "work"))
-    private val thumbs = FileThumbnailStore(File(app.filesDir, "thumbs"))
+    private val thumbs get() = AppHost.localThumbs
     private val scratch = File(app.cacheDir, "out")
 
     /** The darkroom lives in the process since P2e (the background sync uses its engine session too). */
@@ -130,9 +130,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _library.update { it.copy(items = items, thumbnails = t) }
         val lt = agent.photos.value.mapNotNull { r ->
             val f = File(AppHost.work.folder(r.server, r.id), "thumb.rgba")
-            FolderThumb.load(f, AppHost.work.xmp(r))?.let { r.key to it }
+            FolderThumb.load(f)?.let { r.key to it }
         }.toMap()
         _lplThumbs.value = lt
+        refreshThumbnails()
+    }
+
+    private var thumbJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Brief P2f: thumbnails missing or older than their photo's edit are rendered again, as background work
+     * (never while the user works in the darkroom, cancelled when he starts), then the list shows them.
+     */
+    private fun refreshThumbnails() {
+        if (thumbJob?.isActive == true) return
+        thumbJob = AppEngine.scope.launch {
+            if (AppEngine.status.value !is AppEngine.Status.Ready) return@launch
+            val lpl = agent.photos.value.filter { AppHost.work.hasRaw(it) }.map { it to AppHost.itemFor(it.server, it.id) }
+            val local = work.items()
+            val todo = (lpl.map { it.second } + local).filter { AppHost.thumbStale(it) }
+            if (todo.isEmpty()) return@launch
+            if (controller.renderThumbnails(todo) { AppHost.thumbStale(it) } > 0) {
+                _lplThumbs.value = agent.photos.value.mapNotNull { r ->
+                    FolderThumb.load(File(AppHost.work.folder(r.server, r.id), "thumb.rgba"))?.let { r.key to it }
+                }.toMap()
+                _library.update { st -> st.copy(thumbnails = local.mapNotNull { i -> AppHost.localThumbs.load(i)?.let { i.fileName to it } }.toMap()) }
+            }
+        }
     }
 
     fun show(s: Screen) { _screen.value = s }

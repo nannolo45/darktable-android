@@ -73,6 +73,72 @@ class DarkroomController(
     val liveValues: StateFlow<Map<Pair<InstanceKey, Int>, Double>> = _live.asStateFlow()
 
     private val lock = Mutex()
+
+    // ------------------------------------------------------------------ brief P2f: interactive work first
+    //
+    // The engine holds one photo and runs one call at a time. Work the user waits for (opening a photo, a
+    // change, the drag picture, the preview and the visible region, before/after, export, writing the XMP)
+    // runs through [fg]; work nobody waits for (the 1920 px preview for LightPhotoLibrary, thumbnails of
+    // photos not shown) runs through [bg]. Order on the engine thread after P2f:
+    //  1. interactive work, in the order it asks, one at a time (the lock);
+    //  2. background work only when no interactive work waits or runs, no finger is dragging, and the
+    //     darkroom has been quiet for [QUIET_MS];
+    //  3. interactive work that arrives while background work runs cancels its render (dtb_render_cancel,
+    //     repeated until the background task lets go of the lock) and goes first; the background task is
+    //     started again from the beginning once the darkroom is quiet again.
+    // A background task cannot be stopped inside an engine call that does not render (opening a photo,
+    // loading the RAW for the full pipe): interactive work then waits for that call only.
+
+    private val interactive = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile private var bgActive = false
+    @Volatile private var lastInteractiveEnd = 0L
+
+    /** Run [block] under the lock as interactive work: background work is cancelled and waits. */
+    private suspend fun <T> fg(block: suspend () -> T): T {
+        interactive.incrementAndGet()
+        try {
+            val canceller = if (bgActive) scope.launch {
+                while (bgActive) { engine.renderCancel(); delay(CANCEL_REPEAT_MS) }
+            } else null
+            return lock.withLock {
+                canceller?.let { it.cancel(); it.join() }
+                block()
+            }
+        } finally {
+            lastInteractiveEnd = System.nanoTime()
+            interactive.decrementAndGet()
+        }
+    }
+
+    private val dragging get() = dragSize != null
+
+    private fun quiet(): Boolean =
+        interactive.get() == 0 && !dragging && (System.nanoTime() - lastInteractiveEnd) / 1_000_000 >= QUIET_MS
+
+    /**
+     * Run [block] under the lock as background work: only when the darkroom is quiet; if interactive work
+     * cancels it (a CANCELLED render), it is run again from the start later. Returns [block]'s result.
+     */
+    suspend fun <T> bg(what: String, block: suspend (DarktableEngine) -> T): T {
+        while (true) {
+            while (!quiet()) delay(BG_POLL_MS)
+            var cancelled = false
+            val r = lock.withLock {
+                if (!quiet()) { cancelled = true; return@withLock null }
+                bgActive = true
+                try {
+                    Result.success(block(engine))
+                } catch (e: EngineException) {
+                    if (e.error == EngineError.CANCELLED) { cancelled = true; null } else Result.failure(e)
+                } finally {
+                    bgActive = false
+                }
+            }
+            if (!cancelled && r != null) return r.getOrThrow()
+            Timeline.mark("background: $what put back for interactive work")
+        }
+    }
+
     private var renderJob: Job? = null
     private var regionJob: Job? = null
     private var viewport: Viewport? = null
@@ -95,22 +161,24 @@ class DarkroomController(
         _state.update { it.copy(series = series, index = index, filmstrip = filmstrip, loading = true) }
         loadLayout(initial = true)
         if (thumbnails) {
+            // brief P2f: the stored thumbnails only. Rendering the missing ones needs the engine's one session,
+            // so they are made in the background when no photo is open ([renderThumbnails]), never before the
+            // photo the user asked for (P2b rendered them all first, so the photo waited for them)
             val thumbs = HashMap<Int, app.dtandroid.engine.api.RenderedImage>()
             for ((i, item) in series.items.withIndex()) thumbnailStore?.load(item)?.let { thumbs[i] = it }
-            lock.withLock {
-                for ((i, item) in series.items.withIndex()) {
-                    if (i in thumbs) continue
-                    // brief P2e: a photo not downloaded yet has no thumbnail (the filmstrip shows its name); without a
-                    // source every photo is there (the stand-in engine's sample photos have no files at all)
-                    if (source != null && !File(item.rawPath).isFile) continue
-                    try {
-                        engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
-                        val t = engine.renderPreview(thumbnailSize)
-                        thumbs[i] = t
-                        thumbnailStore?.store(item, t)
-                        engine.close()
-                    } catch (e: EngineException) {
-                        // a photo that cannot be opened has no thumbnail
+            if (thumbnailStore == null) {
+                // the interface preview on the stand-in engine keeps no thumbnails between starts: it renders its
+                // generated pictures first, as before P2f (each takes a few milliseconds there)
+                fg {
+                    for ((i, item) in series.items.withIndex()) {
+                        if (source != null && !File(item.rawPath).isFile) continue
+                        try {
+                            engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
+                            thumbs[i] = engine.renderPreview(thumbnailSize)
+                            engine.close()
+                        } catch (e: EngineException) {
+                            // a photo that cannot be opened has no thumbnail
+                        }
                     }
                 }
             }
@@ -119,36 +187,79 @@ class DarkroomController(
         openPhoto(index, saveCurrent = false)
     }
 
+    /**
+     * Brief P2f: thumbnails for the photos of [items] that have none, or whose thumbnail [stale] says is
+     * older than their edit, rendered as background work while no photo is open. Returns how many were made.
+     */
+    suspend fun renderThumbnails(items: List<SeriesItem>, stale: (SeriesItem) -> Boolean = { thumbnailStore?.load(it) == null }): Int {
+        var n = 0
+        for (item in items) {
+            if (!File(item.rawPath).isFile && source != null) continue
+            if (!stale(item)) continue
+            val t = try {
+                bg("thumbnail ${item.fileName}") { e ->
+                    if (_state.value.info != null || fetching) return@bg null
+                    e.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
+                    try { e.renderPreview(thumbnailSize) } finally { runCatching { e.close() } }
+                }
+            } catch (e: EngineException) { null } ?: continue
+            thumbnailStore?.store(item, t)
+            val i = _state.value.series.items.indexOf(item)
+            if (i >= 0) _state.update { st -> st.copy(thumbnails = st.thumbnails + (i to t)) }
+            n++
+        }
+        return n
+    }
+
     /** Switch to another photo of the series; the current edit is written to its sidecar first. */
     suspend fun openPhoto(index: Int, saveCurrent: Boolean = true) {
         var item = _state.value.series.items.getOrNull(index) ?: return
         val g = ++generation
+        Timeline.mark("darkroom: open ${item.fileName} asked")
         cancelRenders()
         val src = source
         val fetch = src != null && !File(item.rawPath).isFile
-        lock.withLock {
+        // brief P2f: never a black frame: the best picture already there, and what is happening
+        showPlaceholder(index, item, if (fetch) "getting ${item.fileName}…" else "opening ${item.fileName}…")
+        fg {
             leaveLocked(index, saveCurrent, fetch)
             if (!fetch) openLocked(item)
         }
         if (fetch && src != null) {
             // brief P2e: fetch the photo first, outside the lock (the engine is free meanwhile)
-            _state.update { it.copy(message = "getting ${item.fileName}…") }
             try {
-                item = src.prepare(item) { text -> if (generation == g) _state.update { it.copy(message = text) } }
+                item = src.prepare(item) { text, share -> if (generation == g) _state.update { it.copy(working = text, workingProgress = share) } }
             } catch (e: PhotoSourceException) {
-                if (generation == g) { fetching = false; _state.update { it.copy(message = e.message, loading = false) } }
+                if (generation == g) { fetching = false; _state.update { it.copy(message = e.message, loading = false, working = null, workingProgress = null) } }
                 return
             }
             if (generation != g) return // the user went to another photo, or left the darkroom, meanwhile
             replaceItem(index, item)
-            _state.update { it.copy(message = null) }
-            lock.withLock {
-                if (generation != g) return
+            _state.update { it.copy(message = null, working = "opening ${item.fileName}…", workingProgress = null) }
+            fg {
+                if (generation != g) return@fg
                 openLocked(item)
             }
+            if (generation != g) return
         }
         if (_state.value.info != null) src?.opened(item, _state.value.series.items.getOrNull(index + 1))
         requestRender()
+    }
+
+    /** Brief P2f: the photo's last picture, else its thumbnail, while it opens; and what happens, in words. */
+    private fun showPlaceholder(index: Int, item: SeriesItem, working: String) {
+        val pic = thumbnailStore?.loadPicture(item) ?: _state.value.thumbnails[index] ?: thumbnailStore?.load(item)
+        _state.update { it.copy(placeholder = pic, working = working, workingProgress = null) }
+        if (pic != null) Timeline.mark("darkroom: stored picture shown")
+    }
+
+    /** Brief P2f: keep the photo's last preview, to show it while the photo opens next time. */
+    private fun keepPicture() {
+        val st = _state.value
+        val item = st.current ?: return
+        val p = st.preview?.image ?: return
+        if (st.info == null) return
+        thumbnailStore?.storePicture(item, Thumbnails.downscale(p, ThumbnailStore.PICTURE_SIZE))
     }
 
     /** brief P2e: counts photo switches and closes, so a fetch that finishes late opens nothing */
@@ -159,6 +270,7 @@ class DarkroomController(
 
     private suspend fun leaveLocked(index: Int, saveCurrent: Boolean, fetch: Boolean) {
         val left = _state.value.current.takeIf { _state.value.info != null }
+        keepPicture()
         if (saveCurrent) saveLocked()
         runCatching { engine.close() }
         fetching = fetch
@@ -182,9 +294,9 @@ class DarkroomController(
             _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }
             refreshLocked()
         } catch (e: EngineException) {
-            _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: ${e.message}") }
+            _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: ${e.message}", working = null, workingProgress = null) }
         }
-        _state.update { it.copy(loading = false) }
+        _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) "rendering…" else it.working) }
     }
 
     /** brief P2e: a photo of the series got its name or its final paths (from LightPhotoLibrary). */
@@ -201,13 +313,14 @@ class DarkroomController(
         generation++
         fetching = false
         cancelRenders()
-        lock.withLock {
+        fg {
             val left = _state.value.current.takeIf { _state.value.info != null }
+            keepPicture()
             saveLocked()
             runCatching { engine.close() }
             _state.update {
                 it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
-                    expanded = null, overlay = null, readOnlyReason = null, loading = false)
+                    expanded = null, overlay = null, readOnlyReason = null, loading = false, placeholder = null, working = null, workingProgress = null)
             }
             if (left != null) source?.left(left)
         }
@@ -216,7 +329,7 @@ class DarkroomController(
     /** Write the current edit (not for read-only photos). Called when leaving the darkroom. */
     suspend fun save() {
         cancelRenders()
-        lock.withLock { saveLocked() }
+        fg { keepPicture(); saveLocked() }
     }
 
     private suspend fun saveLocked() {
@@ -271,7 +384,7 @@ class DarkroomController(
      */
     private suspend fun change(block: suspend () -> Unit) {
         cancelRenders()
-        lock.withLock {
+        fg {
             try {
                 // the "before" picture is kept for the session (engine-api.md, clarifications after P2a)
                 _state.update { it.copy(message = null) }
@@ -342,12 +455,12 @@ class DarkroomController(
         cancelRenders()
         if (!d.end) {
             val size = dragSize ?: dragPicture.size().also { dragSize = it }
-            val layer = lock.withLock {
+            val layer = fg {
                 try {
                     writeBinding(d.key, d.binding, d.value, d.integer)
                     markOn(d.key)
                     _state.update { it.copy(message = null) }
-                    val info = _state.value.info ?: return@withLock null
+                    val info = _state.value.info ?: return@fg null
                     val t0 = System.nanoTime()
                     val img = engine.renderPreview(size)
                     dragPicture.record(img.width * img.height, System.nanoTime() - t0, drag = true)
@@ -362,8 +475,8 @@ class DarkroomController(
             if (layer != null) _state.update { it.copy(preview = layer, region = null) }
             return
         }
-        dragSize = null
-        lock.withLock {
+        fg {
+            dragSize = null
             try {
                 writeBinding(d.key, d.binding, d.value, d.integer)
                 engine.historySeal()
@@ -446,8 +559,8 @@ class DarkroomController(
     }
 
     private suspend fun renderPreview() {
-        val img = lock.withLock {
-            if (_state.value.info == null) return
+        val img = fg {
+            if (_state.value.info == null) return@fg null
             val t0 = System.nanoTime()
             engine.renderPreview(previewMaxSize).also {
                 val ns = System.nanoTime() - t0
@@ -455,8 +568,9 @@ class DarkroomController(
                 _times.update { t -> t.copy(previewMs = ns / 1e6) }
             }
         }
+        if (img == null) return
         val info = _state.value.info ?: return
-        _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null) }
+        _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null, placeholder = null, working = null, workingProgress = null) }
         Timeline.mark("darkroom: preview shown")
         // the filmstrip keeps a small copy, not the preview itself (a 1024 px preview is about 3 MB)
         val thumb = Thumbnails.downscale(img, thumbnailSize)
@@ -473,20 +587,20 @@ class DarkroomController(
 
     private suspend fun renderRegion() {
         val vp = viewport ?: return
-        val layer = lock.withLock {
-            val info = _state.value.info ?: return
-            val r = regionFor(vp, info.width, info.height) ?: return
+        val layer = fg {
+            val info = _state.value.info ?: return@fg null
+            val r = regionFor(vp, info.width, info.height) ?: return@fg null
             val size = engine.renderSize(r.scale)
             val x = r.x.coerceIn(0, size.w - 1)
             val y = r.y.coerceIn(0, size.h - 1)
             val w = min(r.w, size.w - x)
             val h = min(r.h, size.h - y)
-            if (w <= 0 || h <= 0) return
+            if (w <= 0 || h <= 0) return@fg null
             val t0 = System.nanoTime()
             PhotoLayer(engine.renderRegion(x, y, w, h, r.scale), x, y, r.scale).also {
                 _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
             }
-        }
+        } ?: return
         _state.update { it.copy(region = layer) }
     }
 
@@ -537,8 +651,8 @@ class DarkroomController(
     }
 
     private suspend fun renderBefore() {
-        val layer = lock.withLock {
-            val info = _state.value.info ?: return
+        val layer = fg {
+            val info = _state.value.info ?: return@fg null
             // since P1c end <= items always (unknown items of a read-only session are listed), so the
             // clamp P2b needed here is gone
             val end = engine.history().end
@@ -549,7 +663,7 @@ class DarkroomController(
             } finally {
                 engine.historyGoto(end)
             }
-        }
+        } ?: return
         _state.update { it.copy(beforePreview = layer) }
     }
 
@@ -562,7 +676,7 @@ class DarkroomController(
      */
     suspend fun <T> withEngine(block: suspend (DarktableEngine) -> T): T {
         cancelRenders()
-        val r = lock.withLock {
+        val r = fg {
             try {
                 block(engine)
             } finally {
@@ -584,7 +698,7 @@ class DarkroomController(
     suspend fun export(path: String, options: app.dtandroid.engine.api.ExportOptions) {
         cancelRenders()
         try {
-            lock.withLock {
+            fg {
                 if (_state.value.info == null) throw EngineException(EngineError.STATE, "no photo open")
                 engine.export(path, options)
             }
@@ -597,7 +711,7 @@ class DarkroomController(
     suspend fun writeXmp(path: String) {
         cancelRenders()
         try {
-            lock.withLock {
+            fg {
                 if (_state.value.info == null) throw EngineException(EngineError.STATE, "no photo open")
                 engine.xmpWrite(path)
             }
@@ -615,7 +729,7 @@ class DarkroomController(
     suspend fun saveIfOpen(rawPath: String) {
         if (openRawPath() != rawPath) return
         cancelRenders()
-        lock.withLock { if (openRawPath() == rawPath) saveLocked() }
+        fg { if (openRawPath() == rawPath) saveLocked() }
         requestRender()
     }
 
@@ -623,7 +737,7 @@ class DarkroomController(
     suspend fun reloadMetadataIfOpen(rawPath: String, xmpPath: String) {
         if (openRawPath() != rawPath) return
         cancelRenders()
-        lock.withLock {
+        fg {
             if (openRawPath() == rawPath) {
                 try {
                     engine.metadataReload(xmpPath)
@@ -643,20 +757,21 @@ class DarkroomController(
      * holds one photo at a time (engine-api.md 1), and the darkroom's photo is never closed for this.
      */
     suspend fun <T> withPhotoSession(rawPath: String, xmpPath: String, block: suspend (DarktableEngine) -> T): T? {
-        val mine = openRawPath() == rawPath
-        if (mine) cancelRenders()
-        val r = lock.withLock {
+        // brief P2f: background work: it waits while the user works, and a cancelled render is run again later
+        var usedOpen = false
+        val r = bg("session on ${File(rawPath).name}") { e ->
             val s = _state.value
             when {
-                s.info != null && s.current?.rawPath == rawPath -> Result.success(block(engine))
+                s.info != null && s.current?.rawPath == rawPath -> { usedOpen = true; Result.success(block(e)) }
                 s.info == null && !fetching -> {
-                    engine.open(rawPath, xmpPath.takeIf { File(it).isFile })
-                    try { Result.success(block(engine)) } finally { runCatching { engine.close() } }
+                    e.open(rawPath, xmpPath.takeIf { File(it).isFile })
+                    try { Result.success(block(e)) } finally { runCatching { e.close() } }
                 }
                 else -> null
             }
         }
-        if (mine) requestRender()
+        // a region render on the darkroom's own session replaced its pipe's last region: show it again
+        if (usedOpen) requestRender()
         return r?.getOrThrow()
     }
 
@@ -853,4 +968,11 @@ class DarkroomController(
     }
 
     fun paramValue(m: ModuleInstance, path: String) = m.params.paramAt(path)
+
+    companion object {
+        /** background work starts only after the darkroom was quiet this long */
+        const val QUIET_MS = 300L
+        private const val BG_POLL_MS = 50L
+        private const val CANCEL_REPEAT_MS = 20L
+    }
 }
