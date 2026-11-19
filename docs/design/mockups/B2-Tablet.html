@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Darkroom B2, tablet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#d4d4d4}a:hover{color:#f1f1f1}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; border-radius: 24px; background: #262626; color: #b9b9b9; font-family: Roboto, system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column; box-shadow: 0 0 0 1px #1b1b1b">
+
+  <div style="flex: 0 0 auto; height: 64px; box-sizing: border-box; padding: 12px 14px 6px 6px; border-bottom: 1px solid #1b1b1b; display: flex; align-items: center; gap: 10px">
+    <a href="Main.dc.html" style="flex: 0 0 auto; height: 44px; padding-right: 8px; display: flex; align-items: center; gap: 2px; color: #b9b9b9; font-size: 13px; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>LightPhotoLibrary</a>
+    <div style="flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 12px; white-space: nowrap; overflow: hidden">
+      <span style="color: #d4d4d4; font-weight: 500">{{fileName}}</span>
+      <span style="color: #9e9e9e; font-size: 13px">1/250 · f/2.8 · 23 mm · ISO 400</span>
+      <button onClick="{{toggleFilm}}" aria-expanded="{{film}}" aria-label="{{filmLabel}}" style="flex: 0 0 auto; height: 44px; padding: 0 6px; border: 0; background: transparent; color: #9e9e9e; font-family: inherit; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px">Sample series · {{seriesPos}} of 12<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="transform: rotate({{filmRot}})"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </div>
+    <button onClick="{{toggleCompare}}" aria-pressed="{{compare}}" style="flex: 0 0 auto; height: 44px; padding: 0 14px; border: 0; border-radius: 4px; background: {{cmpBg}}; color: {{cmpColor}}; font-family: inherit; font-size: 13px; cursor: pointer">before</button>
+    <a href="Main.dc.html" style="flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 4px; background: #3b3b3b; color: #d4d4d4; font-size: 13px; display: flex; align-items: center; text-decoration: none">done</a>
+  </div>
+
+  <div style="flex: 1 1 auto; min-height: 0; display: flex">
+
+    <div style="flex: 0 0 280px; min-height: 0; overflow: auto; border-right: 1px solid #1b1b1b; display: flex; flex-direction: column">
+      <div style="flex: 0 0 auto; height: 40px; padding: 0 14px; background: #3b3b3b; color: #d4d4d4; display: flex; align-items: center">history</div>
+      <sc-for list="{{histRows}}" as="h" hint-placeholder-count="5">
+        <button onClick="{{h.go}}" style="flex: 0 0 auto; display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 14px; border: 0; background: {{h.bg}}; color: {{h.color}}; font-family: inherit; font-size: 14px; text-align: left; opacity: {{h.op}}; cursor: pointer">
+          <span style="flex: 0 0 20px; font-family: ui-monospace, monospace; font-size: 13px">{{h.n}}</span>
+          <span style="flex: 1 1 auto">{{h.name}}</span>
+          <span style="font-size: 12px">{{h.note}}</span>
+        </button>
+      </sc-for>
+      <div style="flex: 0 0 auto; padding: 10px 14px 14px">
+        <button onClick="{{compress}}" style="width: 100%; height: 44px; border: 0; border-radius: 4px; background: #3b3b3b; color: #d4d4d4; font-family: inherit; font-size: 13px; cursor: pointer">compress history stack</button>
+      </div>
+      <div style="flex: 0 0 auto; height: 40px; padding: 0 14px; background: #3b3b3b; color: #d4d4d4; display: flex; align-items: center">image information</div>
+      <div style="flex: 0 0 auto; padding: 10px 14px; display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px 10px; font-size: 13px">
+        <span style="color: #9e9e9e">filename</span><span>{{fileName}}</span>
+        <span style="color: #9e9e9e">series</span><span>Sample series</span>
+        <span style="color: #9e9e9e">folder</span><span>2026/sample folder</span>
+        <span style="color: #9e9e9e">camera</span><span>Camera</span>
+        <span style="color: #9e9e9e">lens</span><span>23 mm f/1.4</span>
+        <span style="color: #9e9e9e">source</span><span>local copy, RAW on NAS</span>
+      </div>
+    </div>
+
+    <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column">
+      <div style="flex: 1 1 auto; min-height: 0; padding: 16px; background: #777777; display: flex; align-items: center; justify-content: center">
+        <div style="position: relative; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; background: #000000">
+          <div style="position: absolute; inset: 0; filter: {{L.filter}}; background: {{photoBg}}"></div>
+          <div style="position: absolute; inset: 0; background: {{L.warm}}; opacity: {{L.warmOp}}; mix-blend-mode: soft-light"></div>
+          <div style="position: absolute; inset: 0; background: {{L.tintC}}; opacity: {{L.tintOp}}; mix-blend-mode: soft-light"></div>
+        </div>
+      </div>
+      <sc-if value="{{film}}" hint-placeholder-val="{{true}}">
+        <div style="flex: 0 0 auto; height: 72px; padding: 8px 10px; box-sizing: border-box; background: #5e5e5e; display: flex; justify-content: center; gap: 4px; overflow-x: auto">
+          <sc-for list="{{thumbs}}" as="t" hint-placeholder-count="12">
+            <button onClick="{{t.pick}}" aria-label="{{t.aria}}" style="flex: 0 0 50px; height: 56px; padding: 0; border: 2px solid {{t.ring}}; background: {{t.bg}}; cursor: pointer"></button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="flex: 0 0 348px; min-height: 0; border-left: 1px solid #1b1b1b; display: flex; flex-direction: column">
+      <div style="flex: 0 0 auto; height: 44px; display: flex; border-bottom: 1px solid #1b1b1b">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+          <button onClick="{{g.pick}}" aria-label="{{g.aria}}" style="flex: 1 1 0; border: 0; border-bottom: 2px solid {{g.bar}}; background: {{g.bg}}; color: {{g.color}}; font-family: inherit; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center">
+            <sc-if value="{{g.isPower}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></sc-if>
+            {{g.label}}
+          </button>
+        </sc-for>
+      </div>
+      <div style="flex: 1 1 auto; min-height: 0; overflow: auto; padding-top: 2px">
+        <sc-if value="{{isQuick}}" hint-placeholder-val="{{false}}">
+          <div style="padding: 6px 14px 8px; background: #303030; display: flex; flex-direction: column">
+            <sc-for list="{{quick}}" as="p" hint-placeholder-count="4">
+              <div style="position: relative; height: 48px; display: flex; flex-direction: column; justify-content: center; gap: 6px">
+                <div style="display: flex; justify-content: space-between; font-size: 13px">
+                  <label for="{{p.id}}">{{p.l}}</label>
+                  <span style="font-variant-numeric: tabular-nums">{{p.txt}}</span>
+                </div>
+                <div style="position: relative; height: 6px; background: #242424">
+                  <span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; background: #8a8a8a"></span>
+                  <span style="position: absolute; left: {{p.pos}}; top: 7px; margin-left: -5px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 6px solid #b9b9b9"></span>
+                </div>
+                <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-for list="{{mods}}" as="m" hint-placeholder-count="4">
+          <div style="margin-bottom: 2px">
+            <div style="display: flex; align-items: center; height: 44px; background: #3b3b3b">
+              <button onClick="{{m.toggle}}" aria-label="{{m.pwLabel}}" aria-pressed="{{m.on}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: {{m.pwColor}}; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></button>
+              <button onClick="{{m.expand}}" aria-expanded="{{m.open}}" style="flex: 1 1 auto; min-width: 0; height: 44px; padding: 0; border: 0; background: transparent; color: {{m.nameColor}}; font-family: inherit; font-size: 14px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap">{{m.name}}<span style="color: #ababab">{{m.suffix}}</span></button>
+              <button onClick="{{m.openInst}}" aria-label="{{m.instLabel}}" aria-expanded="{{m.menuOpen}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: #b9b9b9; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="8" width="11" height="11"></rect><path d="M9 8V5h11v11h-5"></path></svg></button>
+              <button onClick="{{m.reset}}" aria-label="{{m.resetLabel}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: #b9b9b9; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.2-5.1"></path><path d="M5 4v4h4"></path></svg></button>
+              <button onClick="{{m.openPresets}}" aria-label="{{m.presetLabel}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: #b9b9b9; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"></path></svg></button>
+            </div>
+            <sc-if value="{{m.menuOpen}}" hint-placeholder-val="{{false}}">
+              <div style="margin: 0 8px 6px 44px; background: #262626; border: 1px solid #1b1b1b; display: flex; flex-direction: column">
+                <sc-for list="{{m.menuItems}}" as="it" hint-placeholder-count="5">
+                  <button onClick="{{it.run}}" disabled="{{it.dis}}" style="height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{it.color}}; font-family: inherit; font-size: 14px; text-align: left; cursor: pointer">{{it.label}}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{m.open}}" hint-placeholder-val="{{false}}">
+              <div style="padding: 4px 14px 8px; background: #303030; display: flex; flex-direction: column">
+                <sc-for list="{{m.params}}" as="p" hint-placeholder-count="1">
+                  <div style="position: relative; height: 48px; display: flex; flex-direction: column; justify-content: center; gap: 6px">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px">
+                      <label for="{{p.id}}">{{p.l}}</label>
+                      <span style="font-variant-numeric: tabular-nums">{{p.txt}}</span>
+                    </div>
+                    <div style="position: relative; height: 6px; background: #242424">
+                      <span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; background: #8a8a8a"></span>
+                      <span style="position: absolute; left: {{p.pos}}; top: 7px; margin-left: -5px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 6px solid #b9b9b9"></span>
+                    </div>
+                    <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+                  </div>
+                </sc-for>
+                <sc-if value="{{m.noParams}}" hint-placeholder-val="{{false}}">
+                  <span style="color: #9e9e9e; font-size: 13px; line-height: 1.5; padding: 6px 0">Corrections for the detected lens (23 mm f/1.4) are applied automatically.</span>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{emptyGroup}}" hint-placeholder-val="{{false}}">
+          <div style="padding: 20px 16px; color: #9e9e9e; font-size: 13px; line-height: 1.5">No module is active at this point in the history.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"filmstrip":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  types() {
+    return {
+      exposure: { name: 'exposure', grp: 'base', ps: [['ev', 'exposure', -3, 3, 0.05, 0, 'ev']] },
+      sigmoid: { name: 'sigmoid', grp: 'base', ps: [['con', 'contrast', 0.5, 3, 0.05, 1.5, 'num'], ['skew', 'skew', -1, 1, 0.05, 0, 'num']] },
+      toneq: { name: 'tone equalizer', grp: 'base', ps: [['sh', 'shadows', -2, 2, 0.05, 0, 'ev'], ['hi', 'highlights', -2, 2, 0.05, 0, 'ev']] },
+      wb: { name: 'white balance', grp: 'color', ps: [['temp', 'temperature', 2500, 9500, 50, 5500, 'k'], ['tint', 'tint', -50, 50, 1, 0, 'sgn']] },
+      cb: { name: 'color balance rgb', grp: 'color', ps: [['vib', 'global vibrance', -100, 100, 1, 0, 'pct'], ['sat', 'global saturation', -100, 100, 1, 0, 'pct']] },
+      lens: { name: 'lens correction', grp: 'correct', ps: [] },
+      dn: { name: 'denoise (profiled)', grp: 'correct', ps: [['dns', 'strength', 0, 4, 0.05, 1, 'num']] }
+    };
+  }
+  init() {
+    return [
+      { uid: 1, t: 'exposure', n: 0, on: true, vals: { ev: 0.7 } },
+      { uid: 2, t: 'sigmoid', n: 0, on: true, vals: { con: 1.5, skew: 0 } },
+      { uid: 3, t: 'toneq', n: 0, on: false, vals: { sh: 0, hi: 0 } },
+      { uid: 4, t: 'wb', n: 0, on: true, vals: { temp: 5500, tint: 0 } },
+      { uid: 5, t: 'cb', n: 0, on: false, vals: { vib: 0, sat: 0 } },
+      { uid: 6, t: 'lens', n: 0, on: true, vals: {} },
+      { uid: 7, t: 'dn', n: 0, on: false, vals: { dns: 1 } }
+    ];
+  }
+  bgs() {
+    return [
+      'linear-gradient(180deg,#d3dbdf 0%,#97aab3 52%,#3a4a52 100%)',
+      'linear-gradient(180deg,#8fb0c9 0%,#c9d7df 47%,#a88d6b 48%,#5b4737 100%)',
+      'linear-gradient(200deg,#f1dfbf 0%,#c99f74 46%,#3d302a 100%)',
+      'linear-gradient(160deg,#cf7a4a 0%,#e0a07a 40%,#7d8fa0 41%,#c7d3dc 100%)',
+      'linear-gradient(115deg,#f3e3c3 0%,#f3e3c3 44%,#4a3a30 45%,#2a211c 100%)',
+      'linear-gradient(180deg,#f0c99a 0%,#d98f6a 35%,#6f7f8c 60%,#2d3a44 100%)'
+    ];
+  }
+  skyline() {
+    return 'radial-gradient(circle at 70% 34%, #e9d3a6 0%, #c9a878 7%, rgba(201,168,120,0) 24%), linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 8%, #2a2c33 8%, #2a2c33 24%, rgba(0,0,0,0) 24%, rgba(0,0,0,0) 30%, #23252c 30%, #23252c 49%, rgba(0,0,0,0) 49%, rgba(0,0,0,0) 56%, #2d2f37 56%, #2d2f37 78%, rgba(0,0,0,0) 78%) bottom / 100% 42% no-repeat, linear-gradient(90deg, rgba(0,0,0,0) 36%, #1f2127 36%, #1f2127 44%, rgba(0,0,0,0) 44%) bottom / 100% 58% no-repeat, linear-gradient(180deg, #b9a58c 0%, #a88a74 38%, #6b7279 70%, #3a4046 100%)';
+  }
+  fmt(v, f) {
+    var sg = v > 0 ? '+' : '';
+    if (f === 'ev') return sg + v.toFixed(2) + ' EV';
+    if (f === 'k') return Math.round(v) + ' K';
+    if (f === 'pct') return sg + Math.round(v) + ' %';
+    if (f === 'sgn') return sg + Math.round(v);
+    return v.toFixed(2);
+  }
+  st() {
+    var s = this.state || {};
+    var hist = s.hist || [1, 2, 4, 6];
+    return {
+      inst: s.inst || this.init(), hist: hist, hpos: s.hpos === undefined ? hist.length : s.hpos,
+      grp: s.grp || 'active', open: s.open === undefined ? 1 : s.open, menu: s.menu || null,
+      compare: !!s.compare, view: s.view || 'modules', cur: s.cur === undefined ? 6 : s.cur, next: s.next || 8,
+      film: s.film === undefined ? (this.props.filmstrip ?? true) : s.film
+    };
+  }
+  live(S) {
+    var h = S.hist.slice(0, S.hpos), o = {};
+    S.inst.forEach(function (x) { o[x.uid] = x.on && h.indexOf(x.uid) >= 0; });
+    return o;
+  }
+  look(S, E) {
+    var ev = 0, ctm = 1, skew = 0, d = 0, tint = 0, sam = 1, sh = 0, hi = 0, dns = 0;
+    S.inst.forEach(function (x) {
+      if (!E[x.uid]) return;
+      var v = x.vals;
+      if (x.t === 'exposure') ev += v.ev;
+      if (x.t === 'sigmoid') { ctm *= 1 + (v.con - 1) * 0.35; skew += v.skew; }
+      if (x.t === 'wb') { d += (v.temp - 5500) / 4000; tint += v.tint; }
+      if (x.t === 'cb') sam *= (1 + v.vib * 0.006) * (1 + v.sat / 100);
+      if (x.t === 'toneq') { sh += v.sh; hi += v.hi; }
+      if (x.t === 'dn') dns += v.dns;
+    });
+    d = Math.max(-1, Math.min(1, d)); tint = Math.max(-50, Math.min(50, tint));
+    var br = Math.pow(2, ev * 0.6 + sh * 0.15 + hi * 0.1) * (1 + skew * 0.1);
+    var ct = ctm * (1 - sh * 0.08) * (1 + hi * 0.06);
+    return {
+      filter: 'brightness(' + br.toFixed(3) + ') contrast(' + ct.toFixed(3) + ') saturate(' + Math.max(0, sam).toFixed(3) + ') blur(' + (dns * 0.4).toFixed(2) + 'px)',
+      warm: d > 0 ? '#ff9a3c' : '#3c8cff', warmOp: (Math.abs(d) * 0.55).toFixed(2),
+      tintC: tint > 0 ? '#ff4fd8' : '#3ddc6a', tintOp: (Math.abs(tint) / 50 * 0.35).toFixed(2)
+    };
+  }
+  commit(uid, inst, extra) {
+    var S = this.st(), hist = S.hist.slice(0, S.hpos);
+    if (hist.indexOf(uid) < 0) hist.push(uid);
+    this.setState(Object.assign({ inst: inst, hist: hist, hpos: hist.length }, extra || {}));
+  }
+  renderVals() {
+    var self = this, S = this.st(), E = this.live(S), T = this.types();
+    var set = function (o) { self.setState(o); };
+    var bgs = this.bgs(), sky = this.skyline();
+    var L = S.compare ? { filter: 'none', warm: '#000000', warmOp: 0, tintC: '#000000', tintOp: 0 } : this.look(S, E);
+    var byUid = {}, count = {};
+    S.inst.forEach(function (x) { byUid[x.uid] = x; count[x.t] = (count[x.t] || 0) + 1; });
+    var full = function (x) { return T[x.t].name + (x.n ? ' ' + x.n : ''); };
+    var copy = function () { return self.st().inst.map(function (x) { return { uid: x.uid, t: x.t, n: x.n, on: x.on, vals: Object.assign({}, x.vals) }; }); };
+    var defaults = function (t) { var v = {}; T[t].ps.forEach(function (p) { v[p[0]] = p[5]; }); return v; };
+    var shown = S.inst.filter(function (x) { return S.grp === 'active' ? E[x.uid] : T[x.t].grp === S.grp; });
+    var quick = [];
+    [['exposure', 'ev'], ['sigmoid', 'con'], ['wb', 'temp'], ['cb', 'vib']].forEach(function (q) {
+      var x = S.inst.filter(function (y) { return y.t === q[0]; })[0];
+      var p = T[q[0]].ps.filter(function (pp) { return pp[0] === q[1]; })[0];
+      if (!x || !p) return;
+      var v = x.vals[p[0]];
+      quick.push({
+        id: 'tq' + x.uid + p[0], l: T[x.t].name + ' · ' + p[1], min: p[2], max: p[3], step: p[4], v: v, txt: self.fmt(v, p[6]),
+        pos: ((v - p[2]) / (p[3] - p[2]) * 100).toFixed(1) + '%',
+        set: function (e) {
+          var val = parseFloat(e.target.value), inst = copy();
+          inst.forEach(function (y) { if (y.uid === x.uid) { y.vals[p[0]] = val; y.on = true; } });
+          self.commit(x.uid, inst);
+        }
+      });
+    });
+    var shownIds = shown.map(function (x) { return x.uid; });
+    var mk = function (label, dis, run) { return { label: label, dis: dis, color: dis ? '#777777' : '#d4d4d4', run: run }; };
+    var items = function (x, kind) {
+      if (kind === 'presets') return [mk('store new preset…', false, function () { set({ menu: null }); })];
+      var si = shownIds.indexOf(x.uid);
+      var add = function (dup) {
+        return function () {
+          var cur = self.st(), inst = copy(), i = 0, maxn = 0;
+          inst.forEach(function (y, j) { if (y.uid === x.uid) i = j; if (y.t === x.t && y.n > maxn) maxn = y.n; });
+          var nu = { uid: cur.next, t: x.t, n: maxn + 1, on: true, vals: dup ? Object.assign({}, inst[i].vals) : defaults(x.t) };
+          inst.splice(i + 1, 0, nu);
+          self.commit(nu.uid, inst, { next: cur.next + 1, open: nu.uid, menu: null });
+        };
+      };
+      var move = function (dir) {
+        return function () {
+          var other = shownIds[si + dir];
+          if (other === undefined) return;
+          var inst = copy(), a = -1, b = -1;
+          inst.forEach(function (y, j) { if (y.uid === x.uid) a = j; if (y.uid === other) b = j; });
+          var tmp = inst[a]; inst[a] = inst[b]; inst[b] = tmp;
+          set({ inst: inst, menu: null });
+        };
+      };
+      var del = function () {
+        var cur = self.st(), k = cur.hist.indexOf(x.uid);
+        set({
+          inst: copy().filter(function (y) { return y.uid !== x.uid; }),
+          hist: cur.hist.filter(function (u) { return u !== x.uid; }),
+          hpos: cur.hpos - (k >= 0 && k < cur.hpos ? 1 : 0), menu: null, open: null
+        });
+      };
+      return [
+        mk('new instance', false, add(false)), mk('duplicate instance', false, add(true)),
+        mk('move up', si <= 0, move(-1)), mk('move down', si < 0 || si >= shownIds.length - 1, move(1)),
+        mk('delete', count[x.t] <= 1, del)
+      ];
+    };
+    var rows = [];
+    for (var k = S.hist.length; k >= 1; k--) {
+      (function (k) {
+        var x = byUid[S.hist[k - 1]];
+        if (!x) return;
+        var sel = k === S.hpos;
+        rows.push({ n: k, name: full(x), note: x.on ? '' : 'off', bg: sel ? '#5e5e5e' : 'transparent', color: sel ? '#e2e2e2' : '#b9b9b9', op: k > S.hpos ? 0.5 : 1, go: function () { set({ hpos: k }); } });
+      })(k);
+    }
+    rows.push({ n: 0, name: 'original', note: '', bg: S.hpos === 0 ? '#5e5e5e' : 'transparent', color: S.hpos === 0 ? '#e2e2e2' : '#b9b9b9', op: 1, go: function () { set({ hpos: 0 }); } });
+    var thumbs = [];
+    for (var i = 0; i < 12; i++) {
+      (function (i) {
+        thumbs.push({ bg: i === 6 ? sky : bgs[i % 6], ring: i === S.cur ? '#e2e2e2' : 'transparent', aria: 'Photo ' + (i + 1) + ' of 12, IMG_' + (1 + i * 9) + '.RAF', pick: function () { set({ cur: i }); } });
+      })(i);
+    }
+    var mx = S.menu ? byUid[S.menu.uid] : null;
+    return {
+      L: L, compare: S.compare, photoBg: S.cur === 6 ? sky : bgs[S.cur % 6],
+      fileName: 'IMG_' + (1 + S.cur * 9) + '.RAF', seriesPos: S.cur + 1,
+      cmpBg: S.compare ? '#5e5e5e' : '#3b3b3b', cmpColor: S.compare ? '#e2e2e2' : '#d4d4d4',
+      toggleCompare: function () { set({ compare: !self.st().compare }); },
+      thumbs: thumbs,
+      isModules: S.view === 'modules', isHistory: S.view === 'history',
+      film: S.film, filmRot: S.film ? '180deg' : '0deg', filmLabel: (S.film ? 'Hide' : 'Show') + ' filmstrip for Sample series',
+      toggleFilm: function () { set({ film: !self.st().film }); },
+      isQuick: S.grp === 'quick', quick: S.grp === 'quick' ? quick : [],
+      groups: [['active', ''], ['quick', 'quick'], ['base', 'base'], ['color', 'color'], ['correct', 'correct']].map(function (g) {
+        var sel = S.grp === g[0];
+        return { label: g[1], isPower: g[0] === 'active', aria: g[0] === 'active' ? 'active modules' : g[0] + ' modules', color: sel ? '#e2e2e2' : '#ababab', bg: sel ? '#3b3b3b' : 'transparent', bar: sel ? '#b9b9b9' : 'transparent', pick: function () { set({ grp: g[0] }); } };
+      }),
+      emptyGroup: shown.length === 0 && S.grp !== 'quick',
+      mods: shown.map(function (x) {
+        var on = E[x.uid], open = S.open === x.uid, nm = full(x);
+        var menuOpen = !!S.menu && S.menu.uid === x.uid;
+        return {
+          name: T[x.t].name, suffix: x.n ? String(x.n) : '', on: on, open: open,
+          nameColor: on ? '#d4d4d4' : '#ababab', pwColor: on ? '#e2e2e2' : '#848484',
+          pwLabel: (on ? 'Turn off ' : 'Turn on ') + nm, instLabel: 'Instances of ' + nm, resetLabel: 'Reset ' + nm, presetLabel: 'Presets for ' + nm,
+          noParams: T[x.t].ps.length === 0,
+          toggle: function () { var inst = copy(); inst.forEach(function (y) { if (y.uid === x.uid) y.on = !on; }); self.commit(x.uid, inst); },
+          expand: function () { set({ open: self.st().open === x.uid ? null : x.uid, menu: null }); },
+          openInst: function () { set({ menu: menuOpen && S.menu.kind === 'inst' ? null : { uid: x.uid, kind: 'inst' } }); },
+          openPresets: function () { set({ menu: menuOpen && S.menu.kind === 'presets' ? null : { uid: x.uid, kind: 'presets' } }); },
+          reset: function () { var inst = copy(); inst.forEach(function (y) { if (y.uid === x.uid) y.vals = defaults(x.t); }); self.commit(x.uid, inst); },
+          menuOpen: menuOpen, menuItems: menuOpen ? items(x, S.menu.kind) : [],
+          params: T[x.t].ps.map(function (p) {
+            var v = x.vals[p[0]];
+            return {
+              id: 't' + x.uid + p[0], l: p[1], min: p[2], max: p[3], step: p[4], v: v, txt: self.fmt(v, p[6]),
+              pos: ((v - p[2]) / (p[3] - p[2]) * 100).toFixed(1) + '%',
+              set: function (e) {
+                var val = parseFloat(e.target.value), inst = copy();
+                inst.forEach(function (y) { if (y.uid === x.uid) { y.vals[p[0]] = val; y.on = true; } });
+                self.commit(x.uid, inst);
+              }
+            };
+          })
+        };
+      }),
+      histRows: rows,
+      compress: function () {
+        var cur = self.st(), by = {};
+        cur.inst.forEach(function (y) { by[y.uid] = y; });
+        var hist = cur.hist.slice(0, cur.hpos).filter(function (u) { return by[u] && by[u].on; });
+        set({ hist: hist, hpos: hist.length });
+      },
+      views: [['modules', 'modules'], ['history', 'history · ' + S.hpos]].map(function (v) {
+        var sel = S.view === v[0];
+        return { label: v[1], color: sel ? '#e2e2e2' : '#ababab', bar: sel ? '#b9b9b9' : 'transparent', pick: function () { set({ view: v[0], menu: null }); } };
+      }),
+      sheetOpen: !!mx, sheetTitle: mx ? full(mx) + (S.menu.kind === 'inst' ? ' · instances' : ' · presets') : '',
+      sheetItems: mx ? items(mx, S.menu.kind) : [],
+      closeMenu: function () { set({ menu: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

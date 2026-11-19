@@ -1,6 +1,6 @@
 # darktable for Android: port plan (public edition)
 
-Written 18 Nov 2026. Status: plan accepted; Phase 0 (experiments) started. This is the public edition; the owner keeps private notes with setup details.
+Written 18 Nov 2026. Status: Phase 0 done; gate G0 passed on the target phone on 19 Nov 2026; Phase 1 (engine) and the app foundation started. This is the public edition; the owner keeps private notes with setup details.
 
 - Interface mockups (three rounds) were agreed before this plan and are kept privately; section 1 summarises them.
 - Code for the port: https://github.com/nannolo45/darktable-android (public); this file is `docs/PLAN.md` there.
@@ -151,6 +151,7 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 - Preview pipeline from a downscaled input for immediate feedback, full pipeline only for the visible region at screen scale, cancel on new input.
 - OpenMP on all cores; darktable's resource level tuned for phones; tiling for large images.
 - OpenCL later and opt-in per device (F8).
+- **Measured at gate G0** (24 MP RAF, default edit, single runs): with 4 threads, preview after an exposure change 0.09 s, screen-sized region at 100 % after a change 0.22 s, full-size render 2.6 s, full-size JPEG export 3.1 s. With all 8 threads the interactive steps were slower (preview 0.56 s), because the slow cores hold up the evenly split work. The engine therefore runs on the fast cores only, pinned.
 - **Targets to confirm at gate G0 on the target phone** (targets, not measurements): preview after a slider move under 0.3 s; visible region under 3 s for a 40 MP RAF; full export under 60 s.
 
 ## 4. LPL integration (for the LPL instance)

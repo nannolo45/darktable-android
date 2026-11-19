@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Darkroom, tone equalizer graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#d4d4d4}a:hover{color:#f1f1f1}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; border-radius: 36px; background: #262626; color: #b9b9b9; font-family: Roboto, system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column; box-shadow: 0 0 0 1px #1b1b1b">
+
+  <div style="flex: 0 0 auto; padding: 22px 10px 6px 4px; display: flex; align-items: center; gap: 6px">
+    <a href="B2-Phone.dc.html" aria-label="Back to the module list" style="flex: 0 0 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #b9b9b9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+      <span style="color: #d4d4d4; font-weight: 500">IMG_0007.RAF</span>
+      <span style="color: #9e9e9e; font-size: 12px">Sample series · 7 of 12</span>
+    </div>
+  </div>
+
+  <div style="flex: 0 0 auto; height: 266px; box-sizing: border-box; padding: 8px; background: #777777; display: flex; align-items: center; justify-content: center">
+    <div onPointerDown="{{imgDown}}" onPointerMove="{{imgMove}}" onPointerUp="{{imgUp}}" onPointerCancel="{{imgUp}}" style="position: relative; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; background: #000000; touch-action: none; user-select: none; cursor: ns-resize">
+      <div style="position: absolute; inset: 0; filter: brightness(1.338) contrast(1.175); background: {{sky}}"></div>
+      <sc-for list="{{bands}}" as="b" hint-placeholder-count="0">
+        <div style="position: absolute; inset: 0; filter: {{b.filter}}; mask-image: {{b.mask}}; background: {{sky}}; pointer-events: none"></div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex: 0 0 auto; height: 24px; display: flex; align-items: center; justify-content: center; color: #9e9e9e; font-size: 12px; font-variant-numeric: tabular-nums">{{pickTxt}}</div>
+
+  <div style="flex: 1 1 auto; min-height: 0; overflow: auto">
+    <div style="display: flex; align-items: center; height: 44px; background: #3b3b3b">
+      <button onClick="{{togglePower}}" aria-label="{{pwLabel}}" aria-pressed="{{on}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: {{pwColor}}; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></button>
+      <span style="flex: 1 1 auto; color: #d4d4d4">tone equalizer</span>
+      <button onClick="{{reset}}" aria-label="Reset tone equalizer" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; background: transparent; color: #b9b9b9; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.2-5.1"></path><path d="M5 4v4h4"></path></svg></button>
+    </div>
+    <div style="padding: 0 14px 16px; background: #303030; display: flex; flex-direction: column">
+      <div style="display: flex; gap: 2px; padding: 8px 0">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="2">
+          <button onClick="{{t.pick}}" aria-pressed="{{t.sel}}" style="flex: 1 1 0; height: 44px; padding: 0; border: 0; background: {{t.bg}}; color: {{t.color}}; font-family: inherit; font-size: 13px; cursor: pointer">{{t.label}}</button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{isAdvanced}}" hint-placeholder-val="{{true}}">
+        <div style="position: relative; height: 170px; background: #242424; display: flex; touch-action: none; user-select: none">
+          <div style="position: absolute; left: 0; right: 0; top: 50%; height: 0; border-top: 1px solid #474747; pointer-events: none"></div>
+          <sc-for list="{{cols}}" as="c" hint-placeholder-count="9">
+            <div onPointerDown="{{c.down}}" onPointerMove="{{c.move}}" onPointerUp="{{c.up}}" onPointerCancel="{{c.up}}" style="flex: 1 1 0; position: relative; box-sizing: border-box; border-left: 1px solid #2c2c2c; background: {{c.bg}}; cursor: ns-resize; touch-action: none">
+              <span style="position: absolute; left: 50%; top: {{c.y}}; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: {{c.dot}}; pointer-events: none"></span>
+            </div>
+          </sc-for>
+          <sc-for list="{{segs}}" as="s" hint-placeholder-count="8">
+            <span style="position: absolute; left: {{s.x}}; top: {{s.y}}; width: {{s.w}}; height: 2px; margin-top: -1px; background: #b9b9b9; transform-origin: 0 50%; transform: rotate({{s.a}}); pointer-events: none"></span>
+          </sc-for>
+        </div>
+        <div style="display: flex; padding-top: 4px">
+          <sc-for list="{{cols}}" as="c" hint-placeholder-count="9">
+            <span style="flex: 1 1 0; text-align: center; color: #9e9e9e; font-size: 11px">{{c.short}}</span>
+          </sc-for>
+        </div>
+        <span style="color: #9e9e9e; font-size: 12px; line-height: 1.5; padding-top: 8px">Drag a point up or down. Scale: +2 EV at the top, −2 EV at the bottom.</span>
+      </sc-if>
+
+      <sc-if value="{{isSimple}}" hint-placeholder-val="{{false}}">
+        <sc-for list="{{simpleSl}}" as="p" hint-placeholder-count="9">
+          <div style="position: relative; height: 48px; display: flex; flex-direction: column; justify-content: center; gap: 6px">
+            <div style="display: flex; justify-content: space-between; font-size: 13px"><label for="{{p.id}}">{{p.l}}</label><span style="font-variant-numeric: tabular-nums">{{p.txt}}</span></div>
+            <div style="position: relative; height: 6px; background: #242424"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; background: #8a8a8a"></span><span style="position: absolute; left: {{p.pos}}; top: 7px; margin-left: -5px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 6px solid #b9b9b9"></span></div>
+            <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+          </div>
+        </sc-for>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  sky() {
+    return 'radial-gradient(circle at 70% 34%, #e9d3a6 0%, #c9a878 7%, rgba(201,168,120,0) 24%), linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 8%, #2a2c33 8%, #2a2c33 24%, rgba(0,0,0,0) 24%, rgba(0,0,0,0) 30%, #23252c 30%, #23252c 49%, rgba(0,0,0,0) 49%, rgba(0,0,0,0) 56%, #2d2f37 56%, #2d2f37 78%, rgba(0,0,0,0) 78%) bottom / 100% 42% no-repeat, linear-gradient(90deg, rgba(0,0,0,0) 36%, #1f2127 36%, #1f2127 44%, rgba(0,0,0,0) 44%) bottom / 100% 58% no-repeat, linear-gradient(180deg, #b9a58c 0%, #a88a74 38%, #6b7279 70%, #3a4046 100%)';
+  }
+  st() {
+    var s = this.state || {};
+    return { on: s.on === undefined ? true : s.on, v: s.v || [0.6, 0.5, 0.3, 0.1, 0, 0, -0.2, -0.4, -0.5], tab: s.tab || 'advanced', pick: s.pick === undefined ? -1 : s.pick };
+  }
+  setBand(i, val) {
+    var v = this.st().v.slice();
+    v[i] = Math.max(-2, Math.min(2, Math.round(val * 20) / 20));
+    this.setState({ v: v, pick: i, on: true });
+  }
+  renderVals() {
+    var self = this, S = this.st();
+    var set = function (o) { self.setState(o); };
+    var W = 362, H = 170, R = H / 2 - 10;
+    var ev = function (x) { return (x > 0 ? '+' : '') + x.toFixed(2) + ' EV'; };
+    var name = function (i) { return (i === 8 ? '0' : '−' + (8 - i)) + ' EV'; };
+    var px = function (i) { return (i + 0.5) * W / 9; }, py = function (x) { return H / 2 - x / 2 * R; };
+    var bands = [];
+    if (S.on) S.v.forEach(function (x, i) {
+      if (x === 0) return;
+      var c = (8 - i + 0.5) / 9 * 100, w = 100 / 9;
+      var a = i === 8 ? '#000 0%, #000 ' + c.toFixed(1) + '%' : 'transparent ' + (c - w).toFixed(1) + '%, #000 ' + c.toFixed(1) + '%';
+      var b = i === 0 ? '#000 100%' : 'transparent ' + (c + w).toFixed(1) + '%';
+      bands.push({ filter: 'brightness(' + (1.338 * Math.pow(2, x * 0.6)).toFixed(3) + ') contrast(1.175)', mask: 'linear-gradient(180deg, ' + a + ', ' + b + ')' });
+    });
+    var segs = [];
+    for (var i = 0; i < 8; i++) {
+      var x1 = px(i), y1 = py(S.v[i]), x2 = px(i + 1), y2 = py(S.v[i + 1]);
+      segs.push({ x: x1.toFixed(1) + 'px', y: y1.toFixed(1) + 'px', w: Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)).toFixed(1) + 'px', a: Math.atan2(y2 - y1, x2 - x1).toFixed(4) + 'rad' });
+    }
+    return {
+      sky: this.sky(), on: S.on, bands: bands, segs: segs,
+      pwColor: S.on ? '#e2e2e2' : '#848484', pwLabel: (S.on ? 'Turn off' : 'Turn on') + ' tone equalizer',
+      togglePower: function () { set({ on: !self.st().on }); },
+      reset: function () { set({ v: [0, 0, 0, 0, 0, 0, 0, 0, 0], pick: -1 }); },
+      pickTxt: S.pick < 0 ? 'Drag up or down on the photo to lighten or darken that tone' : 'tone ' + name(S.pick) + ': ' + ev(S.v[S.pick]),
+      imgDown: function (e) {
+        var r = e.currentTarget.getBoundingClientRect();
+        var band = Math.max(0, Math.min(8, 8 - Math.floor((e.clientY - r.top) / r.height * 9)));
+        self._img = { band: band, y: e.clientY, v: self.st().v[band] };
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+        set({ pick: band });
+      },
+      imgMove: function (e) { if (self._img) self.setBand(self._img.band, self._img.v - (e.clientY - self._img.y) / 50); },
+      imgUp: function () { self._img = null; },
+      tabs: [['simple', 'simple'], ['advanced', 'advanced']].map(function (t) {
+        var sel = S.tab === t[0];
+        return { label: t[1], sel: sel, bg: sel ? '#5e5e5e' : '#3b3b3b', color: sel ? '#f1f1f1' : '#b9b9b9', pick: function () { set({ tab: t[0] }); } };
+      }),
+      isAdvanced: S.tab === 'advanced', isSimple: S.tab === 'simple',
+      cols: S.v.map(function (x, i) {
+        var at = function (e) {
+          var r = e.currentTarget.getBoundingClientRect();
+          self.setBand(i, (H / 2 - (e.clientY - r.top) / r.height * H) / R * 2);
+        };
+        return {
+          y: py(x).toFixed(1) + 'px', dot: S.pick === i ? '#f1f1f1' : '#b9b9b9', bg: S.pick === i ? '#2c2c2c' : 'transparent', short: i === 8 ? '0' : '−' + (8 - i),
+          down: function (e) { self._col = i; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} at(e); },
+          move: function (e) { if (self._col === i) at(e); },
+          up: function () { self._col = null; }
+        };
+      }),
+      simpleSl: S.v.map(function (x, i) {
+        return {
+          id: 'te-' + i, l: name(i), min: -2, max: 2, step: 0.05, v: x, txt: ev(x), pos: ((x + 2) / 4 * 100).toFixed(1) + '%',
+          set: function (e) { self.setBand(i, parseFloat(e.target.value)); }
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
