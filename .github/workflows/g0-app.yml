@@ -7,7 +7,7 @@ name: g0-app
 
 on:
   push:
-    branches: [g0-test-app, p1a-engine-core]
+    branches: [g0-test-app, p1a-engine-core, p1c-engine-followups]
     paths-ignore: ["docs/**", "*.md"]
   workflow_dispatch:
 
@@ -116,7 +116,7 @@ jobs:
             /home/runner/dtt
           retention-days: 7
 
-      - name: Bridge tests on Linux (S3 T1 to T9, X1; P1a C1 to C7)
+      - name: Bridge tests on Linux (S3 T1 to T9, X1; P1a C1 to C7; P1c C8)
         id: tests
         run: |
           set +e
