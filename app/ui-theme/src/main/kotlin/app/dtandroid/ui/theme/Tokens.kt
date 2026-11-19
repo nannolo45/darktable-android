@@ -78,6 +78,8 @@ class DtSizes(t: TokenSource) {
     /** window size from which the tablet layout is used (width and height) */
     val tabletMinWidth = t.dp("size.tabletMinWidth")
     val tabletMinHeight = t.dp("size.tabletMinHeight")
+    /** widest a column of text and fields gets on large screens (the LightPhotoLibrary shell's native screens) */
+    val formMaxWidth = t.dp("size.formMaxWidth")
 }
 
 class DtSpace(t: TokenSource) {

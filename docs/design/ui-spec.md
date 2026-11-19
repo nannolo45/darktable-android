@@ -26,8 +26,8 @@ Layout switches on window size class, not on device type. Both share all logic.
 - The expanded header shows three icon buttons on the right: instances, reset, presets. On phones they appear only on the expanded module.
 - Instances menu (bottom sheet on phones, inline menu on tablets): new instance, duplicate instance, move up, move down, delete (disabled when it is the only instance), rename.
 - The body is generated from the control schema (`schema/ui-schema.json`, see `docs/experiments/S5-control-schema.md`): sliders, lists, switches, sections, tabs, with the schema's visibility rules evaluated against current parameters. A control the schema cannot place is shown rather than hidden. Modules with no generated controls show a one-line note that their editor is not available yet; they still render and can be switched.
-- Group "active" lists modules that are on at the current history position. Group "quick" lists selected single controls from several modules (configurable; default exposure, the tone mapper's contrast, white balance temperature, vibrance), labelled "module · control".
-- Module groups are configurable data, not code.
+- Group "active" lists modules that are on at the current history position. Group "quick" lists selected single controls from several modules (configurable; the default comes from darktable's own scene-referred layout, see PLAN.md 3.9; it carries no white balance control, because the manual has colour temperature set in color calibration), labelled "module · control".
+- Module groups are configurable data, not code. They follow darktable's layout presets (PLAN.md 3.9): groups, modules per group and quick access controls belong to a layout; layouts can be edited in the app and brought in from the desktop.
 
 ## 3. Controls
 

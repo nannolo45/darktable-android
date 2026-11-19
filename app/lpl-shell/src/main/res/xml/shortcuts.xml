@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Long-press on the app icon: change the server address without the web page. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="change_address"
+        android:enabled="true"
+        android:icon="@drawable/lpl_shortcut_edit"
+        android:shortcutShortLabel="@string/shortcut_change_address">
+        <intent
+            android:action="app.dtandroid.lplshell.CHANGE_ADDRESS"
+            android:targetPackage="app.dtandroid.lplshell"
+            android:targetClass="app.dtandroid.lplshell.ShellActivity" />
+    </shortcut>
+</shortcuts>
