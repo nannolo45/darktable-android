@@ -35,17 +35,29 @@ jobs:
       - name: Tag
         run: echo "PREVIEW_TAG=app-preview-$(git rev-parse HEAD | cut -c1-12)" >> "$GITHUB_ENV"
 
-      - name: Android SDK packages, Gradle and a fresh debug key
+      - name: Android SDK packages, Gradle and the signing key
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
         run: |
           echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0" > /tmp/sdkmanager.log 2>&1 || { tail -20 /tmp/sdkmanager.log; exit 1; }
           echo "GRADLE=$(tools/app/setup-gradle.sh /home/runner/gradle)" >> "$GITHUB_ENV"
-          # the preview is signed with a debug key made here, on this run; it is never stored
+          # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
+          # debug-keystore form) every build has the same signature, so a newer build installs over an older one
+          # and keeps its data. Without the secret a key is made here for this run only and never stored.
           mkdir -p ~/.android
           rm -f ~/.android/debug.keystore
-          "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+          if [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
+              || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
+            echo "signing: owner key"
+          else
+            "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+          fi
 
       - name: Built-in module layouts match the pinned upstream (brief P2d)
         id: layouts
