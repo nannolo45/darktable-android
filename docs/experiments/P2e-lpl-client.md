@@ -4,6 +4,10 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
 
 ## Running log (newest first)
 
+- 2026-11-19 17:05: run 44553848370 (ff3f8e0): JVM 158 (1 skipped), APK `dt-android-ff3f8e0d2083`, emulator
+  30/31 (only the known bridge gap), all six LPL scenarios pass, darktable-cli comparisons pass; preview run
+  44553848375 green. Branch is on top of the current `main` (9b9cd7f). Report written.
+
 - 2026-11-19 16:25: run 44550752839 (f08a8e4): JVM green, APK published, emulator 28/31: l1 now passes
   (done → list 9 ms, done → XMP and preview at the stub 1.9 s, preview 1920x1278), l3, l5, l6 pass.
   Failures: the known bridge gap; l4: jobs of one heartbeat ran in parallel coroutines, so `edit` could run
@@ -33,8 +37,7 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
   and the real-engine workflow. Read the LPL server's agent endpoints (private repository, read only) to learn
   its exact behaviour.
 
-Next: module `app/lpl` (client, pure Kotlin) with JVM tests against a stub server, then the same client
-against a real LPL server on the workspace.
+Next: the owner installs `dt-android` (section below) and reports; the reviewer decides the open questions.
 
 ## Write-up
 
@@ -107,7 +110,8 @@ the new "dt-android preview".
    "dt-android" and will not get updates any more.
 3. **Install "dt-android"**: open https://github.com/nannolo45/darktable-android/releases on the phone,
    take the newest entry whose title starts with **"dt-android dt-android-"** (not "Interface preview",
-   not "dt-android engine"), and under "Assets" tap **dt-android-arm64-v8a.apk** (about 31 MB). Open it
+   not "dt-android engine"; the first one is
+   https://github.com/nannolo45/darktable-android/releases/tag/dt-android-ff3f8e0d2083), and under "Assets" tap **dt-android-arm64-v8a.apk** (about 31 MB). Open it
    and tap **Install** (Android may call it "Update": see the next point).
    - "dt-android" takes over the place of the old **"dt-android preview"**: Android installs it as an
      update of the preview, because both are signed with your key. That is expected and safe: the

@@ -5,7 +5,13 @@ does as the app sees it, how the app does it) and owner instructions: `docs/expe
 Log of the run against a real LPL server: `docs/experiments/P2e-results/real-lpl-run.log`.
 
 **Failures and limits first.**
-- __EMULATOR_FAILURES__
+- **Emulator job red, as on main, only because of the known bridge gap** (`JniEngineContractTest.guardAndReadOnlySession`,
+  P2b, fixed by P1c's engine work, not here). Final run 44553848370 (ff3f8e0): 30 of 31 instrumented tests pass,
+  all six new LightPhotoLibrary scenarios among them. In the run before (44550752839) l2 failed once: its check
+  (history item count after an exposure change) did not see the change within 3 minutes; the logcat kept by CI
+  did not reach back to it, so the cause is not known. The check now waits for the engine's exposure value and
+  reports the darkroom's message; it passed in the final run. The same run found a real bug (l4: jobs of one
+  heartbeat could run out of order), fixed.
 - **The real LPL server ran only on the workspace (localhost), with the stand-in darkroom.** The client and the
   agent ran every call of PLAN.md 4.1 against it (log above); the Android app itself never talked to a real LPL:
   on the emulator it talked to the stub server written for the tests. Phone, Wi-Fi/Tailscale, the owner's server,
@@ -37,7 +43,7 @@ Log of the run against a real LPL server: `docs/experiments/P2e-results/real-lpl
 | 8 | Ids: real-engine app `app.dtandroid` "dt-android"; preview `app.dtandroid.preview`; every place checked; owner told what to uninstall | **done** | build files, workflows, emulator script, `settings.gradle.kts`, owner instructions |
 | 9a | JVM tests against a stub server: all calls, resume, merged answer, wrong password, server gone | **done**: 32 in `app/lpl` + 4 darkroom `PhotoSourceTest` | `LplClientTest`, `LplAgentTest`, `HandOffTest` |
 | 9b | The client against a real LPL server on the workspace | **done** (every call of 4.1; section 3) | `RealServerRun`, `P2e-results/real-lpl-run.log` |
-| 9c | Instrumented: link → download → darkroom → change → done → stub has XMP and preview; offline → dirty → back → synced; unknown server refused until added; a job of each kind; read-only never posted | __9C_STATE__ | `LplScenarioTest` |
+| 9c | Instrumented: link → download → darkroom → change → done → stub has XMP and preview; offline → dirty → back → synced; unknown server refused until added; a job of each kind; read-only never posted | **done**: all six pass on the emulator (run 44553848370) | `LplScenarioTest` |
 | 9d | Both APKs on the emulator: the shell's hand-off opens this app | **partly**: the shell's exact intent resolves to this activity and opens the hand-off; the shell APK was not installed alongside | `LplScenarioTest.l6` |
 | 10 | CI: real-engine workflow builds, tests, publishes under the new id, signed as on main; preview workflow under its new id | **done** | `.github/workflows/p2b-real-engine.yml`, `p2a-app.yml`, `tools/app/emulator-p2b.sh` |
 | 11 | Owner instructions, write-up, this description | **done** | `P2e-lpl-client.md` |
@@ -60,7 +66,29 @@ CI: push to `p2e-lpl-client`, or start **p2b-real-engine** / **p2a-app** by hand
 
 ## 3. Results
 
-__CI_RESULTS__
+Final run **44553848370** (commit ff3f8e0, logs on `ci-logs` under `runs/44553848370-a1/`):
+- JVM: 158 tests, 0 failed, 1 skipped (`RealServerRun`, which needs a server; it ran on the workspace, below);
+  rule check passed (36 screen files, 0 violations on the workspace).
+- APK: release `dt-android-ff3f8e0d2083`,
+  https://github.com/nannolo45/darktable-android/releases/download/dt-android-ff3f8e0d2083/dt-android-arm64-v8a.apk
+  (30 997 797 bytes; package `app.dtandroid`, versionCode 2, label "dt-android", owner key, certificate SHA-256
+  6f9e8867…; permissions INTERNET, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED and androidx's receiver one).
+- Emulator (API 33, x86_64, 4 cores; **not phone numbers**): 30 of 31; `LplScenarioTest`:
+
+| Test | Result |
+|---|---|
+| l1 link → download → darkroom → change → done → stub has XMP and preview | pass: 15 855 600 bytes downloaded; LPL's order and placeholder names in the filmstrip; only the next photo fetched ahead, the one before not at all; done → list 17 ms; done → XMP and preview at the stub 2 741 ms; POSTs in the order XMP, preview; preview 1920x1278 JPEG (654 120 bytes); `checkout_ts` as taken; RAW unchanged and never sent; heartbeat with `os` android, name, working set |
+| l2 offline → dirty → server back → background job → synced | pass: `dirty` with "LightPhotoLibrary is not reachable right now"; `cmd jobscheduler run` ran the app's job; XMP and preview arrived; `synced` |
+| l3 unknown server refused until added | pass: no request at all to it; wrong password reported; added with the right one, photo opened, token sent; password not in plain text on disk |
+| l4 a job of each kind | pass: sync, release, open, edit all `done`; an unaddressed job stays queued; released photo gone from the phone; open shows the photo; edit while editing fetches into the list |
+| l5 read-only (edit with an unknown module) | pass: opens read-only; no POST at all after done, sync now and the background job; XMP unchanged |
+| l6 the shell's intent reaches this app; a hostile link | pass |
+
+- P2b's tests on the same emulator: 7/7 scenario tests, 17/18 contract tests (the known gap); darktable-cli
+  comparisons pass (PSNR 75.73 and 74.44 dB, as in P2b).
+- Interface preview: run 44553848375 green, release `app-preview-ff3f8e0d2083` with package `app.dtandroid.preview`.
+- Earlier runs on this branch: 44546873879 (28/31: two test faults of mine), 44549705769 (Maven Central "could
+  not find"; retry added), 44550752839 (28/31: l2 above, l4 job order bug).
 
 **Against the real LPL server** (workspace, x86_64, 2 cores, localhost; LPL's current main, Starlette 1.10.0;
 password set; one public test RAW, `mire1.cr2`, 15 855 600 bytes, and three generated JPEGs):
