@@ -1,0 +1,44 @@
+11-19 21:49:42.083  3574  3591 F libc    : Fatal signal 6 (SIGABRT), code 0 (SI_USER) in tid 3591 (ReferenceQueueD), pid 3574 (app.dtandroid)
+11-19 21:49:42.564  7947  7947 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+11-19 21:49:42.564  7947  7947 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_x86_64/emu64x:13/TE1A.240213.009/12342917:userdebug/dev-keys'
+11-19 21:49:42.564  7947  7947 F DEBUG   : Revision: '0'
+11-19 21:49:42.564  7947  7947 F DEBUG   : ABI: 'x86_64'
+11-19 21:49:42.564  7947  7947 F DEBUG   : Timestamp: 2026-11-19 21:49:42.177958942+0000
+11-19 21:49:42.564  7947  7947 F DEBUG   : Process uptime: 1551s
+11-19 21:49:42.564  7947  7947 F DEBUG   : Cmdline: app.dtandroid
+11-19 21:49:42.564  7947  7947 F DEBUG   : pid: 3574, tid: 3591, name: ReferenceQueueD  >>> app.dtandroid <<<
+11-19 21:49:42.564  7947  7947 F DEBUG   : uid: 10174
+11-19 21:49:42.564  7947  7947 F DEBUG   : signal 6 (SIGABRT), code 0 (SI_USER), fault addr --------
+11-19 21:49:42.564  7947  7947 F DEBUG   : Abort message: 'Scudo ERROR: corrupted chunk header at address 0x7e36ba982920'
+11-19 21:49:42.564  7947  7947 F DEBUG   :     rax 0000000000000000  rbx 0000000000000df6  rcx 00007e3831cfa70f  rdx 0000000000000006
+11-19 21:49:42.564  7947  7947 F DEBUG   :     r8  0000000000000000  r9  0000000000000000  r10 00007e3536372370  r11 0000000000000207
+11-19 21:49:42.564  7947  7947 F DEBUG   :     r12 000000006faf6350  r13 00007e3536372648  r14 00007e3536372368  r15 0000000000000e07
+11-19 21:49:42.564  7947  7947 F DEBUG   :     rdi 0000000000000df6  rsi 0000000000000e07
+11-19 21:49:42.564  7947  7947 F DEBUG   :     rbp 0000000000000000  rsp 00007e3536372360  rip 00007e3831cfa70f
+11-19 21:49:42.564  7947  7947 F DEBUG   : backtrace:
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #00 pc 000000000005f70f  /apex/com.android.runtime/lib64/bionic/libc.so (abort+191) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #01 pc 0000000000048de5  /apex/com.android.runtime/lib64/bionic/libc.so (scudo::die()+5) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #02 pc 00000000000493d8  /apex/com.android.runtime/lib64/bionic/libc.so (scudo::ScopedErrorReport::~ScopedErrorReport()+24) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #03 pc 00000000000494c2  /apex/com.android.runtime/lib64/bionic/libc.so (scudo::reportHeaderCorruption(void*)+66) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #04 pc 000000000004ace9  /apex/com.android.runtime/lib64/bionic/libc.so (scudo::Allocator<scudo::AndroidConfig, &(scudo_malloc_postinit)>::deallocate(void*, scudo::Chunk::Origin, unsigned long, unsigned long)+313) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #05 pc 00000000000952ee  /system/framework/x86_64/boot.oat (art_jni_trampoline+94) (BuildId: 8975dfa0bab8693f1c851576629005f1e7eb5def)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #06 pc 00000000003703fb  /apex/com.android.art/lib64/libart.so (nterp_helper+5643) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #07 pc 00000000002a3c04  /apex/com.android.art/javalib/core-oj.jar (sun.nio.fs.NativeBuffer$Deallocator.run+12)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #08 pc 00000000003709e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #09 pc 0000000000278186  /apex/com.android.art/javalib/core-oj.jar (sun.misc.Cleaner.clean+18)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #10 pc 000000000036fc88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #11 pc 0000000000105918  /apex/com.android.art/javalib/core-oj.jar (java.lang.ref.ReferenceQueue.enqueueLocked+28)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #12 pc 000000000036fc88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #13 pc 0000000000105c0e  /apex/com.android.art/javalib/core-oj.jar (java.lang.ref.ReferenceQueue.enqueuePending+46)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #14 pc 000000000036ee28  /apex/com.android.art/lib64/libart.so (nterp_helper+56) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #15 pc 000000000002afee  /apex/com.android.art/javalib/core-libart.jar (java.lang.Daemons$ReferenceQueueDaemon.runInternal+126)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #16 pc 000000000036fc88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #17 pc 000000000002a4f2  /apex/com.android.art/javalib/core-libart.jar (java.lang.Daemons$Daemon.run+50)
+11-19 21:49:42.564  7947  7947 F DEBUG   :       #18 pc 00000000003709e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #19 pc 00000000000f6740  /apex/com.android.art/javalib/core-oj.jar (java.lang.Thread.run+8)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #20 pc 00000000003787c4  /apex/com.android.art/lib64/libart.so (art_quick_invoke_stub+756) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #21 pc 00000000003fcdd6  /apex/com.android.art/lib64/libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)+214) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #22 pc 0000000000820163  /apex/com.android.art/lib64/libart.so (art::JValue art::InvokeVirtualOrInterfaceWithJValues<art::ArtMethod*>(art::ScopedObjectAccessAlreadyRunnable const&, _jobject*, art::ArtMethod*, jvalue const*)+499) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #23 pc 0000000000875f42  /apex/com.android.art/lib64/libart.so (art::Thread::CreateCallback(void*)+1426) (BuildId: 83888e21c265ad4f1cc612f8fca2b8fa)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #24 pc 00000000000ccd9a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
+11-19 21:49:42.565  7947  7947 F DEBUG   :       #25 pc 0000000000060d47  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: f090904cc3ac285a6f190f8003c3eb0e)
