@@ -2,7 +2,10 @@
 package app.dtandroid.darkroom
 
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -180,6 +183,21 @@ class PhoneScreenshots : ScreenshotBase() {
         assertEquals("ORIENTATION_ROTATE_CW_90_DEG",
             (c.state.value.modules.first { it.op == "flip" }.params["orientation"] as kotlinx.serialization.json.JsonPrimitive).content)
         capture("phone-12-orientation-rotated")
+    }
+
+    @Test
+    fun sliderDragChangesTheValueAndSealsOneStep() {
+        val c = show { toggleExpanded(InstanceKey("exposure", 0)) }
+        settle(c)
+        val n0 = c.state.value.history.items.size
+        compose.onNode(hasContentDescription("exposure") and hasStateDescription("+0.700 EV"))
+            .performTouchInput { swipeRight(startX = centerX, endX = right, durationMillis = 400) }
+        settle(c)
+        Thread.sleep(300)
+        settle(c)
+        val v = (c.state.value.modules.first { it.op == "exposure" }.params["exposure"] as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+        org.junit.Assert.assertTrue("exposure after the drag: $v", v > 1.5)
+        assertEquals("one drag is one history step", n0 + 1, c.state.value.history.items.size)
     }
 
     @Test

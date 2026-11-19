@@ -86,7 +86,10 @@ jobs:
             echo "signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$A" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/  /'
           } | tee "$R"
           if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
-          if unzip -l "$A" | grep -iE '\.(so|jks|keystore|raf|cr2|nef|arw|dng|jpg|jpeg)$'; then echo "unexpected file in APK"; exit 1; fi
+          # native code: only what androidx brings (no engine yet); no keystores, no photos
+          echo "native libraries:" | tee -a "$R"; unzip -l "$A" | grep -E '\.so$' | sed 's/^/  /' | tee -a "$R"
+          if unzip -l "$A" | grep -E '\.so$' | grep -v 'libandroidx\.'; then echo "native library not from androidx in APK"; exit 1; fi
+          if unzip -l "$A" | grep -iE '\.(jks|keystore|raf|cr2|nef|arw|dng|jpg|jpeg)$'; then echo "unexpected file in APK"; exit 1; fi
           unzip -l "$A" | grep -q "dtandroid/schema/ui-schema.json" || { echo "schema not packed"; exit 1; }
 
       - name: Screenshots

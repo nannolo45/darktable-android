@@ -57,6 +57,8 @@ fun DtIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     iconSize: Dp = DtTheme.sizes.icon,
+    /** keep [tint] when disabled, for icons that show a state (the power icon of a read-only photo) */
+    keepTint: Boolean = false,
 ) {
     val c = DtTheme.colors
     Box(
@@ -66,7 +68,7 @@ fun DtIconButton(
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        DtIconImage(icon, null, if (enabled) tint else c.textDisabled, iconSize)
+        DtIconImage(icon, null, if (enabled || keepTint) tint else c.textDisabled, iconSize)
     }
 }
 

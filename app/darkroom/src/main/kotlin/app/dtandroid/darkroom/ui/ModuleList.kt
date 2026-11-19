@@ -108,6 +108,7 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
                 DtIcon.Power, (if (m.enabled) "Turn off " else "Turn on ") + full,
                 if (m.enabled) c.textBright else c.textDisabled,
                 enabled = !s.readOnly,
+                keepTint = true,
                 onClick = { controller.launch { setEnabled(m.key, !m.enabled) } },
                 modifier = Modifier.semantics { stateDescription = if (m.enabled) "on" else "off" },
             )

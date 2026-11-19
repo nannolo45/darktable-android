@@ -232,7 +232,9 @@ fun ListControl(label: String, entry: String, enabled: Boolean, onOpen: () -> Un
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DtText(label, DtTheme.type.label, col, Modifier.weight(1f))
-        DtText(entry, DtTheme.type.label, col, Modifier.padding(start = DtTheme.space.m).weight(1f, fill = false))
+        Box(Modifier.weight(1f).padding(start = DtTheme.space.m), contentAlignment = Alignment.CenterEnd) {
+            DtText(entry, DtTheme.type.label, col)
+        }
         DtIconImage(DtIcon.ChevronDown, null, col, DtTheme.sizes.icon, Modifier.padding(start = DtTheme.space.xs))
     }
 }

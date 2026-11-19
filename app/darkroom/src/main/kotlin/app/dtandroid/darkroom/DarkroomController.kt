@@ -142,9 +142,10 @@ class DarkroomController(
     private fun readOnlyText(check: XmpCheck?): String {
         val p = check?.problems?.firstOrNull()
             ?: return "This photo opens for viewing only: its edit failed the version check. Its XMP is never changed."
+        val name = schema.modules[p.operation]?.name ?: p.operation
         val what = when (p.reason) {
             XmpProblemReason.UNKNOWN_OPERATION -> "the module \"${p.operation}\", which this app does not know"
-            XmpProblemReason.NEWER_MODULE_VERSION -> "${p.operation} version ${p.modversion}, newer than this app's version ${p.engineVersion}"
+            XmpProblemReason.NEWER_MODULE_VERSION -> "$name version ${p.modversion}, newer than this app's version ${p.engineVersion}"
             XmpProblemReason.NEWER_BLEND_VERSION -> "blending settings newer than this app knows (${p.operation})"
             XmpProblemReason.NEWER_MASKS_VERSION -> "masks newer than this app knows (${p.operation})"
         }

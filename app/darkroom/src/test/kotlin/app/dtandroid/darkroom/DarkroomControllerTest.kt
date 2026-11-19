@@ -95,7 +95,7 @@ class DarkroomControllerTest {
         val s = c.state.value
         assertTrue(s.readOnly)
         assertNotNull(s.readOnlyReason)
-        assertTrue(s.readOnlyReason!!, s.readOnlyReason!!.contains("colorbalancergb version 99"))
+        assertTrue(s.readOnlyReason!!, s.readOnlyReason!!.contains("color balance rgb version 99"))
         val before = java.io.File(s.current!!.xmpPath).readText()
         c.setSlider(exposureKey, exposureSlider.binding, 2.0, false)
         assertTrue(c.state.value.message!!.contains("READ_ONLY"))

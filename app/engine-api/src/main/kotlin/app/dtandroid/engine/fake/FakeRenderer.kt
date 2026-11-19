@@ -130,7 +130,7 @@ internal class FakeRenderer(private val variant: Int) {
             if (lake) {
                 // reflection of the sky, darker
                 r *= 0.45; g *= 0.5; b *= 0.6
-                val ripple = sin(v * 400.0 + u * 30.0) * 0.04
+                val ripple = sin(v * 400.0 + u * 30.0) * 0.012
                 r += ripple * 0.3; g += ripple * 0.3; b += ripple * 0.3
             } else {
                 val grass = 0.5 + 0.5 * sin(u * 300.0 + v * 70.0) * sin(v * 210.0)
