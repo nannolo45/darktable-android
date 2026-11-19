@@ -31,7 +31,14 @@ class StubServer(port: Int = 0, private val lpl: Boolean = true) : AutoCloseable
         thread(isDaemon = true, name = "stub-server") {
             while (!socket.isClosed) {
                 val s = try { socket.accept() } catch (e: SocketException) { break }
-                thread(isDaemon = true) { s.use { handle(it) } }
+                thread(isDaemon = true) {
+                    // a client that goes away early (the web view cancelling a load) must not end the test process
+                    try {
+                        s.use { handle(it) }
+                    } catch (e: java.io.IOException) {
+                        Unit
+                    }
+                }
             }
         }
     }

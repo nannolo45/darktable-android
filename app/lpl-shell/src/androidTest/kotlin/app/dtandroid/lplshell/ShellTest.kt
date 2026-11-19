@@ -418,8 +418,12 @@ class ShellTest {
         // and a page of the saved origin is opened
         onMain { it.onNewIntent(Intent(OpenRules.ACTION_OPEN, Uri.parse(s.origin + "/other?photo=3"))) }
         waitForPage(s.origin + "/other?photo=3")
-        // started with OPEN on another origin: the start page
-        scenario!!.close()
+    }
+
+    @Test
+    fun openActionWithAnotherOriginStartsOnTheStartPage() {
+        val s = startServer()
+        prefs().edit().putString(ShellActivity.KEY_SERVER, s.origin).commit()
         launch(Intent(OpenRules.ACTION_OPEN, Uri.parse("http://example.org/?photo=3")).setClass(ctx, ShellActivity::class.java))
         waitForPage(s.origin + "/")
     }

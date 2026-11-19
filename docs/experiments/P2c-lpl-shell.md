@@ -4,6 +4,12 @@ Brief: `docs/briefs/P2c-lpl-shell.md`. Branch `p2c-lpl-shell`. Pull request text
 
 ## Running log (newest first)
 
+- 2026-11-19: run 44485515432 (02baa14): 7 of 9 tests ran and passed, including the file chooser with two
+  files; then the process crashed: the stub server let a broken-pipe exception escape its thread. The
+  OPEN test lost its activity because `onNewIntent` called `setIntent`, which ActivityScenario uses to
+  recognise the activity. Fixed both; the start-with-a-foreign-OPEN case is its own test now. Run
+  44485279179 failed earlier on Maven Central resolution (artifacts reported missing); the workflow now
+  retries such failures.
 - 2026-11-19: first CI run 44483728588: build and 15 unit tests green; emulator 7 of 14 passed. Causes:
   the test's own launch intent was counted as an outgoing intent; a content provider in the test APK made
   the test package's process crash ("keeps stopping" dialog took the window focus from later tests);

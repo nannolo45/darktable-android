@@ -125,7 +125,7 @@ class ShellActivity : ComponentActivity(), ShellActions {
     /** Public so the instrumented test can deliver an intent as the system does to the running (singleTask) activity. */
     public override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)
+        // not kept with setIntent: getIntent() stays the one that started the activity
         when (intent.action) {
             OpenRules.ACTION_OPEN -> {
                 val s = saved ?: return
