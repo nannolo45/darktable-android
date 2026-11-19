@@ -1,0 +1,55 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+FAIL    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+        app.dtandroid.engine.api.EngineException: ARG: end 10 outside 0..9
+        	at app.dtandroid.engine.JniEngine.check(JniEngine.kt:93)
+        	at app.dtandroid.engine.JniEngine.hist(JniEngine.kt:213)
+        	at app.dtandroid.engine.JniEngine.historyGoto$lambda$0(JniEngine.kt:215)
+        	at app.dtandroid.engine.JniEngine.$r8$lambda$TqAUmlUBbgTY-AvV-ZuOYX2-c9o(Unknown Source:0)
+        	at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda20.invoke(D8$$SyntheticClass:0)
+        	at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:77)
+        	at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+FAIL    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+        java.lang.AssertionError: timed out: placeholder names
+        	at app.dtandroid.real.LplScenarioTest.waitFor(LplScenarioTest.kt:48)
+        	at app.dtandroid.real.LplScenarioTest.waitFor$default(LplScenarioTest.kt:45)
+        	at app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync(LplScenarioTest.kt:94)
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+FAIL    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+        java.lang.AssertionError: expected:<1> but was:<2>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind(LplScenarioTest.kt:203)
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+passed 28, failed 3, total 31
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 31,  Failures: 3
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
