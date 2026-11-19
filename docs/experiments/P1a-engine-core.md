@@ -5,6 +5,9 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19: run 44483237019: Linux 115 PASS, 6 FAIL (all T5, see 3.4); engine and APKs built; the
+  emulator test failed only because tools/app/emulator-g0.sh still used the G0 app's old application id
+  after the merge of main (P2a changed it). Fixed in 024151b; run on that commit pending.
 - 2026-11-19 08:3x: waiting for run 44483237019 (engine for both ABIs and APKs built; Linux tests running, then
   the t5_bisect diagnosis). Report draft in P1a-engine-core-REPORT.md; numbers filled in from that run.
 - 2026-11-19: aligned with the engine-api.md clarifications of cedca8b; merged main; run 44483237019 started
@@ -153,7 +156,19 @@ Upstream does not expose how far demosaic reaches: it keeps its tile border insi
 `_tiling_requirements()` (`iop/demosaic.c`; up to 18 px for Markesteijn 3-pass, plus 6 with capture
 sharpening) and reports no overlap through `tiling_callback()`. The margin is therefore fixed:
 **32 px** on every side that lies inside the image, in output pixels at the render scale
-(`DTB_REGION_MARGIN` in the environment overrides it, for `t5_bisect.sh` only). Results in the report.
+(`DTB_REGION_MARGIN` in the environment overrides it, for `t5_bisect.sh` only).
+
+Run 44483237019 (CI step "Region test diagnosis"): cr2 exact in all three regions; raf exact except the
+top-left corner region (max 11, within 10 px of the image's top and left edge; lens off → 0, demosaic
+passthrough → 0; margins 0/16/32/64/256 → 12/10/11/8/4); arw centre max 21 and bottom-right max 1,
+independent of the margin (spektrafilm off → centre 0 but bottom-right 68; demosaic passthrough → all 0).
+T5 keeps failing for these cases.
+
+### 3.5 history_goto and undo (engine-api.md clarifications, cedca8b)
+`history_goto` is navigation: allowed in read-only sessions, records no undo state. The next edit records
+the state it starts from (with the moved end), so undoing that edit returns to the goto position, and
+undoing further returns to the states before earlier edits, each with its own end. Redo returns to the
+state an undo left (C3 checks both).
 
 ## 4. Points where the specification could not be followed as written
 See the report, section "Open questions".
