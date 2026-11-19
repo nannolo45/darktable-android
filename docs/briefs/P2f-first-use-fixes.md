@@ -38,3 +38,30 @@ He opened a photo from LightPhotoLibrary (a 24 megapixel Sony ARW with an edit o
 - The timeline of 1 before and after: opening a photo right after "done" shows a picture at once and the real preview without waiting for background work.
 - Screenshot tests of the new list and top bar; the reviewer and the owner judge them.
 - Workflow green on the last code commit, or failures explained first.
+
+## Addendum, 19 Nov 2026 (evening): order of work and the owner's timings
+
+**Order.** Do brief P2g (`docs/briefs/P2g-engine-start.md`) first, on its own branch, and push it for review. Branch `p2f-first-use-fixes` from that branch's tip.
+
+**Timings from the owner's phone** (release `dt-android-a8bf82923d17`, engine package `0c316fb6b1234b4e`, 4 threads pinned to CPUs 4 to 7 of 8, Android API 33; a 50 MB X-Trans RAF, 6032 x 4032; the text does not say which edit the photo carried, the reviewer has asked):
+
+| Step | ms |
+|---|---|
+| open / image info | 69 / 60 |
+| first preview 1024 x 684 | 235 |
+| preview again, nothing changed | 3.3 |
+| preview after a late change (color balance rgb) | 133 |
+| preview after an early change (exposure) | 167 |
+| drag picture 320 px, 6 steps, median (min, max) | 17.1 (16.7, 81.4) |
+| drag picture by size after an exposure step: 256 / 384 / 512 / 640 / 768 / 1024 px | 11.3 / 26.2 / 44.5 / 64.3 / 97.3 / 167.9 |
+| fit of the drag cost | 21.7 ms fixed + 235 ns per pixel; 320 px chosen for a 50 ms target |
+| **sharp region at fit, 1080 x 721, after a change** | **1295** |
+| sharp region at 100 %, 1080 x 798, after a change | 196 |
+| `modules()`: 185 301 bytes; bridge call / JNI string / Kotlin parse (medians of 5) | 11.5 / 1.0 / 16.0 |
+| export full-size JPEG (11.9 MB) | 7118 |
+
+**What the reviewer reads from them, to verify under deliverable 4:**
+- Dragging and the 1024 px preview are quick on this photo. The slow step is the **sharp picture at fit: 1.3 s**, about seven times the 100 % region and eight times the preview of nearly the same pixel count. Fit is the view the darkroom opens in, so after every change the sharp picture arrives more than a second later; with a heavy edit, longer. This is a likely part of what the owner calls lag. Establish where the time goes (the whole sensor through the early modules and demosaic before scaling down is the reviewer's guess) and what desktop darktable does in the same view (which pipeline it shows first, what demosaic does when zoomed out). Propose options with numbers; anything that changes the picture or needs the bridge is a proposal, not a change.
+- `modules()` costs about 28 ms per call on the phone (bridge plus parse). Establish how often the app calls it during and after a drag, and avoid calls that are not needed.
+- The drag picture is 320 px wide. Say how that looks on a 1080 px wide screen against a larger one at a lower rate, with screenshots, so the owner can choose.
+- The per-module table must show the pinning state of P2g, and the timings text should say how many history items the open photo has and which modules are on, so the next run answers the question the reviewer had to ask.
