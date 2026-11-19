@@ -40,7 +40,8 @@ data class FastCores(
             val all = parseCpuList(runCatching { File(cpuRoot, "online").readText() }.getOrNull())
                 ?.takeIf { it.isNotEmpty() } ?: (0 until n).toList()
             val khz = all.associateWith { c ->
-                runCatching { File(cpuRoot, "cpu$c/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
+                // emulators often report 0: treated as unknown
+                runCatching { File(cpuRoot, "cpu$c/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()?.takeIf { it > 0 }
             }
             return FastCores(all, khz, choose(all, khz))
         }

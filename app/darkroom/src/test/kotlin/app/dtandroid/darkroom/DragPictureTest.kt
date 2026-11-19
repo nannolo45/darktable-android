@@ -33,6 +33,22 @@ class DragPictureTest {
     }
 
     @Test
+    fun fixedPartIsFittedFromDifferentSizes() {
+        // 10 ms fixed + 50 ns per pixel, measured at two sizes
+        val d = DragPicture(targetMs = 50.0, minSize = 128, maxSize = 2048, step = 32)
+        d.record(1024 * 683, (10e6 + 50.0 * 1024 * 683).toLong())
+        d.record(400 * 267, (10e6 + 50.0 * 400 * 267).toLong())
+        assertEquals(10.0, d.fixedNs / 1e6, 0.01)
+        assertEquals(50.0, d.nsPerPixel!!, 0.01)
+        // (50 - 10) ms / 50 ns = 800 000 px -> sqrt(800 000 x 1.5) = 1095 -> 1088
+        assertEquals(1088, d.size())
+        // a fixed part above the target (as on the CI emulator, about 70 ms): the smallest size
+        val e = DragPicture(targetMs = 50.0, minSize = 320)
+        e.record(256 * 171, 72_000_000); e.record(512 * 341, 112_000_000)
+        assertEquals(320, e.size())
+    }
+
+    @Test
     fun dragRendersAreCountedSeparately() {
         val d = DragPicture()
         d.record(1000, 1_000_000)
