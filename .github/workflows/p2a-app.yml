@@ -46,17 +46,20 @@ jobs:
           # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
           # debug-keystore form) every build has the same signature, so a newer build installs over an older one
           # and keeps its data. Without the secret a key is made here for this run only and never stored.
+          # The owner added the secret on 19 Nov 2026. Gradle is told to use it with -Pdta.keystore (see app/app/build.gradle.kts).
           mkdir -p ~/.android
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore "$HOME/owner.keystore"
+            echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
-            echo "signing: owner key"
+            echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
           else
             "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
-            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+            echo "signing: temporary key for this run (this run was given no SIGNING_KEYSTORE_B64 secret)" | tee /tmp/signing.txt
           fi
 
       - name: Built-in module layouts match the pinned upstream (brief P2d)
@@ -105,7 +108,7 @@ jobs:
         id: build
         run: |
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" :app:assembleDebug 2>&1 | tee /tmp/gradle.log
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/gradle.log
           mkdir -p /home/runner/out
           cp app/build/outputs/apk/debug/app-debug.apk /home/runner/out/dt-android-preview-arm64-v8a.apk
 
@@ -162,6 +165,7 @@ jobs:
             echo "tag: $PREVIEW_TAG"
             echo "tests_exit: ${{ steps.tests.outputs.rc }}"
             echo "tests_seconds: ${{ steps.tests.outputs.seconds }}"
+            cat /tmp/signing.txt 2>/dev/null || true
             echo "runner_cores: $(nproc)"
           } > "$L/summary.txt"
           cp /tmp/test-summary.txt /tmp/rules.log /tmp/layouts-check.log "$L/" 2>/dev/null || true

@@ -57,17 +57,20 @@ jobs:
           # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
           # debug-keystore form) every build has the same signature, so a newer build installs over an older one
           # and keeps its data. Without the secret a key is made here for this run only and never stored.
+          # The owner added the secret on 19 Nov 2026; builds from then on carry the owner's key (same signature every time).
           mkdir -p ~/.android
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore "$HOME/owner.keystore"
+            echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
-            echo "signing: owner key"
+            echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
           else
             "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
-            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+            echo "signing: temporary key for this run (this run was given no SIGNING_KEYSTORE_B64 secret)" | tee /tmp/signing.txt
           fi
 
       - name: Rule check (literal colours, sizes, icon drawings in screen code)
@@ -95,7 +98,7 @@ jobs:
           for attempt in 1 2 3; do
             set +e
             "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
-              :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
+              $DTA_KEYSTORE_ARG :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
             rc=${PIPESTATUS[0]}
             set -e
             [ "$rc" = 0 ] && break
@@ -143,6 +146,7 @@ jobs:
           {
             echo "tag: $SHELL_TAG"
             echo "unit_tests_exit: ${{ steps.tests.outputs.rc }}"
+            cat /tmp/signing.txt 2>/dev/null || true
             echo "runner_cores: $(nproc)"
           } > "$L/summary.txt"
           cp /tmp/test-summary.txt /tmp/rules.log /home/runner/out/apk-report.txt "$L/" 2>/dev/null || true

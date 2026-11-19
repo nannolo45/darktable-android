@@ -24,9 +24,27 @@ android {
         // no native code yet; the preview is published for the phones the project targets
         ndk { abiFilters += "arm64-v8a" }
     }
+    // Signing: with -Pdta.keystore=<absolute file> (the owner's key, handed to CI as a secret) every build
+    // carries the same signature, so a newer build installs over an older one. The file has the form of an
+    // Android debug keystore (alias and passwords below are that form's fixed values, not secrets; the file
+    // is the secret and is never in the repository). Without the property: the building machine's debug key.
+    val ownerKeystore: String? = providers.gradleProperty("dta.keystore").orNull
+    signingConfigs {
+        if (ownerKeystore != null) {
+            create("owner") {
+                storeFile = file(ownerKeystore)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
     buildTypes {
-        // debug only for now: signed with the debug key of the machine that builds it (generated in CI)
-        getByName("debug") { isMinifyEnabled = false }
+        // debug only for now
+        getByName("debug") {
+            isMinifyEnabled = false
+            if (ownerKeystore != null) signingConfig = signingConfigs.getByName("owner")
+        }
     }
     buildFeatures {
         compose = true
