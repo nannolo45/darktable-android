@@ -145,6 +145,7 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 ### 3.7 Storage and sync
 - App-private folders: `work/<lpl id>/<original filename>` and its `.xmp`; darktable's config, small library database and caches (cache size capped).
 - The RAW is downloaded once and never uploaded. Only the XMP and a rendered preview go back.
+- The LPL server may be reached over plain HTTP (a home-network or Tailscale address, as today) or HTTPS. The app allows plain HTTP only for servers the user has added, and prefers HTTPS when the server offers it.
 - Downloads and uploads run in a foreground service with a notification, because the phone vendor's Android version stops background work aggressively. A background job retries pending syncs when LPL is reachable again; the app explains how to exempt it from battery optimisation if syncs are being stopped.
 
 ### 3.8 Performance approach
