@@ -129,10 +129,26 @@ jobs:
           echo "other_failures=$failures" >> "$GITHUB_OUTPUT"
           echo "passes=$passes" >> "$GITHUB_OUTPUT"
 
+      - name: Region test diagnosis (P1a; information only, does not fail the job)
+        if: always() && steps.tests.outcome != 'skipped'
+        run: |
+          # which module makes a region differ from the crop of the full render:
+          # each history operation switched off in turn, demosaic passthrough,
+          # and the internal margin at 0, 16, 64 and 256 px (engine/tests/t5_bisect.sh)
+          D=/home/runner/dtt
+          DEMOSAIC_PASSTHROUGH=DT_IOP_DEMOSAIC_PASSTHR_MONOX engine/tests/t5_bisect.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux \
+            $D/images/xtransIV.raf $D/0146-lens-metadata-xtransIV-modversion-7/lens-metadata-xtransIV-modversion-7.xmp /home/runner/t5-raf \
+            > /home/runner/t5-raf.txt 2>&1 || true
+          engine/tests/t5_bisect.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux \
+            $D/images/hlrecovery.arw $D/0179-spektrafilm/spektrafilm.xmp /home/runner/t5-arw \
+            > /home/runner/t5-arw.txt 2>&1 || true
+          cat /home/runner/t5-raf.txt /home/runner/t5-arw.txt
+
       - name: Collect logs
         if: always()
         run: |
           L=/tmp/ci-out; mkdir -p "$L"
+          cp /home/runner/t5-raf.txt /home/runner/t5-arw.txt "$L/" 2>/dev/null || true
           {
             echo "build_seconds: ${{ steps.build.outputs.seconds }}"
             echo "cache_hit: ${{ steps.cache.outputs.cache-hit }}"
