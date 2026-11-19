@@ -7,7 +7,7 @@ name: g0-app
 
 on:
   push:
-    branches: [g0-test-app]
+    branches: [g0-test-app, p1a-engine-core]
     paths-ignore: ["docs/**", "*.md"]
   workflow_dispatch:
 
@@ -116,18 +116,17 @@ jobs:
             /home/runner/dtt
           retention-days: 7
 
-      - name: Bridge tests on Linux (S3 T1 to T9, X1)
+      - name: Bridge tests on Linux (S3 T1 to T9, X1; P1a C1 to C7)
         id: tests
         run: |
           set +e
           engine/tests/run_tests.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/bridge-tests
           echo "rc=$?" >> "$GITHUB_OUTPUT"
-          # S3 documents T5 (region = crop of the full render) as a known
-          # failure caused by upstream modules. Any other failure fails here.
-          other=$(grep '^FAIL' /home/runner/bridge-tests/summary.txt | grep -v '^FAIL T5 ' | wc -l)
+          # P1a: every failure counts, T5 included (render_region has its margin now)
+          failures=$(grep -c '^FAIL' /home/runner/bridge-tests/summary.txt)
           passes=$(grep -c '^PASS' /home/runner/bridge-tests/summary.txt)
-          echo "passes=$passes other_failures=$other"
-          echo "other_failures=$other" >> "$GITHUB_OUTPUT"
+          echo "passes=$passes failures=$failures"
+          echo "other_failures=$failures" >> "$GITHUB_OUTPUT"
           echo "passes=$passes" >> "$GITHUB_OUTPUT"
 
       - name: Collect logs
@@ -140,7 +139,7 @@ jobs:
             echo "runner_cores: $(nproc)"
             echo "bridge_tests_exit: ${{ steps.tests.outputs.rc }}"
             echo "bridge_tests_passes: ${{ steps.tests.outputs.passes }}"
-            echo "bridge_tests_failures_other_than_T5: ${{ steps.tests.outputs.other_failures }}"
+            echo "bridge_tests_failures: ${{ steps.tests.outputs.other_failures }}"
           } > "$L/summary.txt"
           cp /home/runner/bridge-tests/summary.txt "$L/bridge-tests-summary.txt" 2>/dev/null || true
           cp /home/runner/bridge-tests/comparisons.txt "$L/bridge-tests-comparisons.txt" 2>/dev/null || true
@@ -155,8 +154,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: tools/ci/push-ci-logs.sh /tmp/ci-out g0-linux "${{ job.status }}-other_failures${{ steps.tests.outputs.other_failures }}"
 
-      - name: Fail on bridge test failures other than the known T5
-        if: steps.tests.outputs.other_failures != '0'
+      - name: Fail on any bridge test failure
+        if: steps.tests.outputs.other_failures != '0' || steps.tests.outputs.rc != '0'
         run: exit 1
 
   apk:
