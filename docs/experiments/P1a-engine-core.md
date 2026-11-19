@@ -5,6 +5,7 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 09:59: run 44496589328 still in its Linux tests (about 40 min, as before).
 - 2026-11-19 09:40: run 44496589328: engine for both ABIs and the G0 APKs built on the merge commit; Linux
   tests and emulator test running.
 - 2026-11-19 09:3x: run 44496589328 started on the merge commit (6c84736). Local C1 on cr2 (2-core
