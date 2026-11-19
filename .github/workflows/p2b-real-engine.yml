@@ -324,7 +324,8 @@ jobs:
     needs: [apk, linux]
     if: ${{ !cancelled() && needs.apk.result == 'success' && needs.linux.result == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # brief P2f: run 44596781567 hung here for 105 minutes; the tests run in at most 50 (tools/app/emulator-p2b.sh)
+    timeout-minutes: 75
     permissions:
       contents: write   # ci-logs branch
     steps:

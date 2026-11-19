@@ -124,19 +124,19 @@ class DarkroomController(
     suspend fun <T> bg(what: String, block: suspend (DarktableEngine) -> T): T {
         while (true) {
             while (!quiet()) delay(BG_POLL_MS)
-            var cancelled = false
-            val r = lock.withLock {
-                if (!quiet()) { cancelled = true; return@withLock null }
+            // null = put back (interactive work came first); a result, even a null one, ends the loop
+            val r: Result<T>? = lock.withLock {
+                if (!quiet()) return@withLock null
                 bgActive = true
                 try {
                     Result.success(block(engine))
                 } catch (e: EngineException) {
-                    if (e.error == EngineError.CANCELLED) { cancelled = true; null } else Result.failure(e)
+                    if (e.error == EngineError.CANCELLED) null else Result.failure(e)
                 } finally {
                     bgActive = false
                 }
             }
-            if (!cancelled && r != null) return r.getOrThrow()
+            if (r != null) return r.getOrThrow()
             Timeline.mark("background: $what put back for interactive work")
         }
     }

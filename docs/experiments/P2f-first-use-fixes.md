@@ -38,6 +38,17 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 21:20: **the emulator job of run 44596781567 (b9dbd85) ran 105 minutes without ending; cancelled.**
+  What is known: the instrumentation output reached the 27th of 39 tests (`JniEngineContractTest.
+  exposureMakesThePictureBrighter`, which passed on every earlier run) before the log stops; the output was block
+  buffered (`tr`), so the test that was really running is not known, and no logcat was kept because the script never
+  finished. The p2a run of the same commit is green (166 JVM tests including the new list and top bar screenshots).
+  Next, before anything else: every emulator test class now has a time limit (`HangGuard`: 10 or 12 minutes, the
+  stack of every thread and the darkroom's timeline written to `failure-<test>.txt` on a failure), the
+  instrumentation is bounded (50 minutes) and written line by line, and the emulator job has `timeout-minutes: 75`
+  (was 120). A suspect read from the code is not found yet; the rerun will say where it waits. Pushed with the
+  commits since b9dbd85 (aspect list, jobs note, unbound-controls list, compact top bar, merge of `p2g-engine-start`).
+
 - 2026-11-19 22:30: deliverable 10 (crop's aspect list through override `aspect_list`, `CropAspect` with crop.c's
   arithmetic, flip, margins keep the ratio; JVM tests both directions; emulator f6 with an XMP round trip and a
   darktable-cli check of the app's crop) and the jobs note above (the agent says per photo and per server what a

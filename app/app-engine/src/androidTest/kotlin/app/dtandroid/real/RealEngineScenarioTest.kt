@@ -51,6 +51,9 @@ import java.io.File
 class RealEngineScenarioTest {
     private val res = "results.txt"
 
+    /** brief P2f: no test runs for ever; a failure leaves every thread's stack in the results */
+    @get:org.junit.Rule val guard = HangGuard.rule(10)
+
     private fun maxDiff(a: RenderedImage, b: RenderedImage): Int {
         assertEquals(a.width, b.width); assertEquals(a.height, b.height)
         var m = 0

@@ -33,6 +33,9 @@ import java.net.URLEncoder
 class LplScenarioTest {
     private val res = "lpl-results.txt"
     private val stubs = ArrayList<StubLpl>()
+
+    /** brief P2f: no test runs for ever; a failure leaves every thread's stack in the results */
+    @get:org.junit.Rule val guard = HangGuard.rule(10)
     private var scenario: ActivityScenario<MainActivity>? = null
 
     private fun stub(): StubLpl = StubLpl().also { stubs += it }

@@ -46,10 +46,12 @@ fi
 adb logcat -c || true
 
 t2=$(now)
-adb shell am instrument -w -r \
+# brief P2f: bounded (a test that waits for ever must not hold the job for hours; each test has its own limit too),
+# and written line by line, so a cut-off run still shows which test was running
+timeout 3000 adb shell am instrument -w -r \
   -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" "${SFARGS[@]}" \
   -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest,app.dtandroid.real.P2fScenarioTest \
-  "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | tr -d '\r' > "$OUT/instrument.txt"
+  "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | sed -u 's/\r$//' > "$OUT/instrument.txt"
 t3=$(now)
 python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true
 cat "$OUT/instrument-summary.txt"

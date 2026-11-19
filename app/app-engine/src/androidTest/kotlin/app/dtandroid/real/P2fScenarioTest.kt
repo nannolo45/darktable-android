@@ -34,6 +34,9 @@ import java.net.URLEncoder
 class P2fScenarioTest {
     private val res = "p2f-results.txt"
     private val stubs = ArrayList<StubLpl>()
+
+    /** brief P2f: no test runs for ever; a failure leaves every thread's stack in the results */
+    @get:org.junit.Rule val guard = HangGuard.rule(12)
     private var scenario: ActivityScenario<MainActivity>? = null
 
     @After fun tearDown() {
