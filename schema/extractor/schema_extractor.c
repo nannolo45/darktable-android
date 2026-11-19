@@ -464,6 +464,8 @@ static void _bauhaus_node(ctx_t *c, GtkWidget *w, JsonBuilder *b)
     else
       bound_to = "other";
   }
+  // lists and switches bind only to 4-byte fields (enum, int, uint, gboolean),
+  // so a driver's value can be read as int
   n->bound = bound_to && !strcmp(bound_to, "params");
   _add_str(b, "bound_to", bound_to);
   _add_str(b, "param", fname);
@@ -553,7 +555,8 @@ static void _bauhaus_node(ctx_t *c, GtkWidget *w, JsonBuilder *b)
       else
         _add_int(b, "value", i);
       _add_bool(b, "sensitive", e->sensitive);
-      if(e->alignment == DT_BAUHAUS_COMBOBOX_ALIGN_MIDDLE) _add_bool(b, "is_heading", TRUE);
+      // dt_bauhaus_combobox_add_section() marks list headings this way
+      if(!e->sensitive && GPOINTER_TO_INT(e->data) == -1) _add_bool(b, "is_heading", TRUE);
       json_builder_end_object(b);
     }
     json_builder_end_array(b);
@@ -797,6 +800,16 @@ static int _driver_get(node_t *n)
   return dt_bauhaus_combobox_get(n->w);
 }
 
+// a desktop user cannot pick an insensitive entry or a heading of a list
+static gboolean _selectable(node_t *n, int pos)
+{
+  if(n->kind != NK_COMBOBOX) return TRUE;
+  const dt_bauhaus_combobox_data_t *d = &DT_BAUHAUS_WIDGET(n->w)->combobox;
+  if(!d->entries || pos < 0 || pos >= (int)d->entries->len) return FALSE;
+  const dt_bauhaus_combobox_entry_t *e = g_ptr_array_index(d->entries, pos);
+  return e->sensitive;
+}
+
 static void _driver_set(node_t *n, int pos)
 {
   if(n->kind == NK_TOGGLE)
@@ -870,9 +883,12 @@ static void _observe(ctx_t *c, JsonBuilder *b, const assign_t *as, int nas, cons
   {
     node_t *n = c->nodes->pdata[i];
     if(!n->driver) continue;
+    // [node id, position, value]; value is the bound parameter's value, or
+    // the position for a list or switch that holds interface state only
     json_builder_begin_array(b);
     json_builder_add_int_value(b, n->id);
     json_builder_add_int_value(b, _driver_get(n));
+    json_builder_add_int_value(b, n->bound ? *(int *)DT_BAUHAUS_WIDGET(n->w)->field : _driver_get(n));
     json_builder_end_array(b);
   }
   json_builder_end_array(b);
@@ -887,7 +903,6 @@ static void _observe(ctx_t *c, JsonBuilder *b, const assign_t *as, int nas, cons
 
 static void _sweep(ctx_t *c, JsonBuilder *b)
 {
-  _n_states = 0;
   _capped = FALSE;
   const char *ms = g_getenv("DT_SCHEMA_MAX_STATES");
   _max_states = ms && atoi(ms) > 0 ? atoi(ms) : 1500;
@@ -900,15 +915,17 @@ static void _sweep(ctx_t *c, JsonBuilder *b)
   _reset_module(c);
   gchar *base = _snapshot(c, FALSE);
 
-  // level 1: every driver through every value, others at default
+  // level 1: every driver a user can reach (visible and sensitive in the
+  // default panel) through every value, others at default
+  gchar *base_sen = _snapshot(c, TRUE);
   GArray *revealing = g_array_new(FALSE, FALSE, sizeof(assign_t));
   for(guint i = 0; i < c->nodes->len; i++)
   {
     node_t *n = c->nodes->pdata[i];
-    if(!n->driver) continue;
+    if(!n->driver || base[n->id] != '1' || base_sen[n->id] != '1') continue;
     for(int p = 0; p < n->n_values; p++)
     {
-      if(p == n->default_pos) continue;
+      if(p == n->default_pos || !_selectable(n, p)) continue;
       assign_t a = { n->id, p };
       _observe(c, b, &a, 1, "single");
       gchar *now = _snapshot(c, FALSE);
@@ -927,19 +944,24 @@ static void _sweep(ctx_t *c, JsonBuilder *b)
     _driver_set(c->nodes->pdata[a0.driver], a0.pos);
     _pump();
     gchar *vis = _snapshot(c, FALSE);
+    gchar *sen = _snapshot(c, TRUE);
     for(guint i = 0; i < c->nodes->len; i++)
     {
       node_t *n = c->nodes->pdata[i];
-      if(!n->driver || n->id == a0.driver || vis[n->id] != '1') continue;
+      if(!n->driver || n->id == a0.driver || vis[n->id] != '1' || sen[n->id] != '1') continue;
       for(int p = 0; p < n->n_values; p++)
       {
-        if(p == n->default_pos) continue;
-        assign_t as[2] = { a0, { n->id, p } };
+        if(p == n->default_pos || !_selectable(n, p)) continue;
+        assign_t as[3] = { a0, { n->id, p }, { a0.driver, ((node_t *)c->nodes->pdata[a0.driver])->default_pos } };
         _observe(c, b, as, 2, "pair");
+        // and the user going back on the first choice, keeping the second
+        _observe(c, b, as, 3, "pair_back");
       }
     }
     g_free(vis);
+    g_free(sen);
   }
+  g_free(base_sen);
   json_builder_end_array(b);
   _add_int(b, "n_states", _n_states);
   _add_bool(b, "capped", _capped);
@@ -1072,6 +1094,7 @@ static void _progress(const char *op)
 
 static void _do_module(dt_iop_module_t *m, int position)
 {
+  _n_states = 0;
   ctx_t c = { .m = m, .nodes = g_ptr_array_new_with_free_func(g_free),
               .bodies = g_hash_table_new(NULL, NULL) };
   const gint64 t0 = g_get_monotonic_time();
