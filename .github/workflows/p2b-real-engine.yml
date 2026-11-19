@@ -201,7 +201,7 @@ jobs:
             [ "$rc" = 0 ] && break
             grep -qE "Could not (find|resolve|GET) |status code 429" /tmp/tests.log || break
             cp /tmp/tests.log "/tmp/tests-attempt$attempt.log"
-            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30)); refresh="--refresh-dependencies"
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 90)); refresh="--refresh-dependencies"
           done
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
