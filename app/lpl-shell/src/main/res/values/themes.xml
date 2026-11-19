@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- The window and both system bars in the theme's background colour (ui-theme token color.bg,
+         generated into lpl_token_bg); the page gets the area between the bars. -->
+    <style name="Theme.LplShell" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/lpl_token_bg</item>
+        <item name="android:statusBarColor">@color/lpl_token_bg</item>
+        <item name="android:navigationBarColor">@color/lpl_token_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
