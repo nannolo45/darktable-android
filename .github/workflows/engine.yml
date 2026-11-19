@@ -1,11 +1,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Cross-compile darktable (library, module plugins, darktable-cli, data) per
-# ABI against the cached sysroot and publish the engine archive (brief S1).
+# Cross-compile darktable (library, module plugins, darktable-cli, data) and
+# the bridge (engine/, brief G0) per ABI against the cached sysroot and
+# publish the engine archive (brief S1). Skips an ABI whose archive already
+# exists in the release named by the engine tag (tools/ci/tags.sh).
 name: engine
 
 on:
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild even if the release file exists"
+        type: boolean
+        default: false
   workflow_call:
+    inputs:
+      force:
+        type: boolean
+        default: false
     outputs:
       engine_tag:
         value: ${{ jobs.tag.outputs.engine_tag }}
@@ -41,7 +52,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check for an existing release file
+        id: exists
+        run: |
+          if [ "${{ inputs.force }}" != "true" ] && gh release view -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --json assets -q '.assets[].name' 2>/dev/null | grep -qx "engine-$ABI.tar.gz"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"; echo "engine-$ABI.tar.gz already in $ENGINE_TAG"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Host tools and NDK
+        if: steps.exists.outputs.skip != 'true'
         run: |
           sudo mkdir -p /opt/dta && sudo chown "$USER" /opt/dta
           deps/host-setup.sh --no-rust /home/runner/dta-host > /tmp/env.sh
@@ -50,16 +71,19 @@ jobs:
           echo "/home/runner/dta-host/dta-venv/bin" >> "$GITHUB_PATH"
 
       - name: Fetch sysroot release file
+        if: steps.exists.outputs.skip != 'true'
         run: |
           gh release download -R "$GITHUB_REPOSITORY" "$DEPS_TAG" --pattern "sysroot-$ABI.tar.zst" --dir /tmp \
             || { echo "no sysroot-$ABI.tar.zst in release $DEPS_TAG: run the deps workflow first"; exit 1; }
           zstd -dc "/tmp/sysroot-$ABI.tar.zst" | tar -x -C /opt/dta
 
       - name: Fetch darktable source
+        if: steps.exists.outputs.skip != 'true'
         run: |
           tools/fetch-darktable.sh /home/runner/darktable | tail -1 | tee /tmp/dt-commit
 
       - name: Build engine
+        if: steps.exists.outputs.skip != 'true'
         id: build
         run: |
           set +e
@@ -71,11 +95,12 @@ jobs:
           exit $rc
 
       - name: Publish engine release file
+        if: steps.exists.outputs.skip != 'true'
         run: |
           cd /home/runner/engine-out
           gh release view -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" >/dev/null 2>&1 || \
             gh release create -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --prerelease --target "$GITHUB_SHA" --title "$ENGINE_TAG" \
-              --notes "darktable engine for Android (darktable-cli, libdarktable, plugins, data) built from commit $GITHUB_SHA. Experimental, brief S1. Not an official darktable release." || true
+              --notes "darktable engine for Android (darktable-cli, libdarktable, plugins, data) built from commit $GITHUB_SHA. Experimental, briefs S1 and G0. Not an official darktable release." || true
           gh release upload -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" "engine-$ABI.tar.gz" "engine-$ABI-report.txt" --clobber
 
       - name: Collect logs
@@ -85,6 +110,7 @@ jobs:
           {
             echo "engine_tag: $ENGINE_TAG"; echo "deps_tag: $DEPS_TAG"; echo "abi: $ABI"
             echo "darktable: $(cat /tmp/dt-commit 2>/dev/null)"
+            echo "skipped_existing: ${{ steps.exists.outputs.skip }}"
             echo "build_exit: ${{ steps.build.outputs.rc }}"; echo "seconds: ${{ steps.build.outputs.seconds }}"
             echo "runner_cores: $(nproc)"
           } > "$L/summary.txt"
@@ -95,6 +121,7 @@ jobs:
           tail -n 200 "$O/engine-$ABI-build.log" > "$L/build.tail.log" 2>/dev/null || true
           tail -n 150 /tmp/engine.log > "$L/engine-script.tail.log" 2>/dev/null || true
           grep -E "^-- " "$O/engine-$ABI-cmake.log" > "$L/cmake-status.log" 2>/dev/null || true
+          cp "$O/bridge-$ABI-cmake.log" "$O/bridge-$ABI-build.log" "$L/" 2>/dev/null || true
 
       - name: Push logs to ci-logs branch
         if: always()
