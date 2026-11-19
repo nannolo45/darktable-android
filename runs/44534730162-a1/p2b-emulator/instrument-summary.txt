@@ -1,0 +1,39 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+FAIL    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+        app.dtandroid.engine.api.EngineException: ARG: end 10 outside 0..9
+        	at app.dtandroid.engine.JniEngine.check(JniEngine.kt:93)
+        	at app.dtandroid.engine.JniEngine.hist(JniEngine.kt:213)
+        	at app.dtandroid.engine.JniEngine.historyGoto$lambda$0(JniEngine.kt:215)
+        	at app.dtandroid.engine.JniEngine.$r8$lambda$TqAUmlUBbgTY-AvV-ZuOYX2-c9o(Unknown Source:0)
+        	at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda20.invoke(D8$$SyntheticClass:0)
+        	at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:77)
+        	at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+passed 24, failed 1, total 25
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 25,  Failures: 1
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
