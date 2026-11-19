@@ -36,6 +36,7 @@ android {
             it.systemProperty("roborazzi.record.filePathStrategy", "relativePathFromRoborazziContextOutputDirectory")
             it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
             it.systemProperty("dta.screenshots", layout.buildDirectory.dir("outputs/screenshots").get().asFile.absolutePath)
+            it.systemProperty("dta.reportDir", layout.buildDirectory.dir("reports/p2d").get().asFile.absolutePath)
         }
     }
 }

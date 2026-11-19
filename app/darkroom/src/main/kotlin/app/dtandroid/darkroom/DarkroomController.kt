@@ -10,7 +10,13 @@ import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblemReason
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.Control
-import app.dtandroid.schema.ModuleGroups
+import app.dtandroid.engine.api.LayoutStore
+import app.dtandroid.engine.api.LayoutStoreException
+import app.dtandroid.schema.ParamRuleInputs
+import app.dtandroid.schema.Rules
+import app.dtandroid.schema.layout.BuiltinLayouts
+import app.dtandroid.schema.layout.LayoutCodec
+import app.dtandroid.schema.layout.QuickAccess
 import app.dtandroid.schema.UiSchema
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +51,9 @@ data class Viewport(val widthPx: Int, val heightPx: Int, val zoom: Float = 1f, v
 class DarkroomController(
     private val engine: DarktableEngine,
     val schema: UiSchema,
-    val groups: ModuleGroups,
+    val builtins: BuiltinLayouts,
+    /** module layouts (PLAN.md 3.9); the darkroom shows the current one */
+    val layouts: LayoutStore,
     private val scope: CoroutineScope,
     private val previewMaxSize: Int = 1024,
     private val thumbnailSize: Int = 128,
@@ -78,6 +86,7 @@ class DarkroomController(
     /** Open [series] at [index]; renders a thumbnail of every photo first (the filmstrip). */
     suspend fun start(series: Series, index: Int, filmstrip: Boolean, thumbnails: Boolean = true) {
         _state.update { it.copy(series = series, index = index, filmstrip = filmstrip, loading = true) }
+        loadLayout(initial = true)
         if (thumbnails) {
             val thumbs = HashMap<Int, app.dtandroid.engine.api.RenderedImage>()
             lock.withLock {
@@ -403,9 +412,88 @@ class DarkroomController(
 
     // ------------------------------------------------------------------ interface state
 
-    fun selectGroup(g: GroupTab) = _state.update { it.copy(group = g) }
+    /**
+     * A tab of the module groups bar. Tapping the selected group (or the active tab) again
+     * shows all modules of all groups, as on desktop (`_lib_modulegroups_toggle`); choosing
+     * a tab clears the search line.
+     */
+    fun selectGroup(g: GroupTab) = _state.update {
+        val next = if (g == it.group && g != GroupTab.Quick && it.search.isEmpty() && it.forceShow == null) GroupTab.AllModules else g
+        it.copy(group = next, search = "", forceShow = null, overlay = null)
+    }
 
-    /** One module is expanded at a time; tapping the open one closes it. */
+    fun setSearch(text: String) = _state.update { it.copy(search = text, forceShow = null) }
+
+    // ------------------------------------------------------------------ module layouts
+
+    /**
+     * Read the current layout from [layouts] and show it. At the first start the selected
+     * group is darktable's default (`plugins/darkroom/groups`); later the selected tab is kept
+     * where it still exists, else the active modules are shown.
+     */
+    suspend fun loadLayout(initial: Boolean = false) {
+        var list = emptyList<app.dtandroid.engine.api.StoredLayout>()
+        val (name, text) = try {
+            val n = layouts.current()
+            list = layouts.list()
+            n to (layouts.read(n)?.params ?: layouts.read(layouts.fallbackName)?.params ?: "")
+        } catch (e: LayoutStoreException) {
+            _state.update { it.copy(message = e.message) }
+            layouts.fallbackName to (builtins.presets(builtins.defaultWorkflow).firstOrNull { it.name == builtins.fallbackLayout }?.params ?: "")
+        }
+        val l = LayoutCodec.parse(text)
+        val quick = l.quickAccess.map { QuickAccess.resolve(schema, it) }
+        _state.update { s ->
+            val want = if (initial) when {
+                builtins.defaultGroup <= 0 -> GroupTab.Active
+                else -> GroupTab.Group(builtins.defaultGroup - 1)
+            } else s.group
+            val group = when (want) {
+                is GroupTab.Group -> if (want.index < l.groups.size) want else GroupTab.Active
+                GroupTab.Quick -> if (l.quickAccessShown) want else GroupTab.Active
+                else -> want
+            }
+            s.copy(layoutName = name, layout = l, layoutList = list, quick = quick, group = group, search = if (l.showSearch) s.search else "")
+        }
+    }
+
+    /** Make [name] the current layout (the layouts menu next to the tabs). */
+    suspend fun chooseLayout(name: String) {
+        try {
+            layouts.setCurrent(name)
+        } catch (e: LayoutStoreException) {
+            _state.update { it.copy(message = e.message) }
+        }
+        _state.update { it.copy(overlay = null) }
+        loadLayout()
+    }
+
+    /** "manage module layouts" (`manage_presets`), working on [layouts]. */
+    val layoutEditor = LayoutEditor(layouts, builtins, schema)
+
+    /** Open "manage module layouts" on the current layout. */
+    suspend fun openLayoutEditor() {
+        layoutEditor.open()
+        _state.update { it.copy(layoutEditor = true, overlay = null) }
+    }
+
+    /** Close it: the edits are kept and the darkroom shows the (possibly changed) current layout. */
+    suspend fun closeLayoutEditor() {
+        layoutEditor.save()
+        _state.update { it.copy(layoutEditor = false) }
+        loadLayout()
+    }
+
+    /**
+     * "go to the full version of the module" from the quick access panel (`_basics_goto_module`):
+     * the first group that has the module, or the module alone when no group has it; expanded.
+     */
+    fun goToModule(key: InstanceKey) = _state.update { s ->
+        val i = s.layout.groups.indexOfFirst { key.op in it.modules }
+        if (i >= 0) s.copy(group = GroupTab.Group(i), expanded = key, search = "", forceShow = null, overlay = null)
+        else s.copy(group = GroupTab.Active, forceShow = key, expanded = key, search = "", overlay = null)
+    }
+
     fun toggleExpanded(key: InstanceKey) = _state.update {
         it.copy(expanded = if (it.expanded == key) null else key, overlay = null)
     }
@@ -418,20 +506,89 @@ class DarkroomController(
 
     // ------------------------------------------------------------------ helpers for screens
 
-    /** Modules of the current group, in the order desktop lists them (last in the pipe on top). */
+    /**
+     * Modules the list shows, in desktop's order (last in the pipe on top), following
+     * `_lib_modulegroups_update_iop_visibility`: search text matches name, aliases and
+     * instance name (deprecated modules only when on); "active" lists modules that are on,
+     * or with "show all history modules" those in the history; a group lists its modules,
+     * deprecated ones only when on; all modules lists every module of any group plus those on.
+     */
     fun visibleModules(s: DarkroomState): List<ModuleInstance> {
         val listed = s.modules.filter { !it.hidden && schema.modules[it.op]?.hasPanel != false }
+        s.forceShow?.let { k -> return listed.filter { it.key == k } }
+        val text = s.search.takeIf { s.layout.showSearch }?.trim()?.lowercase().orEmpty()
+        if (text.isNotEmpty()) {
+            return listed.filter { m ->
+                if (m.deprecated && !m.enabled) return@filter false
+                val ms = schema.modules[m.op]
+                (ms?.name ?: m.name).lowercase().contains(text) || (ms?.aliases ?: "").lowercase().contains(text) ||
+                    m.instanceName.lowercase().contains(text)
+            }.asReversed()
+        }
         val inGroup = when (val g = s.group) {
-            GroupTab.Active -> listed.filter { it.enabled }
+            GroupTab.Active -> if (s.layout.fullActive) listed.filter { it.inHistory } else listed.filter { it.enabled }
             GroupTab.Quick -> emptyList()
-            is GroupTab.Configured -> {
-                val ops = groups.groups.firstOrNull { it.id == g.id }?.ops?.toSet() ?: emptySet()
-                listed.filter { it.op in ops && !it.deprecated }
+            GroupTab.AllModules -> {
+                val any = s.layout.groups.flatMap { it.modules }.toSet()
+                listed.filter { (!it.deprecated && it.op in any) || it.enabled }
+            }
+            is GroupTab.Group -> {
+                val ops = s.layout.groups.getOrNull(g.index)?.modules?.toSet() ?: emptySet()
+                listed.filter { it.op in ops && (!it.deprecated || it.enabled) }
             }
         }
         return inGroup.asReversed()
     }
 
+    /** One module's part of the quick access panel. */
+    data class QuickBlock(
+        val instance: ModuleInstance?,
+        val moduleName: String,
+        val onOff: QuickAccess.Entry?,
+        val entries: List<QuickAccess.Entry>,
+        /** desktop disables a module's quick access widgets when it has several instances */
+        val severalInstances: Boolean,
+    )
+
+    /**
+     * The quick access panel (`_basics_show`): per module, in the module list's order (last in
+     * the pipe on top), its on-off button first, then its entries in the order of the module's
+     * own panel; hidden and deprecated modules are left out on desktop. Entries the app cannot
+     * use are kept (shown disabled with their name), and entries of modules the panel does not
+     * show (deprecated, or not in the pipe) come last, disabled, with the reason.
+     */
+    fun quickPanel(s: DarkroomState): List<QuickBlock> {
+        val byOp = s.quick.groupBy { it.op }
+        val order = s.modules.asReversed().filter { !it.hidden && !it.deprecated }.map { it.op }.distinct()
+        val blocks = ArrayList<QuickBlock>()
+        for (op in order) {
+            val es = byOp[op] ?: continue
+            val instances = s.modules.filter { it.op == op }
+            val top = instances.lastOrNull()
+            val ms = schema.modules[op]
+            blocks += QuickBlock(
+                top, ms?.name ?: op, es.firstOrNull { it.kind == QuickAccess.Kind.ON_OFF },
+                es.filter { it.kind != QuickAccess.Kind.ON_OFF }.sortedBy { it.treeIndex },
+                instances.size > 1,
+            )
+        }
+        val deprecated = s.modules.filter { it.deprecated }.map { it.op }.toSet()
+        val rest = s.quick.filter { it.op !in order }.map { e ->
+            if (e.reason != null) e
+            else e.copy(reason = if (e.op in deprecated) "deprecated module: desktop leaves it out of the quick access panel"
+                                 else "the module is not in this photo's pipe")
+        }
+        if (rest.isNotEmpty()) blocks += QuickBlock(null, "not available", null, rest, false)
+        return blocks
+    }
+
+    /** Whether a quick access control is shown: desktop hides it when the module's own widget is hidden. */
+    fun quickVisible(m: ModuleInstance, e: QuickAccess.Entry): Boolean {
+        val ms = e.module ?: return true
+        val c = e.control ?: return true
+        val inputs = ParamRuleInputs(ms, m.params)
+        return ms.pathTo(c.id).all { Rules.isVisible(ms, it, inputs) }
+    }
     /** The value a control shows: the finger's value while dragging, else the engine's. */
     fun sliderValue(s: DarkroomState, key: InstanceKey, c: Control.Slider, live: Map<Pair<InstanceKey, Int>, Double>): Double? {
         live[key to c.id]?.let { return it }

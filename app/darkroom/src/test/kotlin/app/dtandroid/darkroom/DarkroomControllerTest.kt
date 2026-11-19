@@ -41,6 +41,10 @@ class DarkroomControllerTest {
         assertFalse(s.loading)
         assertEquals(InterfacePreview.COUNT, s.thumbnails.size)
         waitFor("preview") { c.state.value.preview != null }
+        // P2a opened on the active modules; darktable opens on its default group (plugins/darkroom/groups = 2,
+        // the second group of the layout), so the active modules are now one tap away
+        assertEquals(GroupTab.Group(1), c.state.value.group)
+        c.selectGroup(GroupTab.Active)
         val active = c.visibleModules(c.state.value).map { it.op }
         // desktop order: last in the pipe on top
         assertEquals("colorout", active.first())
@@ -127,7 +131,7 @@ class DarkroomControllerTest {
         c.instanceDelete(InstanceKey("exposure", 1))
         assertEquals(1, c.state.value.modules.count { it.op == "exposure" })
         assertNull(c.state.value.expanded)
-        c.selectGroup(GroupTab.Configured("base"))
+        c.selectGroup(GroupTab.Group(0)) // "base" of the default layout
         assertTrue(c.visibleModules(c.state.value).any { it.op == "exposure" })
     }
 }

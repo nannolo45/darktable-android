@@ -1,0 +1,30 @@
+# tools/layouts/extract-builtin-layouts.py: deliberate changes to a copy of the upstream files (x86_64 workspace)
+
+## unchanged copy
+<copy>-out.json: 6 workflows, 30 layouts, darktable 04477d32a00c
+exit 0
+
+## macro SQA renamed
+extract-builtin-layouts: SQA: expected exactly one match, found 0 (pattern '^#define SQA\\b.*?(?<!\\\\)\\n')
+exit 1
+
+## init_presets signature changed
+extract-builtin-layouts: init_presets: expected exactly one match, found 0 (pattern '^void init_presets\\(dt_lib_module_t \\*self\\)\\s*\\n\\{\\n')
+exit 1
+
+## new configuration lookup in init_presets
+extract-builtin-layouts: the code copied from upstream does not compile against the stand-ins:
+/tmp/tmp4dnhjf2n/harness.c: In function ‘init_presets’:
+/tmp/tmp4dnhjf2n/harness.c:181:64: error: implicit declaration of function ‘dt_conf_get_bool’ [-Werror=implicit-function-declaration]
+  181 |   const gboolean is_scene_referred = dt_is_scene_referred() && dt_conf_get_bool("plugins/darkroom/x");
+      |                                                                ^~~~~~~~~~~~~~~~
+cc1: some warnings being treated as errors
+exit 1
+
+## workflow option removed from the configuration
+<copy>-out.json: 5 workflows, 25 layouts, darktable 04477d32a00c
+exit 0
+
+## new conf key looked up
+extract-builtin-layouts: harness failed for workflow 'scene-referred (sigmoid)' (exit 3): harness: unexpected call dt_conf_is_equal(plugins/darkroom/other): the copied code needs a stand-in
+exit 1
