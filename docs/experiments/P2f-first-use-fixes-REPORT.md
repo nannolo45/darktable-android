@@ -87,7 +87,49 @@ rendered again in the background.
 
 ## 3. Lag with a real edit (item 4 and the addendum)
 
-{{LAG}}
+Measured on the CI emulator (x86_64, 4 cores, not a phone) with the heavy edit of f1 on the public test RAW
+`mire1.cr2` (3908 x 2602, Bayer; denoise (profiled), diffuse or sharpen, local contrast and sharpen switched on with
+their defaults), run 44634077994, the full text in `P2f-results/timings-heavy-edit-emulator-44634077994.txt`:
+
+| Step | ms | Where the time goes (per module, slowest first) |
+|---|---|---|
+| first preview 1024 px, every module | 680 | denoise (profiled) 183, diffuse 169, local contrast 62, color calibration 54 |
+| preview after an exposure change | 373 | diffuse 98, color balance rgb 98, local contrast 68, color calibration 41 |
+| drag picture 384 px after an exposure step | 62 (median of 6) | demosaic 35, highlights 27, denoise 27 |
+| sharp region at fit 1080 x 719 after a change | 663 | denoise 181, **demosaic 176**, diffuse 85, local contrast 52, highlights 49, raw black/white point 22, white balance 18 |
+| sharp region at 100 % 1080 x 1500 | 2410 | denoise 1044, diffuse 661, local contrast 232 |
+| `modules()` (bridge / JNI string / parse) | 10.2 / 0.5 / 8.2 | |
+| export full size | 9635 | |
+
+**The sharp picture at fit (the addendum's 1.3 s on the phone).** Confirmed from upstream and the table: outside
+thumbnails demosaic always works at full resolution (`src/iop/demosaic.c`, `_demosaic_full()`; `modify_roi_in` asks
+for scale 1.0), so at fit the whole sensor goes through raw black/white point, white balance, highlight reconstruction
+and demosaic before anything is scaled down: 265 ms of the 663 here on a 10 MP Bayer file; on the phone's 24 MP X-Trans
+file Markesteijn demosaic at full size is the bulk of 1295 ms, against 167 ms for the 1024 px preview from the
+downscaled input. Desktop darkroom does the same at fit (its main pipe at fit is this pipe; it shows its small preview
+first and the full pipe's picture when ready), so the app behaves as desktop, only on a slower machine. Options, none
+applied (each changes the picture or needs the bridge):
+- A. At fit on a phone, show the preview pipe's picture at the view's size (about 1080 px: about the 1024 px preview's
+  cost, 167 ms on the phone instead of 1295) and render the sharp region only when zoomed in. Saves about 1.1 s per
+  change on the phone. Changes the picture at fit: the preview pipe works from darktable's downscaled input, so denoise,
+  sharpen and diffuse act on downscaled data there (desktop shows exactly this picture first).
+- B. Keep the sharp region but start it only after the photo has been still for about 0.6 s (and cancel it on any
+  change, as now). No change to the picture; the phone still spends 1.3 s each time, later.
+- C. (bridge, E3) a demosaic shortcut for renders at small scales, as darktable's own thumbnail pipes have
+  (`_demosaic_full` returns false for them). Changes the picture at fit.
+
+**`modules()` calls.** None during a drag and one when the finger lifts (JVM test
+`modulesAreReadOnceAfterADragAndNeverDuringIt`); one after each other change (`refreshLocked`). 18.9 ms per call on the
+emulator, about 28 ms on the phone; nothing to remove without the bridge returning only what changed. `image_info`
+after every change costs 0.5 ms once loaded.
+
+**The drag picture's size.** The app chooses it from measured times for a 50 ms target (320 px on the owner's phone,
+384 px on the emulator). How 320, 512, 768 and 1024 px look on a 1080 px wide screen: {{F3}}. Per the phone's own table,
+512 px costs about 45 ms and 768 px about 97 ms after an exposure step: a 512 px drag picture would follow at about
+20 updates a second, 768 px at about 10.
+
+**The per-module table on the phone** shows the same lines for the owner's own edit; with the pinning line from P2g, the
+photo's source, its history items and the modules on (all in the text he shares).
 
 ## 4. The bridge's threading promise and what P2f does (the reviewer's point 3)
 
@@ -174,7 +216,30 @@ changes in the photo open in the darkroom. What the app does, and tells the user
 
 ## 8. Owner instructions
 
-{{OWNER}}
+What to look at on the phone, in this order (install the APK from the release named below over the old one):
+1. **Opening a photo right after "done".** Edit a photo from LightPhotoLibrary, tap "done", and open it again at once
+   from the list. The photo should show immediately (its last picture), with a quiet line over the bottom ("opening…",
+   then "rendering…"), and become sharp within about a second; never black.
+2. **The list.** One row per photo: thumbnail, the file name (long names are shortened in the middle, the number at the
+   end stays), one line of status, the last edit ("last edited on Desktop · 18 Nov · exposure, …" once your
+   LightPhotoLibrary is updated), and a thin bar while it downloads or syncs. Tap a row to open it; the three dots give
+   "sync now", "open in LightPhotoLibrary", "remove from this phone". The header says this phone's name, whether
+   LightPhotoLibrary answers, what is waiting, and has one "sync now".
+3. **"Save edited to NAS" from the PC.** Leave a photo open on the phone and press it in LightPhotoLibrary. The phone
+   should say in the darkroom and in the list what it did: "saved your open changes and sent them" or "sent the edit as
+   of your last "done"". "Remove" from the PC never removes a photo with changes not yet sent.
+4. **The top bar.** The photo's name should be readable with "before", the three dots and "done" beside it.
+5. **Crop.** In crop, "aspect" can now be chosen; the button beside it swaps portrait and landscape; moving a margin keeps
+   the ratio. An edit made this way opens on the PC with the same ratio.
+6. **Spektrafilm.** It is found by typing "spektra" (or "film") in the module search. With the default layout it is in no
+   group, exactly as on the PC; "modules: all" has it under "tone". Its film data is in the app now (about page:
+   "spektrafilm data …, 8.9 MB").
+
+**How to send the per-module timings.** Open the photo you want measured (from LightPhotoLibrary or from the phone's
+files), tap the three dots in the darkroom, "timings…", then "run". It takes a minute or two; the photo's edit is kept.
+Tap "share" and send the text. It now says which photo source it was, how many history items the edit has, which
+modules are on, whether the engine was pinned to the fast cores, and for each step which modules took the time. If no
+photo is open, it runs on the last photo you opened.
 
 ## 9. Surprises in upstream
 
