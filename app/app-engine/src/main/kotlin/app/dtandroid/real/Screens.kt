@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -39,18 +40,24 @@ import app.dtandroid.darkroom.ui.DtText
 import app.dtandroid.darkroom.ui.DtTextButton
 import app.dtandroid.darkroom.ui.PanelHeading
 import app.dtandroid.darkroom.ui.toImageBitmap
+import app.dtandroid.engine.api.RenderedImage
+import app.dtandroid.lpl.PhotoRecord
+import app.dtandroid.lpl.PhotoStatus
+import app.dtandroid.lpl.Progress
+import app.dtandroid.lpl.ServerOrigin
+import app.dtandroid.lpl.UserText
 import app.dtandroid.ui.theme.DtTheme
 import java.io.File
 import java.util.Locale
 
 /** A plain screen: the theme's background, inside the safe area. */
 @Composable
-private fun Page(content: @Composable () -> Unit) {
+internal fun Page(content: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().background(DtTheme.colors.bg).windowInsetsPadding(WindowInsets.safeDrawing)) { content() }
 }
 
 @Composable
-private fun TopBar(title: String, buttons: @Composable () -> Unit) {
+internal fun TopBar(title: String, buttons: @Composable () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.l, vertical = DtTheme.space.s),
         verticalAlignment = Alignment.CenterVertically,
@@ -62,7 +69,7 @@ private fun TopBar(title: String, buttons: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Paragraph(text: String, muted: Boolean = false) {
+internal fun Paragraph(text: String, muted: Boolean = false) {
     DtText(text, DtTheme.type.label, if (muted) DtTheme.colors.textMuted else DtTheme.colors.text,
         Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs), maxLines = 40)
 }
@@ -91,46 +98,133 @@ fun StartScreen(status: AppEngine.Status) = Page {
     }
 }
 
-/** The working folder: the photos copied in through the file picker. */
+/**
+ * The list: the photos from LightPhotoLibrary (brief P2e item 3) with their status in the contract's
+ * words and what the user can do with each, then the photos copied in through the file picker (P2b).
+ */
 @Composable
-fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit) = Page {
+fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrigin, Long) -> Unit) = Page {
     val lib by vm.library.collectAsState()
+    val photos by vm.agent.photos.collectAsState()
+    val progress by vm.agent.progress.collectAsState()
+    val errors by vm.agent.lastError.collectAsState()
+    val lplThumbs by vm.lplThumbs.collectAsState()
+    val servers = remember(photos, lib) { vm.servers.list() }
     Column(Modifier.fillMaxSize()) {
-        TopBar("dt-android engine") {
+        TopBar("dt-android") {
+            DtTextButton("server", { vm.showServerForm() })
             DtTextButton("about", { vm.show(Screen.ABOUT) })
             DtTextButton("open photos", onOpen, enabled = lib.busy == null)
         }
         Divider()
         lib.busy?.let { Paragraph(it, muted = true) }
         for (m in lib.messages) Paragraph(m, muted = true)
-        if (lib.items.isEmpty() && lib.busy == null) {
-            Paragraph("No photos yet. Tap \"open photos\" and pick one or several RAW files, optionally with their .xmp files. " +
-                "The app works on copies in its own folder; your originals are never changed.")
+        lib.confirmRemove?.let { r ->
+            Paragraph("${r.filename} has an edit that LightPhotoLibrary does not have yet. Remove it from this phone anyway? The edit is lost.")
+            Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+                DtTextButton("keep it", { vm.keep() })
+                DtTextButton("remove anyway", { vm.remove(r, evenUnsynced = true) })
+            }
+            Divider()
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-            itemsIndexed(lib.items) { i, item ->
-                val thumb = lib.thumbnails[item.fileName]
-                val bmp = remember(thumb) { thumb?.toImageBitmap() }
-                Row(
-                    Modifier.fillMaxWidth().height(DtTheme.sizes.filmstripPhone)
-                        .clickable(role = Role.Button) { vm.openDarkroom(i) }
-                        .semantics { contentDescription = "open ${item.fileName}" }
-                        .padding(horizontal = DtTheme.space.l),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(DtTheme.space.l),
-                ) {
-                    Box(Modifier.size(DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight).background(DtTheme.colors.photoBackground)) {
-                        if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            for (srv in servers) {
+                val mine = photos.filter { it.server == srv.origin }
+                item(key = "server-${srv.origin.url}") {
+                    PanelHeading("LightPhotoLibrary · this phone is \"${srv.deviceName}\"")
+                    val err = errors[srv.origin]
+                    Row(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+                        DtText(if (err != null) err.userText else if (srv.origin in errors) "connected" else srv.origin.url,
+                            DtTheme.type.small, DtTheme.colors.textMuted, Modifier.weight(1f), maxLines = 2)
+                        DtTextButton("sync now", { vm.syncAll() }, enabled = mine.isNotEmpty())
                     }
-                    Column(Modifier.weight(1f)) {
-                        DtText(item.fileName, DtTheme.type.body, DtTheme.colors.textStrong)
-                        DtText(if (File(item.xmpPath).isFile) "with edit" else "not edited yet", DtTheme.type.small, DtTheme.colors.textMuted)
-                    }
+                    if (mine.isEmpty()) Paragraph("No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".", muted = true)
+                    Divider()
                 }
+                items(mine, key = { "lpl-${it.server.url}-${it.id}" }) { r ->
+                    LplRow(vm, r, progress[r.key], lplThumbs[r.key], onOpenInLpl)
+                    Divider()
+                }
+            }
+            if (servers.isEmpty()) item(key = "no-server") {
+                PanelHeading("LightPhotoLibrary")
+                Paragraph("To edit photos from your LightPhotoLibrary, add its server: tap \"server\".", muted = true)
+                Divider()
+            }
+            item(key = "local") {
+                PanelHeading("photos from this phone's files")
+                if (lib.items.isEmpty() && lib.busy == null) {
+                    Paragraph("Tap \"open photos\" and pick one or several RAW files, optionally with their .xmp files. " +
+                        "The app works on copies in its own folder; your originals are never changed.", muted = true)
+                }
+            }
+            itemsIndexed(lib.items, key = { _, it -> "local-${it.fileName}" }) { i, item ->
+                val thumb = lib.thumbnails[item.fileName]
+                PhotoRow(thumb, item.fileName, if (File(item.xmpPath).isFile) "with edit" else "not edited yet", Modifier
+                    .clickable(role = Role.Button) { vm.openDarkroom(i) }
+                    .semantics { contentDescription = "open ${item.fileName}" })
                 Divider()
             }
         }
     }
+}
+
+/** A photo's row: thumbnail, name and a line under it. */
+@Composable
+private fun PhotoRow(thumb: RenderedImage?, name: String, line: String, modifier: Modifier = Modifier, actions: @Composable () -> Unit = {}) {
+    val bmp = remember(thumb) { thumb?.toImageBitmap() }
+    Column(modifier.fillMaxWidth().padding(horizontal = DtTheme.space.l, vertical = DtTheme.space.xs)) {
+        Row(
+            Modifier.fillMaxWidth().height(DtTheme.sizes.thumbPhoneHeight),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(DtTheme.space.l),
+        ) {
+            Box(Modifier.size(DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight).background(DtTheme.colors.photoBackground)) {
+                if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Column(Modifier.weight(1f)) {
+                DtText(name, DtTheme.type.body, DtTheme.colors.textStrong)
+                DtText(line, DtTheme.type.small, DtTheme.colors.textMuted, maxLines = 2)
+            }
+        }
+        actions()
+    }
+}
+
+/** An LPL photo: status in the contract's word with plain words, and open, sync now, open in LPL, remove. */
+@Composable
+private fun LplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, thumb: RenderedImage?, onOpenInLpl: (ServerOrigin, Long) -> Unit) {
+    val line = statusLine(vm, r, p)
+    PhotoRow(thumb, r.filename, line, Modifier.semantics { contentDescription = "${r.filename}: $line" }) {
+        Row(Modifier.fillMaxWidth().padding(top = DtTheme.space.xs), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+            DtTextButton("open", { vm.openLplPhoto(r) })
+            DtTextButton("sync now", { vm.syncNow(r) }, enabled = !r.readOnly && r.status != PhotoStatus.DOWNLOADING)
+            DtTextButton("in LightPhotoLibrary", { onOpenInLpl(r.server, r.id) })
+            DtTextButton("remove", { vm.remove(r) })
+        }
+    }
+}
+
+/** The status as LPL names it, and what it means, in a few words (brief P2e item 3). */
+private fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?): String {
+    val dirty = vm.agent.isDirty(r)
+    val words = when (r.status) {
+        PhotoStatus.DOWNLOADING -> if (p != null) AppHost.progressText("", p.done, p.total).replace("downloading … ", "downloading ")
+                                   else "downloading · not complete, continues when you open it"
+        PhotoStatus.OPENING -> "opening · ready to edit"
+        PhotoStatus.EDITING -> "editing · open in the darkroom"
+        PhotoStatus.DIRTY -> "dirty · ${UserText.WAITING}"
+        PhotoStatus.SYNCING -> "syncing"
+        PhotoStatus.SYNCED -> if (dirty) "dirty · ${UserText.WAITING}" else "synced" + if (r.previewPending) " · preview still to send" else ""
+        PhotoStatus.ERROR -> "error"
+    }
+    val extra = when {
+        r.readOnly -> UserText.NEWER_DARKTABLE
+        r.error.isNotEmpty() && r.status != PhotoStatus.SYNCED -> r.error
+        else -> null
+    }
+    return if (extra != null) "$words · $extra" else words
 }
 
 /** About: versions, how the engine started, and the timings page. */
@@ -143,13 +237,14 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
         }
         Divider()
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Paragraph("dt-android engine $appVersion: an unofficial Android port of darktable, not a darktable release. " +
+            Paragraph("dt-android $appVersion: an unofficial Android port of darktable, not a darktable release. " +
                 "Licence GPL-3.0-or-later; source: the darktable-android repository at the commit in the version.")
             Paragraph("engine: darktable ${ready.info.darktableVersion}, engine API ${ready.info.apiVersion}, package ${AppEngine.engineId}")
             Paragraph("plugins: ${ready.info.pluginsLoaded} of ${ready.info.pluginFiles} loaded")
             Paragraph("threads: ${ready.info.threads}; ${ready.cores.describe()}")
             Paragraph("start: " + (if (ready.freshUnpack) "unpacked in ${ready.unpackMs} ms, " else "already unpacked, ") + "engine started in ${ready.initMs} ms")
             Paragraph("working folder: ${vm.work.dir.path}", muted = true)
+            Paragraph("this install's id for LightPhotoLibrary: ${vm.servers.installId}", muted = true)
         }
     }
 }

@@ -181,6 +181,8 @@ The Android app behaves as an LPL agent, like `agent/lpl_agent.py`:
 | Jobs | jobs from the heartbeat, `POST /api/jobs/{id}/done` | Handles `edit`, `open`, `sync`, `release` addressed to its agent id, when the app is open. |
 | Auth | header `x-lpl-token` | Server address and password entered once in the app, kept in the Android keystore. Intended for LAN and Tailscale only, as today. |
 
+As the server behaves (found when the app's client was run against it, 19 Nov 2026): a job can carry `{"all": true}` instead of a list of ids; a job is handed out once; every XMP post answers with `X-LPL-Merged` 0 or 1, and merging only happens when `checkout_ts` is greater than 0; the app checks a password with `GET /api/status`; a `release` job for the photo that is open in the darkroom is reported `failed` by the app.
+
 The conflict rule stays on the server and is unchanged: LPL wins for rating, labels and tags changed during the edit; darktable's history always comes from the editor.
 
 ### 4.2 How the hand-off looks to the user
@@ -203,6 +205,9 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 | R9 | Web UI | Behave like an app on the phone: back button and back gesture step out of the current thing (sheet, photo, folder, tab list) through history states instead of leaving LPL; "Install app" in settings when the browser offers it, menu guidance where it does not (Firefox), and one line saying an install needs HTTPS when the page is on plain HTTP; safe-area and pull-to-refresh fixes where needed. Inside the shell app (user agent contains `LPLShell/`) no install hints; "Edit on this phone" stays. | Phase 2 |
 | R10 | Web UI | The desktop's tabs on the phone layout: a tabs button with the count, a list of the same tabs (same titles, switch, add, close, rename), each tab keeping its own view, filters and sort, state shared with desktop. | Phase 2 |
 | R11 | Server + PC agent | Carry darktable presets, styles and module layouts between devices automatically: each agent uploads what changed as files (`.dtpreset`, `.dtstyle`), LPL stores and lists them with a change time, the other agents fetch them. Wanted by the owner; updates are taken in on request, newer wins, conflicts ask by default, deletions are offered (3.9); exact calls to be specified before it is built. | After gate G2 |
+| R12 | Web UI | Done 19 Nov 2026: "New series" on the phone's Series tab with an in-page name field. | Phase 2 |
+| R13 | Server | Hand a job out again after a while when the agent that took it never reported it done (today a job is handed out exactly once, so a job taken by an app that then dies is lost; the Android app keeps such jobs on disk as a workaround). | Later, small |
+| R14 | Server | A call that only checks the `x-lpl-token` header, so adding a server in the app does not depend on `GET /api/status`. | Later, small |
 | R7 | Server, later | Per-device tokens (`POST /api/agents/pair`) instead of the shared password in the header. | Later, optional |
 
 The Android app only accepts an `lpldt://edit` link whose `server` is one the user has added in the app; an unknown server asks for confirmation first.
