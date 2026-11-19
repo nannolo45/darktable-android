@@ -1,0 +1,91 @@
+== cr2: mire1.cr2 with exposure.xmp
+PASS T1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 cr2: modules and history JSON parse: 97 module instances, 9 history items
+PASS T2 cr2: history 9 end 9 -> 10 end 10, exposure 1.0000 -> 2.0000
+PASS T2 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: duplicate/change/off/on in session (new priority 1)
+PASS T3 cr2: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=1.0000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: 9 end 9; goto 8 differs_from_top max 68 mean 38.7563; back to top: max 0 mean 0.0000; history 9 end 9; compress vs top: max 0 mean 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 cr2: size 512x512 max 182 mean 0.10523 psnr 46.31 differing_values_pct 2.1849
+FAIL T5 cr2: size 512x512 max 182 mean 0.10523 psnr 46.31 differing_values_pct 2.1849
+FAIL T5 cr2: size 512x512 max 75 mean 0.03503 psnr 53.53 differing_values_pct 1.0825
+FAIL T5 cr2: size 512x512 max 75 mean 0.03503 psnr 53.53 differing_values_pct 1.0825
+FAIL T5 cr2: size 512x512 max 64 mean 0.07199 psnr 50.59 differing_values_pct 2.1743
+FAIL T5 cr2: size 512x512 max 64 mean 0.07199 psnr 50.59 differing_values_pct 2.1743
+PASS T6 cr2: newer.xmp: exposure modversion 5 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 cr2: guarded files unchanged
+INFO T7 cr2 (x86_64, 2 cores): size 3908x2602 preview 1024x681;open_s 0.117;first_full_render_s 0.475;unchanged_full_render_s 0.028;late_change_full_render_s 0.144;early_change_full_render_s 0.580;late_change_region_1920x1080_s 0.179;preview_first_s 0.100;preview_late_change_s 0.037;preview_early_change_s 0.054;
+PASS T8 cr2: worst latency 0.119 s; after cancels: max 0 mean 0.0000
+PASS T9 cr2: local: inside 74.778, corners 0.000
+PASS T9 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: move/new/duplicate/delete in session: exposure.0 name='2' enabled=1 exposure=-0.4000;
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: fresh session lists the same instances after delete
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 cr2 preview vs darktable-cli 1024 px export: size 1024x681 max 255 mean 6.42700 psnr 26.37 differing_values_pct 87.6863
+== raf: xtransIV.raf with lens-metadata-xtransIV-modversion-7.xmp
+PASS T1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 raf: modules and history JSON parse: 97 module instances, 12 history items
+PASS T2 raf: history 12 end 12 -> 13 end 13, exposure 0.7000 -> 1.7000
+PASS T2 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: duplicate/change/off/on in session (new priority 1)
+PASS T3 raf: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=0.7000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: 12 end 12; goto 11 differs_from_top max 139 mean 16.8457; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 raf: size 512x512 max 40 mean 0.09596 psnr 52.23 differing_values_pct 5.2536
+FAIL T5 raf: size 512x512 max 40 mean 0.09596 psnr 52.23 differing_values_pct 5.2536
+FAIL T5 raf: size 512x512 max 12 mean 0.02458 psnr 60.33 differing_values_pct 1.5283
+FAIL T5 raf: size 512x512 max 12 mean 0.02458 psnr 60.33 differing_values_pct 1.5283
+FAIL T5 raf: size 512x512 max 17 mean 0.02405 psnr 60.75 differing_values_pct 1.5345
+FAIL T5 raf: size 512x512 max 17 mean 0.02405 psnr 60.75 differing_values_pct 1.5345
+PASS T6 raf: newer.xmp: exposure modversion 6 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 raf: guarded files unchanged
+INFO T7 raf (x86_64, 2 cores): size 6250x4168 preview 1024x683;open_s 0.507;first_full_render_s 5.782;unchanged_full_render_s 0.159;late_change_full_render_s 6.511;early_change_full_render_s 6.632;late_change_region_1920x1080_s 0.744;preview_first_s 0.310;preview_late_change_s 0.053;preview_early_change_s 0.139;
+PASS T8 raf: worst latency 1.050 s; after cancels: max 0 mean 0.0000
+PASS T9 raf: local: inside 74.515, corners 0.000
+PASS T9 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: move/new/duplicate/delete in session: exposure.0 name='2' enabled=1 exposure=-0.4000;
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: fresh session lists the same instances after delete
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 raf preview vs darktable-cli 1024 px export: SHAPE_MISMATCH (683, 1024, 3) (682, 1024, 3)
+== arw: hlrecovery.arw with spektrafilm.xmp
+PASS T1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 arw: modules and history JSON parse: 98 module instances, 14 history items
+PASS T2 arw: history 14 end 14 -> 15 end 15, exposure 0.7000 -> 1.7000
+PASS T2 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: duplicate/change/off/on in session (new priority 2)
+PASS T3 arw: fresh session lists the same exposure instances: exposure.0 name='_builtin_scene-referred default' enabled=1 exposure=0.7000;exposure.1 name='after' enabled=1 exposure=0.5500;exposure.2 name='2' enabled=1 exposure=-0.5000;
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: 14 end 14; goto 13 differs_from_top max 40 mean 19.9579; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 arw: size 512x512 max 21 mean 0.30012 psnr 50.68 differing_values_pct 22.6819
+FAIL T5 arw: size 512x512 max 21 mean 0.30012 psnr 50.68 differing_values_pct 22.6819
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL T5 arw: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+PASS T5 arw: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+PASS T6 arw: newer.xmp: exposure modversion 7 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule reported and refused (see T6.log)
+PASS T6 arw: guarded files unchanged
+INFO T7 arw (x86_64, 2 cores): size 5492x3672 preview 1024x684;open_s 0.079;first_full_render_s 2.053;unchanged_full_render_s 0.115;late_change_full_render_s 0.770;early_change_full_render_s 2.314;late_change_region_1920x1080_s 1.051;preview_first_s 0.146;preview_late_change_s 0.055;preview_early_change_s 0.091;
+PASS T8 arw: worst latency 0.355 s; after cancels: max 0 mean 0.0000
+PASS T9 arw: local: inside 76.291, corners 0.000
+PASS T9 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: move/new/duplicate/delete in session: exposure.0 name='after' enabled=1 exposure=0.5500;exposure.3 name='3' enabled=1 exposure=-0.4000;
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: fresh session lists the same instances after delete
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 arw preview vs darktable-cli 1024 px export: size 1024x684 max 255 mean 2.85623 psnr 32.07 differing_values_pct 63.2792
+PASS safety: RAW files unchanged
