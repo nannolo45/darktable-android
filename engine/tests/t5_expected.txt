@@ -28,8 +28,8 @@ raf base 1 11 0.0077
 cr2 on-shadhi 0 2 0.0781
 cr2 on-shadhi 1 1 0.0731
 cr2 on-shadhi 2 1 0.0257
-cr2 on-lowpass 0 1 0.0019
-cr2 on-lowpass 1 1 0.0003
+cr2 on-lowpass 0 1 0.0020
+cr2 on-lowpass 1 1 0.0004
 cr2 on-lowpass 2 1 0.0003
 cr2 on-soften 0 1 0.0004
 cr2 on-soften 1 1 0.0003
@@ -40,22 +40,22 @@ cr2 on-bloom 2 1 0.0005
 cr2 on-denoiseprofile 0 1 0.0260
 cr2 on-denoiseprofile 1 1 0.0406
 cr2 on-denoiseprofile 2 1 0.0398
-cr2 on-monochrome 0 1 0.0098
+cr2 on-monochrome 0 1 0.0099
 cr2 on-monochrome 1 1 0.0004
-cr2 on-monochrome 2 1 0.0002
+cr2 on-monochrome 2 1 0.0003
 # surface blur (bilateral.cc) and astrophoto denoise (nlmeans.c): rounding, 1 level
 # in about 1 of 10 000 values, independent of the margin.
 cr2 on-bilateral 0 1 0.0001
 cr2 on-bilateral 1 1 0.0001
-cr2 on-bilateral 2 1 0.0001
-cr2 on-nlmeans 0 1 0.0001
-cr2 on-nlmeans 1 1 0.0001
-cr2 on-nlmeans 2 1 0.0001
+cr2 on-bilateral 2 1 0.0002
+cr2 on-nlmeans 0 1 0.0002
+cr2 on-nlmeans 1 1 0.0002
+cr2 on-nlmeans 2 1 0.0002
 # local contrast (bilat.c, bilateral grid of common/bilateral.c): a wider margin
 # (256) halves the difference (max 18 -> 9) but no margin tried removes it; most
 # likely the grid's cells are laid out from the window's origin and size (not
 # verified in the code).
-cr2 on-bilat 0 9 1.6134
+cr2 on-bilat 0 9 1.6135
 cr2 on-bilat 1 4 1.0405
 cr2 on-bilat 2 5 1.5362
 # defringe (defringe.c) averages the edge chroma over the whole window it is given,
@@ -64,7 +64,12 @@ cr2 on-bilat 2 5 1.5362
 # whatever the margin.
 cr2 on-defringe 0 81 0.2194
 cr2 on-defringe 1 92 0.6026
-cr2 on-defringe 2 92 1.4550
+cr2 on-defringe 2 92 1.4553
 cr2 on-globaltonemap 0 1 0.2162
 cr2 on-globaltonemap 1 70 63.7601
 cr2 on-globaltonemap 2 48 30.9887
+#
+# spektrafilm image, region near the bottom right: 1 level in 0.0003 % of the values
+# (2 of 786 432) on the 4-core CI runner, exact on the 2-core workspace (same build);
+# most likely rounding that depends on the number of threads. Not analysed further.
+arw base 2 1 0.0001

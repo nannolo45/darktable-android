@@ -2116,12 +2116,13 @@ static void cost_series(const char *label, const char *op, const char *path, dou
   {
     char v[32];
     snprintf(v, sizeof(v), "%.4f", base + 0.01 * (i + 1));
+    // the step's marker first, so the change's own timers count to this step
+    fprintf(stderr, "DTB_STEP %s %d %d\n", label, size, i);
+    fprintf(stdout, "DTB_STEP %s %d %d\n", label, size, i);
     double t0 = now();
     if(op) MUST(dtb_param_set(op, 0, path, v));
     if(op && seal) MUST(dtb_history_seal());
     tp[i] = (now() - t0) * 1e3;
-    fprintf(stderr, "DTB_STEP %s %d %d\n", label, size, i);
-    fprintf(stdout, "DTB_STEP %s %d %d\n", label, size, i);
     t0 = now();
     uint8_t *px = NULL;
     int w, h;
