@@ -9,6 +9,13 @@ runs); **emulator** = API 33 x86_64 emulator on a CI runner. None of them is a p
 
 ## Running log (newest first)
 
+- 2026-11-19 16:3x: **final runs on 52daa9e** (last code commit): g0-app 44558499084 **success**: Linux
+  238 PASS, 0 FAIL (35 comparisons passed as listed differences within their bounds), engine for both
+  ABIs, G0 APKs, G0 emulator test (export vs darktable-cli max 26, 75.73 dB). p2b-real-engine
+  44558499134 **failure**, only in P2e's LPL scenario test l3 (process crash in `atomicWrite`, see the
+  report); everything of this brief passed there: JVM 161 tests (0 failed, 1 skipped), contract suite
+  **19 of 19** on the emulator, scenario tests 7 of 7, both darktable-cli comparisons (75.73 dB,
+  74.44 dB), APK published as `dt-android-52daa9e6ea29`.
 - 2026-11-19 16:0x: merged main (P2e, LPL client; one conflict in the p2b workflow's branch list).
   Run 44550790624 (dfbba47, g0-app): Linux 231 PASS, 4 FAIL, all T5 (bounds taken from the driver's
   mean instead of compare.py's; arw region 2 max 1 on the 4-core runner): bounds now from CI's
@@ -26,7 +33,7 @@ runs); **emulator** = API 33 x86_64 emulator on a CI runner. None of them is a p
 - 2026-11-19 14:0x: items 1, 2, 6 in the bridge with tests; contract, fake, header, engine-api.md.
 - 2026-11-19: branch created from main 3e252f9.
 
-Next: final CI run on the last code commit; report.
+Next: the reviewer.
 
 ---
 
@@ -344,3 +351,20 @@ selecting the first. The fake engine has no profiles; the app does not use the a
 - `set_profile {index}` from the app; the fake engine has no profiles.
 - Recomputed gradients in the app (shown as extracted, as the brief asks).
 - The slider colours on a real screen: only the Robolectric screenshot.
+
+## For the owner: what to look at in this build
+
+Install `dt-android-arm64-v8a.apk` from the release **dt-android-52daa9e6ea29**
+(https://github.com/nannolo45/darktable-android/releases/tag/dt-android-52daa9e6ea29) over the previous
+one, as before.
+1. **Slider colours.** Open color balance rgb, tab "4 ways": the hue sliders show the colour wheel in
+   their track, the luminance sliders black to white; also color calibration, color equalizer, rgb
+   primaries, colorize, split-toning. Tell us whether the colours look like darktable on the PC and
+   whether marker and value stay easy to read.
+2. **Dragging.** Drag any slider: the picture should follow more closely than before (the engine now
+   recomputes only the module you move). The timings page (more → timings…) shows the new numbers;
+   please send them again.
+3. **Zoomed view.** Zoom into a photo and compare with the export: they should match; on X-Trans photos
+   with lens correction the outermost few pixels at the left and top edge may differ slightly (known).
+4. A photo whose XMP names a module this darktable does not know opens read-only as before; "before"
+   and the history list now also show that item (with its technical name).
