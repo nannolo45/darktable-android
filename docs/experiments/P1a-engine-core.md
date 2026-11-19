@@ -5,6 +5,11 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 09:4x (work resumed after an interruption): run 44489957409 (024151b) ended: Linux 115 PASS,
+  6 FAIL (the same T5 cases as 44483237019, same numbers); engine and APKs built; emulator test passed (test
+  exit 0, export vs darktable-cli max 26, mean 0.00092, comparison ok). Merged main (P2c shell app, P2d
+  brief, CLAUDE.md rule 8, signing step in p2a-app.yml; no conflicts, nothing in engine/). A run on the
+  merge commit is started to show the G0 APK still builds with main's app/ settings.
 - 2026-11-19: run 44489957409 (024151b): APKs built; Linux tests and emulator test running.
 - 2026-11-19: run 44483237019: Linux 115 PASS, 6 FAIL (all T5, see 3.4); engine and APKs built; the
   emulator test failed only because tools/app/emulator-g0.sh still used the G0 app's old application id
@@ -83,7 +88,7 @@ The driver uses `dtbridge.h` and json-glib. T1 to T9 and X1 are kept with the ne
 | C3 undo | 12 kinds of change (merged param_set, set_enabled, params_set, new, param on new, rename, move, duplicate, delete priority 0, reset, goto, compress): each undo and redo gives byte-identical `modules()` and `history()` JSON and identical pixels; redo cleared by a new change; depth after 60 sealed changes; cli parity of the result |
 | C4 actions | every action in the spec, errors included; cli parity of the resulting XMP (the LUT root passed to cli) |
 | C5 threads | set_threads 1, clamping, restore; set_thread_cpus pins the engine thread and every OpenMP worker (checked in `/proc/self/task/*/status`), unpinning, renders unchanged |
-| C6 readonly | 21 mutating calls return READ_ONLY in a session opened on a newer-version XMP; reads, renders, get actions and export still work; the XMP file is byte-identical afterwards |
+| C6 readonly | 20 mutating calls return READ_ONLY in a session opened on a newer-version XMP; reads, renders, get actions and export still work; the XMP file is byte-identical afterwards |
 | C7 output | atomic xmp_write (no temp files left, also after a failed write), 11 export variants and 6 refused ones, metadata_reload (rating and labels from a modified XMP; modules and history JSON unchanged; written back); JPEG and PNG exports equal darktable-cli's |
 | T5 region | now strict: region = crop of the full render and = crop of darktable-cli, tolerance 0 |
 
