@@ -161,12 +161,13 @@ class DarkroomController(
         val left = _state.value.current.takeIf { _state.value.info != null }
         if (saveCurrent) saveLocked()
         runCatching { engine.close() }
-        if (left != null) source?.left(left)
         fetching = fetch
         _state.update {
             it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
                 expanded = null, overlay = null, message = null, readOnlyReason = null, info = null)
         }
+        // told after the state says no photo is open, so the source sees the photo as closed
+        if (left != null) source?.left(left)
     }
 
     private suspend fun openLocked(item: SeriesItem) {
@@ -202,11 +203,11 @@ class DarkroomController(
             val left = _state.value.current.takeIf { _state.value.info != null }
             saveLocked()
             runCatching { engine.close() }
-            if (left != null) source?.left(left)
             _state.update {
                 it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
                     expanded = null, overlay = null, readOnlyReason = null, loading = false)
             }
+            if (left != null) source?.left(left)
         }
     }
 

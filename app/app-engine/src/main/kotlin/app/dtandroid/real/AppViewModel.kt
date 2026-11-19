@@ -443,8 +443,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 is ServerCheckResult.Failed -> if (r.error.failure == LplFailure.TLS) "${origin.url}: ${r.error.userText}" else "${origin.url}: the server is not reachable (check the address and that the phone is on the right network)"
             }
             if (error != null) { _server.update { it.copy(busy = null, error = error) }; return@launch }
-            if (f.editing != null && f.editing != origin) servers.remove(f.editing)
-            servers.put(origin, name, pw)
+            try {
+                if (f.editing != null && f.editing != origin) servers.remove(f.editing)
+                servers.put(origin, name, pw)
+            } catch (e: java.io.IOException) {
+                _server.update { it.copy(busy = null, error = "the server could not be saved on this phone (storage full?)") }
+                return@launch
+            }
             agent.resetClients()
             _server.value = ServerForm()
             withContext(Dispatchers.Main) {
@@ -462,7 +467,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _server.update { it.copy(error = "remove this server's photos from the phone first") }
             return
         }
-        servers.remove(o)
+        try {
+            servers.remove(o)
+        } catch (e: java.io.IOException) {
+            _server.update { it.copy(error = "the change could not be saved on this phone (storage full?)") }
+            return
+        }
         agent.resetClients()
         _server.value = ServerForm()
         _screen.value = Screen.LIBRARY

@@ -74,7 +74,7 @@ class LplAgent(
     private val clientFor: (ServerOrigin) -> LplClient = { o -> LplClient(o, { servers.password(o) }) },
     private val clock: () -> Double = { System.currentTimeMillis() / 1000.0 },
 ) {
-    private val _photos = MutableStateFlow(load())
+    private val _photos = MutableStateFlow<List<PhotoRecord>>(emptyList())
     /** Every photo held, in the order taken. */
     val photos: StateFlow<List<PhotoRecord>> = _photos.asStateFlow()
 
@@ -88,25 +88,99 @@ class LplAgent(
     /** Shown in LPL as the device's message (`state.message`). */
     @Volatile var message: String = ""
 
+    /**
+     * Two locks per photo. [lockOf] (a coroutine mutex) is held for whole operations that may wait on the
+     * network or the engine: take, sync, remove. [recordLock] (a plain monitor, held only for a moment, never
+     * across a suspension) guards every change of the photo's record and the write of its state file, so
+     * changes made outside the mutex (the darkroom opening and leaving the photo) can never interleave with
+     * them. The darkroom calls [opened] and [left] while holding its own lock, and a sync holding the mutex
+     * may wait for the darkroom's lock; so [opened] and [left] must not take the mutex.
+     */
     private val locks = ConcurrentHashMap<Pair<ServerOrigin, Long>, Mutex>()
+    private val recordLocks = ConcurrentHashMap<Pair<ServerOrigin, Long>, Any>()
+    /** photos whose state could not be written; written again at the next change or sync */
+    private val unsaved: MutableSet<Pair<ServerOrigin, Long>> = ConcurrentHashMap.newKeySet()
     private val names = ConcurrentHashMap<Pair<ServerOrigin, Long>, String>()
     private val clients = ConcurrentHashMap<ServerOrigin, LplClient>()
 
     private fun lockOf(o: ServerOrigin, id: Long) = locks.getOrPut(o to id) { Mutex() }
     fun client(o: ServerOrigin): LplClient = clients.getOrPut(o) { clientFor(o) }
 
+    init {
+        _photos.value = load()
+    }
+
     /** Forget cached clients (after a server's password changed). */
     fun resetClients() = clients.clear()
 
+    /** How many photos have a state that could not be written yet (storage full, for example). */
+    fun unsavedStates(): Int = unsaved.size
+
+    private fun recordLock(k: Pair<ServerOrigin, Long>) = recordLocks.getOrPut(k) { Any() }
+
+    /**
+     * Change one photo's record: [change] gets the current record (null when the phone does not hold the
+     * photo) and returns the new one, or null to leave it as it is. The new record is shown at once and
+     * written to its state file; a write that fails is kept in memory and tried again later, it never throws.
+     */
+    private fun mutate(o: ServerOrigin, id: Long, change: (PhotoRecord?) -> PhotoRecord?): PhotoRecord? {
+        val k = o to id
+        synchronized(recordLock(k)) {
+            val cur = record(o, id)
+            val n = change(cur) ?: return cur
+            _photos.update { list -> if (list.any { it.key == k }) list.map { if (it.key == k) n else it } else list + n }
+            persist(n)
+            return n
+        }
+    }
+
+    /** Write the state; on failure remember it (the user's edit is in the XMP, not here: nothing is lost). */
+    private fun persist(r: PhotoRecord) {
+        try {
+            work.save(r)
+            unsaved.remove(r.key)
+        } catch (e: java.io.IOException) {
+            unsaved.add(r.key)
+        }
+    }
+
+    /** Write the states that could not be written before. */
+    fun retryUnsaved() {
+        for (k in unsaved.toList()) synchronized(recordLock(k)) {
+            val r = record(k.first, k.second)
+            if (r == null) unsaved.remove(k) else persist(r)
+        }
+    }
+
     fun record(o: ServerOrigin, id: Long): PhotoRecord? = _photos.value.firstOrNull { it.server == o && it.id == id }
 
-    /** After a restart nothing is in progress: a photo that was being edited, opened or synced is `dirty` or `synced`. */
-    private fun load(): List<PhotoRecord> = work.loadAll().map { r ->
-        when (r.status) {
-            PhotoStatus.EDITING, PhotoStatus.OPENING, PhotoStatus.SYNCING -> r.copy(status = settledStatus(r))
-            PhotoStatus.DOWNLOADING -> if (work.hasRaw(r)) r.copy(status = settledStatus(r)) else r
-            else -> r
-        }.also { if (it != r) runCatching { work.save(it) } }
+    /**
+     * After a restart nothing is in progress: a photo that was being edited, opened or synced is `dirty` or
+     * `synced`. A photo folder whose state cannot be read but which holds a RAW is taken back as `dirty`
+     * (its edit is sent; the version guard is checked again first, see [sync]).
+     */
+    private fun load(): List<PhotoRecord> {
+        val loaded = work.load()
+        val out = loaded.records.map { r ->
+            when (r.status) {
+                PhotoStatus.EDITING, PhotoStatus.OPENING, PhotoStatus.SYNCING -> r.copy(status = settledStatus(r))
+                PhotoStatus.DOWNLOADING -> if (work.hasRaw(r)) r.copy(status = settledStatus(r)) else r
+                else -> r
+            }.also { if (it != r) persist(it) }
+        }.toMutableList()
+        for (pd in loaded.withoutState) recover(pd, (out.maxOfOrNull { it.added } ?: 0) + 1)?.let { out += it; persist(it) }
+        return out
+    }
+
+    private fun recover(dir: File, added: Long): PhotoRecord? {
+        val id = dir.name.toLongOrNull() ?: return null
+        val origin = servers.list().firstOrNull { it.origin.key == dir.parentFile?.name }?.origin ?: return null
+        val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba")
+        val name = dir.list().orEmpty().filter { n ->
+            n !in known && !n.endsWith(".xmp") && !n.endsWith(".part") && !n.endsWith(".etag") && !n.endsWith(".tmp") && !n.startsWith(".")
+        }.singleOrNull() ?: return null
+        return PhotoRecord(origin, id, name, -1, 0.0, 0.0, PhotoStatus.DIRTY, added = added, recovered = true,
+            error = "the app's notes on this photo were lost; its edit is sent as it is")
     }
 
     private fun settledStatus(r: PhotoRecord) = if (isDirty(r)) PhotoStatus.DIRTY else PhotoStatus.SYNCED
@@ -118,10 +192,8 @@ class LplAgent(
         return x.isFile && WorkStore.sha256(x) != r.syncedHash
     }
 
-    private fun put(r: PhotoRecord) {
-        work.save(r)
-        _photos.update { list -> if (list.any { it.key == r.key }) list.map { if (it.key == r.key) r else it } else list + r }
-    }
+    /** Set the record (under the photo's mutex: take and sync). */
+    private fun put(r: PhotoRecord) { mutate(r.server, r.id) { r } }
 
     private fun requireAdded(o: ServerOrigin) {
         if (servers.get(o) == null) throw ServerNotAddedException(o)
@@ -154,7 +226,9 @@ class LplAgent(
         lockOf(origin, id).withLock {
             val held = record(origin, id)
             if (held != null && work.hasRaw(held)) {
-                if (refresh && !isDirty(held) && held.status != PhotoStatus.ERROR) {
+                // not while the darkroom has it open: its edit there is not written yet, and LPL's XMP must not
+                // be put under it (it would be overwritten, or counted as synced when it is not)
+                if (refresh && !isDirty(held) && held.status != PhotoStatus.ERROR && !editor.isOpen(work.raw(held))) {
                     try {
                         return@withLock refreshHeld(held)
                     } catch (e: LplException) {
@@ -283,14 +357,14 @@ class LplAgent(
 
     /** The darkroom opened the photo: `editing`. */
     fun opened(origin: ServerOrigin, id: Long) {
-        val r = record(origin, id) ?: return
-        if (r.status != PhotoStatus.DOWNLOADING) put(r.copy(status = PhotoStatus.EDITING))
+        mutate(origin, id) { r -> r?.takeIf { it.status != PhotoStatus.DOWNLOADING && it.status != PhotoStatus.EDITING }?.copy(status = PhotoStatus.EDITING) }
     }
 
     /** The darkroom left the photo after writing its edit: `dirty` or `synced` (the caller then syncs). */
     fun left(origin: ServerOrigin, id: Long) {
-        val r = record(origin, id) ?: return
-        if (r.status == PhotoStatus.EDITING || r.status == PhotoStatus.OPENING) put(r.copy(status = settledStatus(r)))
+        mutate(origin, id) { r ->
+            r?.takeIf { it.status == PhotoStatus.EDITING || it.status == PhotoStatus.OPENING }?.let { it.copy(status = settledStatus(it)) }
+        }
     }
 
     // ------------------------------------------------------------------ syncing
@@ -303,7 +377,14 @@ class LplAgent(
      * [force] posts the XMP even when LPL already has it (the `sync` job).
      */
     suspend fun sync(origin: ServerOrigin, id: Long, force: Boolean = false): SyncOutcome = withContext(Dispatchers.IO) {
-        lockOf(origin, id).withLock { syncLocked(origin, id, force) }
+        lockOf(origin, id).withLock {
+            try {
+                syncLocked(origin, id, force)
+            } catch (e: LplException) {
+                // a local file that could not be written (the merged XMP): the edit stays and waits
+                record(origin, id)?.let { failed(it, e) } ?: SyncOutcome.NOT_HELD
+            }
+        }
     }
 
     private suspend fun syncLocked(origin: ServerOrigin, id: Long, force: Boolean): SyncOutcome {
@@ -312,6 +393,12 @@ class LplAgent(
         if (servers.get(origin) == null) return SyncOutcome.WAITING
         val raw = work.raw(r)
         val xmp = work.xmp(r)
+        retryUnsaved()
+        if (r.recovered) {
+            // its state was lost: check the version guard again before anything is sent
+            val ro = editor.xmpReadOnly(xmp)
+            r = mutate(origin, id) { it?.copy(readOnly = ro, recovered = false, error = if (ro) UserText.NEWER_DARKTABLE else it.error) } ?: return SyncOutcome.NOT_HELD
+        }
         if (r.readOnly) {
             // PLAN.md 2.1: an edit made with a newer darktable is never rewritten or sent back
             return SyncOutcome.READ_ONLY
@@ -320,9 +407,9 @@ class LplAgent(
         if (!xmp.isFile) return SyncOutcome.SYNCED
         val bytes = xmp.readBytes()
         val hash = WorkStore.sha256(bytes)
-        val open = editor.isOpen(raw)
+        r = record(origin, id) ?: return SyncOutcome.NOT_HELD
         if (hash != r.syncedHash || force) {
-            put(r.copy(status = PhotoStatus.SYNCING))
+            mutate(origin, id) { it?.copy(status = PhotoStatus.SYNCING) }
             val answer = try {
                 net(origin) { it.postXmp(id, bytes, r.checkoutTs) }
             } catch (e: LplException) {
@@ -338,28 +425,26 @@ class LplAgent(
                     editor.reloadIfOpen(raw, xmp)
                 }
             }
-            r = (record(origin, id) ?: r).copy(syncedHash = syncedHash, syncedTs = clock(), error = "", previewPending = true)
-            r = r.copy(status = if (open) PhotoStatus.EDITING else settledStatus(r))
-            put(r)
+            // the status is decided with the darkroom's state at this moment (it may have closed meanwhile)
+            r = mutate(origin, id) { cur ->
+                cur?.copy(syncedHash = syncedHash, syncedTs = clock(), error = "", previewPending = true)
+                    ?.let { n -> n.copy(status = if (editor.isOpen(raw)) PhotoStatus.EDITING else settledStatus(n)) }
+            } ?: return SyncOutcome.NOT_HELD
             work.backup(r).delete()
-        } else if (!open && (r.status == PhotoStatus.DIRTY || r.status == PhotoStatus.SYNCING)) {
-            r = r.copy(status = PhotoStatus.SYNCED, error = "")
-            put(r)
+        } else {
+            r = mutate(origin, id) { cur ->
+                cur?.takeIf { !editor.isOpen(raw) && (it.status == PhotoStatus.DIRTY || it.status == PhotoStatus.SYNCING) }
+                    ?.copy(status = PhotoStatus.SYNCED, error = "")
+            } ?: return SyncOutcome.NOT_HELD
         }
         if (r.previewPending) postPreview(r)
         return SyncOutcome.SYNCED
     }
 
     private fun failed(r: PhotoRecord, e: LplException): SyncOutcome {
-        val now = record(r.server, r.id) ?: r
-        return when {
-            e.transient || e.failure == LplFailure.UNAUTHORIZED || e.failure == LplFailure.TLS -> {
-                put(now.copy(status = PhotoStatus.DIRTY, error = e.userText)); SyncOutcome.WAITING
-            }
-            else -> {
-                put(now.copy(status = PhotoStatus.ERROR, error = e.userText)); SyncOutcome.FAILED
-            }
-        }
+        val waiting = e.transient || e.failure == LplFailure.UNAUTHORIZED || e.failure == LplFailure.TLS || e.failure == LplFailure.LOCAL
+        mutate(r.server, r.id) { it?.copy(status = if (waiting) PhotoStatus.DIRTY else PhotoStatus.ERROR, error = e.userText) }
+        return if (waiting) SyncOutcome.WAITING else SyncOutcome.FAILED
     }
 
     /** Render (unless a preview newer than the XMP is waiting) and post the preview; it stays pending on failure. */
@@ -377,8 +462,7 @@ class LplAgent(
             return
         }
         out.delete()
-        val now = record(r.server, r.id) ?: return
-        put(now.copy(previewPending = false))
+        mutate(r.server, r.id) { it?.copy(previewPending = false) }
     }
 
     /** Photos with something to send: an unsynced edit, an edit stuck in `syncing`, or a pending preview. */
@@ -413,9 +497,13 @@ class LplAgent(
             val r = record(origin, id) ?: return@withLock RemoveResult.Removed
             if (editor.isOpen(work.raw(r))) return@withLock RemoveResult.OpenInDarkroom
             if (!evenUnsynced && (isDirty(r) || r.status == PhotoStatus.DIRTY || r.status == PhotoStatus.SYNCING)) return@withLock RemoveResult.Unsynced
-            work.raw(r).setWritable(true)
-            work.delete(origin, id)
-            _photos.update { list -> list.filter { it.key != r.key } }
+            // under the record lock too: a late opened/left/state write cannot bring the folder back
+            synchronized(recordLock(r.key)) {
+                work.raw(r).setWritable(true)
+                work.delete(origin, id)
+                _photos.update { list -> list.filter { it.key != r.key } }
+                unsaved.remove(r.key)
+            }
             RemoveResult.Removed
         }
     }

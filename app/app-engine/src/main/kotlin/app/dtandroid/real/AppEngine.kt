@@ -10,6 +10,7 @@ import app.dtandroid.engine.NativeBridge
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,7 +41,11 @@ object AppEngine {
     val engine: JniEngine get() = JniEngine.instance
 
     /** Work that must finish even when the activity goes away (exports, saves). */
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, e ->
+        // P2e follow-up: a failure in background work (a sync, a status write) is a bug to fix, but it must
+        // not end the process with the user's darkroom in it. Logged under this tag; CI collects it.
+        android.util.Log.e("dt-android", "uncaught in background work", e)
+    })
 
     /** The packed engine's id (first 16 hex digits of its SHA-256), for the timings page. */
     @Volatile var engineId: String = "?"
