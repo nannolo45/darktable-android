@@ -163,7 +163,7 @@ The Android app behaves as an LPL agent, like `agent/lpl_agent.py`:
 
 | Step | Existing endpoint | Android behaviour |
 |---|---|---|
-| Identify | `POST /api/agents/heartbeat` | `id` = `android-<install uuid>`, `name` = device model, `os` = `"android"`. Heartbeat every 2 s **only while the app is in the foreground**; a last heartbeat when it leaves. `state.working_set` uses the same item shape and statuses as the PC agent (`downloading`, `opening`, `editing`, `dirty`, `syncing`, `synced`, `error`); `darktable_running` = darkroom open; `bridge_alive` = true; `version` = app version + engine version. |
+| Identify | `POST /api/agents/heartbeat` | `id` = `android-<install uuid>`, `name` = the name the user gives this device in the app's settings (asked when the server is first added, for example "Phone"; never the hardware model), `os` = `"android"`. Heartbeat every 2 s **only while the app is in the foreground**; a last heartbeat when it leaves. `state.working_set` uses the same item shape and statuses as the PC agent (`downloading`, `opening`, `editing`, `dirty`, `syncing`, `synced`, `error`); `darktable_running` = darkroom open; `bridge_alive` = true; `version` = app version + engine version. |
 | Take a photo | `GET /api/photos/{id}/checkout`, `/original`, `/xmp` | Stores `server_time` as `checkout_ts`. Files keep the original filename inside a per-photo folder. |
 | Send the edit back | `POST /api/photos/{id}/xmp?checkout_ts=…` | On leaving the darkroom, on "sync now", and from the background job. If the response has `X-LPL-Merged: 1`, the app reloads rating, labels and tags from the returned XMP. |
 | Preview | `POST /api/photos/{id}/preview` | A 1920 px JPEG rendered by the engine after each synced edit. |
@@ -187,6 +187,7 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 | R4 | Server | `GET /api/photos/{id}/original` must answer HTTP `Range` requests so interrupted mobile downloads can resume. Please verify with the installed Starlette version and add a test. | Phase 2 |
 | R5 | Server | Export upload: `POST /api/photos/{id}/export?filename=…` with the image as body, stored in an export location LPL owns (proposal: `EXPORT_ROOT`, default a folder that the scanner skips), returning the stored path. Optional `series_id` and `position` so series exports can be numbered later. | Phase 3 |
 | R6 | Web UI | Show per-photo state from any agent's `working_set` with the device name ("editing on <device name>", "waiting to sync"). This is how the web UI learns what the phone did. | Phase 2, small |
+| R8 | Web UI | Name the device everywhere instead of saying "PC". Each agent's own name (set by its user on that device: "Desktop", "Laptop", "Phone") is what LPL shows in actions, states and messages ("Send to Desktop", "Remove saved copies from Laptop", "on Phone: waiting to sync"); general texts say "device"; the "PC" tab becomes "Devices". Agents with equal names are told apart by operating system. LPL does not rename agents. | Phase 2 |
 | R7 | Server, later | Per-device tokens (`POST /api/agents/pair`) instead of the shared password in the header. | Later, optional |
 
 The Android app only accepts an `lpldt://edit` link whose `server` is one the user has added in the app; an unknown server asks for confirmation first.
