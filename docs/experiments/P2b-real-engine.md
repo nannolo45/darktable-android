@@ -4,6 +4,10 @@ Brief: `docs/briefs/P2b-real-engine.md`. Branch `p2b-real-engine`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 14:15: run 44534730162 (554c2c1): JVM tests 120/120, APKs signed with the owner key, release
+  `app-engine-554c2c1c14a0` published, emulator 24/25 (only `guardAndReadOnlySession`, bridge gap), both
+  darktable-cli comparisons pass (75.73 and 74.44 dB). Merged main (CI-only changes). Report written.
+
 - 2026-11-19 13:35: run 44531388217 (a1b11aa): Linux job failed while installing Ubuntu packages (cache hit,
   10 min in `--deps-only`); package install now bounded and retried, its log pushed. Before that, run
   44528584881 (e412254): emulator 22 of 25 passed; the three failures analysed on the Linux bridge
@@ -22,7 +26,7 @@ Brief: `docs/briefs/P2b-real-engine.md`. Branch `p2b-real-engine`. Pull request 
   the G0, P1a, P2a and P2d write-ups and the code of `app/g0`, `app/engine-jni`, `engine-api`, `darkroom`, `app`.
   Engine release for the current tag is `engine-04477d32-992bc04fa900` (both ABIs present).
 
-Next: read the first CI run; fix the fake where the real engine differs; owner instructions; report.
+Next: the owner tries the APK and sends the timings; the reviewer decides the open questions in the report.
 
 ---
 
@@ -38,6 +42,7 @@ It has no internet permission and sends nothing anywhere.
 1. On the phone, open https://github.com/nannolo45/darktable-android/releases in the browser.
 2. Find the newest entry whose title starts with **"dt-android engine"** and says **"(real engine)"**.
    Do not take an "Interface preview" or "G0 test app" entry: those are the older test apps.
+   The first one is https://github.com/nannolo45/darktable-android/releases/tag/app-engine-554c2c1c14a0
 3. Under "Assets", tap **dt-android-engine-arm64-v8a.apk** (about 31 MB).
 4. Open the downloaded file and tap **Install** (allow installing from the browser if Android asks; if
    Play Protect warns about an unknown app, choose to install anyway).
