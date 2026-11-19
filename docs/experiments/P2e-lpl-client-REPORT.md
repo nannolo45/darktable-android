@@ -169,3 +169,63 @@ package. darktable's export (through the bridge) renders the 1920 px preview.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 https://claude.ai/code/session_01SnXMKsUkkMHro1EX1qvJEh
+
+---
+
+## Addendum, 2026-11-19: concurrent state writes (branch `p2e-state-fix`)
+
+**Defect.** In P1c's run of the real-engine workflow (44558499134), scenario l3 killed the app process with
+`IOException: cannot replace state.json` (`ServerStore.kt` `atomicWrite`, from `LplAgent.left` ←
+`AppHost.Source.left` ← `DarkroomController.closePhoto`); l4 to l6 did not run.
+
+**Cause, verified.** `LplAgent.opened()` and `left()` changed a photo's record and wrote its `state.json`
+without the photo's lock, while a sync of the same photo (started by the previous `left`, holding the photo's
+mutex) wrote the same file; and `atomicWrite` used one fixed temporary name (`state.json.tmp`) for every write.
+Two writers then share the temporary file: one renames it away and the other's rename fails ("cannot replace"),
+or its `FileOutputStream` finds it gone (`FileNotFoundException`); content could also be torn. The exception
+was not caught and escaped a coroutine in the process scope, which ends an Android process. Reproduced on the
+JVM before the fix: the new `ConcurrencyTest` against the old code failed 4 of 6 tests with exactly
+"cannot replace state.json" (state hammered from 8 threads), `FileNotFoundException: .../state.json.tmp`
+(one file, 8 writers; readers during writes), and an unwritable state throwing.
+
+**What changed.**
+- **One rule for every small file** (photo states, server list, install id, the LPL photos' thumbnails):
+  `AtomicFiles` (`app/lpl/.../ServerStore.kt`): one lock per file path for writes and reads; a temporary file
+  of its own per write (`.<name>.<uuid>.tmp`), flushed, then one atomic replace (`Files.move`, `ATOMIC_MOVE`);
+  a failed write throws `IOException` and leaves the old file; leftovers of a write cut by process death are
+  removed at load. Readers therefore see the old or the new file whole, never half.
+- **Photo records:** every change goes through `LplAgent.mutate()` under a short per-photo monitor that is never
+  held across a suspension (the darkroom calls `opened`/`left` under its own lock, and a sync holding the
+  photo's mutex can wait for the darkroom's lock, so `opened`/`left` must not take the mutex). Take, sync and
+  remove keep the per-photo mutex. A state that cannot be written stays in memory and is written again at the
+  next change or sync (`unsavedStates()`); it never throws: the edit itself is in the XMP, not in the state.
+- **Readers:** a folder whose state is missing or unreadable is no longer dropped: if it holds a RAW it comes
+  back as `dirty` and marked recovered; before anything is sent the version guard is checked again.
+- **Server list:** changes take effect in memory only after they were written; the server screen shows a
+  failed save. Kept edit/open jobs (`kept-jobs.txt`) were already written and read under one lock.
+- **Backstop:** the process scope logs any uncaught failure of background work (logcat tag `dt-android`)
+  instead of ending the process; the emulator script collects those lines into `crashes.txt` (empty in the run below).
+
+**Other cases checked (two things acting on one photo):**
+
+| Case | Protection | Test |
+|---|---|---|
+| darkroom leaves a photo while its sync runs | record changes under the monitor; the sync decides the final status with the darkroom's state at that moment; the darkroom now tells the source a photo was left only after its state says closed (before, a sync finishing in between could leave it `editing`) | `theDarkroomClosingDuringASyncLeavesTheRightStatus` |
+| background job and foreground syncing the same photo | per-photo mutex; the second finds LPL already has the XMP | `backgroundAndForegroundSyncingTheSamePhotoSendItOnce` (one XMP, one preview) |
+| download finishing while the photo is removed / released | remove takes the mutex, so it waits for the download, then deletes under the monitor; a late `opened`/`left` cannot bring the folder back | `removeWaitsForADownloadAndNothingComesBack`, `aLateLeftDoesNotBringBackARemovedPhoto` |
+| a link or job takes a photo that is open in the darkroom | the refresh from LPL is skipped while it is open (LPL's XMP was written under the open edit before) | by reading; no test |
+| two thumbnail renders of one photo | own temporary file per write (darkroom's store too) | by reading |
+| merged XMP written by a sync while the darkroom saves the same XMP | not locked against each other: the merge is written only if the file is still what was posted (hash check), and the engine's write is itself atomic; if the darkroom wins, the next sync merges again (the checkout time is unchanged). Small window, left as is | none |
+
+**Tests and CI.** Workspace (x86_64, 2 cores): `:lpl:test` 52 tests (10 new in `ConcurrencyTest`) and
+`:darkroom:testDebugUnitTest` pass, three runs in a row. The app module cannot be compiled here any more (no NDK);
+CI built it. Run **44568264329** (commit a8bf829) green in every job: JVM 171 tests, 0 failed, 1 skipped (the
+real-server run); emulator **32 of 32** (contract suite 19/19, P2b scenarios 7/7, LPL scenarios 6/6; done → list
+58 ms, done → XMP and preview at the stub 1 767 ms); `crashes.txt` empty; darktable-cli comparisons 75.73 and
+74.44 dB. Preview run 44568264391 green.
+
+**APK.** Release `dt-android-a8bf82923d17`:
+https://github.com/nannolo45/darktable-android/releases/download/dt-android-a8bf82923d17/dt-android-arm64-v8a.apk
+(31 035 062 bytes, `app.dtandroid`, versionCode 2, owner key, certificate SHA-256 6f9e8867…). It installs over
+`dt-android-ff3f8e0d2083` and keeps photos and servers. Nothing the owner does changes; the owner instructions
+stay as they are.

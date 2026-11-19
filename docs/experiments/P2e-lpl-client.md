@@ -4,6 +4,10 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
 
 ## Running log (newest first)
 
+- 2026-11-19 (branch `p2e-state-fix`): concurrent writes of a photo's state crashed the app in P1c's run
+  44558499134; cause, fix and the other cases checked are in the report's addendum. Run 44568264329 (a8bf829)
+  green: emulator 32/32, APK `dt-android-a8bf82923d17`.
+
 - 2026-11-19 17:05: run 44553848370 (ff3f8e0): JVM 158 (1 skipped), APK `dt-android-ff3f8e0d2083`, emulator
   30/31 (only the known bridge gap), all six LPL scenarios pass, darktable-cli comparisons pass; preview run
   44553848375 green. Branch is on top of the current `main` (9b9cd7f). Report written.
