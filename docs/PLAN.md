@@ -156,6 +156,14 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 - **Measured at gate G0** (24 MP RAF, default edit, single runs): with 4 threads, preview after an exposure change 0.09 s, screen-sized region at 100 % after a change 0.22 s, full-size render 2.6 s, full-size JPEG export 3.1 s. With all 8 threads the interactive steps were slower (preview 0.56 s), because the slow cores hold up the evenly split work. The engine therefore runs on the fast cores only, pinned.
 - **Targets to confirm at gate G0 on the target phone** (targets, not measurements): preview after a slider move under 0.3 s; visible region under 3 s for a 40 MP RAF; full export under 60 s.
 
+### 3.9 Module layouts, presets and styles (added 19 Nov 2026)
+The darktable user manual is the reference for behaviour and defaults. Where the app does something else, the difference is written down with its reason.
+- **Module layouts ("workspaces").** The app uses darktable's own layout presets: the same format as the desktop's "manage module layouts" (groups, the modules in each, the quick access panel's controls, the options for search and the active group). The default is darktable's "workflow: scene-referred" layout, taken from upstream by a repeatable tool, not typed by hand. Layouts are edited in the app (groups, order, modules per group, quick access controls) and a layout made on the desktop can be brought in. Several layouts can exist; one is current.
+- **White balance.** As the manual says for the scene-referred workflow, the white balance module stays on and is normally left alone; colour temperature is set in color calibration. The app's default quick access panel therefore carries no white balance control, and the white balance panel says so when color calibration is active, as desktop does.
+- **Presets** (per module) and **styles** (several modules at once, for example film-look packs distributed as `.dtstyle` files) live in the app's own darktable database, in the same form as on the desktop, because the engine is darktable. They are brought in as `.dtpreset` and `.dtstyle` files (one or many at once) and applied from the darkroom; a style also works when it uses modules the app has no editor for yet, because the engine renders every module (tier 0). Auto-applied presets work as on desktop.
+- **Same setup on every device (proposal, not decided):** the desktop's presets, styles and layouts could travel through LPL (request R11) so the phone has them without copying files by hand.
+- **Feel while dragging.** The stand-in engine imitates the delay measured at gate G0 (about a tenth of a second per update), and the owner found that lag noticeable in the interface preview. Target for the real engine: while a slider is dragged the photo follows within about 50 ms, using a smaller picture during the drag and the full one when the finger lifts; measured on the phone before gate G2.
+
 ## 4. LPL integration (for the LPL instance)
 
 Two apps: LPL in the browser, darktable as a native Android app. Neither embeds the other.
@@ -193,6 +201,7 @@ The conflict rule stays on the server and is unchanged: LPL wins for rating, lab
 | R8 | Web UI | Name the device everywhere instead of saying "PC". Each agent's own name (set by its user on that device: "Desktop", "Laptop", "Phone") is what LPL shows in actions, states and messages ("Send to Desktop", "Remove saved copies from Laptop", "on Phone: waiting to sync"); general texts say "device"; the "PC" tab becomes "Devices". Agents with equal names are told apart by operating system. LPL does not rename agents. | Phase 2 |
 | R9 | Web UI | Behave like an app on the phone: back button and back gesture step out of the current thing (sheet, photo, folder, tab list) through history states instead of leaving LPL; "Install app" in settings when the browser offers it, menu guidance where it does not (Firefox), and one line saying an install needs HTTPS when the page is on plain HTTP; safe-area and pull-to-refresh fixes where needed. Inside the shell app (user agent contains `LPLShell/`) no install hints; "Edit on this phone" stays. | Phase 2 |
 | R10 | Web UI | The desktop's tabs on the phone layout: a tabs button with the count, a list of the same tabs (same titles, switch, add, close, rename), each tab keeping its own view, filters and sort, state shared with desktop. | Phase 2 |
+| R11 | Server + PC agent, proposal | Carry the desktop's darktable presets, styles and module layouts to other devices: the PC agent uploads them as files (`.dtpreset`, `.dtstyle`), LPL stores and lists them, the phone app fetches them. Not decided; see 3.9. | Phase 3, if wanted |
 | R7 | Server, later | Per-device tokens (`POST /api/agents/pair`) instead of the shared password in the header. | Later, optional |
 
 The Android app only accepts an `lpldt://edit` link whose `server` is one the user has added in the app; an unknown server asks for confirmation first.
@@ -251,7 +260,7 @@ Each work package is one branch and one pull request with stated acceptance test
 
 **Phase 1: engine and build system.** Full bridge API with tests on Linux, JNI layer, dependency cache, CI. Gate G1: bridge test suite green; API reviewed and frozen for Phase 2.
 
-**Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; the LightPhotoLibrary shell app (3.5); darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
+**Phase 2: darkroom MVP with LPL.** Working set, settings, agent client (4.1), link hand-off, sync; module layouts as in darktable with an editor and import (3.9); the LightPhotoLibrary shell app (3.5); darkroom on phone and tablet with Tier 0 and Tier 1 modules, on/off, instances, history, before/after, quick access, configurable module groups; theme tokens and icon registry; preview upload. Needs R1 to R4 and R6 from LPL, and darktable 5.8.0 (2.1). Gate G2: the owner edits a series end to end from LPL on the phone and opens the result on the PC; the tablet layout passes its emulator tests.
 
 What experiment S5 measured for the 29 priority modules (details in `docs/experiments/S5-control-schema.md` in the repository):
 - **Usable in Phase 2 from the generated schema alone (9):** demosaic, AgX, exposure, grain, blurs, diffuse or sharpen, chromatic aberrations, color balance rgb, rgb primaries.
@@ -265,7 +274,7 @@ What experiment S5 measured for the 29 priority modules (details in `docs/experi
 4. One shared band editor: contrast equalizer, color zones.
 5. Colour pickers and areas: color calibration, white balance, rgb levels, exposure spot.
 6. color look up table (patch grid), retouch.
-7. Snapshots, presets and styles, export with R5.
+7. Snapshots, export with R5. Presets and styles are moved forward: engine calls with the extended API (P1b), the list and apply interface right after it (3.9).
 
 Gate G3: checklist of these modules on the phone, and on the tablet layout in the emulator.
 

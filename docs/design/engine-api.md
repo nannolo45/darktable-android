@@ -99,7 +99,8 @@ Specified in outline; P1b turns it into exact signatures and JSON for review bef
 - **Masks:** `masks()` → all forms with id, type (circle, ellipse, gradient, path, brush, group), name and geometry in normalised image coordinates; `mask_create(type, geometry)`, `mask_update(id, geometry)`, `mask_delete(id)`; `mask_attach(op, priority, form_id, {combine, inverse, opacity})`, `mask_detach`; reuse of one form by several instances.
 - **Mask display:** `render_*` variants that show the mask of one instance as an overlay, as desktop's "show mask".
 - **Coordinates:** `coords_transform(direction, points)` between original-image and processed-image coordinates (through lens correction, rotation, crop), for on-image tools.
-- **Presets and styles:** list, apply, store per module; list and apply styles.
+- **Presets and styles:** list, apply, store per module; styles: list, apply to the open photo, import from `.dtstyle` files, delete; presets: import from `.dtpreset` files. Both live in darktable's own database in the app's configuration folder, as on desktop (PLAN.md 3.9).
+- **Module layouts:** list the layout presets (darktable's built-in ones and the user's), read and write one as the string darktable stores, mark one as current (PLAN.md 3.9).
 - **Analysis:** histogram of the current render; colour picker (point and area) in the pipeline's working space, as the modules with pickers need.
 
 ## 4. Tests every implementation must pass

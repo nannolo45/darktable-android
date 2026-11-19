@@ -13,6 +13,7 @@ An unofficial Android port of darktable: upstream darktable's engine, unmodified
 5. **No literal colours, sizes or icon drawings in screen code.** Use tokens from `ui-theme` and icons from `ui-icons` (PLAN.md 3.6).
 6. **No secrets in the repository**: no passwords, tokens, server addresses or personal photos. Test images come from public test sets only.
 7. Licence is GPL-3.0-or-later. New source files start with an SPDX line: `// SPDX-License-Identifier: GPL-3.0-or-later`.
+8. **The darktable user manual is the reference for behaviour and defaults** (https://docs.darktable.org/usermanual/). Read the manual page of a module or feature before building its interface. If the app must differ, say so in the pull request with the reason.
 
 ## How to work
 - One work package = one branch = one pull request. Branch from `main`, name it after the brief (for example `s3-bridge-prototype`). Do not push to `main` and do not merge your own pull request.
