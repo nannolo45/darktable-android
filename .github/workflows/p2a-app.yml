@@ -53,11 +53,11 @@ jobs:
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
-            echo "signing: owner key"
+            echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
           else
             "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
-            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+            echo "signing: temporary key for this run (this run was given no SIGNING_KEYSTORE_B64 secret)" | tee /tmp/signing.txt
           fi
 
       - name: Built-in module layouts match the pinned upstream (brief P2d)
@@ -163,6 +163,7 @@ jobs:
             echo "tag: $PREVIEW_TAG"
             echo "tests_exit: ${{ steps.tests.outputs.rc }}"
             echo "tests_seconds: ${{ steps.tests.outputs.seconds }}"
+            cat /tmp/signing.txt 2>/dev/null || true
             echo "runner_cores: $(nproc)"
           } > "$L/summary.txt"
           cp /tmp/test-summary.txt /tmp/rules.log /tmp/layouts-check.log "$L/" 2>/dev/null || true
