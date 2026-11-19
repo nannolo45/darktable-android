@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Brief P2a: the app modules on the fake engine. Rule check, unit tests,
+# JVM screenshot tests (phone and tablet), the interface preview APK. When
+# everything passes, the APK and the screenshots are published as release
+# files under a tag derived from the commit. Logs go to the ci-logs branch
+# either way. No native code is built here.
+name: p2a-app
+
+on:
+  push:
+    branches: [p2a-app-foundation]
+    paths-ignore: ["docs/**", "*.md"]
+  workflow_dispatch:
+
+# nothing by default; the job asks for what it needs
+permissions: {}
+
+concurrency:
+  group: p2a-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write   # release files, ci-logs branch
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tag
+        run: echo "PREVIEW_TAG=app-preview-$(git rev-parse HEAD | cut -c1-12)" >> "$GITHUB_ENV"
+
+      - name: Android SDK packages, Gradle and a fresh debug key
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0" > /tmp/sdkmanager.log 2>&1 || { tail -20 /tmp/sdkmanager.log; exit 1; }
+          echo "GRADLE=$(tools/app/setup-gradle.sh /home/runner/gradle)" >> "$GITHUB_ENV"
+          # the preview is signed with a debug key made here, on this run; it is never stored
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
+
+      - name: Rule check (literal colours, sizes, icon drawings in screen code)
+        id: rules
+        run: |
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 :checkScreenRulesSelfTest :checkScreenRules 2>&1 | tee /tmp/rules.log
+
+      - name: Unit and screenshot tests
+        id: tests
+        run: |
+          set +e
+          start=$(date +%s)
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue \
+            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest 2>&1 | tee /tmp/tests.log
+          rc=${PIPESTATUS[0]}
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
+          exit 0
+
+      - name: Build the interface preview APK
+        id: build
+        run: |
+          cd app
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" :app:assembleDebug 2>&1 | tee /tmp/gradle.log
+          mkdir -p /home/runner/out
+          cp app/build/outputs/apk/debug/app-debug.apk /home/runner/out/dt-android-preview-arm64-v8a.apk
+
+      - name: Check the APK
+        run: |
+          A=/home/runner/out/dt-android-preview-arm64-v8a.apk
+          R=/home/runner/out/apk-report.txt
+          {
+            echo "tag: $PREVIEW_TAG"; echo "commit: $GITHUB_SHA"
+            echo "apk_bytes $(stat -c %s "$A")"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$A" | grep -E "^package:|^application-label:|^sdkVersion|^targetSdkVersion|native-code" || true
+            echo "permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | sed 's/^/  /'
+            echo "packed data:"; unzip -l "$A" | grep -E "dtandroid/(schema|theme|module-groups)" | sed 's/^/  /'
+            echo "signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$A" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/  /'
+          } | tee "$R"
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
+          # native code: only what androidx brings (no engine yet); no keystores, no photos
+          echo "native libraries:" | tee -a "$R"; unzip -l "$A" | grep -E '\.so$' | sed 's/^/  /' | tee -a "$R"
+          if unzip -l "$A" | grep -E '\.so$' | grep -v 'libandroidx\.'; then echo "native library not from androidx in APK"; exit 1; fi
+          if unzip -l "$A" | grep -iE '\.(jks|keystore|raf|cr2|nef|arw|dng|jpg|jpeg)$'; then echo "unexpected file in APK"; exit 1; fi
+          unzip -l "$A" | grep -q "dtandroid/schema/ui-schema.json" || { echo "schema not packed"; exit 1; }
+
+      - name: Screenshots
+        if: always()
+        run: |
+          mkdir -p /home/runner/out/screenshots
+          cp app/darkroom/build/outputs/screenshots/*.png /home/runner/out/screenshots/ 2>/dev/null || true
+          ls -l /home/runner/out/screenshots
+
+      - name: Publish the APK and the screenshots as release files
+        if: steps.tests.outputs.rc == '0'
+        run: |
+          cd /home/runner/out
+          cp /tmp/test-summary.txt test-summary.txt
+          gh release view -R "$GITHUB_REPOSITORY" "$PREVIEW_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$PREVIEW_TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "Interface preview $PREVIEW_TAG" \
+              --notes "Interface preview (brief P2a), built from commit $GITHUB_SHA: the darkroom interface on a stand-in engine with a generated picture. Speed and image quality mean nothing yet. Unofficial port of darktable, debug build, not a darktable release. Phone: dt-android-preview-arm64-v8a.apk. Screenshots: the .png files. Source: this repository at that commit (GPL-3.0-or-later)." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$PREVIEW_TAG" dt-android-preview-arm64-v8a.apk apk-report.txt test-summary.txt screenshots/*.png --clobber
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: p2a-preview
+          path: /home/runner/out
+          retention-days: 14
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L=/tmp/ci-out; mkdir -p "$L"
+          {
+            echo "tag: $PREVIEW_TAG"
+            echo "tests_exit: ${{ steps.tests.outputs.rc }}"
+            echo "tests_seconds: ${{ steps.tests.outputs.seconds }}"
+            echo "runner_cores: $(nproc)"
+          } > "$L/summary.txt"
+          cp /tmp/test-summary.txt /tmp/rules.log "$L/" 2>/dev/null || true
+          cp /home/runner/out/apk-report.txt "$L/" 2>/dev/null || true
+          tail -n 300 /tmp/tests.log > "$L/tests.tail.log" 2>/dev/null || true
+          tail -n 100 /tmp/gradle.log > "$L/gradle.tail.log" 2>/dev/null || true
+          mkdir -p "$L/screenshots" "$L/test-results"
+          cp /home/runner/out/screenshots/*.png "$L/screenshots/" 2>/dev/null || true
+          for d in app/*/build/test-results; do
+            m=$(basename "$(dirname "$(dirname "$d")")"); mkdir -p "$L/test-results/$m"
+            find "$d" -name 'TEST-*.xml' -exec cp {} "$L/test-results/$m/" \; 2>/dev/null || true
+          done
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2a-app "${{ job.status }}-tests${{ steps.tests.outputs.rc }}"
+
+      - name: Fail if a test failed
+        if: steps.tests.outputs.rc != '0'
+        run: exit 1

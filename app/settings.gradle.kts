@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Android project (PLAN.md 3.5). For now: the JNI layer over dtbridge.h and
-// the G0 diagnostic app (brief G0).
+// Android project (PLAN.md 3.5).
+//   engine-api  DarktableEngine interface, JSON shapes, FakeEngine (pure Kotlin)
+//   schema      control schema loader, visibility rules, overrides, module groups (pure Kotlin)
+//   ui-theme    theme tokens (ui-theme/tokens.json) for Compose
+//   ui-icons    icon registry; drawings in ui-icons/svg/, converted at build time
+//   darkroom    the darkroom screen (phone and tablet)
+//   app         the app shell, application id app.dtandroid (brief P2a: on the fake engine)
+// engine-jni and g0 (brief G0) need the native engine archives and are only
+// included when -Pdta.engineDir is given, so the interface builds without them.
 pluginManagement {
     repositories {
         google()
@@ -16,4 +23,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "dt-android"
-include(":engine-jni", ":g0")
+include(":engine-api", ":schema", ":ui-theme", ":ui-icons", ":darkroom", ":app")
+if (providers.gradleProperty("dta.engineDir").isPresent) {
+    include(":engine-jni", ":g0")
+}

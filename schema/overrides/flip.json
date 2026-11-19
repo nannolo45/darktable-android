@@ -1,0 +1,98 @@
+{
+  "op": "flip",
+  "reason": "orientation's panel is four icon buttons whose callbacks (do_rotate, _flip_h, _flip_v in src/iop/flip.c) compute the new orientation in code; the schema records the buttons by action path only (S5 section 6.7). The tables below are those callbacks evaluated for every constant.",
+  "replace_with_buttons": [
+    {
+      "node": 0,
+      "expect_action_paths": [
+        "rotate 90 degrees CCW",
+        "rotate 90 degrees CW",
+        "flip horizontally",
+        "flip vertically"
+      ],
+      "label": "transform",
+      "buttons": [
+        {
+          "action_path": "rotate 90 degrees CCW",
+          "icon": "rotateLeft",
+          "label": "rotate 90 degrees counter-clockwise",
+          "param": "orientation",
+          "map": {
+            "ORIENTATION_NULL": "ORIENTATION_ROTATE_CCW_90_DEG",
+            "ORIENTATION_NONE": "ORIENTATION_ROTATE_CCW_90_DEG",
+            "ORIENTATION_FLIP_Y": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_FLIP_X": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_SWAP_XY": "ORIENTATION_FLIP_Y",
+            "ORIENTATION_FLIP_HORIZONTALLY": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_FLIP_VERTICALLY": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_ROTATE_180_DEG": "ORIENTATION_ROTATE_CW_90_DEG",
+            "ORIENTATION_TRANSPOSE": "ORIENTATION_FLIP_Y",
+            "ORIENTATION_ROTATE_CCW_90_DEG": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_ROTATE_CW_90_DEG": "ORIENTATION_NONE",
+            "ORIENTATION_TRANSVERSE": "ORIENTATION_FLIP_X"
+          }
+        },
+        {
+          "action_path": "rotate 90 degrees CW",
+          "icon": "rotateRight",
+          "label": "rotate 90 degrees clockwise",
+          "param": "orientation",
+          "map": {
+            "ORIENTATION_NULL": "ORIENTATION_ROTATE_CW_90_DEG",
+            "ORIENTATION_NONE": "ORIENTATION_ROTATE_CW_90_DEG",
+            "ORIENTATION_FLIP_Y": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_FLIP_X": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_SWAP_XY": "ORIENTATION_FLIP_X",
+            "ORIENTATION_FLIP_HORIZONTALLY": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_FLIP_VERTICALLY": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_ROTATE_180_DEG": "ORIENTATION_ROTATE_CCW_90_DEG",
+            "ORIENTATION_TRANSPOSE": "ORIENTATION_FLIP_X",
+            "ORIENTATION_ROTATE_CCW_90_DEG": "ORIENTATION_NONE",
+            "ORIENTATION_ROTATE_CW_90_DEG": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_TRANSVERSE": "ORIENTATION_FLIP_Y"
+          }
+        },
+        {
+          "action_path": "flip horizontally",
+          "icon": "flipHorizontal",
+          "label": "flip horizontally",
+          "param": "orientation",
+          "map": {
+            "ORIENTATION_NULL": "ORIENTATION_FLIP_X",
+            "ORIENTATION_NONE": "ORIENTATION_FLIP_X",
+            "ORIENTATION_FLIP_Y": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_FLIP_X": "ORIENTATION_NONE",
+            "ORIENTATION_SWAP_XY": "ORIENTATION_ROTATE_CW_90_DEG",
+            "ORIENTATION_FLIP_HORIZONTALLY": "ORIENTATION_NONE",
+            "ORIENTATION_FLIP_VERTICALLY": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_ROTATE_180_DEG": "ORIENTATION_FLIP_Y",
+            "ORIENTATION_TRANSPOSE": "ORIENTATION_ROTATE_CW_90_DEG",
+            "ORIENTATION_ROTATE_CCW_90_DEG": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_ROTATE_CW_90_DEG": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_TRANSVERSE": "ORIENTATION_ROTATE_CCW_90_DEG"
+          }
+        },
+        {
+          "action_path": "flip vertically",
+          "icon": "flipVertical",
+          "label": "flip vertically",
+          "param": "orientation",
+          "map": {
+            "ORIENTATION_NULL": "ORIENTATION_FLIP_Y",
+            "ORIENTATION_NONE": "ORIENTATION_FLIP_Y",
+            "ORIENTATION_FLIP_Y": "ORIENTATION_NONE",
+            "ORIENTATION_FLIP_X": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_SWAP_XY": "ORIENTATION_ROTATE_CCW_90_DEG",
+            "ORIENTATION_FLIP_HORIZONTALLY": "ORIENTATION_ROTATE_180_DEG",
+            "ORIENTATION_FLIP_VERTICALLY": "ORIENTATION_NONE",
+            "ORIENTATION_ROTATE_180_DEG": "ORIENTATION_FLIP_X",
+            "ORIENTATION_TRANSPOSE": "ORIENTATION_ROTATE_CCW_90_DEG",
+            "ORIENTATION_ROTATE_CCW_90_DEG": "ORIENTATION_SWAP_XY",
+            "ORIENTATION_ROTATE_CW_90_DEG": "ORIENTATION_TRANSVERSE",
+            "ORIENTATION_TRANSVERSE": "ORIENTATION_ROTATE_CW_90_DEG"
+          }
+        }
+      ]
+    }
+  ]
+}
