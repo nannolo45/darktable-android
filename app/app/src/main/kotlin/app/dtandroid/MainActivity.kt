@@ -75,6 +75,8 @@ class DarkroomViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** The layout file waiting for the save picker; kept here so a rotation while the picker is open does not lose it. */
+    var pendingExport: ByteArray? = null
 }
 
 class MainActivity : ComponentActivity() {
@@ -87,10 +89,9 @@ class MainActivity : ComponentActivity() {
         vm.controller.launch { layoutEditor.import(files) }
     }
 
-    private var pendingExport: ByteArray? = null
     private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-        val bytes = pendingExport ?: return@registerForActivityResult
-        pendingExport = null
+        val bytes = vm.pendingExport ?: return@registerForActivityResult
+        vm.pendingExport = null
         if (uri == null) return@registerForActivityResult
         val ok = runCatching { contentResolver.openOutputStream(uri, "wt")!!.use { it.write(bytes) } }.isSuccess
         vm.controller.layoutEditor.message(if (ok) "exported ${displayName(uri)}" else "the file could not be written")
@@ -99,7 +100,7 @@ class MainActivity : ComponentActivity() {
     private val files = object : LayoutFiles {
         override fun pickImport() = importLauncher.launch(arrayOf("*/*"))
         override fun export(fileName: String, bytes: ByteArray) {
-            pendingExport = bytes
+            vm.pendingExport = bytes
             exportLauncher.launch(fileName)
         }
     }

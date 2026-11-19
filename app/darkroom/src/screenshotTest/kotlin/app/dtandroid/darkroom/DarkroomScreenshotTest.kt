@@ -167,9 +167,15 @@ class PhoneScreenshots : ScreenshotBase() {
 
     @Test
     fun searchLine() {
-        show { setSearch("col") }
-        compose.onNodeWithContentDescription("color calibration").assertExists()
+        val c = show { setSearch("col") }
+        // every module whose name contains "col", last in the pipe on top; color calibration sits
+        // early in the pipe, so the lazy list composes it only once scrolled to
+        val found = c.visibleModules(c.state.value).map { it.op }
+        org.junit.Assert.assertTrue("search \"col\" lists: $found", "channelmixerrgb" in found && "colorbalancergb" in found)
         capture("phone-16-search")
+        compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("color calibration"))
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("color calibration").assertExists()
     }
 
     @Test
@@ -189,12 +195,15 @@ class PhoneScreenshots : ScreenshotBase() {
 
     @Test
     fun editorUserLayout() {
-        show {
+        val ctl = show {
             openLayoutEditor()
             layoutEditor.applyName(LayoutEditor.NameAction.DUPLICATE, "my layout")
             layoutEditor.addWidget("agx/curve/contrast")
         }
-        compose.onNodeWithContentDescription("move group down").assertExists()
+        // one "move group down" per group of the duplicated layout (the editor's column composes all of them)
+        val groups = ctl.layoutEditor.state.value.layout.groups.size
+        assertEquals(4, groups)
+        assertEquals(groups, compose.onAllNodesWithContentDescription("move group down").fetchSemanticsNodes().size)
         capture("phone-19-editor-user-layout")
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("module groups"))
         compose.waitForIdle()
