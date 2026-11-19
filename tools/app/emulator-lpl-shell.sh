@@ -40,7 +40,9 @@ grep -E "Fatal signal|FATAL EXCEPTION| E AndroidRuntime" "$OUT/logcat.txt" > "$O
 # the shell next to the darktable app's other builds: different application ids, all installed
 {
   for a in "$@"; do
-    echo "install $(basename "$a"): $(adb install -r -t "$a" 2>&1 | tail -1 | tr -d '\r')"
+    if [ ! -f "$a" ]; then echo "install $(basename "$a"): file not downloaded"; continue; fi
+    out=$(adb install -r -t "$a" 2>&1 | tr -d '\r')
+    echo "install $(basename "$a"): $(echo "$out" | grep -E "Success|Failure|rror" | tail -1)"
   done
   echo "installed packages:"
   adb shell pm list packages app.dtandroid | tr -d '\r' | sort | sed 's/^/  /'
