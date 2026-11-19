@@ -4,9 +4,11 @@ package app.dtandroid.lplshell
 import android.app.Activity
 import android.app.Instrumentation.ActivityResult
 import android.content.ClipData
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
+import android.provider.MediaStore
 import android.webkit.WebView
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -64,10 +66,17 @@ class ShellTest {
 
     @After
     fun tearDown() {
-        scenario?.close()
-        Intents.release()
-        server?.close()
+        try {
+            scenario?.close()
+        } finally {
+            Intents.release()
+            server?.close()
+            for (u in mediaFiles) runCatching { ctx.contentResolver.delete(u, null, null) }
+        }
     }
+
+    /** Intents the shell started (the test's own launch of the shell left out). */
+    private fun outgoing() = Intents.getIntents().filter { it.component?.className != ShellActivity::class.java.name }
 
     // ---- helpers
 
@@ -141,6 +150,8 @@ class ShellTest {
         waitForPage(url)
         return url
     }
+
+    private val FILE_SIZE = 1234
 
     private val r1Query = "server=http%3A%2F%2F127.0.0.1%3A8080&ids=12,13,14&start=13&series=4&title=Spring%20walk"
 
@@ -236,7 +247,7 @@ class ShellTest {
         showLink(s, s.origin + "/other")
         tapPage()
         waitForPage(s.origin + "/other")
-        assertEquals(emptyList<Intent>(), Intents.getIntents())
+        assertEquals(emptyList<Intent>(), outgoing())
     }
 
     @Test
@@ -246,8 +257,8 @@ class ShellTest {
         intending(hasAction(Intent.ACTION_VIEW)).respondWith(ActivityResult(Activity.RESULT_OK, null))
         val tap = showLink(s, foreign)
         tapPage()
-        waitFor("browser intent") { Intents.getIntents().any { it.dataString == foreign } }
-        val i = Intents.getIntents().first { it.dataString == foreign }
+        waitFor("browser intent") { outgoing().any { it.dataString == foreign } }
+        val i = outgoing().first { it.dataString == foreign }
         assertEquals(Intent.ACTION_VIEW, i.action)
         assertTrue(i.categories.contains(Intent.CATEGORY_BROWSABLE))
         assertNull(i.`package`)
@@ -283,26 +294,42 @@ class ShellTest {
 
     // ---- file chooser
 
+    private val mediaFiles = ArrayList<Uri>()
+
+    /** A small made-up file in the phone's Downloads (MediaStore), as a file picker would return it. */
+    private fun mediaFile(name: String, mime: String): Uri {
+        val v = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+        }
+        val u = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v)!!
+        mediaFiles += u
+        ctx.contentResolver.openOutputStream(u)!!.use { it.write(ByteArray(FILE_SIZE) { k -> (k % 251).toByte() }) }
+        return u
+    }
+
     @Test
     fun fileChooserIsOfferedAndSeveralFilesReachThePage() {
         val s = openOnStart()
         onMain { it.webView.loadUrl(s.origin + "/upload") }
         waitForPage(s.origin + "/upload")
-        val a = Uri.parse("content://${TestFileProvider.AUTHORITY}/a.jpg")
-        val b = Uri.parse("content://${TestFileProvider.AUTHORITY}/b.raf")
+        val stamp = System.currentTimeMillis()
+        val a = mediaFile("lpl-test-$stamp-a.jpg", "image/jpeg")
+        val b = mediaFile("lpl-test-$stamp-b.raf", "application/octet-stream")
         val result = Intent().apply {
             clipData = ClipData.newRawUri("", a).also { it.addItem(ClipData.Item(b)) }
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         intending(hasAction(Intent.ACTION_GET_CONTENT)).respondWith(ActivityResult(Activity.RESULT_OK, result))
         tapPage()
-        waitFor("file chooser") { Intents.getIntents().any { it.action == Intent.ACTION_GET_CONTENT } }
-        val i = Intents.getIntents().first { it.action == Intent.ACTION_GET_CONTENT }
+        waitFor("file chooser") { outgoing().any { it.action == Intent.ACTION_GET_CONTENT } }
+        val i = outgoing().first { it.action == Intent.ACTION_GET_CONTENT }
         assertTrue(i.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false))
         assertTrue(i.categories.contains(Intent.CATEGORY_OPENABLE))
         assertEquals("*/*", i.type)
-        waitFor("files in the page (title ${runCatching { js("document.title") }.getOrNull()})") {
-            js("document.title") == "\"files:2:a.jpg/${TestFileProvider.SIZE},b.raf/${TestFileProvider.SIZE}\""
+        val want = "\"files:2:lpl-test-$stamp-a.jpg/$FILE_SIZE,lpl-test-$stamp-b.raf/$FILE_SIZE\""
+        waitFor("files in the page (title ${runCatching { js("document.title") }.getOrNull()}, want $want)") {
+            js("document.title") == want
         }
     }
 
@@ -330,15 +357,15 @@ class ShellTest {
             "SEL;scheme=http;package=com.example.evil;end"
         val tap = showLink(s, hostile)
         tapPage()
-        waitFor("hand-off intent") { Intents.getIntents().any { it.`package` == "app.dtandroid" } }
-        assertHandOff(Intents.getIntents().single { it.`package` == "app.dtandroid" })
+        waitFor("hand-off intent") { outgoing().any { it.`package` == "app.dtandroid" } }
+        assertHandOff(outgoing().single { it.`package` == "app.dtandroid" })
         assertEquals(tap, href())
 
         // the direct form
         showLink(s, "lpldt://edit?$r1Query")
         tapPage()
-        waitFor("second hand-off intent") { Intents.getIntents().count { it.`package` == "app.dtandroid" } == 2 }
-        assertHandOff(Intents.getIntents().last { it.`package` == "app.dtandroid" })
+        waitFor("second hand-off intent") { outgoing().count { it.`package` == "app.dtandroid" } == 2 }
+        assertHandOff(outgoing().last { it.`package` == "app.dtandroid" })
     }
 
     @Test
@@ -355,7 +382,7 @@ class ShellTest {
             Thread.sleep(1500)
             assertEquals(link, tap, href())
         }
-        assertEquals(emptyList<Intent>(), Intents.getIntents())
+        assertEquals(emptyList<Intent>(), outgoing())
     }
 
     @Test
@@ -376,21 +403,25 @@ class ShellTest {
     fun openActionLoadsOnlyPagesOfTheSavedServer() {
         val s = startServer()
         prefs().edit().putString(ShellActivity.KEY_SERVER, s.origin).commit()
+        // the action resolves to the shell for http and https addresses (what the darktable app will send)
+        for (scheme in listOf("http", "https")) {
+            val q = Intent(OpenRules.ACTION_OPEN, Uri.parse("$scheme://192.168.1.20:8080/?photo=3")).setPackage(ctx.packageName)
+            assertEquals(scheme, ShellActivity::class.java.name, ctx.packageManager.queryIntentActivities(q, 0).single().activityInfo.name)
+        }
+        // started with OPEN on the saved origin: that page
         launch(Intent(OpenRules.ACTION_OPEN, Uri.parse(s.origin + "/other")).setClass(ctx, ShellActivity::class.java))
         waitForPage(s.origin + "/other")
-        // a second OPEN with another origin: ignored, start page instead
-        ctx.startActivity(
-            Intent(OpenRules.ACTION_OPEN, Uri.parse("http://localhost:${s.port}/other?x=1"))
-                .setPackage(ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        // OPEN again while open (onNewIntent, as delivered to a singleTask activity): another origin is ignored
+        onMain { it.onNewIntent(Intent(OpenRules.ACTION_OPEN, Uri.parse("http://localhost:${s.port}/other?x=1"))) }
         waitForPage(s.origin + "/")
         assertEquals(0, s.count("/other?x=1"))
-        // and one on the saved origin
-        ctx.startActivity(
-            Intent(OpenRules.ACTION_OPEN, Uri.parse(s.origin + "/other?photo=3"))
-                .setPackage(ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
+        // and a page of the saved origin is opened
+        onMain { it.onNewIntent(Intent(OpenRules.ACTION_OPEN, Uri.parse(s.origin + "/other?photo=3"))) }
         waitForPage(s.origin + "/other?photo=3")
+        // started with OPEN on another origin: the start page
+        scenario!!.close()
+        launch(Intent(OpenRules.ACTION_OPEN, Uri.parse("http://example.org/?photo=3")).setClass(ctx, ShellActivity::class.java))
+        waitForPage(s.origin + "/")
     }
 
     // ---- no reload

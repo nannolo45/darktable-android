@@ -4,6 +4,12 @@ Brief: `docs/briefs/P2c-lpl-shell.md`. Branch `p2c-lpl-shell`. Pull request text
 
 ## Running log (newest first)
 
+- 2026-11-19: first CI run 44483728588: build and 15 unit tests green; emulator 7 of 14 passed. Causes:
+  the test's own launch intent was counted as an outgoing intent; a content provider in the test APK made
+  the test package's process crash ("keeps stopping" dialog took the window focus from later tests);
+  starting OPEN through the system while ActivityScenario held the activity left it paused. Fixed: test
+  files now come from MediaStore Downloads, OPEN while running is delivered with `onNewIntent` and the
+  intent filter is checked with `queryIntentActivities`, tear-down always releases espresso-intents.
 - 2026-11-19: activity, native screens, instrumented tests (12, against `StubServer` written in the test),
   emulator script `tools/app/emulator-lpl-shell.sh`, workflow `p2c-lpl-shell.yml`. Builds on the
   workspace (APK and test APK); first CI run pending. Token `size.formMaxWidth` added to ui-theme;

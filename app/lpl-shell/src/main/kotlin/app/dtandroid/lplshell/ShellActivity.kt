@@ -122,7 +122,8 @@ class ShellActivity : ComponentActivity(), ShellActions {
         refresh()
     }
 
-    override fun onNewIntent(intent: Intent) {
+    /** Public so the instrumented test can deliver an intent as the system does to the running (singleTask) activity. */
+    public override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         when (intent.action) {
@@ -353,6 +354,7 @@ class ShellActivity : ComponentActivity(), ShellActions {
             if (clip != null) for (k in 0 until clip.itemCount) clip.getItemAt(k).uri?.let { uris += it }
             else data.data?.let { uris += it }
         }
+        Log.i(TAG, "file chooser: result $resultCode, ${uris.size} file(s)")
         cb.onReceiveValue(if (uris.isEmpty()) null else uris.toTypedArray())
     }
 
