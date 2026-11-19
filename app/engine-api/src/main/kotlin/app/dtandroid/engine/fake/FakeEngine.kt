@@ -117,7 +117,11 @@ class FakeEngine(
 
     private data class Inst(val op: String, val priority: Int, val instanceName: String)
 
-    private data class Item(val op: String, val priority: Int, val instanceName: String, val enabled: Boolean, val params: JsonObject)
+    /** [unknown]: an XMP entry whose module the engine does not know (read-only sessions only, P1c) */
+    private data class Item(
+        val op: String, val priority: Int, val instanceName: String, val enabled: Boolean, val params: JsonObject,
+        val unknown: Boolean = false,
+    )
 
     private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int)
 
@@ -285,8 +289,10 @@ class FakeEngine(
         val insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
         val s = Session(rawPath, false, variant, sample, insts, emptyList(), 0, sample?.rating ?: 0, sample?.colorLabels ?: emptyList())
         var readOnly = false
-        if (xmpPath != null) {
-            val text = readXmp(xmpPath)
+        // as dtb_open: the given XMP, else the sidecar next to the RAW, else the default edit
+        val xmp = xmpPath ?: "$rawPath.xmp".takeIf { File(it).isFile }
+        if (xmp != null) {
+            val text = readXmp(xmp)
             readOnly = !check(text).ok
             loadXmp(s, FakeXmp.parse(text))
         } else {
@@ -320,8 +326,11 @@ class FakeEngine(
         s.insts = all.sortedWith(compareBy({ x.iopOrder["${it.op}/${it.priority}"] ?: (catalog[it.op]!!.pipePosition * 100 + it.priority) }))
         val items = ArrayList<Item>()
         for (e in x.entries) {
-            val d = catalog[e.operation] ?: continue // unknown modules: the session is read-only anyway
-            items += Item(e.operation, e.priority, e.multiName, e.enabled, e.params ?: d.defaultParams)
+            val d = catalog[e.operation]
+            // as the bridge since P1c: an unknown module keeps its place in the list, flagged, without
+            // effect (the session is read-only anyway)
+            items += if (d == null) Item(e.operation, e.priority, e.multiName, e.enabled, JsonObject(emptyMap()), unknown = true)
+            else Item(e.operation, e.priority, e.multiName, e.enabled, e.params ?: d.defaultParams)
         }
         s.items = items
         s.end = (x.historyEnd ?: items.size).coerceIn(0, items.size)
@@ -592,7 +601,7 @@ class FakeEngine(
         val s = requireSession()
         History.fromJson(
             History(s.end, s.items.mapIndexed { n, it ->
-                HistoryItem(n, it.op, it.priority, catalog[it.op]!!.name, it.instanceName, it.enabled)
+                HistoryItem(n, it.op, it.priority, catalog[it.op]?.name ?: it.op, it.instanceName, it.enabled, it.unknown)
             }).toJson()
         )
     }

@@ -379,12 +379,52 @@ abstract class DarktableEngineContract {
             }
         }
         assertEquals("the XMP was not rewritten", original, xmp.readText())
-        // looking at earlier steps is allowed: it changes nothing that could be written
-        val end = engine.history().end
+        // looking at earlier steps is allowed: it changes nothing that could be written.
+        // P1c: every XMP entry is an item, the unknown one flagged, end <= items, and every position
+        // can be shown
+        val h = engine.history()
+        val end = h.end
+        assertTrue("end ${h.end} > ${h.items.size} items", end in 0..h.items.size)
+        assertTrue("fewer items than XMP entries", h.items.size >= c.entries)
+        val unknown = h.items.filter { it.unknown }
+        assertEquals("unknown items", 1, unknown.size)
+        assertEquals(c.problems.first { it.reason == XmpProblemReason.UNKNOWN_OPERATION }.operation, unknown[0].op)
+        for (k in 0..h.items.size) {
+            engine.historyGoto(k)
+            assertEquals(k, engine.history().end)
+        }
         engine.historyGoto(0)
         assertEquals(0, engine.history().end)
         engine.historyGoto(end)
+        assertEquals(h, engine.history())
         assertFalse(File(tmp.root, "other.xmp").exists())
+    }
+
+    @Test
+    fun openWithoutXmpIsTheDefaultEditEveryTime() = runBlocking<Unit> {
+        openSample()
+        val modules = engine.modules()
+        val history = engine.history()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(1.5)); engine.historySeal()
+        engine.instanceDuplicate("exposure", 0)
+        engine.historyGoto(engine.history().end - 1) // items above the end, too
+        val xmp = File(tmp.root, "edited.xmp")
+        engine.xmpWrite(xmp.path)
+        engine.close()
+        openSample()
+        assertEquals("history after reopening without XMP", history, engine.history())
+        assertEquals("modules after reopening without XMP", modules, engine.modules())
+        engine.close()
+        // with an XMP: exactly that XMP's edit, again after a changed session
+        engine.open(sampleRaw(), xmp.path)
+        val withXmp = engine.history()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(-2.0)); engine.historySeal()
+        engine.close()
+        engine.open(sampleRaw(), xmp.path)
+        assertEquals("history after reopening with the XMP", withXmp, engine.history())
+        engine.close()
+        openSample()
+        assertEquals("history without XMP after a session on an XMP", history, engine.history())
     }
 
     @Test
