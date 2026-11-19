@@ -4,8 +4,8 @@ Branch `p2d-module-layouts`. Running log, owner instructions: `P2d-module-layout
 `P2d-results/`.
 
 **Status: all nine deliverables and the four acceptance points are met, with the limits listed below.
-Nothing failed on the last code commit.** Proof: CI run 44497441293 on 12da7ab (see section 3). The run
-before the fixes, 44494055618 on bf9f344, failed: two screenshot tests had wrong expectations (section 3).
+Nothing failed on the last code commit.** Proof: CI run 44499763458 on 3c6190e (see section 3). The run
+before the fixes, 44494055618 on bf9f344, failed: two screenshot tests had wrong expectations (2.6).
 
 Not exercised anywhere: the app on a phone, tablet or emulator (only JVM screenshot tests); Android's real
 file picker (the screens are tested with a stand-in, `MainActivity`'s storage access code only compiles);
@@ -28,14 +28,14 @@ the second finished it (from commit f24d9d1 on).
 | 6 | `LayoutStore` in `engine-api`, file implementation | done | `LayoutStore.kt`, `FileLayoutStore.kt` (app-private `layouts/layouts.json`); screens use only the interface |
 | 7 | White balance as the manual says | done | default quick panel has color calibration's controls and no white balance control (asserted in `LayoutDarkroomTest` and `PhoneScreenshots.quickPanel`); desktop's warnings: follow-up, section 4 |
 | 8 | Tests | done | 107 tests (section 3); quick access table `P2d-results/quick-access-mapping.md`; changed expectations listed in 2.6 |
-| 9 | CI and preview; owner instructions | done | `.github/workflows/p2a-app.yml`; release `app-preview-12da7ab…` (section 3); "For the owner" in `P2d-module-layouts.md` |
+| 9 | CI and preview; owner instructions | done | `.github/workflows/p2a-app.yml`; release `app-preview-3c6190ecfc21` (section 3); "For the owner" in `P2d-module-layouts.md` |
 
 | Acceptance | State | Evidence |
 |---|---|---|
 | Byte-exact round trip of every built-in layout; tool reruns cleanly from a clean checkout | met | `LayoutTest.everyBuiltinLayoutRoundTripsByteExact`; CI step "Built-in module layouts match the pinned upstream" (fresh sparse checkout, `--check`, log `layouts-check.log` on `ci-logs`) |
 | Default layout's groups and quick panel equal desktop's (scene-referred, 04477d3) | met, with 5 quick access entries shown disabled | `P2d-results/default-layout-comparison.md` (written by `LayoutDarkroomTest.defaultLayoutIsDarktablesSceneReferredLayout`, also on `ci-logs` per run); the stored layout string is the one a real darktable stores (`verify-with-darktable.txt`) |
 | Edited in the app, exported, imported again: identical | met | `LayoutDarkroomTest.editExportImportIsIdentical` (every editor operation, export, delete, import: same layout, same stored bytes, same file) |
-| CI green on the last code commit | met | run 44497441293 on 12da7ab |
+| CI green on the last code commit | met | run 44499763458 on 3c6190e |
 
 ## 2. What was built, and the findings
 
@@ -132,13 +132,18 @@ $GRADLE :app:assembleDebug
 ```
 Or run the workflow `p2a-app` (it runs on pushes to this branch).
 
-CI (GitHub runner, 4 cores), run 44497441293 on 12da7ab:
+CI (GitHub runner, 4 cores), run 44499763458 on 3c6190e (the last code commit):
 - built-in layouts check: `schema/builtin-layouts.json` matches the pin 04477d32a00c;
 - screen rule check: 0 violations (covers all screen code, the new editor included);
 - tests: 107 of 107 passed (darkroom 46 incl. 32 screenshot tests, engine-api 31, schema 25, ui-theme 5);
 - preview APK built and checked (no INTERNET permission, `builtin-layouts.json` packed), published with
-  31 screenshots as release `app-preview-12da7ab…`.
-Previous run 44494055618 on bf9f344: 105 of 107, the two screenshot tests in 2.6 failed. Logs, test
+  31 screenshots as release `app-preview-3c6190ecfc21`
+  (https://github.com/nannolo45/darktable-android/releases/tag/app-preview-3c6190ecfc21); the comparison
+  and mapping tables it wrote are identical to those in `P2d-results/`.
+Earlier runs: 44494055618 on bf9f344 failed, 105 of 107 (the two screenshot tests in 2.6); 44496669366 on
+5f141b0 green, 107 of 107; 44497441293 on 12da7ab hung for over 15 minutes in the built-in layouts step
+(fetch from github.com, no output) and was cancelled by the next push, which bounds that fetch with
+timeouts and three attempts (3c6190e; the signing step is main's, unchanged). Logs, test
 results, the comparison and mapping tables and the screenshots of each run are on the `ci-logs` branch
 under `runs/<run id>-a1/p2a-app/`.
 

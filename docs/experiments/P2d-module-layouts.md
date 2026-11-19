@@ -5,6 +5,9 @@ Brief: `docs/briefs/P2d-module-layouts.md`. Branch `p2d-module-layouts`. Pull re
 
 ## Running log (newest first)
 
+- 2026-11-19: CI green on 3c6190e (run 44499763458, 107 of 107, release `app-preview-3c6190ecfc21`).
+  Run 44497441293 hung in the layouts step (upstream fetch); the step now has timeouts and retries.
+  Screenshots show the editor's import/export buttons. Owner instructions and report written.
 - 2026-11-19 (resumed by a second agent after an unrelated interruption): CI run 44494055618 on bf9f344
   failed on two screenshot tests (`searchLine`: color calibration is below the fold of the lazy list for
   "col"; `editorUserLayout`: one "move group down" per group, 4 nodes, the test expected one). Both tests
@@ -60,7 +63,7 @@ The preview now arranges its modules the way darktable on your PC does, with dar
 
 ### Install
 
-1. On the phone, open https://github.com/nannolo45/darktable-android/releases/tag/app-preview-5f141b0af9af
+1. On the phone, open https://github.com/nannolo45/darktable-android/releases/tag/app-preview-3c6190ecfc21
    (or the newest entry titled "Interface preview" on the releases page).
 2. Under "Assets", tap **dt-android-preview-arm64-v8a.apk** (about 8.7 MB) and install it.
 3. If Android says "App not installed", uninstall "dt-android preview" first and try again: this build
