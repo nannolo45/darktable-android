@@ -190,10 +190,19 @@ jobs:
         run: |
           set +e
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue \
-            :checkScreenRulesSelfTest :checkScreenRules \
-            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest :lpl:test $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/tests.log
-          rc=${PIPESTATUS[0]}
+          # Maven Central sometimes answers "could not find" for artifacts that exist (P2c; again in run
+          # 44549705769): such resolution failures are retried with --refresh-dependencies, nothing else
+          refresh=""
+          for attempt in 1 2 3; do
+            "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 --continue \
+              :checkScreenRulesSelfTest :checkScreenRules \
+              :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest :lpl:test $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/tests.log
+            rc=${PIPESTATUS[0]}
+            [ "$rc" = 0 ] && break
+            grep -qE "Could not (find|resolve|GET) |status code 429" /tmp/tests.log || break
+            cp /tmp/tests.log "/tmp/tests-attempt$attempt.log"
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30)); refresh="--refresh-dependencies"
+          done
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
           exit 0
