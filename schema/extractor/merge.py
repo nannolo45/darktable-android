@@ -211,7 +211,7 @@ def main():
         out_m = {k: m[k] for k in ("op", "name", "aliases", "version", "pipe_position", "default_group",
                                    "flags", "deprecated_msg", "default_enabled", "hide_enable_button",
                                    "on_image", "color_picker_apply", "has_gui_changed", "params",
-                                   "controls", "status", "getter_mismatches") if k in m}
+                                   "controls", "status", "getter_mismatches", "nodes_destroyed") if k in m}
         out_m["visibility"] = {
             "drivers": drivers,
             "states_observed": len(states),

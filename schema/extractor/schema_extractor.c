@@ -409,6 +409,9 @@ static node_t *_new_node(ctx_t *c, GtkWidget *w, node_kind_t k, JsonBuilder *b)
   n->id = c->nodes->len;
   n->kind = k;
   n->w = w;
+  // a module may destroy and rebuild part of its panel (color balance does,
+  // for its layout preference): the pointer is cleared when that happens
+  g_object_add_weak_pointer(G_OBJECT(w), (gpointer *)&n->w);
   g_ptr_array_add(c->nodes, n);
   json_builder_begin_object(b);
   _add_int(b, "id", n->id);
@@ -772,6 +775,7 @@ static void _walk_children(ctx_t *c, GtkWidget *w, JsonBuilder *b)
 // open it) and a stack page that is not the stack's current page as hidden
 static gboolean _eff_visible(GtkWidget *w, GtkWidget *root, GHashTable *bodies)
 {
+  if(!w) return FALSE; // destroyed
   while(w && w != root)
   {
     if(!gtk_widget_get_visible(w) && !g_hash_table_contains(bodies, w)) return FALSE;
@@ -779,7 +783,7 @@ static gboolean _eff_visible(GtkWidget *w, GtkWidget *root, GHashTable *bodies)
     if(p && GTK_IS_STACK(p) && gtk_stack_get_visible_child(GTK_STACK(p)) != w) return FALSE;
     w = p;
   }
-  return TRUE;
+  return w == root; // FALSE if detached from the panel
 }
 
 static gchar *_snapshot(ctx_t *c, gboolean sensitive)
@@ -788,7 +792,9 @@ static gchar *_snapshot(ctx_t *c, gboolean sensitive)
   for(guint i = 0; i < c->nodes->len; i++)
   {
     node_t *n = c->nodes->pdata[i];
-    const gboolean v = sensitive ? gtk_widget_is_sensitive(n->w) : _eff_visible(n->w, c->m->widget, c->bodies);
+    const gboolean v = !n->w ? FALSE
+                       : sensitive ? gtk_widget_is_sensitive(n->w)
+                                   : _eff_visible(n->w, c->m->widget, c->bodies);
     g_string_append_c(s, v ? '1' : '0');
   }
   return g_string_free(s, FALSE);
@@ -796,6 +802,7 @@ static gchar *_snapshot(ctx_t *c, gboolean sensitive)
 
 static int _driver_get(node_t *n)
 {
+  if(!n->w) return -1;
   if(n->kind == NK_TOGGLE) return dt_bauhaus_toggle_get(n->w) ? 1 : 0;
   return dt_bauhaus_combobox_get(n->w);
 }
@@ -803,6 +810,7 @@ static int _driver_get(node_t *n)
 // a desktop user cannot pick an insensitive entry or a heading of a list
 static gboolean _selectable(node_t *n, int pos)
 {
+  if(!n->w) return FALSE;
   if(n->kind != NK_COMBOBOX) return TRUE;
   const dt_bauhaus_combobox_data_t *d = &DT_BAUHAUS_WIDGET(n->w)->combobox;
   if(!d->entries || pos < 0 || pos >= (int)d->entries->len) return FALSE;
@@ -812,6 +820,7 @@ static gboolean _selectable(node_t *n, int pos)
 
 static void _driver_set(node_t *n, int pos)
 {
+  if(!n->w) return;
   if(n->kind == NK_TOGGLE)
     dt_bauhaus_toggle_set(n->w, pos != 0);
   else
@@ -882,13 +891,14 @@ static void _observe(ctx_t *c, JsonBuilder *b, const assign_t *as, int nas, cons
   for(guint i = 0; i < c->nodes->len; i++)
   {
     node_t *n = c->nodes->pdata[i];
-    if(!n->driver) continue;
+    if(!n->driver || !n->w) continue;
     // [node id, position, value]; value is the bound parameter's value, or
     // the position for a list or switch that holds interface state only
     json_builder_begin_array(b);
     json_builder_add_int_value(b, n->id);
     json_builder_add_int_value(b, _driver_get(n));
     json_builder_add_int_value(b, n->bound ? *(int *)DT_BAUHAUS_WIDGET(n->w)->field : _driver_get(n));
+    // (a bound widget's field points into module->params, which lives as long as the module)
     json_builder_end_array(b);
   }
   json_builder_end_array(b);
@@ -1175,6 +1185,16 @@ static void _do_module(dt_iop_module_t *m, int position)
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(m->off), FALSE);
   _pump();
 
+  int destroyed = 0;
+  for(guint i = 0; i < c.nodes->len; i++)
+  {
+    node_t *n = c.nodes->pdata[i];
+    if(n->w)
+      g_object_remove_weak_pointer(G_OBJECT(n->w), (gpointer *)&n->w);
+    else
+      destroyed++;
+  }
+  _add_int(b, "nodes_destroyed", destroyed);
   _add_int(b, "getter_mismatches", c.n_mismatch_getter);
   _add_float(b, "seconds", (g_get_monotonic_time() - t0) / 1e6);
   _add_str(b, "status", "ok");
