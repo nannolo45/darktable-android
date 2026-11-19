@@ -38,6 +38,11 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 23:45 UTC: run 44634077994 (368b272): the apk job stopped on Maven Central "could not find" three times
+  (no test ran); the emulator job was skipped. Failed jobs rerun. p2a-app of the same commit green after a rerun
+  (44634077961). Report draft pushed (89316bd) with the hang, the bridge contract and the job rules; numbers follow
+  from the rerun.
+
 - 2026-11-19 23:10 UTC: **run 44623988726 (1a997dc), emulator red, and the cause found.** The new dump (kept in
   `P2f-results/hang-44623988726.txt`) shows, at l2's failure: darkroom lock held by a background task, one
   interactive task waiting, and the engine thread inside `NativeBridge.renderPreview` (native) for minutes. The app
