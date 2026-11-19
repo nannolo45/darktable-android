@@ -1,13 +1,18 @@
 # P1a: engine core (Engine API v1, sections 1 and 2) — pull request description
 
-Branch `p1a-engine-core` (merged with main at cedca8b). Write-up: `docs/experiments/P1a-engine-core.md`.
+Branch `p1a-engine-core` (main merged twice: at cedca8b in 4bdc99b, and at 65f1c90 in a2e5cbb). Write-up:
+`docs/experiments/P1a-engine-core.md`.
 
-**Failures first.** The region test (T5) still fails in two cases, both reported per module below and kept
-failing in CI: the X-Trans image's top-left corner region (max 11, all differences within 10 px of the
-image's own top and left edge, where no margin is possible), and the spektrafilm image (centre region
-max 21 with differences spread over the region, as in S3; one more region max 1). Every other test passes
-on all three images in CI (run 44483237019: 115 PASS, 6 FAIL, all T5). Locally only the 10 MP image could be run: the workspace's shell
-cgroup (6 GB, shared with another agent's Gradle daemons) kills 20 and 26 MP renders.
+**Failures first.** The brief's acceptance point "the region test must now pass" is **not met** for two of
+the three images. T5 fails, visibly and as the brief asks for that case, in three of nine regions:
+the X-Trans image's top-left corner region (max 11, mean 0.0076, all differences within 10 px of the
+image's own top and left edge, where no margin is possible; lens + demosaic), and the spektrafilm image
+(centre region max 21, mean 0.30, differences spread over the region, as in S3; one more region max 1;
+spektrafilm + demosaic). Each failing region is compared twice (against the crop of the bridge's full
+render and against the crop of darktable-cli's), so the Linux job reports **115 PASS, 6 FAIL**, all six
+T5, and the `g0-app` workflow ends "failure" because of them. Every other test passes on all three images
+in CI. Locally only the 10 MP image could be run: the workspace's shell cgroup (6 GB, shared with another
+agent's Gradle daemons) kills 20 and 26 MP renders.
 
 ## 1. Brief item by item
 
@@ -19,22 +24,27 @@ cgroup (6 GB, shared with another agent's Gradle daemons) kills 20 and 26 MP ren
 | 3b | `param_set` paths, type and range checks; `params_set` one item | **done** (C2) |
 | 3c | `module_action` and the listed actions | **done**, with two data points the desktop GUI holds (open question 3) |
 | 3d | Undo/redo over whole-history states | **done** (C3), via darktable's history snapshot tables |
-| 3e | `render_region` with internal margin | **partly**: fixed 32 px margin; region = crop on cr2 and in 4 of the 6 raf/arw regions; 2 failures above |
+| 3e | `render_region` with internal margin | **partly**: fixed 32 px margin; region = crop on cr2 and in 3 of the 6 raf/arw regions; 3 regions fail (above) |
 | 3f | `set_threads`, `set_thread_cpus` (per-thread `sched_setaffinity`) | **done** (C5) |
 | 3g | `export` options, atomic `xmp_write`, `metadata_reload` | **done** (C7) |
-| 3h | Read-only refuses every mutating call | **done** (C6: 20 of 20; `history_goto` allowed, per cedca8b) |
-| 4 | Tests covering section 4 on three images, in the Linux CI job, failing it on any failure | **done**: C1 to C7 added, T5 strict, the job's T5 exception removed |
-| 5 | Android engine builds `libdtbridge.so` for both ABIs; G0 app builds against the header | **done**: run 44478936128 built both (about 100 KB each), the APKs, and the emulator test passed |
+| 3h | Read-only refuses every mutating call | **done** (C6: 20 of 20 on each image; `history_goto` allowed, per the contract) |
+| 4 | Tests covering section 4 on three images, in the Linux CI job, failing it on any failure | **partly**: tests done (C1 to C7 added, T5 strict, the job's T5 exception removed, the job fails on any failure); the acceptance "region test must now pass" is **not met** for raf and arw (above) |
+| 5 | Android engine builds `libdtbridge.so` for both ABIs; G0 app builds against the header | **done**: runs 44478936128, 44489957409 and FINAL_RUN built both ABIs (about 100 KB each) and the APKs; the emulator test passed in 44478936128 and 44489957409 (FINAL_EMU) |
 | 6 | Write-up and report | **done** |
 
 Function groups of the specification: 2.1 lifecycle done; 2.2 guard done; 2.3 session done; 2.4 modules
 and parameters done (actions: see open question 3); 2.5 instances done; 2.6 history done; 2.7 rendering
 partly (region margin, see above); 2.8 output done.
 
-Clarifications of cedca8b: (1) `history_goto` is allowed read-only and is not an undo step — aligned in
-9c4ec6c, tested in C6 and C3; (2) `instance_move(+1)` is later in the pipeline — already so, C2 now checks
-`iop_order` 1400 → 1500 → 1400 on cr2; (3) `iop_order` is an integer — already so, C1 checks the JSON
-type; (4) `color_labels` are numbers — changed, C7 reads back `[0, 3]`.
+**Contract clarifications** (engine-api.md 2.5, 2.6 and "Clarifications after P2a"). The bridge behaves as
+written in all four; nothing differs.
+
+| Point | Bridge | Test that shows it (run 44489957409, all three images) |
+|---|---|---|
+| `history_goto(end)` is navigation: allowed read-only, not an undo step | aligned in 9c4ec6c (before, goto recorded an undo state and was refused read-only) | C6: "read-only session: history_goto 0 and back to 9/12/14 allowed", XMP byte-identical afterwards; C3: goto leaves `undo_state` unchanged (checked), undo of the next change returns to the goto position and redo returns there ("undo of 'history_compress' (state 10, at the goto) modules equal history equal pixels max 0"); undo depth after 60 changes is now 70 steps (71 while goto was a step) |
+| `instance_move(+1)` = one step later in the pipeline | already so | C2: "exposure iop_order 1400, after move +1 1500, after -1 1400" (cr2), plus darktable-cli parity of the moved result (X1) |
+| `iop_order` in `modules()` is a JSON integer | already so | C1 checks the JSON node type is an integer (`G_TYPE_INT64`) for every instance and that the list is in pipeline order |
+| `color_labels` in `image_info()` is a list of label numbers | changed in 9c4ec6c (was names) | C7: metadata_reload of an XMP with red and blue labels reads back `[0, 3]` |
 
 ## 2. How to reproduce
 
@@ -56,9 +66,14 @@ alike) a smaller budget. CI: workflow `g0-app` on this branch (trigger added in 
 
 ## 3. Results
 
-Reference run **44483237019** (commit 4bdc99b, GitHub runners, x86_64, 4 cores; logs on the `ci-logs`
-branch under `runs/44483237019-a1/`). Linux job: **115 PASS, 6 FAIL** (all six are T5, three regions × two
-comparisons, listed below); the job fails because of them, as the brief asks. EMULATOR_LINE
+Reference run **44489957409** (commit 024151b, GitHub runners, x86_64, 4 cores; logs on the `ci-logs`
+branch under `runs/44489957409-a1/`). Linux job: **115 PASS, 6 FAIL** (all six are T5, three regions × two
+comparisons, listed below); the job fails because of them, as the brief asks. 66 pixel comparisons in
+`bridge-tests-comparisons.txt`: 60 with max 0, the 6 T5 ones as below. Run 44483237019 (4bdc99b) gave the
+same 115/6 and the same T5 numbers. Emulator job (API 33, x86_64, G0 app on the new bridge): test exit 0;
+open 196 ms, preview 191 ms, export 1893 ms, region after a change 349 ms, cancel returns
+`DTB_E_CANCELLED`; export vs darktable-cli on Linux max 26, mean 0.00092, PSNR 75.7 (within G0's
+tolerance, comparison ok); XMP guard ok, RAW unchanged. Run after the last merge of main: FINAL_LINE
 
 **Pixel parity with darktable-cli** (8-bit, max difference, every case max 0, mean 0): T1 render, T2
 parameter, T3 instances (session and reopened), T4 goto and compress, T9 drawn mask, X1 move and delete,
@@ -70,13 +85,13 @@ in Lensfun), C7 default JPEG export and 8-bit PNG export — on all three images
 |---|---|---|---|
 | C1 | class bayer, 97 instances, 9 without switch | class xtrans, 97, 10 | class bayer, 98, 9 |
 | C2 grouping | history 9→10→11→12→14→15 | 12→13→…→18 | 14→15→…→20 |
-| C3 undo | 12 states, each undo/redo byte-identical JSON, pixels max 0; 71 steps deep | same | same |
+| C3 undo | 12 states, each undo/redo byte-identical JSON, pixels max 0; 70 steps deep after 60 changes | same | same |
 | C4 get_wb / set_wb 4500 K, 1.05 → get_wb | 5105 K / 4499.7 K, 1.0500 | 6502 K (camera reference) / 4499.7, 1.0500 | 6010 K / 4499.7, 1.0500 |
 | C4 lists | 8 WB presets, 948 Lensfun cameras, 15 noise profiles | 9, 948, 23 | 17, 948, 25 |
 | C5 pinning | engine thread + 3 workers on CPU 0, all released | same | same |
 | C6 read-only | 20 of 20 refused; goto allowed | same | same |
 | C7 exports | 11 accepted, 6 refused as specified; webp: plugin not built on the runner → ARG (built locally: written) | same | same |
-| T8 cancel, worst latency | 0.12 s | 1.02 s | 0.39 s |
+| T8 cancel, worst latency | 0.12 s | 1.04 s | 0.34 s |
 
 **T5, region = crop of the full render** (512 × 512 regions, internal margin 32 px):
 
@@ -105,9 +120,16 @@ Margin choice: fixed 32 px (upstream exposes no reach for demosaic; it covers Ma
 18 + 6 px border). The diagnosis shows 16 px already suffices where a margin can help; 32 is kept as the
 safe value.
 
-**Speed (CI runner, not phone numbers)**, T7: open 0.12/0.51/0.08 s; preview after a late change
-0.04/0.05/0.06 s; 1920 × 1080 region after a late change 0.20/0.84/1.11 s (cr2/raf/arw). The margin adds
-at most 64 px to each side of a region.
+**Speed (CI runner, x86_64, 4 cores; not phone numbers)**, T7: open 0.12/0.50/0.08 s; preview after a
+late change 0.04/0.05/0.07 s; 1920 × 1080 region after a late change 0.20/0.81/1.08 s (cr2/raf/arw). The
+margin adds at most 64 px to each side of a region.
+
+**`modules()` size and time** (C1, CI runner x86_64 4 cores): 185 204 / 185 300 / 185 982 bytes of JSON
+for 97 / 97 / 98 instances (cr2/raf/arw); 5.3 ms per call on all three (7.3 ms on the 2-core x86_64
+workspace, cr2, 185 203 bytes, shared with another agent's builds; `dtb_test <work> api` run directly). Most of the bytes are array parameters: on cr2 retouch's
+parameters are 73.5 KB (`rt_forms`, 300 structs), liquify's 45 KB, colormapping's 16.8 KB, colortransfer's
+10.4 KB; those four are 79 % of the total. This is the C call only: no JNI copy and no parsing on the Kotlin side. Not measured on a
+phone or in the emulator (G0 does not call `modules()` with the new tree).
 
 ## 4. Things in upstream that surprised me
 
@@ -149,11 +171,20 @@ at most 64 px to each side of a region.
 6. **Lensfun**: the bridge loads its own copy of the database (the module's is private), a few MB more;
    the lens actions are written for Lensfun < 0.3.95 (what `deps/` and Ubuntu ship) and refuse to compile
    otherwise.
-7. **`modules()` size**: about 185 KB of JSON for all three test images (97–98 instances; most of it is
-   array parameters), 5.3 ms per call on the CI runner (9.3 ms on the 2-core workspace), without JNI and
-   without parsing on the Kotlin side. A per-instance call would cut the bytes about a hundredfold; worth
-   it only if the phone shows the re-read in the interaction loop.
+7. **`modules()` size**: about 185 KB of JSON (numbers in section 3). A per-instance call would cut the
+   bytes about a hundredfold; worth it only if the phone shows the re-read in the interaction loop. Proposal:
+   measure `modules()` plus Kotlin parsing on a phone in P2b before adding it.
 8. Export of a read-only session is allowed (it writes the private library, not the XMP).
+9. **Noise profiles with the same name.** `set_profile {name}` takes the first profile of that name. Upstream's
+   `data/noiseprofiles.json` has two different "DSC-RX100M3 iso 1600" profiles (the arw test image's
+   camera; C4 lists 25 entries with that name twice), so the second cannot be chosen; desktop picks by
+   position in the combobox. Proposal: let `list_profiles` return an index and `set_profile` accept it
+   (a contract change, so not done here).
+10. **Not exercised anywhere**: the arm64-v8a library only builds (no arm64 device or emulator runs it);
+   the emulator runs the G0 app, which uses only the old subset of calls through JNI, so the new API
+   (`modules()` tree, `param_set` paths, actions, undo, read-only, export options, thread pinning) has
+   run on Linux x86_64 only; webp export on CI (plugin not built on the runner; built and written locally);
+   raf and arw on the 2-core workspace (memory, see above); any phone.
 
 ## 6. Zero changes to darktable
 
@@ -165,6 +196,9 @@ Held: nothing under `upstream/` changed, no `patches/`. The bridge includes upst
 - The first commit (8e87811) carries the author name "dt-android agent" instead of the repository's usual
   one; rewriting it would need a force push, which I did not do.
 - Measurements are x86_64 (2 cores locally, 4 on CI runners), not phone numbers.
+- Commit 317f449 has its attribution lines in the subject paragraph (a formatting slip); not rewritten.
+- X1's "preview vs darktable-cli 1024 px export" line (max 255) is information only, as in S3: the preview
+  and a downscaled export take different scaling paths; it is not a test.
 - During the local runs I stopped only my own test processes after the out-of-memory kills.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

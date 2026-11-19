@@ -5,6 +5,9 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 09:5x: run 44496589328 started on the merge commit (6c84736). Local C1 on cr2 (2-core
+  workspace): modules() 185 203 bytes, 7.3 ms per call. Report updated: contract points with evidence,
+  modules() size, noise profile names that repeat upstream, what was not exercised.
 - 2026-11-19 09:4x (work resumed after an interruption): run 44489957409 (024151b) ended: Linux 115 PASS,
   6 FAIL (the same T5 cases as 44483237019, same numbers); engine and APKs built; emulator test passed (test
   exit 0, export vs darktable-cli max 26, mean 0.00092, comparison ok). Merged main (P2c shell app, P2d
