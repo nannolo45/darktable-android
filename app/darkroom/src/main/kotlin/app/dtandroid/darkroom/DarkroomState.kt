@@ -21,6 +21,28 @@ data class SeriesItem(
 
 data class Series(val name: String, val items: List<SeriesItem>)
 
+/**
+ * Brief P2e: where photos of the series come from when they are not on the phone yet (LightPhotoLibrary).
+ * The darkroom asks [prepare] before opening a photo whose RAW file does not exist, and tells the
+ * source when it opened and left a photo. Without a source every photo is a local file (P2b).
+ */
+interface PhotoSource {
+    /**
+     * Make [item]'s files ready (download them) and return the item with its final paths. [progress]
+     * takes a short text to show ("downloading NAME… 40 %"). Throws [PhotoSourceException] with a text
+     * for the user when the photo cannot be opened now.
+     */
+    suspend fun prepare(item: SeriesItem, progress: (String) -> Unit): SeriesItem
+
+    /** The darkroom opened [item]; [next] is the photo after it in the series (worth fetching ahead). */
+    fun opened(item: SeriesItem, next: SeriesItem?) {}
+
+    /** The darkroom left [item] after writing its edit to its sidecar. */
+    fun left(item: SeriesItem) {}
+}
+
+class PhotoSourceException(message: String) : Exception(message)
+
 /** A module instance as the list addresses it. */
 data class InstanceKey(val op: String, val priority: Int)
 

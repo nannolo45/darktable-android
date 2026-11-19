@@ -62,6 +62,9 @@ class DarkroomController(
     /** brief P2b: thumbnails kept between starts (the real engine needs a RAW decode per thumbnail); null = render all */
     private val thumbnailStore: ThumbnailStore? = null,
 ) {
+    /** brief P2e: photos not on the phone yet are fetched through this before they open; null = local files only */
+    @Volatile var source: PhotoSource? = null
+
     private val _state = MutableStateFlow(DarkroomState())
     val state: StateFlow<DarkroomState> = _state.asStateFlow()
 
@@ -97,6 +100,9 @@ class DarkroomController(
             lock.withLock {
                 for ((i, item) in series.items.withIndex()) {
                     if (i in thumbs) continue
+                    // brief P2e: a photo not downloaded yet has no thumbnail (the filmstrip shows its name); without a
+                    // source every photo is there (the stand-in engine's sample photos have no files at all)
+                    if (source != null && !File(item.rawPath).isFile) continue
                     try {
                         engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
                         val t = engine.renderPreview(thumbnailSize)
@@ -115,28 +121,73 @@ class DarkroomController(
 
     /** Switch to another photo of the series; the current edit is written to its sidecar first. */
     suspend fun openPhoto(index: Int, saveCurrent: Boolean = true) {
-        val item = _state.value.series.items.getOrNull(index) ?: return
+        var item = _state.value.series.items.getOrNull(index) ?: return
+        val g = ++generation
         cancelRenders()
+        val src = source
+        val fetch = src != null && !File(item.rawPath).isFile
         lock.withLock {
-            if (saveCurrent) saveLocked()
-            runCatching { engine.close() }
-            _state.update {
-                it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
-                    expanded = null, overlay = null, message = null, readOnlyReason = null)
-            }
-            try {
-                val xmp = item.xmpPath.takeIf { File(it).isFile }
-                val check = xmp?.let { engine.xmpCheck(it) }
-                engine.open(item.rawPath, xmp)
-                val info = engine.imageInfo()
-                _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }
-                refreshLocked()
-            } catch (e: EngineException) {
-                _state.update { it.copy(message = "cannot open ${item.fileName}: ${e.message}") }
-            }
-            _state.update { it.copy(loading = false) }
+            leaveLocked(index, saveCurrent, fetch)
+            if (!fetch) openLocked(item)
         }
+        if (fetch && src != null) {
+            // brief P2e: fetch the photo first, outside the lock (the engine is free meanwhile)
+            _state.update { it.copy(message = "getting ${item.fileName}…") }
+            try {
+                item = src.prepare(item) { text -> if (generation == g) _state.update { it.copy(message = text) } }
+            } catch (e: PhotoSourceException) {
+                if (generation == g) { fetching = false; _state.update { it.copy(message = e.message, loading = false) } }
+                return
+            }
+            if (generation != g) return // the user went to another photo, or left the darkroom, meanwhile
+            replaceItem(index, item)
+            _state.update { it.copy(message = null) }
+            lock.withLock {
+                if (generation != g) return
+                openLocked(item)
+            }
+        }
+        if (_state.value.info != null) src?.opened(item, _state.value.series.items.getOrNull(index + 1))
         requestRender()
+    }
+
+    /** brief P2e: counts photo switches and closes, so a fetch that finishes late opens nothing */
+    @Volatile private var generation = 0
+
+    /** brief P2e: true while the darkroom fetches the photo it is about to open (no session is open then). */
+    @Volatile private var fetching = false
+
+    private suspend fun leaveLocked(index: Int, saveCurrent: Boolean, fetch: Boolean) {
+        val left = _state.value.current.takeIf { _state.value.info != null }
+        if (saveCurrent) saveLocked()
+        runCatching { engine.close() }
+        if (left != null) source?.left(left)
+        fetching = fetch
+        _state.update {
+            it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
+                expanded = null, overlay = null, message = null, readOnlyReason = null, info = null)
+        }
+    }
+
+    private suspend fun openLocked(item: SeriesItem) {
+        fetching = false
+        try {
+            val xmp = item.xmpPath.takeIf { File(it).isFile }
+            val check = xmp?.let { engine.xmpCheck(it) }
+            engine.open(item.rawPath, xmp)
+            val info = engine.imageInfo()
+            _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }
+            refreshLocked()
+        } catch (e: EngineException) {
+            _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: ${e.message}") }
+        }
+        _state.update { it.copy(loading = false) }
+    }
+
+    /** brief P2e: a photo of the series got its name or its final paths (from LightPhotoLibrary). */
+    fun replaceItem(index: Int, item: SeriesItem) = _state.update { s ->
+        if (index !in s.series.items.indices || s.series.items[index] == item) s
+        else s.copy(series = s.series.copy(items = s.series.items.toMutableList().also { it[index] = item }))
     }
 
     /**
@@ -144,10 +195,14 @@ class DarkroomController(
      * sidecar (not for read-only photos), the session closed and the pictures dropped.
      */
     suspend fun closePhoto() {
+        generation++
+        fetching = false
         cancelRenders()
         lock.withLock {
+            val left = _state.value.current.takeIf { _state.value.info != null }
             saveLocked()
             runCatching { engine.close() }
+            if (left != null) source?.left(left)
             _state.update {
                 it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
                     expanded = null, overlay = null, readOnlyReason = null, loading = false)
@@ -547,6 +602,60 @@ class DarkroomController(
         } finally {
             requestRender()
         }
+    }
+
+    // ------------------------------------------------------------------ LightPhotoLibrary sync (brief P2e)
+
+    /** The photo open in the darkroom, if any (its RAW path). */
+    fun openRawPath(): String? = _state.value.takeIf { it.info != null }?.current?.rawPath
+
+    /** If [rawPath] is open (and editable): write its edit to its sidecar now. */
+    suspend fun saveIfOpen(rawPath: String) {
+        if (openRawPath() != rawPath) return
+        cancelRenders()
+        lock.withLock { if (openRawPath() == rawPath) saveLocked() }
+        requestRender()
+    }
+
+    /** If [rawPath] is open: re-read rating, labels and tags from its sidecar (LightPhotoLibrary merged them). */
+    suspend fun reloadMetadataIfOpen(rawPath: String, xmpPath: String) {
+        if (openRawPath() != rawPath) return
+        cancelRenders()
+        lock.withLock {
+            if (openRawPath() == rawPath) {
+                try {
+                    engine.metadataReload(xmpPath)
+                    _state.update { it.copy(info = engine.imageInfo()) }
+                } catch (e: EngineException) {
+                    _state.update { it.copy(message = e.message) }
+                }
+            }
+        }
+        requestRender()
+    }
+
+    /**
+     * Run [block] with a session on the photo [rawPath]: the darkroom's own session when that photo is
+     * open, or a session of its own (opened with [xmpPath] and closed again) when no photo is open.
+     * Returns null without running [block] while another photo is open or being fetched: the engine
+     * holds one photo at a time (engine-api.md 1), and the darkroom's photo is never closed for this.
+     */
+    suspend fun <T> withPhotoSession(rawPath: String, xmpPath: String, block: suspend (DarktableEngine) -> T): T? {
+        val mine = openRawPath() == rawPath
+        if (mine) cancelRenders()
+        val r = lock.withLock {
+            val s = _state.value
+            when {
+                s.info != null && s.current?.rawPath == rawPath -> Result.success(block(engine))
+                s.info == null && !fetching -> {
+                    engine.open(rawPath, xmpPath.takeIf { File(it).isFile })
+                    try { Result.success(block(engine)) } finally { runCatching { engine.close() } }
+                }
+                else -> null
+            }
+        }
+        if (mine) requestRender()
+        return r?.getOrThrow()
     }
 
     // ------------------------------------------------------------------ interface state

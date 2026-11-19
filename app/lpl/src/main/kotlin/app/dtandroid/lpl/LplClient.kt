@@ -1,0 +1,346 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package app.dtandroid.lpl
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import java.io.File
+import java.io.IOException
+import java.io.RandomAccessFile
+
+/** Timeouts and retries of the client, all explicit (brief P2e deliverable 1). */
+data class ClientSettings(
+    val connectTimeoutMs: Int = 5_000,
+    /** JSON calls and uploads */
+    val readTimeoutMs: Int = 20_000,
+    /** a heartbeat that takes longer than this is skipped; the next one follows 2 s later */
+    val heartbeatTimeoutMs: Int = 5_000,
+    /** gap allowed between two blocks of a download before it counts as stalled (it then resumes) */
+    val downloadReadTimeoutMs: Int = 30_000,
+    /** further attempts after a transient failure (no answer, timeout, 502/503/504) for calls that can be repeated */
+    val retries: Int = 2,
+    /** wait before attempt n+1, in ms */
+    val backoffMs: List<Long> = listOf(500, 2_000),
+    /** a download that breaks off resumes this many times within one call */
+    val downloadResumes: Int = 5,
+)
+
+/** Result of checking a server before it is added. */
+sealed interface ServerCheckResult {
+    /** LPL answered; [passwordRequired] tells whether it asks for one; [passwordOk] whether the given one was accepted */
+    data class Lpl(val passwordRequired: Boolean, val passwordOk: Boolean, val photos: Long?) : ServerCheckResult
+    /** something answers there, but not LPL */
+    data object NotLpl : ServerCheckResult
+    data class Failed(val error: LplException) : ServerCheckResult
+}
+
+/**
+ * The client for LPL's agent calls (PLAN.md 4.1), one per server. Blocking: call it from a background
+ * thread. [token] gives the password each time it is needed (it is kept encrypted elsewhere) and is
+ * sent only in the `x-lpl-token` header, only to [origin]. Nothing here logs; [log], when given,
+ * receives one line per call with method, path, status and duration, never a header or a body.
+ */
+class LplClient(
+    val origin: ServerOrigin,
+    private val token: () -> String?,
+    private val transport: HttpTransport = UrlConnectionTransport(),
+    val settings: ClientSettings = ClientSettings(),
+    private val sleep: (Long) -> Unit = { Thread.sleep(it) },
+    private val log: ((String) -> Unit)? = null,
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    // ------------------------------------------------------------------ calls of PLAN.md 4.1
+
+    /** `POST /api/agents/heartbeat`. Not repeated: the next heartbeat follows anyway. */
+    fun heartbeat(installId: String, deviceName: String, state: AgentState): HeartbeatAnswer {
+        val body = buildBody(installId, deviceName, state)
+        val o = callJson("POST", "/api/agents/heartbeat", body, retries = 0, readTimeoutMs = settings.heartbeatTimeoutMs)
+        val jobs = o["jobs"].arr()?.mapNotNull { e ->
+            val j = e as? JsonObject ?: return@mapNotNull null
+            val id = j["id"].long() ?: return@mapNotNull null
+            val kind = j["kind"].str() ?: return@mapNotNull null
+            val payload = j["payload"] as? JsonObject
+            val ids = payload?.get("ids").arr()?.mapNotNull { it.long() ?: it.str()?.toLongOrNull() } ?: emptyList()
+            Job(id, kind, ids, payload?.get("all").bool() == true)
+        } ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/agents/heartbeat: no job list in the answer")
+        return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0)
+    }
+
+    private fun buildBody(installId: String, deviceName: String, state: AgentState): ByteArray =
+        JsonObject(mapOf(
+            "id" to kotlinx.serialization.json.JsonPrimitive(installId),
+            "name" to kotlinx.serialization.json.JsonPrimitive(deviceName),
+            // exactly "android": that keeps jobs meant for a PC away from the phone (LPL hand-off notes, R3)
+            "os" to kotlinx.serialization.json.JsonPrimitive("android"),
+            "state" to state.toJson(),
+        )).toString().toByteArray()
+
+    /** `GET /api/photos/{id}/checkout`: file name, size and the server's time, which becomes `checkout_ts`. */
+    fun checkout(id: Long): Checkout {
+        val o = callJson("GET", "/api/photos/$id/checkout")
+        val name = o["filename"].str()?.takeIf { it.isNotEmpty() }
+            ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no file name")
+        return Checkout(
+            id = id,
+            filename = name,
+            size = o["size"].long() ?: -1L,
+            mtime = o["mtime"].num() ?: 0.0,
+            serverTime = o["server_time"].num()
+                ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no server time"),
+        )
+    }
+
+    /** `GET /api/photos/{id}/xmp`: LPL's sidecar for the photo (made from its metadata when the NAS has none). */
+    fun getXmp(id: Long): ByteArray = call("GET", "/api/photos/$id/xmp", retries = settings.retries) { r ->
+        r.body.readBytes().also { if (it.isEmpty()) throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/xmp: empty") }
+    }
+
+    /**
+     * `POST /api/photos/{id}/xmp?checkout_ts=…`: the edit goes back. LPL answers with the XMP it stored;
+     * `X-LPL-Merged: 1` means it put its own newer rating, labels and tags into it, and the app must take
+     * that file. Repeated after a transient failure: posting the same edit twice stores the same file.
+     */
+    fun postXmp(id: Long, xmp: ByteArray, checkoutTs: Double): XmpAnswer {
+        val path = "/api/photos/$id/xmp?checkout_ts=${formatTs(checkoutTs)}"
+        return call("POST", path, xmp, "application/rdf+xml", retries = settings.retries) { r ->
+            val merged = r.header("x-lpl-merged") == "1"
+            val body = r.body.readBytes()
+            if (body.isEmpty()) throw LplException(LplFailure.BAD_ANSWER, "POST /api/photos/$id/xmp: empty answer")
+            XmpAnswer(merged, body)
+        }
+    }
+
+    /** `POST /api/photos/{id}/preview`: the engine's JPEG becomes LPL's preview of the photo. */
+    fun postPreview(id: Long, jpeg: ByteArray) {
+        callJson("POST", "/api/photos/$id/preview", jpeg, "image/jpeg")
+    }
+
+    /** `POST /api/jobs/{id}/done` with `done` or `failed`. */
+    fun jobDone(jobId: Long, ok: Boolean) {
+        val body = """{"status":"${if (ok) "done" else "failed"}"}""".toByteArray()
+        callJson("POST", "/api/jobs/$jobId/done", body)
+    }
+
+    /**
+     * `GET /api/photos/{id}/original` into [part], resuming what is already there with
+     * `Range: bytes=<length>-` and `If-Range` (the ETag of the first answer, kept in `<part>.etag`), so a
+     * changed file on the NAS is not glued onto old bytes. A download that breaks off resumes up to
+     * [ClientSettings.downloadResumes] times. When it returns, [part] holds the whole file (its length is
+     * [expectedSize] when that is known). [progress] gets bytes on disk and the total; [cancelled] is
+     * asked between blocks.
+     */
+    fun downloadOriginal(
+        id: Long,
+        part: File,
+        expectedSize: Long,
+        progress: (Long, Long) -> Unit = { _, _ -> },
+        cancelled: () -> Boolean = { false },
+    ) {
+        val etagFile = File(part.path + ".etag")
+        var attempts = 0
+        var restarted = false
+        while (true) {
+            if (cancelled()) throw LplException(LplFailure.CANCELLED, "GET /api/photos/$id/original: cancelled")
+            val have = if (part.isFile) part.length() else 0L
+            if (expectedSize > 0 && have == expectedSize) { progress(have, expectedSize); return }
+            if (expectedSize > 0 && have > expectedSize) { part.delete(); etagFile.delete(); continue }
+            try {
+                val done = downloadOnce(id, part, etagFile, have, expectedSize, progress, cancelled)
+                if (done) return
+                // 416 or a mismatch: start again from nothing, once
+                if (restarted) throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/original: the server's file does not match the expected size")
+                restarted = true
+                part.delete(); etagFile.delete()
+            } catch (e: LplException) {
+                if (!e.transient || attempts >= settings.downloadResumes) throw e
+                attempts++
+                sleep(settings.backoffMs.getOrElse(attempts - 1) { settings.backoffMs.lastOrNull() ?: 0L })
+            }
+        }
+    }
+
+    /** One request; true when [part] is complete afterwards, false when the download has to start again. */
+    private fun downloadOnce(
+        id: Long, part: File, etagFile: File, have: Long, expectedSize: Long,
+        progress: (Long, Long) -> Unit, cancelled: () -> Boolean,
+    ): Boolean {
+        val label = "GET /api/photos/$id/original"
+        val headers = HashMap<String, String>()
+        token()?.takeIf { it.isNotEmpty() }?.let { headers["x-lpl-token"] = it }
+        if (have > 0) {
+            headers["Range"] = "bytes=$have-"
+            etagFile.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }?.let { headers["If-Range"] = it }
+        }
+        val req = HttpRequest("GET", origin, "/api/photos/$id/original", headers, null, null,
+            settings.connectTimeoutMs, settings.downloadReadTimeoutMs)
+        val t0 = System.nanoTime()
+        return try {
+            transport.exchange(req) { r ->
+                log?.invoke("$label${if (have > 0) " (Range from $have)" else ""} -> ${r.status} (${ms(t0)} ms to the answer)")
+                when (r.status) {
+                    200, 206 -> {
+                        val append = r.status == 206
+                        if (append) {
+                            val start = r.header("content-range")?.let { Regex("bytes (\\d+)-").find(it)?.groupValues?.get(1)?.toLongOrNull() }
+                            if (start != have) throw LplException(LplFailure.BAD_ANSWER, "$label: range answer starts at $start, not at $have")
+                        } else {
+                            r.header("etag")?.let { e -> writeSmall(etagFile, e) } ?: etagFile.delete()
+                        }
+                        val total = when {
+                            expectedSize > 0 -> expectedSize
+                            append -> r.header("content-range")?.substringAfterLast('/')?.toLongOrNull() ?: -1L
+                            else -> r.header("content-length")?.toLongOrNull() ?: -1L
+                        }
+                        var done = if (append) have else 0L
+                        try {
+                            part.parentFile?.mkdirs()
+                            RandomAccessFile(part, "rw").use { f ->
+                                f.setLength(done)
+                                f.seek(done)
+                                val buf = ByteArray(1 shl 16)
+                                var lastReport = 0L
+                                while (true) {
+                                    if (cancelled()) throw LplException(LplFailure.CANCELLED, "$label: cancelled")
+                                    val n = r.body.read(buf)
+                                    if (n < 0) break
+                                    f.write(buf, 0, n)
+                                    done += n
+                                    if (done - lastReport >= (1 shl 18)) { progress(done, total); lastReport = done }
+                                }
+                                f.fd.sync()
+                            }
+                        } catch (e: LplException) {
+                            throw e
+                        } catch (e: IOException) {
+                            if (isLocal(e, part)) throw LplException(LplFailure.LOCAL, "$label: cannot write the file (${e.javaClass.simpleName})", cause = e)
+                            throw e
+                        }
+                        progress(done, total)
+                        log?.invoke("$label: $done bytes on disk after ${ms(t0)} ms")
+                        when {
+                            expectedSize > 0 && done == expectedSize -> true
+                            expectedSize > 0 && done < expectedSize -> throw LplException(LplFailure.UNREACHABLE, "$label: the download broke off at $done of $expectedSize bytes")
+                            expectedSize > 0 -> false
+                            else -> true
+                        }
+                    }
+                    416 -> false
+                    else -> throw statusError(label, r)
+                }
+            }
+        } catch (e: LplException) {
+            throw e
+        } catch (e: IOException) {
+            log?.invoke("$label: ${e.javaClass.simpleName} after ${ms(t0)} ms")
+            throw LplException.fromIo(label, e)
+        }
+    }
+
+    private fun isLocal(e: IOException, part: File): Boolean =
+        e.message?.contains(part.name) == true || e.message?.contains("No space", ignoreCase = true) == true ||
+            e.message?.contains("ENOSPC") == true
+
+    private fun writeSmall(f: File, text: String) = runCatching { f.parentFile?.mkdirs(); f.writeText(text) }
+
+    // ------------------------------------------------------------------ adding a server
+
+    /**
+     * Is LPL there, does it want a password, is [password] right? `GET /api/auth` (answered without
+     * a password, tells whether one is required), then `GET /api/status` with the password.
+     */
+    fun check(password: String?): ServerCheckResult {
+        val auth = try {
+            call("GET", "/api/auth", retries = 0, withToken = false) { r -> parseObject("GET /api/auth", r.body.readBytes()) }
+        } catch (e: LplException) {
+            return when (e.failure) {
+                LplFailure.NOT_FOUND, LplFailure.BAD_ANSWER, LplFailure.REFUSED, LplFailure.REDIRECT, LplFailure.UNAUTHORIZED -> ServerCheckResult.NotLpl
+                else -> ServerCheckResult.Failed(e)
+            }
+        }
+        val required = auth["required"].bool() ?: return ServerCheckResult.NotLpl
+        val probe = LplClient(origin, { password }, transport, settings, sleep, log)
+        return try {
+            val st = probe.callJson("GET", "/api/status", retries = 0)
+            ServerCheckResult.Lpl(required, true, st["photos"].long())
+        } catch (e: LplException) {
+            if (e.failure == LplFailure.UNAUTHORIZED) ServerCheckResult.Lpl(required, false, null) else ServerCheckResult.Failed(e)
+        }
+    }
+
+    // ------------------------------------------------------------------ plumbing
+
+    internal fun callJson(
+        method: String, path: String, body: ByteArray? = null, contentType: String = "application/json",
+        retries: Int = if (method == "GET") settings.retries else 0, readTimeoutMs: Int = settings.readTimeoutMs,
+    ): JsonObject = call(method, path, body, contentType, retries, readTimeoutMs) { r ->
+        parseObject("$method ${path.substringBefore('?')}", r.body.readBytes())
+    }
+
+    private fun parseObject(label: String, bytes: ByteArray): JsonObject =
+        try {
+            json.parseToJsonElement(bytes.decodeToString()) as? JsonObject
+        } catch (e: Exception) {
+            null
+        } ?: throw LplException(LplFailure.BAD_ANSWER, "$label: the answer is not a JSON object")
+
+    private fun <T> call(
+        method: String, path: String, body: ByteArray? = null, contentType: String? = null,
+        retries: Int = 0, readTimeoutMs: Int = settings.readTimeoutMs, withToken: Boolean = true,
+        handle: (HttpResponse) -> T,
+    ): T {
+        var attempt = 0
+        while (true) {
+            try {
+                return callOnce(method, path, body, contentType, readTimeoutMs, withToken, handle)
+            } catch (e: LplException) {
+                if (!e.transient || attempt >= retries) throw e
+                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                attempt++
+            }
+        }
+    }
+
+    private fun <T> callOnce(
+        method: String, path: String, body: ByteArray?, contentType: String?, readTimeoutMs: Int, withToken: Boolean,
+        handle: (HttpResponse) -> T,
+    ): T {
+        val headers = HashMap<String, String>()
+        if (withToken) token()?.takeIf { it.isNotEmpty() }?.let { headers["x-lpl-token"] = it }
+        val req = HttpRequest(method, origin, path, headers, body, contentType, settings.connectTimeoutMs, readTimeoutMs)
+        val t0 = System.nanoTime()
+        return try {
+            transport.exchange(req) { r ->
+                log?.invoke("${req.label} -> ${r.status} (${ms(t0)} ms)")
+                if (r.status !in 200..299) throw statusError(req.label, r)
+                handle(r)
+            }
+        } catch (e: LplException) {
+            throw e
+        } catch (e: IOException) {
+            log?.invoke("${req.label}: ${e.javaClass.simpleName} after ${ms(t0)} ms")
+            throw LplException.fromIo(req.label, e)
+        }
+    }
+
+    private fun statusError(label: String, r: HttpResponse): LplException {
+        // LPL's errors are {"detail": "..."}; the detail is kept (short) for the log, never shown raw
+        val detail = runCatching { r.body.readNBytes(400).decodeToString() }.getOrDefault("")
+            .let { t -> Regex("\"detail\"\\s*:\\s*\"([^\"]{0,120})").find(t)?.groupValues?.get(1) ?: "" }
+        val s = r.status
+        val what = if (detail.isNotEmpty()) ": $detail" else ""
+        return when {
+            s in 300..399 -> LplException(LplFailure.REDIRECT, "$label: redirect $s, not followed", s)
+            s == 401 || s == 403 -> LplException(LplFailure.UNAUTHORIZED, "$label: $s$what", s)
+            s == 404 -> LplException(LplFailure.NOT_FOUND, "$label: 404$what", s)
+            s in 400..499 -> LplException(LplFailure.REFUSED, "$label: $s$what", s)
+            else -> LplException(LplFailure.SERVER, "$label: $s$what", s)
+        }
+    }
+
+    private fun ms(t0: Long) = (System.nanoTime() - t0) / 1_000_000
+
+    companion object {
+        /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
+        fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
+    }
+}

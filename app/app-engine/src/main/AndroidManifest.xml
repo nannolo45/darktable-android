@@ -1,23 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- The app on the real engine (brief P2b). No permissions: photos come in and go out through
-     Android's file picker, which grants access to each chosen file only; nothing is sent anywhere. -->
+<!-- dt-android (briefs P2b and P2e): darktable's engine, photos from the file picker and from
+     LightPhotoLibrary. Permissions (brief P2e):
+     - INTERNET: talk to the LightPhotoLibrary server(s) the user added, nothing else (no analytics, no crash upload);
+     - ACCESS_NETWORK_STATE: the background sync job waits for a network (JobScheduler requires it for that);
+     - RECEIVE_BOOT_COMPLETED: that job stays scheduled across a restart of the phone. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- package visibility (P2c report): to see whether the LightPhotoLibrary app is installed and open a page in it -->
+    <queries>
+        <intent>
+            <action android:name="app.dtandroid.lplshell.OPEN" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="app.dtandroid.lplshell.OPEN" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:name=".RealApp"
         android:label="@string/app_name"
         android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="false"
         android:theme="@style/Theme.Dt">
+        <!-- singleTask: one window; a hand-off link that arrives while the app is open reaches it (onNewIntent) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- brief P2e item 4, PLAN.md 4.3 R1: "Edit on this phone" in LightPhotoLibrary -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="lpldt" android:host="edit" />
+            </intent-filter>
         </activity>
+        <!-- brief P2e item 5: retries waiting syncs when a network is available -->
+        <service
+            android:name=".SyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 </manifest>

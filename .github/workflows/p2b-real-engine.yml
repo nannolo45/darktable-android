@@ -4,11 +4,14 @@
 # ("dt-android-engine-..."), runs the engine contract suite and the scenario tests on an API 33
 # x86_64 emulator, and compares the app's exports with darktable-cli on Linux (the same commit):
 # the G0 comparison (test RAW + test XMP) and an XMP written by the app. Logs go to the ci-logs branch.
+# Brief P2e: this app is now the product (application id app.dtandroid, "dt-android", APK
+# dt-android-arm64-v8a.apk, release tag dt-android-<commit>); the LightPhotoLibrary module's JVM tests
+# and its emulator scenarios (LplScenarioTest, against a stub server) run here too.
 name: p2b-real-engine
 
 on:
   push:
-    branches: [main, p2b-real-engine]
+    branches: [main, p2b-real-engine, p2e-lpl-client]
     paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", ".github/workflows/p2b-real-engine.yml"]
   workflow_dispatch:
 
@@ -38,7 +41,7 @@ jobs:
       - id: t
         run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
       - id: a
-        run: echo "APP_TAG=app-engine-$(git rev-parse HEAD | cut -c1-12)" | tee -a "$GITHUB_OUTPUT"
+        run: echo "APP_TAG=dt-android-$(git rev-parse HEAD | cut -c1-12)" | tee -a "$GITHUB_OUTPUT"
 
   # both skip an ABI whose release file already exists
   deps:
@@ -187,10 +190,19 @@ jobs:
         run: |
           set +e
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue \
-            :checkScreenRulesSelfTest :checkScreenRules \
-            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/tests.log
-          rc=${PIPESTATUS[0]}
+          # Maven Central sometimes answers "could not find" for artifacts that exist (P2c; again in run
+          # 44549705769): such resolution failures are retried with --refresh-dependencies, nothing else
+          refresh=""
+          for attempt in 1 2 3; do
+            "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 --continue \
+              :checkScreenRulesSelfTest :checkScreenRules \
+              :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest :lpl:test $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/tests.log
+            rc=${PIPESTATUS[0]}
+            [ "$rc" = 0 ] && break
+            grep -qE "Could not (find|resolve|GET) |status code 429" /tmp/tests.log || break
+            cp /tmp/tests.log "/tmp/tests-attempt$attempt.log"
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30)); refresh="--refresh-dependencies"
+          done
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
           exit 0
@@ -204,8 +216,8 @@ jobs:
             :app-engine:assembleArm64Debug :app-engine:assembleX86_64Debug :app-engine:assembleX86_64DebugAndroidTest :g0:assembleX86_64Debug 2>&1 | tee /tmp/gradle.log
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
           mkdir -p /home/runner/apk
-          cp app-engine/build/outputs/apk/arm64/debug/app-engine-arm64-debug.apk /home/runner/apk/dt-android-engine-arm64-v8a.apk
-          cp app-engine/build/outputs/apk/x86_64/debug/app-engine-x86_64-debug.apk /home/runner/apk/dt-android-engine-x86_64.apk
+          cp app-engine/build/outputs/apk/arm64/debug/app-engine-arm64-debug.apk /home/runner/apk/dt-android-arm64-v8a.apk
+          cp app-engine/build/outputs/apk/x86_64/debug/app-engine-x86_64-debug.apk /home/runner/apk/dt-android-x86_64.apk
           cp app-engine/build/outputs/apk/androidTest/x86_64/debug/app-engine-x86_64-debug-androidTest.apk /home/runner/apk/app-engine-x86_64-androidTest.apk
 
       - name: Check and measure the APKs
@@ -214,14 +226,18 @@ jobs:
           {
             echo "app tag: $APP_TAG"; echo "engine: $ENGINE_TAG"; echo "commit: $GITHUB_SHA"
             for abi in arm64-v8a x86_64; do
-              a=/home/runner/apk/dt-android-engine-$abi.apk
+              a=/home/runner/apk/dt-android-$abi.apk
               echo; echo "== $abi"
               echo "apk_bytes $(stat -c %s "$a")"
               "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$a" | grep -E "^package:|^application-label:|native-code" || true
               unzip -l "$a" | awk '$4 ~ /^(lib\/|assets\/engine\/)/ {print "  " $1 "\t" $4}'
               if unzip -l "$a" | grep -iE '\.(cr2|cr3|nef|arw|raf|dng|orf|rw2|pef|srw|jks|keystore)$'; then echo "FORBIDDEN FILE IN APK"; exit 1; fi
               echo "  permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/    /'
-              if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
+              # brief P2e: the product, with network access for LightPhotoLibrary and nothing else
+              "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$a" | grep -q "^package: name='app.dtandroid' " || { echo "application id is not app.dtandroid"; exit 1; }
+              extra=$("$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" \
+                | grep -vxE 'android\.permission\.(INTERNET|ACCESS_NETWORK_STATE|RECEIVE_BOOT_COMPLETED)|app\.dtandroid\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION' || true)
+              if [ -n "$extra" ]; then echo "unexpected permissions: $extra"; exit 1; fi
               if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
               echo "  signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$a" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/    /'
             done
@@ -237,15 +253,15 @@ jobs:
           cp /tmp/test-summary.txt test-summary.txt
           gh release view -R "$GITHUB_REPOSITORY" "$APP_TAG" >/dev/null 2>&1 || \
             gh release create -R "$GITHUB_REPOSITORY" "$APP_TAG" --prerelease --target "$GITHUB_SHA" \
-              --title "dt-android engine $APP_TAG (real engine)" \
-              --notes "The app on darktable's real engine (brief P2b), built from commit $GITHUB_SHA with engine $ENGINE_TAG: opens your RAW files through the file picker and edits them with darktable's pipeline. Not the interface preview. Unofficial port of darktable, debug build, not a darktable release. Phone: dt-android-engine-arm64-v8a.apk. Source: this repository at that commit (GPL-3.0-or-later)." || true
-          gh release upload -R "$GITHUB_REPOSITORY" "$APP_TAG" dt-android-engine-arm64-v8a.apk apk-report.txt test-summary.txt --clobber
+              --title "dt-android $APP_TAG" \
+              --notes "dt-android (briefs P2b and P2e), built from commit $GITHUB_SHA with engine $ENGINE_TAG: darktable's real engine; photos from LightPhotoLibrary (Edit on this phone) or from the file picker; edits go back to LightPhotoLibrary as XMP with a preview. Application id app.dtandroid. Not the interface preview. Unofficial port of darktable, debug build, not a darktable release. Phone: dt-android-arm64-v8a.apk. Source: this repository at that commit (GPL-3.0-or-later)." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$APP_TAG" dt-android-arm64-v8a.apk apk-report.txt test-summary.txt --clobber
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: p2b-apks
           path: |
-            /home/runner/apk/dt-android-engine-x86_64.apk
+            /home/runner/apk/dt-android-x86_64.apk
             /home/runner/apk/app-engine-x86_64-androidTest.apk
           retention-days: 7
 
@@ -323,7 +339,7 @@ jobs:
           emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: bash tools/app/emulator-p2b.sh /home/runner/apk/dt-android-engine-x86_64.apk /home/runner/apk/app-engine-x86_64-androidTest.apk "$DTT/$P2B_RAW" "$DTT/$P2B_XMP" /home/runner/emu; echo $? > /home/runner/emu-rc.txt
+          script: bash tools/app/emulator-p2b.sh /home/runner/apk/dt-android-x86_64.apk /home/runner/apk/app-engine-x86_64-androidTest.apk "$DTT/$P2B_RAW" "$DTT/$P2B_XMP" /home/runner/emu; echo $? > /home/runner/emu-rc.txt
 
       - name: Result
         id: r
