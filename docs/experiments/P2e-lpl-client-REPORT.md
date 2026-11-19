@@ -217,7 +217,7 @@ JVM before the fix: the new `ConcurrencyTest` against the old code failed 4 of 6
 | two thumbnail renders of one photo | own temporary file per write (darkroom's store too) | by reading |
 | merged XMP written by a sync while the darkroom saves the same XMP | not locked against each other: the merge is written only if the file is still what was posted (hash check), and the engine's write is itself atomic; if the darkroom wins, the next sync merges again (the checkout time is unchanged). Small window, left as is | none |
 
-**Tests and CI.** Workspace (x86_64, 2 cores): `:lpl:test` 52 tests (10 new in `ConcurrencyTest`) and
+**Tests and CI.** Workspace (x86_64, 2 cores): `:lpl:test` 43 tests, 1 skipped (10 new in `ConcurrencyTest`) and
 `:darkroom:testDebugUnitTest` pass, three runs in a row. The app module cannot be compiled here any more (no NDK);
 CI built it. Run **44568264329** (commit a8bf829) green in every job: JVM 171 tests, 0 failed, 1 skipped (the
 real-server run); emulator **32 of 32** (contract suite 19/19, P2b scenarios 7/7, LPL scenarios 6/6; done → list
