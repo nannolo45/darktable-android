@@ -119,6 +119,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    packaging {
+        dex { useLegacyPackaging = true }
+    }
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
