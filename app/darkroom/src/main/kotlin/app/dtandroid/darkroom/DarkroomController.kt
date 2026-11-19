@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -95,12 +96,33 @@ class DarkroomController(
     @Volatile private var bgActive = false
     @Volatile private var lastInteractiveEnd = 0L
 
+    /**
+     * Whether a background task's render is running now. Only such a render is ever cancelled for interactive
+     * work: the flag is cleared, under [cancelGuard], the moment the render returns, so a cancel can never land
+     * on the interactive render that follows (run 44616800258: the darkroom stopped showing previews; a stray
+     * cancel ending an interactive render that nothing asked again is one way that happens).
+     */
+    @Volatile private var bgRendering = false
+    private val cancelGuard = Any()
+
+    private fun cancelBackgroundRender() = synchronized(cancelGuard) { if (bgRendering) engine.renderCancel() }
+
+    /** The engine as background tasks see it: its renders mark themselves, so only they are cancelled. */
+    private val bgEngine: DarktableEngine = object : DarktableEngine by engine {
+        private suspend fun <T> marked(block: suspend () -> T): T {
+            synchronized(cancelGuard) { bgRendering = true }
+            try { return block() } finally { synchronized(cancelGuard) { bgRendering = false } }
+        }
+        override suspend fun renderPreview(maxSize: Int) = marked { engine.renderPreview(maxSize) }
+        override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double) = marked { engine.renderRegion(x, y, w, h, scale) }
+    }
+
     /** Run [block] under the lock as interactive work: background work is cancelled and waits. */
     private suspend fun <T> fg(block: suspend () -> T): T {
         interactive.incrementAndGet()
         try {
             val canceller = if (bgActive) scope.launch {
-                while (bgActive) { engine.renderCancel(); delay(CANCEL_REPEAT_MS) }
+                while (bgActive) { cancelBackgroundRender(); delay(CANCEL_REPEAT_MS) }
             } else null
             return lock.withLock {
                 canceller?.let { it.cancel(); it.join() }
@@ -134,7 +156,7 @@ class DarkroomController(
                 if (!quiet()) return@withLock null
                 bgActive = true
                 try {
-                    Result.success(block(engine))
+                    Result.success(block(bgEngine))
                 } catch (e: EngineException) {
                     if (e.error == EngineError.CANCELLED) null else Result.failure(e)
                 } finally {
@@ -631,11 +653,27 @@ class DarkroomController(
         if (_state.value.before) renderBefore()
     }
 
+    /**
+     * An interactive render that ends CANCELLED although its own coroutine is still wanted was stopped by a
+     * cancel meant for something else: run it again (at most twice) rather than leave the screen without it.
+     */
+    private suspend fun <T> wanted(block: suspend () -> T): T {
+        var n = 0
+        while (true) {
+            try {
+                return block()
+            } catch (e: EngineException) {
+                if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || ++n > 2) throw e
+                Timeline.mark("darkroom: a render stopped by a cancel not meant for it, run again")
+            }
+        }
+    }
+
     private suspend fun renderPreview() {
         val img = fg {
             if (_state.value.info == null) return@fg null
             val t0 = System.nanoTime()
-            engine.renderPreview(previewMaxSize).also {
+            wanted { engine.renderPreview(previewMaxSize) }.also {
                 val ns = System.nanoTime() - t0
                 dragPicture.record(it.width * it.height, ns)
                 _times.update { t -> t.copy(previewMs = ns / 1e6) }
@@ -670,7 +708,7 @@ class DarkroomController(
             val h = min(r.h, size.h - y)
             if (w <= 0 || h <= 0) return@fg null
             val t0 = System.nanoTime()
-            PhotoLayer(engine.renderRegion(x, y, w, h, r.scale), x, y, r.scale).also {
+            PhotoLayer(wanted { engine.renderRegion(x, y, w, h, r.scale) }, x, y, r.scale).also {
                 _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
             }
         } ?: return

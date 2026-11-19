@@ -38,6 +38,15 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 22:15 UTC: a reading that fits l2's timeline (photo opened, no preview after it, and none for any later
+  photo): the canceller of a waiting interactive task cancelled *every* render while a background task was marked
+  active, so a cancel issued just as the background task ended could land on the interactive render that took the
+  lock next; that render ended CANCELLED, which the darkroom treats as "superseded" and never asks again. Fixed two
+  ways: only a background task's own render can now be cancelled for interactive work (`bgEngine` marks its renders,
+  `cancelBackgroundRender` checks the mark under a lock that the render's end also takes), and an interactive preview
+  or region that ends CANCELLED while still wanted is run again (at most twice, marked in the timeline). Pushed on
+  top of the diagnostics, so the rerun shows either a green job or where it still waits.
+
 - 2026-11-19 22:00 UTC: run 44616800258 (2f2f375): with the time limits the emulator job ended (26 minutes of
   instrumentation, red). 29 of 39 tests ran and passed (the contract suite, P2b's scenarios, l1, l6); l2, l3 and l5 failed
   waiting 5 minutes for the darkroom to open a photo, l4 timed out after 10 minutes, then the process died with
