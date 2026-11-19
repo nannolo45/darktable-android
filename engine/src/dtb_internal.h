@@ -36,6 +36,17 @@ typedef struct dtb_undo_entry_t
   int history_end;  // history_end of that state
 } dtb_undo_entry_t;
 
+/* one entry of the history as the XMP gave it, for read-only sessions whose
+ * XMP names items the engine could not load (P1c item 1) */
+typedef struct dtb_row_t
+{
+  int dev_index;        // position in dev.history, -1: not loaded by the engine
+  char op[64];          // operation name as written in the XMP
+  int priority;
+  char *instance_name;  // g_malloc
+  gboolean enabled;
+} dtb_row_t;
+
 typedef struct dtb_session_t
 {
   gboolean open;
@@ -50,6 +61,11 @@ typedef struct dtb_session_t
   GQueue undo;         // of dtb_undo_entry_t *, newest at the tail
   GQueue redo;
   int next_snap_id;
+  // read-only sessions with entries the engine could not load: the history
+  // as the XMP lists it (GArray of dtb_row_t), and its end in those rows.
+  // NULL otherwise: history() then reads dev.history.
+  GArray *rows;
+  int rows_end;
 } dtb_session_t;
 
 /* core.c */
@@ -89,6 +105,9 @@ dt_iop_module_t *dtb__find(const char *op, int priority);
 /* tear the develop object down and load it again from the library, after
  * the library history was changed underneath it */
 void dtb__reload_dev(void);
+
+/* number of loaded items among the first `row_end` rows (read-only view) */
+int dtb__rows_dev_end(int row_end);
 
 /* history.c: every change to the edit goes through these */
 typedef enum dtb_change_t

@@ -555,10 +555,99 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* a small whole-image render, for comparing history states */
+static uint8_t *preview_px(int *w, int *h)
+{
+  uint8_t *p = NULL;
+  MUST(dtb_render_preview(384, &p, w, h));
+  return p;
+}
+
+/* P1c item 1: the history of a read-only session lists every entry of the
+ * XMP, flags the one the engine does not know, has end <= items, and
+ * history_goto works for every position; an unknown item changes nothing */
+static void guard_history(const char *xmp_path, const char *unknown_op)
+{
+  char *cj = NULL;
+  MUST(dtb_xmp_check(xmp_path, &cj));
+  JsonNode *cn = jparse_owned(cj);
+  const int entries = json_object_get_int_member(json_node_get_object(cn), "entries");
+  JsonArray *probs = json_object_get_array_member(json_node_get_object(cn), "problems");
+  const int problem_num = json_array_get_length(probs)
+                            ? json_object_get_int_member(json_array_get_object_element(probs, 0), "num") : -1;
+  json_node_unref(cn);
+
+  JsonNode *h = get_history();
+  JsonObject *ho = json_node_get_object(h);
+  JsonArray *items = json_object_get_array_member(ho, "items");
+  const int n = json_array_get_length(items);
+  const int end = json_object_get_int_member(ho, "end");
+  int unknown = 0, unknown_at = -1, flag_missing = 0;
+  for(int k = 0; k < n; k++)
+  {
+    JsonObject *it = json_array_get_object_element(items, k);
+    if(!json_object_has_member(it, "unknown")) { flag_missing++; continue; }
+    if(json_object_get_boolean_member(it, "unknown"))
+    {
+      unknown++;
+      unknown_at = k;
+      CHECK(unknown_op && !strcmp(json_object_get_string_member(it, "op"), unknown_op)
+              && !strcmp(json_object_get_string_member(it, "name"), unknown_op),
+            "unknown item %d has op '%s'", k, json_object_get_string_member(it, "op"));
+    }
+    CHECK(json_object_get_int_member(it, "num") == k, "item %d has num %ld", k,
+          (long)json_object_get_int_member(it, "num"));
+  }
+  json_node_unref(h);
+  fprintf(stdout, "RESULT read-only history %s: %d XMP entries, %d items, end %d, unknown items %d (at %d)\n",
+          xmp_path, entries, n, end, unknown, unknown_at);
+  CHECK(flag_missing == 0, "%d items without the unknown flag", flag_missing);
+  CHECK(end >= 0 && end <= n, "end %d outside 0..%d", end, n);
+  // every XMP entry is an item; the engine may add items of its own (a
+  // module that is on by default and missing from an old XMP's history)
+  CHECK(n >= entries, "%d items for %d XMP entries", n, entries);
+  CHECK(!unknown_op || unknown_at >= problem_num, "unknown item at %d, the XMP has it at %d", unknown_at, problem_num);
+  CHECK(unknown == (unknown_op ? 1 : 0), "%d unknown items, expected %d", unknown, unknown_op ? 1 : 0);
+
+  int w0, h0;
+  uint8_t *p0 = preview_px(&w0, &h0);
+  uint8_t *prev = NULL;
+  int moved = 0, unknown_step = -1;
+  for(int k = 0; k <= n; k++)
+  {
+    const int r = dtb_history_goto(k);
+    CHECK(r == DTB_OK, "history_goto(%d) of %d returned %d", k, n, r);
+    if(r) continue;
+    int e = -1;
+    history_count(&e);
+    CHECK(e == k, "after history_goto(%d) end is %d", k, e);
+    moved++;
+    int w, hh;
+    uint8_t *pk = preview_px(&w, &hh);
+    if(prev && k == unknown_at + 1 && w == w0 && hh == h0)
+    {
+      unknown_step = probe_diff(prev, pk, w, hh);
+      CHECK(unknown_step == 0, "the unknown item changed the picture (max %d)", unknown_step);
+    }
+    free(prev);
+    prev = pk;
+  }
+  free(prev);
+  MUST(dtb_history_goto(end));
+  int w1, h1;
+  uint8_t *p1 = preview_px(&w1, &h1);
+  const int back = (w1 == w0 && h1 == h0) ? probe_diff(p0, p1, w0, h0) : 999;
+  CHECK(back == 0, "back at end %d the picture differs from the opened one (max %d)", end, back);
+  free(p0);
+  free(p1);
+  fprintf(stdout, "RESULT read-only history_goto: %d of %d positions; step over the unknown item max %d;"
+          " back at end %d max %d\n", moved, n + 1, unknown_step, end, back);
+}
+
 static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
 {
-  const char *bad[2] = { "newer.xmp", "unknown.xmp" };
-  for(int i = 0; i < 2; i++)
+  const char *bad[3] = { "newer.xmp", "unknown.xmp", "unknown_first.xmp" };
+  for(int i = 0; i < 3; i++)
   {
     char *bx = path_join(outdir, bad[i]);
     char *j = NULL;
@@ -572,6 +661,7 @@ static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
     JsonNode *info = get_json(dtb_image_info);
     CHECK(json_object_get_boolean_member(json_node_get_object(info), "read_only"), "%s: session not read-only", bad[i]);
     json_node_unref(info);
+    guard_history(bx, i >= 1 ? "s3notamodule" : NULL);
     int r = dtb_xmp_write(bx);
     fprintf(stdout, "RESULT write_over_%s %d\n", bad[i], r);
     CHECK(r == DTB_E_READ_ONLY, "write over %s not refused", bad[i]);
@@ -1463,6 +1553,79 @@ static int cmd_actions(const char *raw, const char *xmp, const char *outdir)
   CHECK(param_num("denoiseprofile", 0, "a/0") == -1.0 || param_num("denoiseprofile", 0, "a/0") > 0,
         "automatic profile not set");
 
+  // P1c item 6: every entry carries its position as "index", set_profile
+  // takes it, and two entries of one name are told apart by it
+  pf = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+  if(pf)
+  {
+    JsonArray *a = json_node_get_array(pf);
+    const guint n = json_array_get_length(a);
+    int bad_index = 0, dup_pairs = 0, dup_distinct = 0, by_index_ok = 0;
+    for(guint i = 0; i < n; i++)
+    {
+      JsonObject *e = json_array_get_object_element(a, i);
+      if(!json_object_has_member(e, "index") || json_object_get_int_member(e, "index") != (gint64)i) bad_index++;
+    }
+    CHECK(bad_index == 0, "%d noise profile entries without their position as index", bad_index);
+    for(guint i = 1; i < n; i++)
+    {
+      snprintf(args, sizeof(args), "{\"index\": %u}", i);
+      action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+      if(param_num("denoiseprofile", 0, "a/0") > 0) by_index_ok++;
+      const char *ni = json_object_get_string_member(json_array_get_object_element(a, i), "name");
+      for(guint k = 1; k < i; k++)
+      {
+        if(strcmp(ni, json_object_get_string_member(json_array_get_object_element(a, k), "name"))) continue;
+        // the same name twice: both reachable by index, and the name selects the first
+        dup_pairs++;
+        double ai[3], ak[3], an[3];
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          ai[c] = param_num("denoiseprofile", 0, pth);
+        }
+        snprintf(args, sizeof(args), "{\"index\": %u}", k);
+        action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          ak[c] = param_num("denoiseprofile", 0, pth);
+        }
+        snprintf(args, sizeof(args), "{\"name\": \"%s\"}", ni);
+        action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          an[c] = param_num("denoiseprofile", 0, pth);
+        }
+        const gboolean distinct = ai[0] != ak[0] || ai[1] != ak[1] || ai[2] != ak[2];
+        if(distinct) dup_distinct++;
+        fprintf(stdout, "RESULT noise profile name '%s' at index %u and %u: a[0] %g and %g (%s); by name: %g\n", ni,
+                k, i, ak[0], ai[0], distinct ? "different profiles" : "same values", an[0]);
+        CHECK(an[0] == ak[0] && an[1] == ak[1] && an[2] == ak[2], "set_profile by name did not take the first entry");
+      }
+    }
+    CHECK(by_index_ok == (int)n - 1, "set_profile by index set a profile for %d of %u entries", by_index_ok, n - 1);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 0}", DTB_OK);
+    const double a_auto = param_num("denoiseprofile", 0, "a/0");
+    CHECK(a_auto == -1.0 || a_auto > 0, "index 0 did not set the automatic profile");
+    snprintf(args, sizeof(args), "{\"index\": %u}", n);
+    action("denoiseprofile", 0, "set_profile", args, DTB_E_RANGE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": -1}", DTB_E_RANGE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 1.5}", DTB_E_TYPE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": \"1\"}", DTB_E_TYPE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 1, \"name\": \"auto\"}", DTB_E_ARG);
+    fprintf(stdout, "RESULT noise profile index: %u entries, index = position, %d set by index, %d repeated names"
+            " (%d with different values), errors RANGE/TYPE/ARG as specified\n", n, by_index_ok, dup_pairs,
+            dup_distinct);
+    json_node_unref(pf);
+    // back to the automatic profile, as the rest of the test expects
+    action("denoiseprofile", 0, "set_profile", "{\"name\": \"auto\"}", DTB_OK);
+  }
+
   MUST(dtb_xmp_write(path_join(outdir, "actions.xmp")));
   int w, h;
   uint8_t *buf = render_full(&w, &h, NULL);
@@ -1636,6 +1799,127 @@ static int cmd_readonly(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* C8 (P1c item 2): the edit a session starts from, within one process.
+ * open(raw, NULL) without a sidecar is the default edit every time; open
+ * with an XMP (given, or the sidecar next to the RAW) is exactly that XMP's
+ * edit, whatever earlier sessions changed. */
+typedef struct
+{
+  char *modules, *history;
+  uint8_t *px;
+  int w, h;
+} snap_t;
+
+static snap_t snap(void)
+{
+  snap_t s;
+  s.modules = get_modules_str();
+  s.history = get_history_str();
+  s.px = preview_px(&s.w, &s.h);
+  return s;
+}
+
+static void snap_free(snap_t *s)
+{
+  dtb_free(s->modules);
+  dtb_free(s->history);
+  free(s->px);
+}
+
+static void snap_same(const snap_t *a, const char *what)
+{
+  snap_t b = snap();
+  const int mod = !strcmp(a->modules, b.modules), his = !strcmp(a->history, b.history);
+  const int px = (a->w == b.w && a->h == b.h) ? probe_diff(a->px, b.px, a->w, a->h) : 999;
+  fprintf(stdout, "RESULT %s: modules %s, history %s, pixels max %d\n", what, mod ? "equal" : "DIFFER",
+          his ? "equal" : "DIFFER", px);
+  CHECK(mod && his && px == 0, "%s differs from the expected edit", what);
+  snap_free(&b);
+}
+
+static void some_edits(void)
+{
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.5"));
+  MUST(dtb_history_seal());
+  int np = 0;
+  MUST(dtb_instance_duplicate("exposure", 0, &np));
+  MUST(dtb_param_set("exposure", np, "exposure", "-0.7"));
+  MUST(dtb_set_enabled("vignette", 0, 1));
+  MUST(dtb_history_seal());
+  // items above the end, as P2b's reproduction left them
+  int end = 0;
+  history_count(&end);
+  MUST(dtb_history_goto(end - 1));
+}
+
+static int copy_file(const char *from, const char *to)
+{
+  gchar *buf = NULL;
+  gsize len = 0;
+  if(!g_file_get_contents(from, &buf, &len, NULL)) return 1;
+  const gboolean ok = g_file_set_contents(to, buf, len, NULL);
+  g_free(buf);
+  return ok ? 0 : 1;
+}
+
+static int cmd_reopen(const char *raw, const char *xmp, const char *outdir)
+{
+  // the default edit: the first import in this process (fresh library)
+  MUST(dtb_open(raw, NULL));
+  snap_t d0 = snap();
+  fprintf(stdout, "RESULT default edit: %d history items\n", history_count(NULL));
+  some_edits();
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, NULL));
+  snap_same(&d0, "open(raw, NULL) after an edited session");
+  some_edits();
+  MUST(dtb_xmp_write(path_join(outdir, "reopen_edited.xmp")));
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, xmp));
+  snap_t x0 = snap();
+  some_edits();
+  MUST(dtb_close());
+  MUST(dtb_open(raw, xmp));
+  snap_same(&x0, "open(raw, xmp) after an edited session");
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, path_join(outdir, "reopen_edited.xmp")));
+  MUST(dtb_close());
+  MUST(dtb_open(raw, NULL));
+  snap_same(&d0, "open(raw, NULL) after a session on another XMP");
+  MUST(dtb_close());
+  MUST(dtb_open(raw, xmp));
+  snap_same(&x0, "open(raw, xmp) after a session on another XMP");
+  MUST(dtb_close());
+
+  // the sidecar next to the RAW counts as the XMP
+  char *dir = path_join(outdir, "sidecar");
+  mkdir(dir, 0700);
+  gchar *base = g_path_get_basename(raw);
+  char *copy = path_join(dir, base);
+  gchar *side = g_strconcat(copy, ".xmp", NULL);
+  CHECK(copy_file(raw, copy) == 0 && copy_file(xmp, side) == 0, "cannot copy the RAW and its sidecar");
+  MUST(dtb_open(copy, NULL));
+  snap_same(&x0, "open(copy, NULL) with a sidecar");
+  some_edits();
+  MUST(dtb_close());
+  MUST(dtb_open(copy, NULL));
+  snap_same(&x0, "open(copy, NULL) with a sidecar, after an edited session");
+  MUST(dtb_close());
+  unlink(side);
+  MUST(dtb_open(copy, NULL));
+  snap_same(&d0, "open(copy, NULL) after its sidecar was removed");
+  MUST(dtb_close());
+  unlink(copy);
+  g_free(base);
+  g_free(side);
+  snap_free(&d0);
+  snap_free(&x0);
+  return g_fail;
+}
+
 /* C7: atomic xmp_write, export options, metadata_reload */
 static int count_temp_files(const char *dir)
 {
@@ -1784,7 +2068,7 @@ int main(int argc, char **argv)
       { "cancel", cmd_cancel }, { "mask", cmd_mask }, { "extras", cmd_extras },
       { "api", cmd_api }, { "params", cmd_params }, { "undo", cmd_undo },
       { "actions", cmd_actions }, { "threads", cmd_threads }, { "readonly", cmd_readonly },
-      { "output", cmd_output },
+      { "output", cmd_output }, { "reopen", cmd_reopen },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

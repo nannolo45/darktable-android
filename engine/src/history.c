@@ -159,6 +159,27 @@ int dtb_history_seal(void)
 /* ------------------------------------------------------------------ */
 /* history                                                            */
 
+static void _item(JsonBuilder *b, const int num, const char *op, const int priority, const char *name,
+                  const char *instance_name, const gboolean enabled, const gboolean unknown)
+{
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "num");
+  json_builder_add_int_value(b, num);
+  json_builder_set_member_name(b, "op");
+  json_builder_add_string_value(b, op);
+  json_builder_set_member_name(b, "priority");
+  json_builder_add_int_value(b, priority);
+  json_builder_set_member_name(b, "name");
+  json_builder_add_string_value(b, name);
+  json_builder_set_member_name(b, "instance_name");
+  json_builder_add_string_value(b, instance_name);
+  json_builder_set_member_name(b, "enabled");
+  json_builder_add_boolean_value(b, enabled);
+  json_builder_set_member_name(b, "unknown");
+  json_builder_add_boolean_value(b, unknown);
+  json_builder_end_object(b);
+}
+
 int dtb_history(char **json)
 {
   if(json) *json = NULL;
@@ -167,27 +188,33 @@ int dtb_history(char **json)
   JsonBuilder *b = json_builder_new();
   json_builder_begin_object(b);
   json_builder_set_member_name(b, "end");
-  json_builder_add_int_value(b, dtb_S.dev.history_end);
+  json_builder_add_int_value(b, dtb_S.rows ? dtb_S.rows_end : dtb_S.dev.history_end);
   json_builder_set_member_name(b, "items");
   json_builder_begin_array(b);
-  int num = 0;
-  for(GList *l = dtb_S.dev.history; l; l = g_list_next(l), num++)
+  if(dtb_S.rows)
   {
-    const dt_dev_history_item_t *h = l->data;
-    json_builder_begin_object(b);
-    json_builder_set_member_name(b, "num");
-    json_builder_add_int_value(b, num);
-    json_builder_set_member_name(b, "op");
-    json_builder_add_string_value(b, h->op_name);
-    json_builder_set_member_name(b, "priority");
-    json_builder_add_int_value(b, h->multi_priority);
-    json_builder_set_member_name(b, "name");
-    json_builder_add_string_value(b, h->module ? h->module->name() : h->op_name);
-    json_builder_set_member_name(b, "instance_name");
-    json_builder_add_string_value(b, h->multi_name);
-    json_builder_set_member_name(b, "enabled");
-    json_builder_add_boolean_value(b, h->enabled);
-    json_builder_end_object(b);
+    // read-only session whose XMP lists items the engine could not load:
+    // every row, in the XMP's order (session.c, _rows_match)
+    for(guint i = 0; i < dtb_S.rows->len; i++)
+    {
+      const dtb_row_t *r = &g_array_index(dtb_S.rows, dtb_row_t, i);
+      const dt_dev_history_item_t *h = r->dev_index >= 0 ? g_list_nth_data(dtb_S.dev.history, r->dev_index) : NULL;
+      if(h)
+        _item(b, i, h->op_name, h->multi_priority, h->module ? h->module->name() : h->op_name, h->multi_name,
+              h->enabled, FALSE);
+      else
+        _item(b, i, r->op, r->priority, r->op, r->instance_name, r->enabled, TRUE);
+    }
+  }
+  else
+  {
+    int num = 0;
+    for(GList *l = dtb_S.dev.history; l; l = g_list_next(l), num++)
+    {
+      const dt_dev_history_item_t *h = l->data;
+      _item(b, num, h->op_name, h->multi_priority, h->module ? h->module->name() : h->op_name, h->multi_name,
+            h->enabled, FALSE);
+    }
   }
   json_builder_end_array(b);
   json_builder_end_object(b);
@@ -210,14 +237,19 @@ int dtb_history_goto(int end)
   // next edit records the state it starts from, with this end, and then
   // discards the items above it, as on desktop.
   NEED_SESSION();
-  const int n = g_list_length(dtb_S.dev.history);
+  // positions count the rows history() lists; with unloaded rows (read-only
+  // view) the develop object goes to the loaded items below that position
+  const int n = dtb_S.rows ? (int)dtb_S.rows->len : (int)g_list_length(dtb_S.dev.history);
   if(end < 0 || end > n) return dtb__err(DTB_E_ARG, "end %d outside 0..%d", end, n);
+  const int row_end = end;
+  if(dtb_S.rows) end = dtb__rows_dev_end(row_end);
   dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
   dt_dev_pop_history_items_ext(&dtb_S.dev, end);
   dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
   dt_dev_write_history(&dtb_S.dev);
   dtb__reload_dev();
+  if(dtb_S.rows) dtb_S.rows_end = row_end;
   dtb_S.merge_module = NULL;
   dt_dev_history_seal(&dtb_S.dev, TRUE);
   return DTB_OK;

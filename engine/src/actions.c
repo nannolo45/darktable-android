@@ -964,7 +964,13 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
   {
     JsonBuilder *b = json_builder_new();
     json_builder_begin_array(b);
+    // "index": the entry's position in desktop's profile combobox (0 = the
+    // automatic entry); upstream's list can hold two profiles of one name
+    // (data/noiseprofiles.json), which only the position tells apart
+    int index = 0;
     json_builder_begin_object(b);
+    json_builder_set_member_name(b, "index");
+    json_builder_add_int_value(b, index++);
     json_builder_set_member_name(b, "name");
     json_builder_add_string_value(b, auto_name);
     json_builder_set_member_name(b, "auto");
@@ -976,6 +982,8 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
     {
       const dt_noiseprofile_t *p = it->data;
       json_builder_begin_object(b);
+      json_builder_set_member_name(b, "index");
+      json_builder_add_int_value(b, index++);
       json_builder_set_member_name(b, "name");
       json_builder_add_string_value(b, p->name);
       json_builder_set_member_name(b, "auto");
@@ -994,8 +1002,26 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
     // detect again), the others their own a and b
     const char *name = NULL;
     const float *pa = NULL, *pb = NULL;
-    if(!_arg_str(a, "name", &name)) r = dtb__err(DTB_E_TYPE, "set_profile takes {name}");
-    else if(!strcmp(name, auto_name) || !strcmp(name, "auto"))
+    double idx_d = -1.0;
+    const int has_index = _arg_num(a, "index", &idx_d);
+    const int n_entries = 1 + g_list_length(profiles);
+    if(has_index < 0 || (has_index == 1 && (idx_d != floor(idx_d))))
+      r = dtb__err(DTB_E_TYPE, "set_profile: index must be an integer");
+    else if(has_index == 1 && json_object_has_member(a, "name"))
+      r = dtb__err(DTB_E_ARG, "set_profile takes {index} or {name}, not both");
+    else if(has_index == 1 && (idx_d < 0 || idx_d >= n_entries))
+      r = dtb__err(DTB_E_RANGE, "set_profile: index %.0f outside 0..%d", idx_d, n_entries - 1);
+    else if(has_index == 1 && idx_d > 0)
+    {
+      const dt_noiseprofile_t *p = g_list_nth_data(profiles, (guint)idx_d - 1);
+      pa = p->a;
+      pb = p->b;
+    }
+    else if(has_index != 1 && !_arg_str(a, "name", &name))
+      r = dtb__err(DTB_E_TYPE, "set_profile takes {index} or {name}");
+    if(r || pa)
+      ;
+    else if(has_index == 1 || !strcmp(name, auto_name) || !strcmp(name, "auto"))
     {
       dtb_field_ref_t ra, rb;
       if(dtb__field_resolve(m, m->default_params, "a", &ra) || dtb__field_resolve(m, m->default_params, "b", &rb))
@@ -1008,6 +1034,7 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
     }
     else
     {
+      // by name: the first entry of that name (use the index for the others)
       for(GList *it = profiles; it && !pa; it = g_list_next(it))
       {
         const dt_noiseprofile_t *p = it->data;

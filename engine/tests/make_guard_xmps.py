@@ -8,6 +8,8 @@ newer.xmp:   the first history entry of <operation> gets the engine's
              than the engine's, so adding 1 to it is not enough)
 unknown.xmp: the first history entry of <operation> is renamed to an
              operation no darktable has ("s3notamodule")
+unknown_first.xmp: the same for the first history entry of all (P1c: an
+             unknown item below other items shifts their positions)
 Prints what was changed.
 """
 import re
@@ -36,6 +38,14 @@ def main(src, outdir, op, engine_version):
     unknown = entry.replace(f'darktable:operation="{op}"', 'darktable:operation="s3notamodule"')
     open(f"{outdir}/unknown.xmp", "w", encoding="utf-8").write(text[:s] + unknown + text[e:])
     print(f"unknown.xmp: {op} -> s3notamodule")
+
+    hist = text.index("darktable:history")
+    m = re.compile(r"<rdf:li\b[^>]*?/>", re.S).search(text, hist)
+    first = m.group(0)
+    fop = re.search(r'darktable:operation="([^"]*)"', first).group(1)
+    renamed = first.replace(f'darktable:operation="{fop}"', 'darktable:operation="s3notamodule"')
+    open(f"{outdir}/unknown_first.xmp", "w", encoding="utf-8").write(text[:m.start()] + renamed + text[m.end():])
+    print(f"unknown_first.xmp: first entry {fop} -> s3notamodule")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Bridge tests on three test images: T1 to T9 and X1 (brief S3), C1 to C7
-# (brief P1a, Engine API v1 section 4).
+# (brief P1a, Engine API v1 section 4), C8 (brief P1c).
 #
 #   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 C2 ...]
 #
@@ -267,6 +267,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   fi
   if want C5; then drv C5 threads "set_threads, set_thread_cpus"; fi
   if want C6; then drv C6 readonly "read-only refusal"; fi
+  if want C8; then drv C8 reopen "open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit"; fi
   if want C7; then
     drv C7 output "xmp_write, export, metadata_reload"
     # the default export (JPEG 95) and the 8-bit PNG decode as darktable-cli's

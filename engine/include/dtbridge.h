@@ -127,7 +127,10 @@ int dtb_xmp_check(const char *xmp_path, char **json);
 /* 2.3 session                                                             */
 
 /* Import raw_path into the private library and load xmp_path (NULL: a
- * sidecar named <raw>.xmp is picked up if it exists). The guard runs first;
+ * sidecar named <raw>.xmp is picked up if it exists). The session starts
+ * from exactly that XMP's edit; without an XMP (xmp_path NULL and no
+ * sidecar) from the default edit, as a first import shows it, whatever an
+ * earlier session in this process did to the image. The guard runs first;
  * if it fails, the image still opens, for viewing, read-only: every [M] call
  * and dtb_xmp_write return DTB_E_READ_ONLY. Returns DTB_OK in both cases
  * (see image_info "read_only"). The RAW file is only ever read. */
@@ -199,7 +202,10 @@ int dtb_module_reset(const char *op, int priority);
  *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal} ];
  *                   set_lens {camera, lens} [M]
  *   lut3d:          set_file {path} [M]
- *   denoiseprofile: list_profiles -> [ {name, auto, iso} ]; set_profile {name} [M] */
+ *   denoiseprofile: list_profiles -> [ {index, name, auto, iso} ], index = position
+ *                   in desktop's profile list, 0 = the automatic entry;
+ *                   set_profile {index} or {name} [M] (a name selects the first
+ *                   entry of that name; names can repeat, indices do not) */
 int dtb_module_action(const char *op, int priority, const char *action, const char *args_json,
                       char **result_json);
 
@@ -230,9 +236,15 @@ int dtb_instance_rename(const char *op, int priority, const char *name);
 /* 2.6 history                                                             */
 
 /* { "end": n, "items": [ { "num", "op", "priority", "name",
- *                          "instance_name", "enabled" } ] } */
+ *                          "instance_name", "enabled", "unknown" } ] }
+ * 0 <= end <= number of items. "unknown" is true for an item the engine
+ * could not load: in a read-only session, an entry of the XMP whose
+ * operation the engine does not know. Such an item keeps its place, its
+ * operation name (also as "name") and its fields as the XMP gives them; it
+ * has no effect on the picture. */
 int dtb_history(char **json);
-/* Show the state after the first `end` items (0 = original). A following
+/* Show the state after the first `end` items (0 = original), for every end
+ * from 0 to the number of items, unknown items included. A following
  * change discards the items above `end`, as on desktop. Navigation: allowed
  * in a read-only session, and not an undo step (undo and redo cover edits
  * only, unlike desktop). */

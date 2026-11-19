@@ -6,6 +6,9 @@
 #include "dtb_internal.h"
 
 #include "common/colorlabels.h"
+#include "common/database.h"
+#include "common/debug.h"
+#include "common/history.h"
 #include "common/datetime.h"
 #include "common/exif.h"
 #include "common/film.h"
@@ -29,6 +32,166 @@ dt_iop_module_t *dtb__find(const char *op, int prio)
   return NULL;
 }
 
+/* ------------------------------------------------------------------ */
+/* the edit a session starts from (P1c item 2)                        */
+
+/* The default edit: what a first import shows. The private library keeps an
+ * image's history between sessions of one process (main.history and its
+ * companions, written by every change and by dt_dev_read_history_ext()
+ * itself), and dt_dev_load_image() starts from that. Clearing it as the
+ * lighttable's "discard history" does (dt_history_delete_on_image_ext,
+ * common/history.c) and clearing the "auto presets applied" flag makes the
+ * next load apply the defaults and automatic presets again, exactly as on
+ * import. init_history is FALSE because its TRUE branch writes the flag
+ * with DT_IMAGE_CACHE_SAFE (a sidecar write path) and reloads
+ * darktable.develop; the bridge clears the flag itself, relaxed. */
+static void _reset_to_default_edit(const dt_imgid_t imgid)
+{
+  dt_history_delete_on_image_ext(imgid, FALSE, FALSE);
+  dt_image_t *img = dt_image_cache_get(imgid, 'w');
+  if(img)
+  {
+    img->flags &= ~DT_IMAGE_AUTO_PRESETS_APPLIED;
+    dt_image_cache_write_release(img, DT_IMAGE_CACHE_RELAXED);
+  }
+}
+
+/* the library's history rows of the image, before the develop object reads
+ * (and rewrites) them */
+static GArray *_rows_read(const dt_imgid_t imgid, int *end)
+{
+  GArray *rows = g_array_new(FALSE, TRUE, sizeof(dtb_row_t));
+  sqlite3_stmt *stmt;
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                              "SELECT operation, multi_priority, multi_name, enabled"
+                              " FROM main.history WHERE imgid = ?1 ORDER BY num",
+                              -1, &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, imgid);
+  while(sqlite3_step(stmt) == SQLITE_ROW)
+  {
+    dtb_row_t r = { 0 };
+    r.dev_index = -1;
+    const char *op = (const char *)sqlite3_column_text(stmt, 0);
+    g_strlcpy(r.op, op ? op : "", sizeof(r.op));
+    r.priority = sqlite3_column_int(stmt, 1);
+    const char *name = (const char *)sqlite3_column_text(stmt, 2);
+    r.instance_name = g_strdup(name ? name : "");
+    r.enabled = sqlite3_column_int(stmt, 3) != 0;
+    g_array_append_val(rows, r);
+  }
+  sqlite3_finalize(stmt);
+  *end = 0;
+  dt_image_get_history_end(imgid, end);
+  return rows;
+}
+
+static void _rows_free(GArray *rows)
+{
+  if(!rows) return;
+  for(guint i = 0; i < rows->len; i++) g_free(g_array_index(rows, dtb_row_t, i).instance_name);
+  g_array_free(rows, TRUE);
+}
+
+static gboolean _row_matches(const dtb_row_t *r, const dt_dev_history_item_t *h)
+{
+  if(strcmp(r->op, h->op_name)) return FALSE;
+  // dt_dev_read_history_ext() sets priority 0 for one-instance modules
+  return r->priority == h->multi_priority || (h->module && (h->module->flags() & IOP_FLAGS_ONE_INSTANCE));
+}
+
+int dtb__rows_dev_end(const int row_end)
+{
+  int n = 0;
+  for(int i = 0; i < row_end && i < (int)dtb_S.rows->len; i++)
+    if(g_array_index(dtb_S.rows, dtb_row_t, i).dev_index >= 0) n++;
+  return n;
+}
+
+/* dt_dev_read_history_ext() (develop/develop.c) skips history rows whose
+ * module is not installed (and a few others: no iop order, failed legacy
+ * conversion), rewrites the library from what it kept (_dev_write_history),
+ * but takes dev->history_end from the image's stored history_end, which
+ * still counts the skipped rows: end can then be larger than the list, and
+ * an item below the end shifts every position above it. Here the rows as
+ * the XMP gave them are matched with the items the engine loaded, in order;
+ * the develop object's end is set to the number of loaded items below the
+ * XMP's end. A read-only session keeps the matched rows, so history() lists
+ * every row (unloaded ones flagged "unknown") and history_goto takes
+ * positions in that list. A writable session cannot hold an unknown module
+ * (the guard); a row skipped for another reason is left out, as desktop
+ * does when it writes the history. */
+static void _rows_match(GArray *pre, const int pre_end)
+{
+  const int npre = pre->len;
+  const int ndev = g_list_length(dtb_S.dev.history);
+  GArray *rows = g_array_new(FALSE, TRUE, sizeof(dtb_row_t));
+  int i = 0, j = 0, consumed = 0, rows_end = (pre_end <= 0) ? 0 : -1, unloaded = 0;
+  while(i < npre || j < ndev)
+  {
+    const dt_dev_history_item_t *h = j < ndev ? g_list_nth_data(dtb_S.dev.history, j) : NULL;
+    dtb_row_t *p = i < npre ? &g_array_index(pre, dtb_row_t, i) : NULL;
+    dtb_row_t r = { 0 };
+    if(p && h && _row_matches(p, h))
+    {
+      r = *p;
+      r.instance_name = g_strdup(p->instance_name);
+      r.dev_index = j++;
+      i++;
+      consumed++;
+    }
+    else if(p)
+    {
+      // is the row loaded further on (an item the engine inserted before it)?
+      gboolean later = FALSE;
+      for(int k = j + 1; k < ndev && !later; k++)
+        later = _row_matches(p, g_list_nth_data(dtb_S.dev.history, k));
+      if(later && h)
+      {
+        g_strlcpy(r.op, h->op_name, sizeof(r.op));
+        r.priority = h->multi_priority;
+        r.instance_name = g_strdup(h->multi_name);
+        r.enabled = h->enabled;
+        r.dev_index = j++;
+      }
+      else
+      {
+        r = *p;
+        r.instance_name = g_strdup(p->instance_name);
+        r.dev_index = -1;
+        unloaded++;
+        i++;
+        consumed++;
+      }
+    }
+    else
+    {
+      g_strlcpy(r.op, h->op_name, sizeof(r.op));
+      r.priority = h->multi_priority;
+      r.instance_name = g_strdup(h->multi_name);
+      r.enabled = h->enabled;
+      r.dev_index = j++;
+    }
+    g_array_append_val(rows, r);
+    if(rows_end < 0 && consumed >= pre_end) rows_end = rows->len;
+  }
+  if(rows_end < 0) rows_end = rows->len;
+
+  dtb_S.rows = rows;
+  dtb_S.rows_end = rows_end;
+  const int dev_end = dtb__rows_dev_end(rows_end);
+  if(dtb_S.dev.history_end != dev_end)
+  {
+    dt_dev_pop_history_items_ext(&dtb_S.dev, dev_end);
+    dt_image_set_history_end(dtb_S.imgid, dev_end);
+  }
+  if(!(dtb_S.read_only && unloaded > 0))
+  {
+    _rows_free(dtb_S.rows);
+    dtb_S.rows = NULL;
+    dtb_S.rows_end = 0;
+  }
+}
+
 int dtb_open(const char *raw_path, const char *xmp_path)
 {
   NEED_INIT();
@@ -36,10 +199,12 @@ int dtb_open(const char *raw_path, const char *xmp_path)
   if(!raw_path || !g_file_test(raw_path, G_FILE_TEST_IS_REGULAR))
     return dtb__err(DTB_E_IO, "cannot read %s", raw_path ? raw_path : "(null)");
 
-  // the guard first, on the XMP that will be loaded
+  // the edit comes from the given XMP, else from the sidecar next to the
+  // RAW, else it is the default edit; the guard first, on that XMP
   gchar *sidecar = xmp_path ? g_strdup(xmp_path) : g_strconcat(raw_path, ".xmp", NULL);
   gboolean read_only = FALSE;
-  if(g_file_test(sidecar, G_FILE_TEST_IS_REGULAR))
+  const gboolean have_xmp = g_file_test(sidecar, G_FILE_TEST_IS_REGULAR);
+  if(have_xmp)
   {
     int n = 0;
     g_free(dtb__xmp_check(sidecar, &n));
@@ -50,7 +215,6 @@ int dtb_open(const char *raw_path, const char *xmp_path)
     g_free(sidecar);
     return dtb__err(DTB_E_IO, "cannot read %s", xmp_path);
   }
-  g_free(sidecar);
 
   gchar *dir = g_path_get_dirname(raw_path);
   dt_film_t film;
@@ -58,23 +222,45 @@ int dtb_open(const char *raw_path, const char *xmp_path)
   const dt_filmid_t filmid = dt_film_new(&film, dir);
   dt_film_cleanup(&film);
   g_free(dir);
-  if(!dt_is_valid_filmid(filmid)) return dtb__err(DTB_E_ENGINE, "cannot create film roll");
+  if(!dt_is_valid_filmid(filmid))
+  {
+    g_free(sidecar);
+    return dtb__err(DTB_E_ENGINE, "cannot create film roll");
+  }
 
   gchar *base = g_path_get_basename(raw_path);
   dt_imgid_t imgid = dt_image_get_id(filmid, base);
   g_free(base);
   if(!dt_is_valid_imgid(imgid))
     imgid = dt_image_import(filmid, raw_path, TRUE, FALSE);
-  if(!dt_is_valid_imgid(imgid)) return dtb__err(DTB_E_ENGINE, "cannot import %s", raw_path);
+  if(!dt_is_valid_imgid(imgid))
+  {
+    g_free(sidecar);
+    return dtb__err(DTB_E_ENGINE, "cannot import %s", raw_path);
+  }
 
   // as darktable-cli: read the XMP into the library, replacing the history
-  if(xmp_path)
+  // (dt_exif_xmp_read deletes the image's history, masks and module order
+  // first). Without an XMP: back to the default edit, whatever an earlier
+  // session of this process left in the library.
+  if(have_xmp)
   {
     dt_image_t *img = dt_image_cache_get(imgid, 'w');
-    const gboolean failed = dt_exif_xmp_read(img, xmp_path, FALSE);
+    const gboolean failed = dt_exif_xmp_read(img, sidecar, FALSE);
     dt_image_cache_write_release(img, DT_IMAGE_CACHE_RELAXED);
-    if(failed) return dtb__err(DTB_E_IO, "cannot load XMP %s", xmp_path);
+    if(failed)
+    {
+      dtb__err(DTB_E_IO, "cannot load XMP %s", sidecar);
+      g_free(sidecar);
+      return DTB_E_IO;
+    }
   }
+  else
+    _reset_to_default_edit(imgid);
+  g_free(sidecar);
+
+  int pre_end = 0;
+  GArray *pre = _rows_read(imgid, &pre_end);
 
   memset(&dtb_S, 0, sizeof(dtb_S));
   g_queue_init(&dtb_S.undo);
@@ -88,6 +274,8 @@ int dtb_open(const char *raw_path, const char *xmp_path)
   // dt_dev_load_image reads the history but does not apply it to the
   // modules (the darkroom does that later); as darktable-mcp does
   dt_dev_pop_history_items_ext(&dtb_S.dev, dtb_S.dev.history_end);
+  _rows_match(pre, pre_end);
+  _rows_free(pre);
   dtb_S.merge_module = NULL;
   dtb_S.open = TRUE;
   if(read_only) dtb__err(DTB_OK, "opened read-only: XMP failed the version guard");
@@ -100,6 +288,8 @@ int dtb_close(void)
   dtb__pipes_free();
   dtb__undo_clear();
   dt_dev_cleanup(&dtb_S.dev);
+  _rows_free(dtb_S.rows);
+  dtb_S.rows = NULL;
   dtb_S.open = FALSE;
   return DTB_OK;
 }
