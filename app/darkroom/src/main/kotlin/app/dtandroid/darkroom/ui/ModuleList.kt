@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -54,7 +56,13 @@ fun GroupTabs(controller: DarkroomController, s: DarkroomState) {
 @Composable
 fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, tablet: Boolean, modifier: Modifier = Modifier) {
     val mods = controller.visibleModules(s)
-    LazyColumn(modifier.fillMaxSize().background(DtTheme.colors.bg)) {
+    val listState = rememberLazyListState()
+    // bring a module that was just expanded to the top of the list
+    LaunchedEffect(s.expanded, s.group) {
+        val i = mods.indexOfFirst { it.key == s.expanded }
+        if (i >= 0) listState.animateScrollToItem(i + 1)
+    }
+    LazyColumn(modifier.fillMaxSize().background(DtTheme.colors.bg), state = listState) {
         item { Spacer(Modifier.height(DtTheme.space.xxs)) }
         if (s.group == GroupTab.Quick) {
             item { QuickPanel(controller, s, live) }

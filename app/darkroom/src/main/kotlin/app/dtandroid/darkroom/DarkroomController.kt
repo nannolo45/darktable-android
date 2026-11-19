@@ -413,6 +413,7 @@ class DarkroomController(
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
     fun setOverlay(o: Overlay?) = _state.update { it.copy(overlay = o) }
     fun clearMessage() = _state.update { it.copy(message = null) }
+    fun showMessage(text: String) = _state.update { it.copy(message = text) }
 
     // ------------------------------------------------------------------ helpers for screens
 
