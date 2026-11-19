@@ -144,11 +144,20 @@ jobs:
             > /home/runner/t5-arw.txt 2>&1 || true
           cat /home/runner/t5-raf.txt /home/runner/t5-arw.txt
 
+      - name: Render cost before and after (P1c item 5; information only, does not fail the job)
+        if: always() && steps.tests.outcome != 'skipped'
+        run: |
+          engine/tests/cost.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/cost 3 \
+            > /home/runner/cost.txt 2>&1 || true
+          cat /home/runner/cost.txt
+
       - name: Collect logs
         if: always()
         run: |
           L=/tmp/ci-out; mkdir -p "$L"
           cp /home/runner/t5-raf.txt /home/runner/t5-arw.txt "$L/" 2>/dev/null || true
+          cp /home/runner/cost.txt "$L/cost-summary.md" 2>/dev/null || true
+          mkdir -p "$L/cost" && cp /home/runner/cost/*.out /home/runner/cost/*.err "$L/cost/" 2>/dev/null || true
           {
             echo "build_seconds: ${{ steps.build.outputs.seconds }}"
             echo "cache_hit: ${{ steps.cache.outputs.cache-hit }}"
