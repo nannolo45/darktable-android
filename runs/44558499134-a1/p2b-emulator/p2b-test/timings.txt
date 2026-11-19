@@ -1,0 +1,28 @@
+what: dt-android timings (brief P2b); numbers measured on this device
+app: test
+engine package: acc775b05dae2062
+darktable: 04477d3
+engine api: 1
+threads: 4 of 4 at start; pinned to CPUs none
+cores: 4 CPUs, max clocks 0.00 GHz; engine on CPUs 0,1,2,3 (not pinned: all CPUs)
+android api: 33
+photo: 15 MB RAW, CR2
+open ms: 140.0
+image info (loads the full image) ms: 78.8
+image: 3908 x 2602 processed, 3944 x 2622 sensor, bayer
+first preview 1024x681 ms: 135.6
+preview again, nothing changed ms: 10.5
+preview after a late module change (color balance rgb) ms: 133.8
+preview after an early module change (exposure) ms: 130.2
+drag picture (chosen size 320 px), 6 steps: median ms: 12.4 (min 11.7, max 52.4)
+drag picture by size, median of 3 after an exposure step (ms): 256 px 9.1; 384 px 21.5; 512 px 34.1; 640 px 56.7; 768 px 91.4; 1024 px 132.9
+drag picture chosen now: fit: 19.0 ms fixed + 164.9 ns per pixel; drag picture 320 px for a 50 ms target
+sharp region at fit 1080x719 after a change ms: 514.6
+sharp region at 100 % 1080x1500 after a change ms: 287.9
+region rendered in place (no JNI copy): true
+modules() size bytes: 185219
+modules() bridge call ms (median of 5): 25.9
+modules() JNI string ms (median of 5): 0.6
+modules() Kotlin parse ms (median of 5): 9.9
+export full-size JPEG ms: 3592.0
+export size bytes: 7090597

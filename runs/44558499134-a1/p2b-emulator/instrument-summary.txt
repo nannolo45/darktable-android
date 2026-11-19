@@ -1,0 +1,41 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+FAIL    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+        java.io.IOException: cannot replace state.json
+        	at app.dtandroid.lpl.ServerStoreKt.atomicWrite(ServerStore.kt:149)
+        	at app.dtandroid.lpl.WorkStore.save(WorkStore.kt:72)
+        	at app.dtandroid.lpl.LplAgent.put(LplAgent.kt:122)
+        	at app.dtandroid.lpl.LplAgent.left(LplAgent.kt:293)
+        	at app.dtandroid.real.AppHost$Source.left(AppHost.kt:190)
+        	at app.dtandroid.darkroom.DarkroomController.closePhoto(DarkroomController.kt:205)
+        	at app.dtandroid.darkroom.DarkroomController$closePhoto$1.invokeSuspend(Unknown Source:14)
+passed 28, failed 1, total 29
+runner: INSTRUMENTATION_RESULT: shortMsg=Process crashed.
+runner: INSTRUMENTATION_CODE: 0
+RESULT: NOT OK
