@@ -307,7 +307,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             pendingRequest?.done?.complete(controller.state.value.info != null)
             pendingRequest = null
             // names for the placeholders, in the background; nothing is downloaded up front
-            val missing = h.ids.filter { agent.record(h.server, it) == null }
+            // (photos held already are named; the one after the start photo may be downloading ahead meanwhile)
+            val missing = h.ids.filterIndexed { i, _ -> !File(items[i].rawPath).isFile }
             if (missing.isNotEmpty()) runCatching {
                 agent.names(h.server, missing) { id, name ->
                     val i = h.ids.indexOf(id)

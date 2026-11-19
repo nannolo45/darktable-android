@@ -263,7 +263,7 @@ class LplAgent(
         val out = HashMap<Long, String>()
         for (id in ids) {
             val known = record(origin, id)?.filename ?: names[origin to id]
-            if (known != null) { out[id] = known; continue }
+            if (known != null) { out[id] = known; onName(id, known); continue }
             val n = try {
                 WorkStore.safeFileName(net(origin) { it.checkout(id) }.filename, id)
             } catch (e: LplException) {

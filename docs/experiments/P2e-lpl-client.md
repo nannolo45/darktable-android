@@ -4,6 +4,14 @@ Brief: `docs/briefs/P2e-lpl-client.md`. Branch `p2e-lpl-client`. Pull request te
 
 ## Running log (newest first)
 
+- 2026-11-19 15:40: run 44546873879 (5c0fa48): JVM 158 tests pass (1 skipped: the real-server run needs a
+  server), APK `dt-android-5c0fa48ef5f6` published (app.dtandroid, owner key, INTERNET + network state +
+  boot completed only); preview run 44546873563 green under `app.dtandroid.preview`. Emulator 28/31: the
+  known bridge gap (`guardAndReadOnlySession`, P2b) and two of mine: l1 placeholder names (the photo
+  fetched ahead was left out of the name lookup: fixed in the app), l4 expected one XMP post where two are
+  right (the waiting edit is sent when the app comes to the front, and the sync job always sends): the test
+  now checks that the edit arrived. Rerun started.
+
 - 2026-11-19 14:50: app side written and compiling on the workspace (x86_64 Kotlin compile against the released
   engine): ids moved (real-engine app `app.dtandroid` "dt-android", preview `app.dtandroid.preview`), INTERNET,
   `lpldt://edit` filter, LPL list, server screen, hand-off screen, heartbeat in the foreground, jobs, background

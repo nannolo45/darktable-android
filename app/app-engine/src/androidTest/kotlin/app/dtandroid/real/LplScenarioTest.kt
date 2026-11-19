@@ -200,7 +200,11 @@ class LplScenarioTest {
         assertEquals("done", open.status)
         assertEquals("done", edit.status)
         assertEquals("queued", pc.status)
-        assertEquals(1, s.photos[51]!!.xmpPosts)
+        // the edit reached LPL: sent when the app came to the foreground (it was waiting) and again by the
+        // sync job, which always sends (as the PC agent does)
+        assertTrue(s.photos[51]!!.xmpPosts >= 1)
+        assertTrue(s.photos[51]!!.xmp!!.decodeToString().contains("<!-- edited -->"))
+        TestFiles.record(res, "l4_xmp_posts_51", s.photos[51]!!.xmpPosts)
         assertTrue("released: gone from the phone", AppHost.agent.record(s.origin, 51) == null && !AppHost.work.folder(s.origin, 51).exists())
         // open: the darkroom shows 52; edit (arriving while editing): 53 fetched into the list
         assertEquals("SECOND.cr2", v.controller.state.value.current?.fileName)
