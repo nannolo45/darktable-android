@@ -13,6 +13,7 @@
 
 #include "common/colorspaces.h"
 #include "common/iop_order.h"
+#include "develop/tiling.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -33,13 +34,20 @@
 static gint g_cancel = 0;
 static gpointer g_active_pipe = NULL;  // dt_dev_pixelpipe_t * of the render in flight
 
-static int _margin(void)
+/* The largest margin a module's reach can ask for: a module whose tiling
+ * overlap is larger is rendered with this margin and reported in the
+ * write-up's list of expected differences instead. */
+#define DTB_REGION_MARGIN_MAX 256
+
+/* -1: no override; else DTB_REGION_MARGIN from the environment
+ * (t5_bisect.sh, measurements only) */
+static int _margin_override(void)
 {
-  static int m = -1;
-  if(m < 0)
+  static int m = -2;
+  if(m == -2)
   {
     const char *e = g_getenv("DTB_REGION_MARGIN");
-    m = e ? MAX(0, atoi(e)) : DTB_REGION_MARGIN_DEFAULT;
+    m = e ? MAX(0, atoi(e)) : -1;
   }
   return m;
 }
@@ -206,6 +214,137 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
   return DTB_OK;
 }
 
+/* ------------------------------------------------------------------ */
+/* where demosaic's input window lies (P1c item 3)                     */
+
+/* The raw window demosaic is given for an output window: the pipe's
+ * modify_roi_in() chain walked back from the end, as
+ * _dev_pixelpipe_process_rec() (develop/pixelpipe_hb.c) does before it
+ * processes, skipping the pieces it skips (_skip_piece_on_tags: switched
+ * off or without an iop order; the export pipe is not "basic"). finalscale
+ * is skipped below scale 1, as _pipe_run() switches it off there. FALSE when
+ * the pipe has no demosaic (not a raw). *period: the CFA's repeat, 2 for
+ * Bayer, 6 for X-Trans. */
+static gboolean _demosaic_window(dtb_pipe_t *p, const int x, const int y, const int w, const int h,
+                                 const float scale, dt_iop_roi_t *din, int *period)
+{
+  dt_iop_roi_t roi = { x, y, w, h, scale };
+  for(GList *n = g_list_last(p->pipe.nodes); n; n = g_list_previous(n))
+  {
+    dt_dev_pixelpipe_iop_t *piece = n->data;
+    dt_iop_module_t *m = piece->module;
+    if(!piece->enabled || m->iop_order == INT_MAX) continue;
+    if(scale < 1.0f && dt_iop_module_is_finalscale(m)) continue;
+    dt_iop_roi_t in = roi;
+    m->modify_roi_in(m, piece, &roi, &in);
+    if(dt_iop_module_is(m, "demosaic"))
+    {
+      *din = in;
+      const uint32_t f = p->pipe.dsc.filters;
+      *period = f == 9u ? 6 : (f ? 2 : 1);
+      return TRUE;
+    }
+    roi = in;
+  }
+  return FALSE;
+}
+
+static int _mod(const int a, const int n) { return ((a % n) + n) % n; }
+
+/* Modules whose result near a window edge depends on pixels further away
+ * than the fixed margin, that do not widen their own input window
+ * (no modify_roi_in()), and for which a wider margin was measured to bring
+ * a region to (or close to) the full render (P1c write-up, item 3, test T5
+ * module sweep). Their reach is the overlap their own tiling_callback()
+ * reports: the border darktable's tiler gives a tile so that a tiled result
+ * equals an untiled one (develop/tiling.c). The callbacks of these modules
+ * only compute from piece->data and the roi:
+ *   shadhi.c, lowpass.c (4 sigma of the blur), soften.c, highpass.c (3 sigma
+ *   of the box blur), bloom.c (5 x radius), denoiseprofile.c (patch +
+ *   scattered neighbourhood), monochrome.c and bilat.c (4 sigma_s of the
+ *   bilateral grid), bilateral.cc (the filter radius).
+ * Not listed: modules that report an overlap without needing it here
+ * (filmicrgb.c: 2^scales also with reconstruction off; atrous.c: exact with
+ * the fixed margin), and modules whose result depends on the whole window
+ * (defringe.c, globaltonemap.c), which no margin fixes. spektrafilm widens
+ * its own input in modify_roi_in() (spektrafilm.c, by
+ * SF_HALO_SIGMAS * _max_halo_sigma()). */
+static const char *const _reach_modules[]
+    = { "shadhi", "lowpass", "soften", "highpass", "bloom", "denoiseprofile", "monochrome", "bilat", "bilateral" };
+
+/* The margin a region needs: the fixed 32 px that covers demosaic (its
+ * border is private, see above), or more when a switched-on module of the
+ * list above reaches further, capped at DTB_REGION_MARGIN_MAX. */
+static int _region_margin(dtb_pipe_t *p, const float scale, const int pw, const int ph, const char **who)
+{
+  *who = NULL;
+  const int o = _margin_override();
+  if(o >= 0) return o;
+  int reach = DTB_REGION_MARGIN_DEFAULT;
+  for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
+  {
+    dt_dev_pixelpipe_iop_t *piece = n->data;
+    dt_iop_module_t *m = piece->module;
+    if(!piece->enabled || m->iop_order == INT_MAX || !m->tiling_callback || !piece->data) continue;
+    gboolean listed = FALSE;
+    for(size_t k = 0; k < G_N_ELEMENTS(_reach_modules) && !listed; k++)
+      listed = dt_iop_module_is(m, _reach_modules[k]);
+    if(!listed || dt_iop_module_modifies_roi_in(m)) continue;
+    dt_develop_tiling_t t = { 0 };
+    const dt_iop_roi_t roi = { 0, 0, pw, ph, scale };
+    m->tiling_callback(m, piece, &roi, &roi, &t);
+    if((int)t.overlap > reach)
+    {
+      reach = t.overlap;
+      *who = m->op;
+    }
+  }
+  return MIN(reach, DTB_REGION_MARGIN_MAX);
+}
+
+/* The window the full pipe renders for the region (x, y, w, h): the region
+ * with the margin on every side that lies inside the image, then, for raw
+ * images, moved so that demosaic's raw window starts on the same CFA phase
+ * as in a full render. RCD demosaic (iop/demosaicing/rcd.c, rcd_demosaic)
+ * gives different values when its window starts on the other phase (T5 on
+ * the arw image: max 21 in one region, max 68 in another, depending on the
+ * parity of the window's origin; PPG and AMaZE do not; P1c write-up). */
+static void _region_window(dtb_pipe_t *p, const int x, const int y, const int w, const int h,
+                           const float scale, const int pw, const int ph,
+                           int *x0, int *y0, int *x1, int *y1)
+{
+  const char *who = NULL;
+  const int m = _region_margin(p, scale, pw, ph, &who);
+  *x0 = MAX(0, x - m);
+  *y0 = MAX(0, y - m);
+  *x1 = MIN(pw, x + w + m);
+  *y1 = MIN(ph, y + h + m);
+  if(g_getenv("DTB_DEBUG_ROI"))
+    fprintf(stderr, "DTB_ROI margin %d (%s)\n", m, who ? who : "default");
+  dt_iop_roi_t full, reg;
+  int period = 1;
+  if(!_demosaic_window(p, 0, 0, pw, ph, scale, &full, &period) || period <= 1) return;
+  if(!_demosaic_window(p, *x0, *y0, *x1 - *x0, *y1 - *y0, scale, &reg, &period)) return;
+  const int x0_in = *x0, y0_in = *y0;
+  // the origin moves left / up by at most one period, one axis after the
+  // other (each probe is one walk of modify_roi_in)
+  for(int k = 1; k < 2 * period && _mod(reg.x - full.x, period) && *x0 > 0; k++)
+  {
+    (*x0)--;
+    _demosaic_window(p, *x0, *y0, *x1 - *x0, *y1 - *y0, scale, &reg, &period);
+  }
+  for(int k = 1; k < 2 * period && _mod(reg.y - full.y, period) && *y0 > 0; k++)
+  {
+    (*y0)--;
+    _demosaic_window(p, *x0, *y0, *x1 - *x0, *y1 - *y0, scale, &reg, &period);
+  }
+  if(g_getenv("DTB_DEBUG_ROI"))
+    fprintf(stderr, "DTB_ROI region %d,%d %dx%d scale %.3f window %d,%d..%d,%d (moved %d,%d) demosaic in %d,%d %dx%d"
+            " full %d,%d %dx%d period %d phase %s\n", x, y, w, h, scale, *x0, *y0, *x1, *y1, x0_in - *x0,
+            y0_in - *y0, reg.x, reg.y, reg.width, reg.height, full.x, full.y, full.width, full.height, period,
+            (_mod(reg.x - full.x, period) || _mod(reg.y - full.y, period)) ? "DIFFERENT" : "same");
+}
+
 int dtb_render_size(float scale, int *width, int *height)
 {
   NEED_SESSION();
@@ -232,10 +371,10 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
   if(x + w > pw || y + h > ph)
     return dtb__err(DTB_E_ARG, "region %d,%d %dx%d outside %dx%d", x, y, w, h, pw, ph);
 
-  // the region with the margin, clipped to the image
-  const int m = _margin();
-  const int x0 = MAX(0, x - m), y0 = MAX(0, y - m);
-  const int x1 = MIN(pw, x + w + m), y1 = MIN(ph, y + h + m);
+  // the region with the margin, clipped to the image, on the full render's
+  // CFA phase
+  int x0, y0, x1, y1;
+  _region_window(&dtb_S.full, x, y, w, h, scale, pw, ph, &x0, &y0, &x1, &y1);
   if(x0 == x && y0 == y && x1 == x + w && y1 == y + h)
     return _pipe_run(&dtb_S.full, x, y, w, h, scale, rgba8_out);
 

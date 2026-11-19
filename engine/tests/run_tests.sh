@@ -140,16 +140,54 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
   fi
 
   if want T5; then
-    "$DTB" "$W" region "$RAW" "$XMP" "$D" > "$D/T5.log" 2>&1 || fail T5 "$C" "driver failed, see $D/T5.log"
     # render_region renders with an internal margin: the region must equal
     # the crop of the full render exactly (Engine API 2.7), and the crop of
-    # darktable-cli's export
+    # darktable-cli's export. P1c: the only sanctioned exceptions are the
+    # lines of t5_expected.txt (image, case, region, max, mean): a listed
+    # difference passes within its bounds; anything not listed must be exact.
+    t5_case() { # case log-dir [env...]
+      tc=$1; td=$2; shift 2
+      mkdir -p "$td"
+      env "$@" "$DTB" "$W" region "$RAW" "$XMP" "$td" > "$td/T5.log" 2>&1 || fail T5 "$C" "$tc: driver failed, see $td/T5.log"
+      for i in 0 1 2; do
+        note "INFO T5 $C $tc region $i: $(grep "^RESULT region $i at" "$td/T5.log" | cut -d' ' -f3-)"
+        bound=$(awk -v a="$C" -v b="$tc" -v r="$i" '$1 == a && $2 == b && $3 == r { print $4, $5 }' "$HERE/t5_expected.txt")
+        if [ -n "$bound" ]; then
+          set -- $bound
+          cmp_rec T5 "$C/$tc/region$i" "$td/region$i.ppm" "$td/region${i}_crop.ppm" --tolerance "$1" --mean-tolerance "$2"
+          note "INFO T5 $C $tc region $i is a listed difference (t5_expected.txt): bounds max $1, mean $2"
+        else
+          cmp_rec T5 "$C/$tc/region$i" "$td/region$i.ppm" "$td/region${i}_crop.ppm" --tolerance 0
+        fi
+        # regions in reverse order, after the others: the same pixels
+        again=$(grep "^RESULT region $i again" "$td/T5.log" | sed 's/.*max \([0-9]*\) mean \([0-9.]*\).*/\1 \2/')
+        set -- $again
+        if [ -n "$bound" ]; then lim=$(echo "$bound" | cut -d' ' -f1); else lim=0; fi
+        if [ -n "${1:-}" ] && [ "$1" -le "$lim" ]; then pass T5 "$C" "$tc region $i rendered again after the others: max $1 mean $2"
+        else fail T5 "$C" "$tc region $i rendered again after the others: max ${1:-?} mean ${2:-?}"; fi
+      done
+      note "INFO T5 $C $tc at scale 0.5: $(grep '^RESULT half_scale' "$td/T5.log" | cut -d' ' -f3- | tr '\n' ';')"
+    }
+    t5_case base "$D"
     for i in 0 1 2; do
       set -- $(result "$D/T5.log" "region${i}_origin")
-      note "INFO T5 $C region $i: $(grep "^RESULT region $i at" "$D/T5.log" | cut -d' ' -f3-)"
-      cmp_rec T5 "$C" "$D/region$i.ppm" "$D/region${i}_crop.ppm" --tolerance 0
-      cmp_rec T5 "$C" "$D/region$i.ppm" "$D/cli.png" --crop "$1" "$2" 512 512 --tolerance 0
+      bound=$(awk -v a="$C" -v r="$i" '$1 == a && $2 == "base" && $3 == r { print $4, $5 }' "$HERE/t5_expected.txt")
+      if [ -n "$bound" ]; then
+        b1=$(echo "$bound" | cut -d' ' -f1); b2=$(echo "$bound" | cut -d' ' -f2)
+        cmp_rec T5 "$C/base/region$i-vs-cli" "$D/region$i.ppm" "$D/cli.png" --crop "$1" "$2" 512 512 --tolerance "$b1" --mean-tolerance "$b2"
+      else
+        cmp_rec T5 "$C/base/region$i-vs-cli" "$D/region$i.ppm" "$D/cli.png" --crop "$1" "$2" 512 512 --tolerance 0
+      fi
     done
+    # P1c: modules with a spatial reach, switched on with their defaults on
+    # top of the test edit, on the 10 MP image (the bridge widens the margin
+    # for the modules of render.c's _reach_modules)
+    if [ "$C" = cr2 ]; then
+      for op in shadhi lowpass soften bloom denoiseprofile monochrome bilat bilateral \
+                sharpen diffuse filmicrgb atrous colorequal nlmeans defringe globaltonemap; do
+        t5_case "on-$op" "$D/T5-$op" DTB_TEST_ON="$op"
+      done
+    fi
   fi
 
   if want T6 || want C6; then

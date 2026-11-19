@@ -39,6 +39,12 @@ jobs:
     needs: tag
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    # two workflows (g0-app, p2b-real-engine) build the same engine tag after one
+    # push: one at a time per tag and ABI, so the second finds the release file
+    # and skips instead of racing the first one's upload
+    concurrency:
+      group: engine-build-${{ needs.tag.outputs.engine_tag }}-${{ matrix.abi }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:

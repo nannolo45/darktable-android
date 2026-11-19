@@ -508,6 +508,50 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_param_set("demosaic", 0, "demosaicing_method", v));
     fprintf(stdout, "RESULT demosaicing_method %s\n", dm);
   }
+  // DTB_TEST_PARAMS="op:path=value;...": parameter changes before the
+  // region test (t5_bisect.sh, P1c), for example "spektrafilm:grain_on=false"
+  const char *tp = getenv("DTB_TEST_PARAMS");
+  if(tp && *tp)
+  {
+    gchar **items = g_strsplit(tp, ";", -1);
+    for(int i = 0; items[i]; i++)
+    {
+      gchar **kv = g_strsplit(items[i], "=", 2);
+      gchar **opp = kv[0] && kv[1] ? g_strsplit(kv[0], ":", 2) : NULL;
+      if(opp && opp[0] && opp[1])
+      {
+        MUST(dtb_param_set(opp[0], 0, opp[1], kv[1]));
+        fprintf(stdout, "RESULT param %s.%s = %s\n", opp[0], opp[1], kv[1]);
+      }
+      g_strfreev(opp);
+      g_strfreev(kv);
+    }
+    g_strfreev(items);
+  }
+  // DTB_TEST_ON="op,op": switch modules on with their defaults (P1c)
+  const char *ton = getenv("DTB_TEST_ON");
+  if(ton && *ton)
+  {
+    gchar **ops = g_strsplit(ton, ",", -1);
+    for(int i = 0; ops[i]; i++)
+    {
+      const int r = dtb_set_enabled(ops[i], 0, 1);
+      fprintf(stdout, "RESULT on %s: %d\n", ops[i], r);
+    }
+    g_strfreev(ops);
+  }
+  // DTB_TEST_OFF="op,op": switch modules off (t5_bisect.sh, P1c)
+  const char *toff = getenv("DTB_TEST_OFF");
+  if(toff && *toff)
+  {
+    gchar **ops = g_strsplit(toff, ",", -1);
+    for(int i = 0; ops[i]; i++)
+    {
+      const int r = dtb_set_enabled(ops[i], 0, 0);
+      fprintf(stdout, "RESULT off %s: %d\n", ops[i], r);
+    }
+    g_strfreev(ops);
+  }
   fprintf(stdout, "RESULT margin_env %s\n", getenv("DTB_REGION_MARGIN") ? getenv("DTB_REGION_MARGIN") : "default");
   int w, h;
   uint8_t *full = render_full(&w, &h, NULL);
@@ -547,6 +591,43 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
     snprintf(name, sizeof(name), "region%d_crop.ppm", i);
     write_ppm(path_join(outdir, name), crop, rw, rh);
     fprintf(stdout, "RESULT region%d_origin %d %d\n", i, xs[i], ys[i]);
+  }
+  // P1c: the same regions again, in reverse order: a region must not depend
+  // on what was rendered before it
+  for(int i = 2; i >= 0; i--)
+  {
+    uint8_t *again = malloc((size_t)4 * rw * rh);
+    MUST(dtb_render_region(xs[i], ys[i], rw, rh, 1.0f, again));
+    for(int y = 0; y < rh; y++)
+      memcpy(crop + (size_t)4 * rw * y, full + 4 * ((size_t)(ys[i] + y) * w + xs[i]), (size_t)4 * rw);
+    int mx;
+    double mean;
+    diff_stats(again, crop, (size_t)rw * rh, &mx, &mean);
+    fprintf(stdout, "RESULT region %d again (reverse order) vs full max %d mean %.4f\n", i, mx, mean);
+    free(again);
+  }
+  // information (P1c): the same at scale 0.5, the app's zoomed-out view
+  {
+    int hw, hh;
+    MUST(dtb_render_size(0.5f, &hw, &hh));
+    uint8_t *hfull = malloc((size_t)4 * hw * hh);
+    MUST(dtb_render_region(0, 0, hw, hh, 0.5f, hfull));
+    const int rx[2] = { (hw - 256) / 2 + 1, 0 }, ry[2] = { (hh - 256) / 2 + 1, 0 };
+    uint8_t *hr = malloc((size_t)4 * 256 * 256), *hc = malloc((size_t)4 * 256 * 256);
+    for(int i = 0; i < 2; i++)
+    {
+      MUST(dtb_render_region(rx[i], ry[i], 256, 256, 0.5f, hr));
+      for(int y = 0; y < 256; y++)
+        memcpy(hc + (size_t)4 * 256 * y, hfull + 4 * ((size_t)(ry[i] + y) * hw + rx[i]), (size_t)4 * 256);
+      int mx;
+      double mean;
+      diff_stats(hr, hc, (size_t)256 * 256, &mx, &mean);
+      fprintf(stdout, "RESULT half_scale region at %d,%d vs full render at scale 0.5: max %d mean %.4f\n", rx[i], ry[i],
+              mx, mean);
+    }
+    free(hr);
+    free(hc);
+    free(hfull);
   }
   free(reg);
   free(crop);
