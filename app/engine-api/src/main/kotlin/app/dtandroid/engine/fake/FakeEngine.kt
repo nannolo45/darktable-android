@@ -102,7 +102,7 @@ class FakeEngine(
 
         private val DEFAULT_EXIF = Exif(
             maker = "Generic", model = "Camera", lens = "23 mm f/1.4", iso = 400.0, aperture = 2.8,
-            exposure = 1.0 / 250.0, focalLength = 23.0, datetime = "2026:06:01 18:30:00",
+            exposure = 1.0 / 250.0, focalLength = 23.0, datetime = "2026-06-01T18:30:00",
         )
     }
 
@@ -231,13 +231,15 @@ class FakeEngine(
 
     override suspend fun setThreads(n: Int) = onEngine {
         requireInit()
-        if (n < 1 || n > initThreads) fail(EngineError.ARG, "threads must be 1..$initThreads")
-        threads = n
+        // as dtb_set_threads: n <= 0 restores the count of init, a larger n is clamped to it (P2b)
+        threads = if (n <= 0) initThreads else min(n, initThreads)
     }
 
     override suspend fun setThreadCpus(cpuIds: List<Int>) = onEngine {
         requireInit()
-        if (cpuIds.isEmpty() || cpuIds.any { it < 0 }) fail(EngineError.ARG, "bad CPU list $cpuIds")
+        // as dtb_set_thread_cpus: an empty list removes the pinning; ids the process cannot use are refused (P2b)
+        val n = Runtime.getRuntime().availableProcessors()
+        if (cpuIds.any { it < 0 || it >= n }) fail(EngineError.ARG, "bad CPU list $cpuIds")
     }
 
     // ------------------------------------------------------------ 2.2 guard

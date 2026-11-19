@@ -57,6 +57,10 @@ class DarkroomController(
     private val scope: CoroutineScope,
     private val previewMaxSize: Int = 1024,
     private val thumbnailSize: Int = 128,
+    /** brief P2b: the size of the picture that follows a finger, chosen from measured render times */
+    val dragPicture: DragPicture = DragPicture(maxSize = previewMaxSize),
+    /** brief P2b: thumbnails kept between starts (the real engine needs a RAW decode per thumbnail); null = render all */
+    private val thumbnailStore: ThumbnailStore? = null,
 ) {
     private val _state = MutableStateFlow(DarkroomState())
     val state: StateFlow<DarkroomState> = _state.asStateFlow()
@@ -89,11 +93,15 @@ class DarkroomController(
         loadLayout(initial = true)
         if (thumbnails) {
             val thumbs = HashMap<Int, app.dtandroid.engine.api.RenderedImage>()
+            for ((i, item) in series.items.withIndex()) thumbnailStore?.load(item)?.let { thumbs[i] = it }
             lock.withLock {
                 for ((i, item) in series.items.withIndex()) {
+                    if (i in thumbs) continue
                     try {
                         engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
-                        thumbs[i] = engine.renderPreview(thumbnailSize)
+                        val t = engine.renderPreview(thumbnailSize)
+                        thumbs[i] = t
+                        thumbnailStore?.store(item, t)
                         engine.close()
                     } catch (e: EngineException) {
                         // a photo that cannot be opened has no thumbnail
@@ -191,7 +199,8 @@ class DarkroomController(
         cancelRenders()
         lock.withLock {
             try {
-                _state.update { it.copy(message = null, beforePreview = null) }
+                // the "before" picture is kept for the session (engine-api.md, clarifications after P2a)
+                _state.update { it.copy(message = null) }
                 block()
             } catch (e: EngineException) {
                 _state.update { it.copy(message = e.message) }
@@ -245,20 +254,59 @@ class DarkroomController(
         drags.trySend(Drag(key, controlId, binding, v, integer, end = true))
     }
 
+    /** The drag picture size of the drag in progress, fixed from its first step to its end. */
+    private var dragSize: Int? = null
+
+    /**
+     * One step of a drag (PLAN.md 3.9, brief P2b). While the finger moves, each step writes the
+     * newest value and renders the small drag picture before the next step is taken (the channel
+     * keeps only the newest value, so no render is started only to be cancelled). Nothing else is
+     * read from the engine during the drag: `modules()` is about 185 KB of JSON, so it is re-read
+     * once, when the finger lifts. Then the full preview and the sharp region follow, cancellable.
+     */
     private suspend fun applyDrag(d: Drag) {
         cancelRenders()
+        if (!d.end) {
+            val size = dragSize ?: dragPicture.size().also { dragSize = it }
+            val layer = lock.withLock {
+                try {
+                    writeBinding(d.key, d.binding, d.value, d.integer)
+                    markOn(d.key)
+                    _state.update { it.copy(message = null) }
+                    val info = _state.value.info ?: return@withLock null
+                    val t0 = System.nanoTime()
+                    val img = engine.renderPreview(size)
+                    dragPicture.record(img.width * img.height, System.nanoTime() - t0, drag = true)
+                    PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
+                } catch (e: EngineException) {
+                    if (e.error != EngineError.CANCELLED) _state.update { it.copy(message = e.message) }
+                    null
+                }
+            }
+            // the drag picture covers the whole photo, as the preview does: same framing; the region
+            // (sharp, but showing the value before the drag) is hidden until the finger lifts
+            if (layer != null) _state.update { it.copy(preview = layer, region = null) }
+            return
+        }
+        dragSize = null
         lock.withLock {
             try {
                 writeBinding(d.key, d.binding, d.value, d.integer)
-                if (d.end) engine.historySeal()
-                _state.update { it.copy(message = null, beforePreview = null) }
+                engine.historySeal()
+                _state.update { it.copy(message = null) }
             } catch (e: EngineException) {
                 _state.update { it.copy(message = e.message) }
             }
             try { refreshLocked() } catch (e: EngineException) { _state.update { it.copy(message = e.message) } }
         }
-        if (d.end) _live.update { it - (d.key to d.controlId) }
+        _live.update { it - (d.key to d.controlId) }
         requestRender()
+    }
+
+    /** param_set switches a module on (engine-api.md 2.4); show that during a drag without re-reading modules(). */
+    private fun markOn(key: InstanceKey) = _state.update { s ->
+        if (s.modules.none { it.key == key && !it.enabled }) s
+        else s.copy(modules = s.modules.map { if (it.key == key && it.canSwitch) it.copy(enabled = true) else it })
     }
 
     suspend fun instanceNew(key: InstanceKey) = change {
@@ -326,12 +374,27 @@ class DarkroomController(
     private suspend fun renderPreview() {
         val img = lock.withLock {
             if (_state.value.info == null) return
-            engine.renderPreview(previewMaxSize)
+            val t0 = System.nanoTime()
+            engine.renderPreview(previewMaxSize).also {
+                val ns = System.nanoTime() - t0
+                dragPicture.record(it.width * it.height, ns)
+                _times.update { t -> t.copy(previewMs = ns / 1e6) }
+            }
         }
         val info = _state.value.info ?: return
         _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null) }
-        _state.value.index.let { i -> _state.update { s -> s.copy(thumbnails = s.thumbnails + (i to img)) } }
+        // the filmstrip keeps a small copy, not the preview itself (a 1024 px preview is about 3 MB)
+        val thumb = Thumbnails.downscale(img, thumbnailSize)
+        val i = _state.value.index
+        _state.update { s -> s.copy(thumbnails = s.thumbnails + (i to thumb)) }
+        _state.value.series.items.getOrNull(i)?.let { item -> thumbnailStore?.store(item, thumb) }
     }
+
+    /** Times of the last renders, for the timings page and tests (ms, wherever measured). */
+    data class RenderTimes(val previewMs: Double? = null, val regionMs: Double? = null)
+
+    private val _times = MutableStateFlow(RenderTimes())
+    val renderTimes: StateFlow<RenderTimes> = _times.asStateFlow()
 
     private suspend fun renderRegion() {
         val vp = viewport ?: return
@@ -344,7 +407,10 @@ class DarkroomController(
             val w = min(r.w, size.w - x)
             val h = min(r.h, size.h - y)
             if (w <= 0 || h <= 0) return
-            PhotoLayer(engine.renderRegion(x, y, w, h, r.scale), x, y, r.scale)
+            val t0 = System.nanoTime()
+            PhotoLayer(engine.renderRegion(x, y, w, h, r.scale), x, y, r.scale).also {
+                _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
+            }
         }
         _state.update { it.copy(region = layer) }
     }
@@ -408,6 +474,59 @@ class DarkroomController(
             }
         }
         _state.update { it.copy(beforePreview = layer) }
+    }
+
+    // ------------------------------------------------------------------ output and maintenance (brief P2b)
+
+    /**
+     * Run [block] with the engine to itself: renders are cancelled, the controller's lock is held,
+     * and afterwards the state is re-read and the photo rendered again. For the timings page,
+     * which closes and reopens the photo.
+     */
+    suspend fun <T> withEngine(block: suspend (DarktableEngine) -> T): T {
+        cancelRenders()
+        val r = lock.withLock {
+            try {
+                block(engine)
+            } finally {
+                if (_state.value.info != null) {
+                    try {
+                        _state.update { it.copy(info = engine.imageInfo()) }
+                        refreshLocked()
+                    } catch (e: EngineException) {
+                        _state.update { it.copy(message = e.message) }
+                    }
+                }
+            }
+        }
+        requestRender()
+        return r
+    }
+
+    /** Export the open photo through darktable's export (engine-api.md 2.8) to [path]. */
+    suspend fun export(path: String, options: app.dtandroid.engine.api.ExportOptions) {
+        cancelRenders()
+        try {
+            lock.withLock {
+                if (_state.value.info == null) throw EngineException(EngineError.STATE, "no photo open")
+                engine.export(path, options)
+            }
+        } finally {
+            requestRender()
+        }
+    }
+
+    /** Write the open photo's edit as an XMP to [path]; refused for read-only photos (READ_ONLY). */
+    suspend fun writeXmp(path: String) {
+        cancelRenders()
+        try {
+            lock.withLock {
+                if (_state.value.info == null) throw EngineException(EngineError.STATE, "no photo open")
+                engine.xmpWrite(path)
+            }
+        } finally {
+            requestRender()
+        }
     }
 
     // ------------------------------------------------------------------ interface state

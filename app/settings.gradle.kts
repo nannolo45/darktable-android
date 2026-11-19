@@ -8,8 +8,9 @@
 //   app         the app shell, application id app.dtandroid (brief P2a: on the fake engine)
 //   lpl-shell   the LightPhotoLibrary shell, a second small app (app.dtandroid.lplshell, brief P2c);
 //               no darktable code: only ui-theme and ui-icons
-// engine-jni and g0 (brief G0) need the native engine archives and are only
-// included when -Pdta.engineDir is given, so the interface builds without them.
+//   app-engine  the app on the real engine (brief P2b), application id app.dtandroid.real
+// engine-jni, g0 (brief G0) and app-engine (brief P2b) need the native engine archives and are
+// only included when -Pdta.engineDir is given, so the interface builds without them.
 pluginManagement {
     repositories {
         google()
@@ -27,5 +28,5 @@ dependencyResolutionManagement {
 rootProject.name = "dt-android"
 include(":engine-api", ":schema", ":ui-theme", ":ui-icons", ":darkroom", ":app", ":lpl-shell")
 if (providers.gradleProperty("dta.engineDir").isPresent) {
-    include(":engine-jni", ":g0")
+    include(":engine-jni", ":g0", ":app-engine")
 }

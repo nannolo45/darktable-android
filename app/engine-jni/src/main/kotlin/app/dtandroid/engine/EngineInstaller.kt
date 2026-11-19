@@ -23,7 +23,12 @@ class EngineInstaller(private val ctx: Context) {
     fun packedId(): String =
         ctx.assets.open("engine/engine.id").bufferedReader().use { it.readText().trim() }
 
-    fun unpack(log: (String) -> Unit): Unpack {
+    /**
+     * Unpack once per packed id. [progress] gets the share of the packed file read so far.
+     * Interrupted unpacks are safe: the tree is written to engine.tmp and renamed, and the id
+     * stamp is written last, so a half-written tree is unpacked again at the next start.
+     */
+    fun unpack(log: (String) -> Unit, progress: (Float) -> Unit = {}): Unpack {
         val id = packedId()
         if (stamp.isFile && stamp.readText().trim() == id) {
             val (files, bytes) = measure(engineDir)
@@ -38,7 +43,12 @@ class EngineInstaller(private val ctx: Context) {
         val root = tmp.canonicalPath + File.separator
         var files = 0
         var bytes = 0L
-        ZipInputStream(ctx.assets.open("engine/engine.zip").buffered(1 shl 16)).use { zin ->
+        // the zip is stored uncompressed in the APK (noCompress), so its length is known
+        val total = runCatching { ctx.assets.openFd("engine/engine.zip").use { it.length } }.getOrDefault(-1L)
+        val counted = CountingStream(ctx.assets.open("engine/engine.zip")) { n ->
+            if (total > 0) progress((n.toDouble() / total).toFloat().coerceIn(0f, 1f))
+        }
+        ZipInputStream(counted.buffered(1 shl 16)).use { zin ->
             while (true) {
                 val e = zin.nextEntry ?: break
                 val out = File(tmp, e.name)
@@ -52,6 +62,7 @@ class EngineInstaller(private val ctx: Context) {
                 }
             }
         }
+        progress(1f)
         check(tmp.renameTo(engineDir)) { "cannot move $tmp to $engineDir" }
         stamp.writeText(id)
         return Unpack(true, (System.nanoTime() - t0) / 1_000_000, files, bytes)
@@ -86,4 +97,17 @@ class EngineInstaller(private val ctx: Context) {
         dir.walkTopDown().filter { it.isFile }.forEach { n++; b += it.length() }
         return n to b
     }
+}
+
+/** Counts the bytes read and reports them about every megabyte. */
+private class CountingStream(private val inner: java.io.InputStream, private val report: (Long) -> Unit) : java.io.InputStream() {
+    private var n = 0L
+    private var lastReport = 0L
+    private fun count(k: Int) {
+        if (k > 0) n += k
+        if (n - lastReport >= (1L shl 20)) { lastReport = n; report(n) }
+    }
+    override fun read(): Int = inner.read().also { if (it >= 0) count(1) }
+    override fun read(b: ByteArray, off: Int, len: Int): Int = inner.read(b, off, len).also { count(it) }
+    override fun close() = inner.close()
 }

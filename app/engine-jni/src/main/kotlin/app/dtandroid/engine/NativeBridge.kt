@@ -79,4 +79,37 @@ object NativeBridge {
     // output
     @JvmStatic external fun xmpWrite(path: String): Int
     @JvmStatic external fun exportJpeg(path: String, quality: Int, maxW: Int, maxH: Int): Int
+
+    // Engine API v1, the whole core (brief P2b), for JniEngine. JSON getters put the
+    // bridge's code into status[0] and return null on failure.
+    const val JSON_ENGINE_INFO = 0
+    const val JSON_IMAGE_INFO = 1
+    const val JSON_MODULES = 2
+    const val JSON_HISTORY = 3
+    const val JSON_UNDO_STATE = 4
+    @JvmStatic external fun jsonGet(what: Int, status: IntArray): String?
+    /** modules() with times[0] = bridge call, times[1] = copy into a Java string, in ns */
+    @JvmStatic external fun modulesTimed(times: LongArray, status: IntArray): String?
+    @JvmStatic external fun setThreadsCode(n: Int): Int
+    @JvmStatic external fun setThreadCpus(cpus: IntArray): Int
+    @JvmStatic external fun xmpCheckStatus(path: String, status: IntArray): String?
+    @JvmStatic external fun metadataReload(path: String): Int
+    @JvmStatic external fun paramSet(op: String, prio: Int, path: String, valueJson: String): Int
+    @JvmStatic external fun paramsSet(op: String, prio: Int, valuesJson: String): Int
+    @JvmStatic external fun moduleReset(op: String, prio: Int): Int
+    @JvmStatic external fun moduleAction(op: String, prio: Int, action: String, argsJson: String?, status: IntArray): String?
+    /** kind 0 = new, 1 = duplicate; out[0] receives the new priority */
+    @JvmStatic external fun instanceAdd(kind: Int, op: String, prio: Int, out: IntArray): Int
+    @JvmStatic external fun instanceDelete(op: String, prio: Int): Int
+    @JvmStatic external fun instanceMove(op: String, prio: Int, direction: Int): Int
+    @JvmStatic external fun instanceRename(op: String, prio: Int, name: String): Int
+    const val HISTORY_GOTO = 0
+    const val HISTORY_COMPRESS = 1
+    const val HISTORY_SEAL = 2
+    const val HISTORY_UNDO = 3
+    const val HISTORY_REDO = 4
+    @JvmStatic external fun historyOp(what: Int, arg: Int): Int
+    /** region into [out] (exactly w*h*4 bytes); copied[0] tells whether JNI had to copy the array */
+    @JvmStatic external fun renderRegionInto(x: Int, y: Int, w: Int, h: Int, scale: Float, out: ByteArray, copied: BooleanArray): Int
+    @JvmStatic external fun exportWith(path: String, optionsJson: String?): Int
 }

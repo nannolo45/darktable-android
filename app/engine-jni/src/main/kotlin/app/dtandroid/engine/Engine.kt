@@ -90,6 +90,12 @@ object Engine {
     @Volatile var report: EngineStartReport? = null
         private set
 
+    /** Queue [r] on the engine thread (brief P2b: JniEngine's cancellable calls). */
+    fun post(r: Runnable) = queue.put(r)
+
+    /** True on the engine thread. */
+    val onEngineThread: Boolean get() = Thread.currentThread() === thread
+
     /** Run [block] on the engine thread and wait for it without blocking a coroutine thread. */
     suspend fun <T> call(block: () -> T): T {
         val d = CompletableDeferred<T>()
@@ -112,6 +118,83 @@ object Engine {
         val r = callBlocking { startOnEngineThread(context.applicationContext, log) }
         report = r
         return r
+    }
+
+    /**
+     * What [prepare] leaves behind: the engine is unpacked, its libraries and the JNI layer are
+     * loaded, the environment is set, but dtb_init has not run. [paths] are the folders the app
+     * passes to init (brief P2b: the app starts the engine through DarktableEngine.init).
+     */
+    data class Prepared(val report: EngineStartReport, val paths: Paths)
+
+    data class Paths(val configDir: String, val cacheDir: String, val dataDir: String, val moduleDir: String, val tmpDir: String)
+
+    @Volatile var prepared: Prepared? = null
+        private set
+
+    /**
+     * Brief P2b: everything [start] does except dtb_init, once per process. [progress] gets
+     * the share of the packed engine unpacked so far (0..1), on the engine thread.
+     */
+    @Synchronized
+    fun prepare(context: Context, log: (String) -> Unit = {}, progress: (Float) -> Unit = {}): Prepared {
+        prepared?.let { return it }
+        val p = callBlocking { prepareOnEngineThread(context.applicationContext, log, progress) }
+        if (p.report.fatal == null) prepared = p
+        return p
+    }
+
+    private fun paths(ctx: Context, inst: EngineInstaller) = Paths(
+        configDir = File(ctx.filesDir, "dt/config").absolutePath,
+        cacheDir = File(ctx.cacheDir, "dt-cache").absolutePath,
+        dataDir = File(inst.engineDir, "share/darktable").absolutePath,
+        moduleDir = File(inst.engineDir, "lib/darktable").absolutePath,
+        tmpDir = File(ctx.cacheDir, "dt-tmp").absolutePath,
+    )
+
+    private fun prepareOnEngineThread(ctx: Context, log: (String) -> Unit, progress: (Float) -> Unit): Prepared {
+        val inst = EngineInstaller(ctx)
+        val unpack = try {
+            inst.unpack(log, progress)
+        } catch (e: Exception) {
+            return Prepared(failed(inst.engineDir, "unpack failed: $e"), paths(ctx, inst))
+        }
+        log("unpacked: ${unpack.files} files, ${unpack.bytes} bytes" + if (unpack.fresh) " in ${unpack.ms} ms" else " (kept)")
+        val loads = inst.loadLibraries(log)
+        try {
+            System.loadLibrary("dtjni")
+        } catch (e: Throwable) {
+            val why = e.message ?: e.toString()
+            return Prepared(failed(inst.engineDir, "JNI layer did not load: $why").copy(
+                freshUnpack = unpack.fresh, unpackMs = unpack.ms, unpackedBytes = unpack.bytes,
+                unpackedFiles = unpack.files, libsInLoadOrder = loads.total,
+                libFailures = loads.failures, jniError = why,
+            ), paths(ctx, inst))
+        }
+        NativeBridge.startLogCapture()
+        NativeBridge.logLine("[dt-android] engine unpacked to ${inst.engineDir}")
+        val plugins = inst.pluginFiles()
+        val dlFailures = plugins.mapNotNull { f ->
+            NativeBridge.dlopenCheck(f.absolutePath)?.let { "${f.relativeTo(inst.engineDir)}: $it" }
+        }
+        setEnvironment(ctx)
+        val r = failed(inst.engineDir, "").copy(
+            freshUnpack = unpack.fresh, unpackMs = unpack.ms, unpackedBytes = unpack.bytes,
+            unpackedFiles = unpack.files, libsInLoadOrder = loads.total, libFailures = loads.failures,
+            pluginFiles = plugins.size, pluginDlopenFailures = dlFailures, initCode = 0, initError = null, fatal = null,
+        )
+        return Prepared(r, paths(ctx, inst))
+    }
+
+    private fun setEnvironment(ctx: Context) {
+        // darktable and GLib read these; the app has no HOME of its own
+        val home = File(ctx.filesDir, "home").apply { mkdirs() }
+        val tmp = File(ctx.cacheDir, "dt-tmp").apply { mkdirs() }
+        Os.setenv("HOME", home.absolutePath, true)
+        Os.setenv("TMPDIR", tmp.absolutePath, true)
+        Os.setenv("XDG_CONFIG_HOME", File(home, ".config").absolutePath, true)
+        Os.setenv("XDG_CACHE_HOME", File(ctx.cacheDir, "xdg").absolutePath, true)
+        Os.setenv("XDG_DATA_HOME", File(home, ".local/share").absolutePath, true)
     }
 
     private fun startOnEngineThread(ctx: Context, log: (String) -> Unit): EngineStartReport {

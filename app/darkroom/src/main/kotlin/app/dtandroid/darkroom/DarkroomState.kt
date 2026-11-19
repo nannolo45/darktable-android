@@ -52,7 +52,12 @@ sealed interface Overlay {
     data class Rename(val key: InstanceKey) : Overlay
     /** the layouts menu next to the group tabs: choose a layout, "manage module layouts…" */
     data object Layouts : Overlay
+    /** the app's own photo menu ("more" in the top bar): export, save XMP, timings (brief P2b) */
+    data object HostMenu : Overlay
 }
+
+/** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */
+data class HostAction(val label: String, val enabled: Boolean = true, val run: () -> Unit)
 
 /** A rendered picture and where it sits in the processed image at its scale. */
 class PhotoLayer(val image: RenderedImage, val x: Int, val y: Int, val scale: Double)

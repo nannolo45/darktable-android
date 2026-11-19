@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
+import app.dtandroid.darkroom.HostAction
 import app.dtandroid.darkroom.Overlay
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.Control
@@ -100,7 +101,7 @@ fun SheetItem(label: String, enabled: Boolean, selected: Boolean = false, onClic
 
 /** Whatever overlay the state asks for. On tablets the instances menu is inline in the list instead. */
 @Composable
-fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: Boolean) {
+fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: Boolean, actions: List<HostAction> = emptyList()) {
     val o = s.overlay ?: return
     val close = { controller.setOverlay(null) }
     val maxW = if (tablet) DtTheme.sizes.tabletRightPanel + DtTheme.sizes.tabletLeftPanel else null
@@ -167,6 +168,9 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 SheetItem(l.name, enabled = true, selected = l.name == s.layoutName) { controller.launch { chooseLayout(l.name) } }
             }
             SheetItem("manage module layouts…", enabled = true) { controller.launch { openLayoutEditor() } }
+        }
+        Overlay.HostMenu -> Sheet(s.current?.fileName ?: "photo", close, maxW) {
+            for (a in actions) SheetItem(a.label, a.enabled) { controller.setOverlay(null); a.run() }
         }
         is Overlay.Rename -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
