@@ -65,3 +65,5 @@ dependencies {
         testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.50.0")
     }
 }
+
+tasks.named("preBuild") { dependsOn(":checkScreenRules") }
