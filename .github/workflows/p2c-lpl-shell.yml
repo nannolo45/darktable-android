@@ -78,16 +78,19 @@ jobs:
           cd app
           # Maven Central sometimes answers "could not find" for artifacts that exist (seen in run
           # 44485279179); retry such resolution failures, nothing else
+          # (Gradle remembers a "not found" answer, so the retries ask again with --refresh-dependencies)
+          refresh=""
           for attempt in 1 2 3; do
             set +e
-            "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
+            "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
               :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
             rc=${PIPESTATUS[0]}
             set -e
             [ "$rc" = 0 ] && break
             grep -qE "Could not (find|resolve|GET)|status code 429" /tmp/gradle.log || exit "$rc"
             [ "$attempt" = 3 ] && exit "$rc"
-            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30))
+            echo "dependency resolution failed, retry $attempt"; sleep $((attempt * 30)); refresh="--refresh-dependencies"
+            cp /tmp/gradle.log "/tmp/gradle-attempt$attempt.log"
           done
           mkdir -p /home/runner/out
           cp lpl-shell/build/outputs/apk/debug/lpl-shell-debug.apk /home/runner/out/lightphotolibrary-shell.apk
@@ -133,6 +136,7 @@ jobs:
           cp /tmp/test-summary.txt /tmp/rules.log /home/runner/out/apk-report.txt "$L/" 2>/dev/null || true
           tail -n 200 /tmp/tests.log > "$L/tests.tail.log" 2>/dev/null || true
           tail -n 100 /tmp/gradle.log > "$L/gradle.tail.log" 2>/dev/null || true
+          for f in /tmp/gradle-attempt*.log; do [ -e "$f" ] && tail -n 60 "$f" > "$L/$(basename "$f" .log).tail.log"; done
           mkdir -p "$L/test-results"
           for d in app/lpl-shell/build/test-results app/ui-theme/build/test-results; do
             [ -d "$d" ] && find "$d" -name 'TEST-*.xml' -exec cp {} "$L/test-results/" \;
