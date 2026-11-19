@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Control schema loader (PLAN.md 3.3, docs/experiments/S5-control-schema.md):
 // the control model, visibility and sensitivity rules, overrides and module
-// groups. schema/ui-schema.json and schema/overrides/*.json are packed into
+// groups, module layouts. schema/ui-schema.json, schema/builtin-layouts.json and schema/overrides/*.json are packed into
 // the jar at build time straight from the repository, never copied by hand.
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -23,6 +23,7 @@ val repoSchema = rootDir.resolve("../schema")
 val packSchema by tasks.registering(Sync::class) {
     description = "Pack schema/ui-schema.json and schema/overrides/*.json from the repository"
     from(repoSchema.resolve("ui-schema.json"))
+    from(repoSchema.resolve("builtin-layouts.json"))
     from(repoSchema.resolve("overrides")) {
         include("*.json")
         into("overrides")
@@ -43,4 +44,9 @@ sourceSets.main {
 dependencies {
     api(project(":engine-api"))
     testImplementation("junit:junit:4.13.2")
+}
+
+// tables and files for the P2d report and for tools/layouts/verify-with-darktable.sh
+tasks.test {
+    systemProperty("dta.reportDir", layout.buildDirectory.dir("reports/p2d").get().asFile.absolutePath)
 }

@@ -1,0 +1,13 @@
+workflow 'scene-referred (sigmoid)': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+workflow 'scene-referred (filmic)': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+workflow 'scene-referred (AgX)': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+workflow 'scene-referred (spektrafilm)': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+workflow 'display-referred (legacy)': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+workflow 'none': 5 of 5 built-in layouts byte-identical; user layouts in the database: []
+  import: imported app-export.dtpreset
+  import: imported app-export-short.dtpreset
+  user layout after import: 'app export' op_version 1: '1|0ꬹ1|||exposure/exposure|colorbalancergb/global vibrance|lensꬹmy edits|favorites||exposure|colorbalancergb|lensꬹunusual|tone||sigmoid|nosuchmodule'
+  user layout after import: 'app export short' op_version 1: '1|0ꬹ0||ꬹg|basic||exposure'
+  user layout after import: 'probe layout' op_version 1: '1|0ꬹ1|||exposure/exposure|colorbalancergb/global vibrance|lensꬹmy edits|favorites||exposure|colorbalancergb|lensꬹunusual|tone||sigmoid|nosuchmodule'
+  exported by darktable: modulegroups_probe layout.dtpreset
+RESULT: all built-in layouts identical

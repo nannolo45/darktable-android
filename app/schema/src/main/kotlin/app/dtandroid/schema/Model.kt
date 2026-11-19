@@ -37,6 +37,15 @@ data class ModuleSchema(
     val params: Map<String, ParamField>,
     /** names of the override files applied to this module */
     val overrides: List<String> = emptyList(),
+    /** search aliases darktable matches besides the name (`dt_iop_get_localized_aliases`), comma separated */
+    val aliases: String = "",
+    /**
+     * darktable's action path of each control that has one, by control id, without the
+     * module (`curve/contrast` in AgX): the quick access panel stores `<op>/<path>`.
+     */
+    val actionPaths: Map<Int, String> = emptyMap(),
+    /** the extractor's kind of each control with an action path (slider, combobox, button, graph, ...) */
+    val actionKinds: Map<Int, String> = emptyMap(),
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {
@@ -47,6 +56,19 @@ data class ModuleSchema(
     }
 
     fun control(id: Int): Control? = allControls().firstOrNull { it.id == id }
+
+    /** The chain of containers from the top of the panel down to control [id], the control last; empty if absent. */
+    fun pathTo(id: Int): List<Control> {
+        fun find(cs: List<Control>, acc: List<Control>): List<Control>? {
+            for (c in cs) {
+                val here = acc + c
+                if (c.id == id) return here
+                find(c.children, here)?.let { return it }
+            }
+            return null
+        }
+        return find(controls, emptyList()) ?: emptyList()
+    }
 
     /** Controls a user can change: bound sliders, lists and switches, and override buttons. */
     val editableCount: Int

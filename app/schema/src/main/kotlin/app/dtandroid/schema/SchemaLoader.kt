@@ -80,6 +80,7 @@ object SchemaLoader {
             )
         }
         val controls = (o["controls"] as? JsonArray)?.map { parseControl(it.jsonObject, params) } ?: emptyList()
+        val actions = LinkedHashMap<Int, Pair<String, String>>().also { collectActions(o["controls"] as? JsonArray, it) }
         val vis = o["visibility"] as? JsonObject
         val sens = o["sensitivity"] as? JsonObject
         val flags = o["flags"] as? JsonObject
@@ -96,7 +97,21 @@ object SchemaLoader {
             hiddenInEveryState = vis?.get("hidden_in_every_state")?.ints()?.toSet() ?: emptySet(),
             insensitiveInEveryState = sens?.get("insensitive_in_every_state")?.ints()?.toSet() ?: emptySet(),
             params = params,
+            aliases = o.str("aliases") ?: "",
+            actionPaths = actions.mapValues { it.value.first },
+            actionKinds = actions.mapValues { it.value.second },
         )
+    }
+
+    /** Action path and kind of every control that has an action path, by id, in tree order. */
+    private fun collectActions(cs: JsonArray?, out: LinkedHashMap<Int, Pair<String, String>>) {
+        cs?.forEach {
+            val c = it.jsonObject
+            val id = c.int("id")
+            val path = c.str("action_path")
+            if (id != null && !path.isNullOrEmpty()) out[id] = path to (c.str("kind") ?: "unknown")
+            collectActions(c["children"] as? JsonArray, out)
+        }
     }
 
     private fun parseRules(e: JsonElement?): Map<Int, Rule> {

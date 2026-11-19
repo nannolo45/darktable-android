@@ -179,18 +179,20 @@ class SchemaTest {
     }
 
     @Test
-    fun groupsAndQuickPanelFromTheDataFile() {
-        val g = ModuleGroups.fromResources(schema)
-        assertEquals(listOf("base", "tone", "color", "correct", "effect"), g.groups.map { it.label })
-        val listed = g.groups.flatMap { it.ops }.toSet()
-        val missing = schema.modules.values.filter { ModuleGroups.listable(it) && it.op !in listed }.map { it.op }
-        assertEquals("every module with a panel is in a group", emptyList<String>(), missing)
-        assertTrue("exposure" in g.groups.first { it.id == "base" }.ops)
-        assertFalse("deprecated modules are not listed", "clipping" in listed)
-        assertEquals(
-            listOf("exposure · exposure", "sigmoid · contrast", "white balance · temperature", "color balance rgb · global vibrance"),
-            g.quick.map { it.label },
-        )
+    fun groupsAndQuickPanelOfTheDefaultLayout() {
+        // P2a checked an invented module-groups.json here (groups by default group, a quick panel of
+        // exposure, sigmoid contrast, white balance temperature, vibrance). The groups and the quick
+        // panel now come from darktable's default layout, "workflow: scene-referred" for the default
+        // workflow "scene-referred (sigmoid)", at the pinned commit.
+        val b = app.dtandroid.schema.layout.BuiltinLayouts.fromResources()
+        val l = app.dtandroid.schema.layout.LayoutCodec.parse(b.presets(b.defaultWorkflow).first { it.name == b.fallbackLayout }.params)
+        assertEquals(listOf("base", "color", "correct", "effect"), l.groups.map { it.name })
+        assertTrue("exposure" in l.groups.first().modules)
+        assertTrue(l.quickAccessShown)
+        val quick = l.quickAccess.map { app.dtandroid.schema.layout.QuickAccess.resolve(schema, it) }
+        assertEquals("sigmoid · contrast", quick.first().let { "${it.module!!.name} · ${it.label}" })
+        assertTrue("no white balance control", quick.none { it.op == "temperature" })
+        assertTrue("color calibration temperature", quick.any { it.id == "channelmixerrgb/temperature" && it.mapped })
     }
 
     @Test
