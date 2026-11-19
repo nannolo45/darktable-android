@@ -139,6 +139,22 @@ class DarkroomController(
         requestRender()
     }
 
+    /**
+     * Leave the photo (brief P2b: back to the working folder): the edit is written to its
+     * sidecar (not for read-only photos), the session closed and the pictures dropped.
+     */
+    suspend fun closePhoto() {
+        cancelRenders()
+        lock.withLock {
+            saveLocked()
+            runCatching { engine.close() }
+            _state.update {
+                it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
+                    expanded = null, overlay = null, readOnlyReason = null, loading = false)
+            }
+        }
+    }
+
     /** Write the current edit (not for read-only photos). Called when leaving the darkroom. */
     suspend fun save() {
         cancelRenders()

@@ -5,7 +5,7 @@
 CLAUDE.md rule 5 and PLAN.md 3.6: screens take colours, text sizes, spacing and
 control sizes only from ui-theme's tokens, and icons only from ui-icons'
 registry. This scans the Kotlin sources of the screen modules (by default
-app/darkroom, app/app and app/lpl-shell, main sources) and prints every violation with file,
+app/darkroom, app/app, app/lpl-shell and app/app-engine, main sources) and prints every violation with file,
 line and rule. Exit status 1 if there is any.
 
     tools/app/check-screen-rules.py [source dir ...]
@@ -114,7 +114,7 @@ def main(argv):
     if argv[1:2] == ["--self-test"]:
         return self_test(here)
     repo = os.path.dirname(os.path.dirname(here))
-    dirs = argv[1:] or [os.path.join(repo, "app", m, "src", "main") for m in ("darkroom", "app", "lpl-shell")]
+    dirs = argv[1:] or [os.path.join(repo, "app", m, "src", "main") for m in ("darkroom", "app", "lpl-shell", "app-engine")]
     files, problems = check(dirs)
     for p in problems:
         print("%s:%d: %s: %s" % p)

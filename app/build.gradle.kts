@@ -7,7 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.21" apply false
 }
 
-// CLAUDE.md rule 5 / PLAN.md 3.6: screen code (darkroom, app, lpl-shell) may not contain literal
+// CLAUDE.md rule 5 / PLAN.md 3.6: screen code (darkroom, app, lpl-shell, app-engine) may not contain literal
 // colours or sizes or draw icons; the build of those modules fails otherwise.
 val checkScreenRules by tasks.registering(Exec::class) {
     description = "Fail on literal colours, sizes or icon drawings in screen code (tools/app/check-screen-rules.py)"
@@ -18,6 +18,7 @@ val checkScreenRules by tasks.registering(Exec::class) {
     inputs.dir("darkroom/src/main")
     inputs.dir("app/src/main")
     inputs.dir("lpl-shell/src/main")
+    inputs.dir("app-engine/src/main")
     outputs.file(report)
     commandLine("python3", script.path)
     doFirst { report.get().asFile.parentFile.mkdirs() }
