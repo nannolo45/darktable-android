@@ -554,12 +554,12 @@ class DarkroomController(
      * The quick access panel (`_basics_show`): per module, in the module list's order (last in
      * the pipe on top), its on-off button first, then its entries in the order of the module's
      * own panel; hidden and deprecated modules are left out on desktop. Entries the app cannot
-     * use are kept (shown disabled with their name), and entries for modules that do not exist
-     * come last.
+     * use are kept (shown disabled with their name), and entries of modules the panel does not
+     * show (deprecated, or not in the pipe) come last, disabled, with the reason.
      */
     fun quickPanel(s: DarkroomState): List<QuickBlock> {
         val byOp = s.quick.groupBy { it.op }
-        val order = s.modules.asReversed().filter { !it.hidden }.map { it.op }.distinct()
+        val order = s.modules.asReversed().filter { !it.hidden && !it.deprecated }.map { it.op }.distinct()
         val blocks = ArrayList<QuickBlock>()
         for (op in order) {
             val es = byOp[op] ?: continue
@@ -572,7 +572,12 @@ class DarkroomController(
                 instances.size > 1,
             )
         }
-        val rest = s.quick.filter { it.op !in order }
+        val deprecated = s.modules.filter { it.deprecated }.map { it.op }.toSet()
+        val rest = s.quick.filter { it.op !in order }.map { e ->
+            if (e.reason != null) e
+            else e.copy(reason = if (e.op in deprecated) "deprecated module: desktop leaves it out of the quick access panel"
+                                 else "the module is not in this photo's pipe")
+        }
         if (rest.isNotEmpty()) blocks += QuickBlock(null, "not available", null, rest, false)
         return blocks
     }

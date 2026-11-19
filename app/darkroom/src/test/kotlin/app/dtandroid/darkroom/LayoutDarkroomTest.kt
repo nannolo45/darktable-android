@@ -101,6 +101,14 @@ class LayoutDarkroomTest {
         val fSource = c.state.value.quick.first { it.id == "channelmixerrgb/F source" }
         assertFalse(c.quickVisible(cc, fSource))
         assertTrue(c.quickVisible(cc, c.state.value.quick.first { it.id == "channelmixerrgb/illuminant" }))
+        // a deprecated module is left out of the panel as on desktop (`_basics_show`); its entry is kept,
+        // disabled, at the end with the reason (no module is deprecated at 04477d3, so one is marked here)
+        val s0 = c.state.value
+        val dep = c.quickPanel(s0.copy(modules = s0.modules.map { if (it.op == "lens") it.copy(deprecated = true) else it }))
+        assertTrue(dep.none { it.instance?.op == "lens" })
+        val lensEntry = dep.last().entries.single { it.op == "lens" }
+        assertNull(dep.last().instance)
+        assertTrue(lensEntry.reason!!.startsWith("deprecated module"))
         // "go to the full module": the first group that has it, expanded
         c.goToModule(InstanceKey("channelmixerrgb", 0))
         assertEquals(GroupTab.Group(1), c.state.value.group)

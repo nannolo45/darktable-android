@@ -5,6 +5,12 @@ Brief: `docs/briefs/P2d-module-layouts.md`. Branch `p2d-module-layouts`. Pull re
 
 ## Running log (newest first)
 
+- 2026-11-19 (resumed by a second agent after an unrelated interruption): CI run 44494055618 on bf9f344
+  failed on two screenshot tests (`searchLine`: color calibration is below the fold of the lazy list for
+  "col"; `editorUserLayout`: one "move group down" per group, 4 nodes, the test expected one). Both tests
+  fixed without weakening them (ee99df7). `origin/main` merged (f24d9d1): the signing step of
+  `p2a-app.yml` is main's, the branch's trigger and layouts check stay. Quick access panel now leaves
+  deprecated modules out as `_basics_show` does (entry kept, disabled, with the reason).
 - 2026-11-19: layout model and codec, built-in layouts, quick access mapping, `.dtpreset` read/write in
   `app/schema` (package `layout`), `LayoutStore` + `FileLayoutStore` in `engine-api`. A real darktable
   (Linux build at 04477d3, own config dirs) stores exactly the 30 built-in layouts of the data file, exported
