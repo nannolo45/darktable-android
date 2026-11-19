@@ -1,0 +1,89 @@
+# Run 44634077994 (368b272, attempt 2), p2b-emulator: files/p2b-test/p2f-results.txt, the f1 timeline, and compare. API 33 x86_64 emulator (4 cores), not a phone.
+f1_heavy_edit	denoiseprofile,diffuse,bilat,sharpen
+f1_done_to_xmp_posted_ms	50
+f1_done_to_lpl_preview_render_start_ms	374
+f1_done_to_lpl_preview_render_end_ms	521
+f1_done_to_open_requested_ms	377
+f1_open_to_first_picture_ms	169
+f1_open_to_real_preview_ms	862
+f1_done_to_preview_posted_ms	3896
+f1_lpl_preview_render_ms	146
+f1_list_thumbnail_before_reopen	true
+f4	passed
+f5_pack	spektrafilm data de45960deb9f9584 unpacked, 8892634 bytes
+f5_module	enabled=true hidden=false
+f5_export_ms_emulator	35633
+f5_layout	workflow: scene-referred: group none
+f6_square	3908x2602 -> 2602x2602
+f6_3to2_flipped	1734x2601
+f6_reopened	ratio_d -3.0 ratio_n 2.0 1734x2601
+f6	passed
+f9_bridge_overlaps	0
+f9_cancels_outside_a_render_not_passed_on	100
+f9	passed
+
+## f1 timeline
++0 ms	done
++50 ms	XMP posted (seen by the stub)
++374 ms	LPL preview: render start
++377 ms	open requested
++521 ms	LPL preview: render end
++526 ms	background: session on mire1.cr2 put back for interactive work
++530 ms	darkroom: open mire1.cr2 asked
++531 ms	darkroom: stored picture shown
++540 ms	darkroom: engine open start
++546 ms	first picture on screen (test)
++661 ms	darkroom: engine open end
++1240 ms	darkroom: preview shown
++1942 ms	LPL preview: render start
++3771 ms	LPL preview: render end
++3813 ms	darkroom: preview shown
++3896 ms	preview posted (seen by the stub)
+
+## instrument summary
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+PASS    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+FAIL    app.dtandroid.real.P2fScenarioTest.f1_openRightAfterDoneTimeline
+FAIL    app.dtandroid.real.P2fScenarioTest.f2_previewFromTheFullPipeMatchesTheExport
+FAIL    app.dtandroid.real.P2fScenarioTest.f3_dragPictureSizesOnA1080PxScreen
+PASS    app.dtandroid.real.P2fScenarioTest.f4_timingsRunOnAPhotoFromLightPhotoLibrary
+FAIL    app.dtandroid.real.P2fScenarioTest.f5_spektrafilmHasItsDataAndIsFound
+PASS    app.dtandroid.real.P2fScenarioTest.f6_cropAspectOnTheRealEngine
+PASS    app.dtandroid.real.P2fScenarioTest.f9_theBridgeWasCalledAsItsHeaderAllows
+
+## compare
+test XMP: app export vs darktable-cli: size 3908x2602 max 26 mean 0.00092 psnr 75.73 differing_values_pct 0.0642
+spektrafilm test (0179): app export vs darktable-cli, same data pack: size 5492x3672 max 27 mean 0.02830 psnr 60.45 differing_values_pct 1.8378
+/tmp/cli-crop.jpg: 1734x2601, width/height 0.6667, wanted 0.6667: ok
+app-written XMP: app export vs darktable-cli: size 3908x2602 max 34 mean 0.00108 psnr 74.44 differing_values_pct 0.0707

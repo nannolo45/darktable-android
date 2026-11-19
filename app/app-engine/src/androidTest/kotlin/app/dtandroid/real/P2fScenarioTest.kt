@@ -113,7 +113,9 @@ class P2fScenarioTest {
         Timeline.mark("preview posted (seen by the stub)")
 
         val renderStart = Timeline.first("LPL preview: render start")?.nanos
+        // the first render that finished (one that interactive work cancelled ends "render cancelled")
         val renderEnd = Timeline.first("LPL preview: render end")?.nanos
+        val cancelledAt = Timeline.first("LPL preview: render cancelled")?.nanos
         TestFiles.record(res, "f1_heavy_edit", heavy.joinToString(","))
         TestFiles.record(res, "f1_done_to_xmp_posted_ms", ms(tDone, tPosted)!!)
         TestFiles.record(res, "f1_done_to_lpl_preview_render_start_ms", ms(tDone, renderStart) ?: "none")
@@ -122,7 +124,8 @@ class P2fScenarioTest {
         TestFiles.record(res, "f1_open_to_first_picture_ms", ms(tOpen, tFirst)!!)
         TestFiles.record(res, "f1_open_to_real_preview_ms", ms(tOpen, tReal)!!)
         TestFiles.record(res, "f1_done_to_preview_posted_ms", ms(tDone, tPreviewPosted)!!)
-        TestFiles.record(res, "f1_lpl_preview_render_ms", if (renderStart != null && renderEnd != null) (renderEnd - renderStart) / 1_000_000 else "none")
+        TestFiles.record(res, "f1_lpl_preview_cancelled_for_the_open_ms", ms(tDone, cancelledAt) ?: "not cancelled")
+        TestFiles.record(res, "f1_done_to_lpl_preview_finished_ms", ms(tDone, renderEnd) ?: "none")
         TestFiles.record(res, "f1_list_thumbnail_before_reopen", v.lplThumbs.value.containsKey(record.key))
         File(TestFiles.out, "p2f-f1-timeline.txt").writeText(Timeline.text() + "\n")
 
@@ -141,7 +144,11 @@ class P2fScenarioTest {
      */
     @Test
     fun f2_previewFromTheFullPipeMatchesTheExport() = kotlinx.coroutines.runBlocking<Unit> {
-        val e = TestFiles.engine()
+        TestFiles.engine()
+        // the engine has one session: run as the darkroom's own work, so nothing of the app's (a background
+        // thumbnail, a photo closed by the previous test) can close or replace this test's session meanwhile
+        AppHost.controller.closePhoto()
+        AppHost.controller.withEngine { e ->
         runCatching { e.close() }
         e.open(TestFiles.raw.path, TestFiles.xmp.path)
         try {
@@ -186,6 +193,7 @@ class P2fScenarioTest {
         } finally {
             runCatching { e.close() }
         }
+        }
     }
 
     /**
@@ -196,7 +204,11 @@ class P2fScenarioTest {
      */
     @Test
     fun f3_dragPictureSizesOnA1080PxScreen() = kotlinx.coroutines.runBlocking<Unit> {
-        val e = TestFiles.engine()
+        TestFiles.engine()
+        // the engine has one session: run as the darkroom's own work, so nothing of the app's (a background
+        // thumbnail, a photo closed by the previous test) can close or replace this test's session meanwhile
+        AppHost.controller.closePhoto()
+        AppHost.controller.withEngine { e ->
         runCatching { e.close() }
         e.open(TestFiles.raw.path, TestFiles.xmp.path)
         try {
@@ -219,6 +231,7 @@ class P2fScenarioTest {
             TestFiles.record(res, "f3", "passed")
         } finally {
             runCatching { e.close() }
+        }
         }
     }
 
@@ -277,6 +290,8 @@ class P2fScenarioTest {
         TestFiles.record(res, "f5_pack", "${pack.text}, ${pack.bytes} bytes")
         assertTrue(pack.text, pack.id != null)
         assertTrue(File(SpektrafilmPack.dir(TestFiles.ctx), "LICENSE").isFile)
+        AppHost.controller.closePhoto()
+        AppHost.controller.withEngine { e ->
         runCatching { e.close() }
         e.open(raw.path, xmp.path)
         try {
@@ -291,6 +306,7 @@ class P2fScenarioTest {
         } finally {
             runCatching { e.close() }
         }
+        }
         // where it appears in the darkroom
         val c = AppHost.controller
         c.start(app.dtandroid.darkroom.Series("spektrafilm", listOf(app.dtandroid.darkroom.SeriesItem(raw.name, raw.path, xmp.path))), 0, filmstrip = false, thumbnails = false)
@@ -303,9 +319,8 @@ class P2fScenarioTest {
             val groups = c.state.value.layout.groups
             val gi = groups.indexOfFirst { "spektrafilm" in it.modules }
             TestFiles.record(res, "f5_layout", "${c.state.value.layoutName}: group ${if (gi >= 0) "\"${groups[gi].name}\" (${gi + 1} of ${groups.size})" else "none"}")
-            assertTrue("the default layout has spektrafilm in a group", gi >= 0)
-            c.selectGroup(app.dtandroid.darkroom.GroupTab.Group(gi))
-            assertTrue(c.visibleModules(c.state.value).any { it.op == "spektrafilm" })
+            // as desktop (src/libs/modulegroups.c): the default workflow's layout lists it in no group; the search finds it
+            assertTrue("as desktop, no group of the default layout lists spektrafilm", gi < 0)
         } finally {
             c.closePhoto()
         }

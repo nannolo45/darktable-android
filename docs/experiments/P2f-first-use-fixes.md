@@ -38,6 +38,18 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-20 00:25 UTC: **run 44634077994 (368b272, rerun of the failed jobs): no hang.** Instrumentation 153 s
+  (it was 26 to 50 minutes and more with the hang); 35 of 39 tests pass, the compare job is green (G0 75.7 dB, the
+  app's XMP 74.4 dB, **spektrafilm with the packed data 60.45 dB**, the app's crop read by darktable-cli as 2:3);
+  f9: 0 overlapping bridge calls, 100 cancels asked outside a render and not passed on. f1 after the fix: first picture
+  169 ms after the tap (stored picture), the real preview 862 ms after it; the LightPhotoLibrary render was cancelled
+  147 ms after it started and finished later (it was 10.8 s with nothing on screen before). Four failures, all in my
+  tests: f1's check read the cancelled render's end as "finished" (marks now distinguish "cancelled" and "end"); f2
+  and f3 used the engine directly and a closing darkroom from the test before closed their session ("STATE: no image
+  open"; they now run inside the darkroom's own lock, `withEngine`); f5 expected spektrafilm in a group of the default
+  layout, which desktop does not do (the JVM test already said so; fixed). Results kept in
+  `P2f-results/emulator-44634077994.txt` and the heavy-edit timings in `timings-heavy-edit-emulator-44634077994.txt`.
+
 - 2026-11-19 23:45 UTC: run 44634077994 (368b272): the apk job stopped on Maven Central "could not find" three times
   (no test ran); the emulator job was skipped. Failed jobs rerun. p2a-app of the same commit green after a rerun
   (44634077961). Report draft pushed (89316bd) with the hang, the bridge contract and the job rules; numbers follow

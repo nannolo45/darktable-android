@@ -211,9 +211,10 @@ object AppHost {
             val full = e.renderSize(1.0)
             val scale = minOf(1.0, PREVIEW_SIZE.toDouble() / maxOf(full.w, full.h))
             val sz = e.renderSize(scale)
-            return e.renderRegion(0, 0, sz.w, sz.h, scale)
-        } finally {
-            Timeline.mark("LPL preview: render end")
+            return e.renderRegion(0, 0, sz.w, sz.h, scale).also { Timeline.mark("LPL preview: render end") }
+        } catch (ex: EngineException) {
+            Timeline.mark(if (ex.error == EngineError.CANCELLED) "LPL preview: render cancelled" else "LPL preview: render failed")
+            throw ex
         }
     }
 
