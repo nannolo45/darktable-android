@@ -112,7 +112,7 @@ object EngineOps {
         val m = modules()
         for (i in 0 until m.length()) {
             val o = m.getJSONObject(i)
-            if (o.getString("operation") == "exposure" && o.getInt("multi_priority") == 0) {
+            if (o.getString("op") == "exposure" && o.getInt("priority") == 0) {
                 return o.getJSONObject("params").optDouble("exposure", 0.0).toFloat()
             }
         }
@@ -127,14 +127,14 @@ object EngineOps {
         val enabled = HashMap<String, Boolean>()
         for (i in 0 until m.length()) {
             val o = m.getJSONObject(i)
-            enabled["${o.getString("operation")}/${o.getInt("multi_priority")}"] = o.getBoolean("enabled")
+            enabled["${o.getString("op")}/${o.getInt("priority")}"] = o.getBoolean("enabled")
         }
         val items = history().getJSONArray("items")
         val seen = LinkedHashMap<String, ModuleRow>()
         for (i in 0 until items.length()) {
             val o = items.getJSONObject(i)
-            val op = o.getString("operation")
-            val prio = o.getInt("multi_priority")
+            val op = o.getString("op")
+            val prio = o.getInt("priority")
             val key = "$op/$prio"
             if (key in seen || key !in enabled) continue
             val label = o.optString("instance_name", "").let { if (it.isBlank() || it == "0") op else "$op $it" }

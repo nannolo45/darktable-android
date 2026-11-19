@@ -7,7 +7,7 @@ name: g0-app
 
 on:
   push:
-    branches: [g0-test-app]
+    branches: [g0-test-app, p1a-engine-core]
     paths-ignore: ["docs/**", "*.md"]
   workflow_dispatch:
 
@@ -116,31 +116,46 @@ jobs:
             /home/runner/dtt
           retention-days: 7
 
-      - name: Bridge tests on Linux (S3 T1 to T9, X1)
+      - name: Bridge tests on Linux (S3 T1 to T9, X1; P1a C1 to C7)
         id: tests
         run: |
           set +e
           engine/tests/run_tests.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/bridge-tests
           echo "rc=$?" >> "$GITHUB_OUTPUT"
-          # S3 documents T5 (region = crop of the full render) as a known
-          # failure caused by upstream modules. Any other failure fails here.
-          other=$(grep '^FAIL' /home/runner/bridge-tests/summary.txt | grep -v '^FAIL T5 ' | wc -l)
+          # P1a: every failure counts, T5 included (render_region has its margin now)
+          failures=$(grep -c '^FAIL' /home/runner/bridge-tests/summary.txt)
           passes=$(grep -c '^PASS' /home/runner/bridge-tests/summary.txt)
-          echo "passes=$passes other_failures=$other"
-          echo "other_failures=$other" >> "$GITHUB_OUTPUT"
+          echo "passes=$passes failures=$failures"
+          echo "other_failures=$failures" >> "$GITHUB_OUTPUT"
           echo "passes=$passes" >> "$GITHUB_OUTPUT"
+
+      - name: Region test diagnosis (P1a; information only, does not fail the job)
+        if: always() && steps.tests.outcome != 'skipped'
+        run: |
+          # which module makes a region differ from the crop of the full render:
+          # each history operation switched off in turn, demosaic passthrough,
+          # and the internal margin at 0, 16, 64 and 256 px (engine/tests/t5_bisect.sh)
+          D=/home/runner/dtt
+          DEMOSAIC_PASSTHROUGH=DT_IOP_DEMOSAIC_PASSTHR_MONOX engine/tests/t5_bisect.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux \
+            $D/images/xtransIV.raf $D/0146-lens-metadata-xtransIV-modversion-7/lens-metadata-xtransIV-modversion-7.xmp /home/runner/t5-raf \
+            > /home/runner/t5-raf.txt 2>&1 || true
+          engine/tests/t5_bisect.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux \
+            $D/images/hlrecovery.arw $D/0179-spektrafilm/spektrafilm.xmp /home/runner/t5-arw \
+            > /home/runner/t5-arw.txt 2>&1 || true
+          cat /home/runner/t5-raf.txt /home/runner/t5-arw.txt
 
       - name: Collect logs
         if: always()
         run: |
           L=/tmp/ci-out; mkdir -p "$L"
+          cp /home/runner/t5-raf.txt /home/runner/t5-arw.txt "$L/" 2>/dev/null || true
           {
             echo "build_seconds: ${{ steps.build.outputs.seconds }}"
             echo "cache_hit: ${{ steps.cache.outputs.cache-hit }}"
             echo "runner_cores: $(nproc)"
             echo "bridge_tests_exit: ${{ steps.tests.outputs.rc }}"
             echo "bridge_tests_passes: ${{ steps.tests.outputs.passes }}"
-            echo "bridge_tests_failures_other_than_T5: ${{ steps.tests.outputs.other_failures }}"
+            echo "bridge_tests_failures: ${{ steps.tests.outputs.other_failures }}"
           } > "$L/summary.txt"
           cp /home/runner/bridge-tests/summary.txt "$L/bridge-tests-summary.txt" 2>/dev/null || true
           cp /home/runner/bridge-tests/comparisons.txt "$L/bridge-tests-comparisons.txt" 2>/dev/null || true
@@ -155,8 +170,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: tools/ci/push-ci-logs.sh /tmp/ci-out g0-linux "${{ job.status }}-other_failures${{ steps.tests.outputs.other_failures }}"
 
-      - name: Fail on bridge test failures other than the known T5
-        if: steps.tests.outputs.other_failures != '0'
+      - name: Fail on any bridge test failure
+        if: steps.tests.outputs.other_failures != '0' || steps.tests.outputs.rc != '0'
         run: exit 1
 
   apk:

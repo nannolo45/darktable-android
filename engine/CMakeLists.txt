@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Engine bridge (briefs S3, G0). Builds libdtbridge out of tree against an
+# Engine bridge (briefs S3, G0, P1a). Builds libdtbridge out of tree against an
 # installed darktable and the upstream source it was built from. The engine
 # build scripts (tools/build-engine-android.sh, tools/build-engine-linux.sh)
 # run it right after darktable, on darktable's own build tree, with the same
@@ -66,7 +66,10 @@ endforeach()
 message(STATUS "darktable definitions: ${DT_DEFS}")
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(DTB_DEPS REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0 json-glib-1.0 libxml-2.0)
+# lcms2 and lensfun: the white balance and lens actions (src/actions.c) call
+# them directly, as the modules do; both are darktable dependencies already
+pkg_check_modules(DTB_DEPS REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0 json-glib-1.0 libxml-2.0
+                  lcms2 lensfun)
 find_package(OpenMP REQUIRED COMPONENTS C)
 
 # NO_CMAKE_FIND_ROOT_PATH: a cross toolchain (Android NDK) would otherwise
@@ -75,7 +78,17 @@ find_library(DARKTABLE_LIB darktable PATHS "${DT_INSTALL_PREFIX}/lib/darktable"
              "${DT_INSTALL_PREFIX}/lib64/darktable" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
 get_filename_component(DARKTABLE_LIBDIR "${DARKTABLE_LIB}" DIRECTORY)
 
-add_library(dtbridge SHARED src/dtbridge.c src/xmp_check.c)
+add_library(dtbridge SHARED
+  src/core.c        # errors, lifecycle, engine information, threads (2.1)
+  src/guard.c       # version guard (2.2)
+  src/session.c     # open, close, image information, metadata (2.3)
+  src/params.c      # modules and parameters (2.4)
+  src/actions.c     # module actions (2.4)
+  src/instances.c   # instances (2.5), prototype mask
+  src/history.c     # history, grouping, undo and redo (2.6)
+  src/render.c      # rendering (2.7)
+  src/output.c      # XMP and export (2.8)
+)
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})
 target_include_directories(dtbridge SYSTEM PRIVATE ${DT_SYS_INCS})

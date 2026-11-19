@@ -1,9 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Bridge prototype tests T1 to T9 (brief S3), on three test images.
+# Bridge tests on three test images: T1 to T9 and X1 (brief S3), C1 to C7
+# (brief P1a, Engine API v1 section 4).
 #
-#   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 T2 ...]
+#   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 C2 ...]
 #
 # Pixel comparisons are made against darktable-cli of the same darktable
 # build. Writes <output dir>/summary.txt and one log per test and image.
@@ -20,6 +21,12 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 export DT_PREFIX
 
 DTB="$BRIDGE_BUILD/tests/dtb_test"
+# DTB_TEST_RESOURCELEVEL (for example "small"): darktable's memory budget, for
+# the bridge and darktable-cli alike, on a machine shared with other work.
+# Unset = darktable's default (as in CI).
+CLI_LEVEL=""
+[ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && CLI_LEVEL="--conf resourcelevel=$DTB_TEST_RESOURCELEVEL"
+[ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && export DTB_TEST_RESOURCELEVEL
 CLI="$DT_PREFIX/bin/darktable-cli"
 CMP="python3 -I $HERE/compare.py"
 mkdir -p "$OUT"
@@ -27,11 +34,11 @@ OUT=$(cd "$OUT" && pwd)
 SUMMARY="$OUT/summary.txt"
 : > "$SUMMARY"
 
-# name | raw | xmp
+# name | raw | xmp | image class
 CASES="
-cr2|images/mire1.cr2|0001-exposure/exposure.xmp
-raf|images/xtransIV.raf|0146-lens-metadata-xtransIV-modversion-7/lens-metadata-xtransIV-modversion-7.xmp
-arw|images/hlrecovery.arw|0179-spektrafilm/spektrafilm.xmp
+cr2|images/mire1.cr2|0001-exposure/exposure.xmp|bayer
+raf|images/xtransIV.raf|0146-lens-metadata-xtransIV-modversion-7/lens-metadata-xtransIV-modversion-7.xmp|xtrans
+arw|images/hlrecovery.arw|0179-spektrafilm/spektrafilm.xmp|bayer
 "
 
 FAILED=0
@@ -43,7 +50,7 @@ want() { [ -z "$ONLY" ] || echo " $ONLY " | grep -q " $1 "; }
 # darktable-cli export to PNG, with a configuration of its own
 cli() { # raw xmp out.png log
   rm -f "$3"
-  "$CLI" "$1" "$2" "$3" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" \
+  "$CLI" "$1" "$2" "$3" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" $CLI_LEVEL \
     >> "$4" 2>&1
 }
 
@@ -59,7 +66,7 @@ result() { grep "^RESULT $2" "$1" | head -1 | cut -d' ' -f3-; }
 
 md5_before=$(cd "$TESTS" && md5sum images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw)
 
-echo "$CASES" | while IFS='|' read -r C RAW XMP; do
+echo "$CASES" | while IFS='|' read -r C RAW XMP CLASS; do
   [ -n "$C" ] || continue
   RAW="$TESTS/$RAW"; XMP="$TESTS/$XMP"
   D="$OUT/$C"; mkdir -p "$D"
@@ -69,6 +76,7 @@ echo "$CASES" | while IFS='|' read -r C RAW XMP; do
   cli "$RAW" "$XMP" "$D/cli.png" "$D/cli.log"
 
   if want T1; then
+    rm -f "$D/bridge.ppm"
     "$DTB" "$W" render "$RAW" "$XMP" "$D/bridge.ppm" > "$D/T1.log" 2>&1 \
       || fail T1 "$C" "driver failed, see $D/T1.log"
     cmp_rec T1 "$C" "$D/bridge.ppm" "$D/cli.png"
@@ -77,7 +85,7 @@ echo "$CASES" | while IFS='|' read -r C RAW XMP; do
     if grep -E '^[[{]' "$D/modules.log" | python3 -I -c '
 import json, sys
 docs = [json.loads(l) for l in sys.stdin]
-assert len(docs) == 2 and isinstance(docs[0], list) and "items" in docs[1]
+assert len(docs) == 2 and isinstance(docs[0], list) and "items" in docs[1] and "end" in docs[1]
 print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")' > "$D/json.txt" 2>&1
     then pass T1 "$C" "modules and history JSON parse: $(cat "$D/json.txt")"
     else fail T1 "$C" "invalid JSON from the bridge: $(tail -1 "$D/json.txt")"; fi
@@ -114,7 +122,7 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
     cmp_rec T3 "$C" "$D/instances_bridge.ppm" "$D/instances_cli.png"
     # what darktable itself reads from the XMP: darktable-cli --verbose prints
     # the history it loaded into its library (the desktop's read path)
-    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core \
+    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" > "$D/T3-cli-history.txt" 2>&1
     rm -f "$D/instances_cli_v.png"
   fi
@@ -133,19 +141,26 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
 
   if want T5; then
     "$DTB" "$W" region "$RAW" "$XMP" "$D" > "$D/T5.log" 2>&1 || fail T5 "$C" "driver failed, see $D/T5.log"
+    # render_region renders with an internal margin: the region must equal
+    # the crop of the full render exactly (Engine API 2.7), and the crop of
+    # darktable-cli's export
     for i in 0 1 2; do
       set -- $(result "$D/T5.log" "region${i}_origin")
+      note "INFO T5 $C region $i: $(grep "^RESULT region $i at" "$D/T5.log" | cut -d' ' -f3-)"
       cmp_rec T5 "$C" "$D/region$i.ppm" "$D/region${i}_crop.ppm" --tolerance 0
-      cmp_rec T5 "$C" "$D/region$i.ppm" "$D/cli.png" --crop "$1" "$2" 512 512
+      cmp_rec T5 "$C" "$D/region$i.ppm" "$D/cli.png" --crop "$1" "$2" 512 512 --tolerance 0
     done
   fi
 
-  if want T6; then
+  if want T6 || want C6; then
     # the engine's own exposure version, read through the bridge
     ev=$("$DTB" "$W" modules "$RAW" "$XMP" 2>/dev/null | grep '^\[' | python3 -I -c '
 import json, sys
-print([m["version"] for m in json.loads(sys.stdin.readline()) if m["operation"] == "exposure"][0])')
+print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exposure"][0])')
     python3 -I "$HERE/make_guard_xmps.py" "$XMP" "$D" exposure "$ev" > "$D/T6-make.log" 2>&1
+  fi
+
+  if want T6; then
     sum_before=$(md5sum "$D/newer.xmp" "$D/unknown.xmp" "$XMP" | cut -d' ' -f1 | tr '\n' ' ')
     if "$DTB" "$W" guard "$RAW" "$XMP" "$D" > "$D/T6.log" 2>&1; then
       pass T6 "$C" "$(tr '\n' ' ' < "$D/T6-make.log")reported and refused (see T6.log)"
@@ -159,7 +174,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["operation"] 
 
   if want T7; then
     if "$DTB" "$W" timing "$RAW" "$XMP" "$D" > "$D/T7.log" 2>&1; then
-      note "INFO T7 $C (x86_64, 2 cores): $(grep '^RESULT' "$D/T7.log" | grep -v 'engine\|exit' | cut -d' ' -f2- | tr '\n' ';')"
+      note "INFO T7 $C ($(uname -m), $(nproc) cores): $(grep '^RESULT' "$D/T7.log" | grep -v 'engine\|exit' | cut -d' ' -f2- | tr '\n' ';')"
     else
       fail T7 "$C" "driver failed, see $D/T7.log"
     fi
@@ -204,15 +219,65 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["operation"] 
     fi
     # JPEG: the same encoder and quality, so the decoded pixels must match
     rm -f "$D/x_export_cli.jpg"
-    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core --configdir "$OUT/cli-config" \
+    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
       --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
     cmp_rec X1 "$C" "$D/x_export.jpg" "$D/x_export_cli.jpg"
     # preview: a different input (the downscaled mipmap) by design, so this is
     # a measurement against darktable-cli's own downscaled export, not a check
     rm -f "$D/x_preview_cli.png"
-    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core \
+    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     note "INFO X1 $C preview vs darktable-cli 1024 px export: $($CMP "$D/x_preview.ppm" "$D/x_preview_cli.png" --tolerance 255 2>&1)"
+  fi
+  # ---- P1a: Engine API v1 section 4 ----
+  # driver checks, then darktable-cli renders every XMP the driver wrote and
+  # must equal the bridge's own render of that state
+  drv() { # test command title
+    if DTB_TEST_CLASS="$CLASS" "$DTB" "$W" "$2" "$RAW" "$XMP" "$D" > "$D/$1.log" 2>&1; then
+      pass "$1" "$C" "$3: $(grep '^RESULT' "$D/$1.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | cut -c1-160 | tr '\n' ';')"
+    else
+      fail "$1" "$C" "$3: $(grep '^FAIL' "$D/$1.log" | head -5 | tr '\n' ';') see $D/$1.log"
+    fi
+  }
+  parity() { # test name
+    if [ -f "$D/$2.xmp" ]; then
+      cli "$RAW" "$D/$2.xmp" "$D/${2}_cli.png" "$D/cli.log"
+      cmp_rec "$1" "$C" "$D/${2}_bridge.ppm" "$D/${2}_cli.png"
+    else
+      fail "$1" "$C" "$2.xmp was not written"
+    fi
+  }
+  if want C1; then drv C1 api "engine_info, image_info, modules JSON"; fi
+  if want C2; then
+    drv C2 params "paths, types, ranges, params_set, grouping, reset"
+    parity C2 params; parity C2 reset
+  fi
+  if want C3; then drv C3 undo "undo/redo"; parity C3 undo; fi
+  if want C4; then
+    drv C4 actions "module actions"
+    # darktable-cli must find the LUT the driver set, in the same root folder
+    if [ -f "$D/actions.xmp" ]; then
+      rm -f "$D/actions_cli.png"
+      "$CLI" "$RAW" "$D/actions.xmp" "$D/actions_cli.png" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+        --cachedir "$OUT/cli-cache" --conf "plugins/darkroom/lut3d/def_path=$D/luts" >> "$D/cli.log" 2>&1
+      cmp_rec C4 "$C" "$D/actions_bridge.ppm" "$D/actions_cli.png"
+    else
+      fail C4 "$C" "actions.xmp was not written"
+    fi
+  fi
+  if want C5; then drv C5 threads "set_threads, set_thread_cpus"; fi
+  if want C6; then drv C6 readonly "read-only refusal"; fi
+  if want C7; then
+    drv C7 output "xmp_write, export, metadata_reload"
+    # the default export (JPEG 95) and the 8-bit PNG decode as darktable-cli's
+    rm -f "$D/c7_cli.png" "$D/c7_cli.jpg"
+    if [ -f "$D/out.xmp" ]; then
+      cli "$RAW" "$D/out.xmp" "$D/c7_cli.png" "$D/cli.log"
+      cmp_rec C7 "$C" "$D/e_8.png" "$D/c7_cli.png" --tolerance 0
+      "$CLI" "$RAW" "$D/out.xmp" "$D/c7_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+        --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
+      cmp_rec C7 "$C" "$D/e_default.jpg" "$D/c7_cli.jpg" --tolerance 0
+    fi
   fi
 done
 

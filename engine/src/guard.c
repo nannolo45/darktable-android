@@ -185,7 +185,7 @@ char *dtb__xmp_check(const char *xmp_path, int *n_problems)
       if(v && atoi(v) > engine_masks)
       {
         _problem(b, nm ? atoi(nm) : -1, "masks", atoi(v), TRUE, engine_masks,
-                 "newer_mask_version");
+                 "newer_masks_version");
         problems++;
       }
       g_free(v);
@@ -216,4 +216,17 @@ char *dtb__xmp_check(const char *xmp_path, int *n_problems)
 
   if(n_problems) *n_problems = parsed ? problems : -1;
   return out;
+}
+
+/* public entry (dtbridge.h) */
+int dtb_xmp_check(const char *xmp_path, char **json)
+{
+  if(json) *json = NULL;
+  NEED_INIT();
+  if(!json) return dtb__err(DTB_E_ARG, "no result pointer");
+  int n = 0;
+  char *r = dtb__xmp_check(xmp_path, &n);
+  if(!r) return dtb__err(DTB_E_IO, "cannot read %s", xmp_path ? xmp_path : "(null)");
+  *json = r;
+  return DTB_OK;
 }
