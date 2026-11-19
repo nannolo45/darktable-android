@@ -132,6 +132,16 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun setThreadCpus(cpuIds: List<Int>) = onEngine { requireInit(); check(NativeBridge.setThreadCpus(cpuIds.toIntArray())) }
 
+    /**
+     * Brief P2g: the CPUs the engine thread may run on at this moment (its own affinity, read from
+     * /proc on the engine thread itself), or null when unreadable. Right after dtb_init this is the set
+     * the bridge checks every pinning against; later it shows whether a pinning is still in place.
+     */
+    suspend fun engineThreadCpus(): List<Int>? = onEngine {
+        EnginePinning.readAllowed(java.io.File("/proc/thread-self/status"))
+            ?: EnginePinning.readAllowed(java.io.File("/proc/self/task/${android.os.Process.myTid()}/status"))
+    }
+
     // ------------------------------------------------------------------ 2.2 guard
 
     override suspend fun xmpCheck(xmpPath: String): XmpCheck = onEngine {

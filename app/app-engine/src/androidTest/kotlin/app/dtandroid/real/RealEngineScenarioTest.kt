@@ -9,6 +9,7 @@ import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.darkroom.Viewport
+import app.dtandroid.engine.EnginePinning
 import app.dtandroid.engine.FastCores
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
@@ -84,6 +85,8 @@ class RealEngineScenarioTest {
         TestFiles.record(res, "engine", ready.info.darktableVersion)
         TestFiles.record(res, "plugins", "${ready.info.pluginsLoaded}/${ready.info.pluginFiles}")
         TestFiles.record(res, "cores", ready.cores.describe())
+        TestFiles.record(res, "pinning_at_start", ready.pinningAtStart.describe())
+        TestFiles.record(res, "engine_thread_cpus_at_start", AppEngine.cpusAtStart?.let { FastCores.formatCpuList(it) } ?: "not readable")
         TestFiles.record(res, "unpack_fresh", ready.freshUnpack)
         TestFiles.record(res, "unpack_ms", ready.unpackMs)
         TestFiles.record(res, "init_ms", ready.initMs)
@@ -91,6 +94,47 @@ class RealEngineScenarioTest {
         assertEquals(listOf(4, 5, 6, 7), FastCores.choose((0..7).toList(), (0..7).associateWith { if (it < 4) 1_800_000L else if (it < 7) 2_420_000L else 2_840_000L }))
         assertEquals(listOf(0, 1), FastCores.choose(listOf(0, 1), mapOf(0 to null, 1 to null)))
         runBlocking { TestFiles.record(res, "engine_info", e.engineInfoJson()) }
+    }
+
+    /**
+     * Brief P2g on the real bridge: a pinning the bridge refuses (a CPU outside the engine thread's
+     * start-up set, the phone's "CPU 4 is not available to this process") leaves the engine unpinned
+     * and working, without an exception; then the app's own pinning is applied again as on a return
+     * to the foreground. (The process itself cannot be started with a narrowed CPU set from a test:
+     * see the P2g report.)
+     */
+    @Test
+    fun t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking() = runBlocking<Unit> {
+        val e = TestFiles.engine()
+        val atStart = AppEngine.cpusAtStart
+        assertNotNull("the engine thread's CPUs are readable on Android", atStart)
+        val outside = atStart!!.max() + 1
+        // a device whose "fast cores" are a CPU the engine thread could not use at start
+        val all = (0..outside).toList()
+        val cores = FastCores(all, all.associateWith { if (it == outside) 3_000_000L else 1_000_000L }, listOf(outside))
+        assertEquals(listOf(outside), EnginePinning.plan(cores, null, null).cpus)
+        val before = AppEngine.pinning.value
+        val p = EnginePinning.pin(e, cores, allowed = null, atStart = null, previous = before)
+        TestFiles.record(res, "p2g_refused", p.describe())
+        assertFalse(p.pinned)
+        assertTrue(p.describe(), p.describe().contains("CPU $outside is not available to this process"))
+        val info = e.engineInfoJson()
+        TestFiles.record(res, "p2g_after_refusal_engine_info", info)
+        assertEquals("[]", info["thread_cpus"].toString())
+        // with the start-up set known, the plan does not even ask the bridge
+        assertTrue(EnginePinning.plan(cores, atStart, atStart).cpus.isEmpty())
+        // the engine works unpinned
+        runCatching { e.close() }
+        e.open(TestFiles.raw.path, TestFiles.xmp.path)
+        val pic = e.renderPreview(256)
+        assertTrue(pic.width > 0)
+        e.close()
+        // the app's pinning again, as onForeground does it
+        val runs = AppEngine.foregroundRuns
+        AppEngine.onForeground()
+        waitFor("pinning applied again") { AppEngine.foregroundRuns > runs }
+        TestFiles.record(res, "p2g_foreground", AppEngine.lastForeground)
+        assertEquals(before.cpus, AppEngine.pinning.value.cpus)
     }
 
     /** open -> change -> undo -> write XMP -> reopen gives the same state (and the same pixels). */

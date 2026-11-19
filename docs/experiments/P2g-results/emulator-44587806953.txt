@@ -1,0 +1,64 @@
+# CI run 44587806953 (commit a4def3f), p2b-emulator: files/p2b-test/results.txt and instrument-summary.txt (API 33 x86_64 emulator, not a phone)
+engine	04477d3
+plugins	111/111
+cores	4 CPUs, max clocks 0.00 GHz
+pinning_at_start	not pinned: all CPUs are equally fast; the engine uses every CPU it may
+engine_thread_cpus_at_start	0-3
+unpack_fresh	true
+unpack_ms	3941
+init_ms	1324
+engine_info	{"darktable_version":"04477d3","api_version":1,"threads":4,"threads_max":4,"thread_cpus":[],"plugins":{"moduledir":"/data/data/app.dtandroid/files/engine/lib/darktable","iop":{"files":97,"loaded":97,"not_loaded":[]},"format":{"files":8,"loaded":8,"not_loaded":[]},"storage":{"files":6,"loaded":6,"not_loaded":[]},"files":111,"loaded":111,"missing":[],"gui_only":{"views":3,"lighttable":38}}}
+p2g_refused	not pinned: the engine refused CPUs 4 (ARG: CPU 4 is not available to this process); the engine uses every CPU it may
+p2g_after_refusal_engine_info	{"darktable_version":"04477d3","api_version":1,"threads":4,"threads_max":4,"thread_cpus":[],"plugins":{"moduledir":"/data/data/app.dtandroid/files/engine/lib/darktable","iop":{"files":97,"loaded":97,"not_loaded":[]},"format":{"files":8,"loaded":8,"not_loaded":[]},"storage":{"files":6,"loaded":6,"not_loaded":[]},"files":111,"loaded":111,"missing":[],"gui_only":{"views":3,"lighttable":38}}}
+p2g_foreground	the engine was not pinned; the app may use CPUs 0-3; now not pinned: all CPUs are equally fast; the engine uses every CPU it may
+reopen_module_differences	none
+reopen_preview_max_diff	0
+raw_unchanged	true
+export_ms_emulator	1689
+read_only_banner	Read only: this edit uses the module "dtandroidunknownmodule", which this app does not know. Update the app to edit it; its XMP is never changed here.
+read_only_history_end_and_items	10 10 (before: 10)
+drag_renders	14
+drag_size_px_emulator	864
+drag_last_ms_emulator	37.235328
+drag_estimate_emulator	fit: 0.0 ms fixed + 214.2 ns per pixel; drag picture 864 px for a 50 ms target
+drag_to_full_picture_ms_emulator	546
+region_ms_emulator	72.058383
+
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+PASS    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+passed 33, failed 0, total 33
+runner: INSTRUMENTATION_RESULT: stream=
+runner: OK (33 tests)
+runner: INSTRUMENTATION_CODE: -1
+RESULT: OK 33 tests

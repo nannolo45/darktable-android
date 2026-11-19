@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                 val screen by vm.screen.collectAsState()
                 val ready = status as? AppEngine.Status.Ready
                 when {
-                    ready == null -> StartScreen(status)
+                    ready == null -> StartScreen(status, onRetry = { AppEngine.retry(this@MainActivity) })
                     screen == Screen.LIBRARY -> LibraryScreen(vm, onOpen = { openPhotos.launch(arrayOf("*/*")) }, onOpenInLpl = { o, id -> openInLpl(o, id) })
                     screen == Screen.SERVER -> ServerScreen(vm)
                     screen == Screen.HANDOFF -> HandOffScreen(vm)
@@ -117,6 +117,8 @@ class MainActivity : ComponentActivity() {
         // brief P2e item 6: heartbeat and jobs only while the app is in the foreground
         AppHost.foreground()
         AppHost.runKeptJobs()
+        // brief P2g: the CPUs the app may use change with its state; pin again (through the engine's queue)
+        AppEngine.onForeground()
     }
 
     override fun onStop() {

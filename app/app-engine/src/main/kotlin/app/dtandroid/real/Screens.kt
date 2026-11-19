@@ -76,7 +76,7 @@ internal fun Paragraph(text: String, muted: Boolean = false) {
 
 /** First start: unpacking darktable's data (once), then starting the engine. */
 @Composable
-fun StartScreen(status: AppEngine.Status) = Page {
+fun StartScreen(status: AppEngine.Status, onRetry: () -> Unit = {}) = Page {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
         when (status) {
             is AppEngine.Status.Unpacking -> {
@@ -91,7 +91,11 @@ fun StartScreen(status: AppEngine.Status) = Page {
             is AppEngine.Status.Failed -> {
                 PanelHeading("the engine did not start")
                 Paragraph(status.text)
-                Paragraph("please send a screenshot of this page", muted = true)
+                // brief P2g: a failed start does not need the app to be killed
+                Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.s)) {
+                    DtTextButton("try again", onRetry)
+                }
+                Paragraph("if it fails again, please send a screenshot of this page", muted = true)
             }
             is AppEngine.Status.Ready -> Paragraph("ready")
         }
@@ -241,7 +245,11 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
                 "Licence GPL-3.0-or-later; source: the darktable-android repository at the commit in the version.")
             Paragraph("engine: darktable ${ready.info.darktableVersion}, engine API ${ready.info.apiVersion}, package ${AppEngine.engineId}")
             Paragraph("plugins: ${ready.info.pluginsLoaded} of ${ready.info.pluginFiles} loaded")
+            val pin by AppEngine.pinning.collectAsState()
             Paragraph("threads: ${ready.info.threads}; ${ready.cores.describe()}")
+            // brief P2g: what the engine runs on, in plain words
+            Paragraph("engine ${pin.describe()}")
+            if (ready.pinningAtStart != pin) Paragraph("at start: ${ready.pinningAtStart.describe()}", muted = true)
             Paragraph("start: " + (if (ready.freshUnpack) "unpacked in ${ready.unpackMs} ms, " else "already unpacked, ") + "engine started in ${ready.initMs} ms")
             Paragraph("working folder: ${vm.work.dir.path}", muted = true)
             Paragraph("this install's id for LightPhotoLibrary: ${vm.servers.installId}", muted = true)

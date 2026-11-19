@@ -249,8 +249,24 @@ class FakeEngine(
         requireInit()
         // as dtb_set_thread_cpus: an empty list removes the pinning; ids the process cannot use are refused (P2b)
         val n = Runtime.getRuntime().availableProcessors()
-        if (cpuIds.any { it < 0 || it >= n }) fail(EngineError.ARG, "bad CPU list $cpuIds")
+        if (cpuIds.any { it < 0 || it >= n && cpusAtInit == null }) fail(EngineError.ARG, "bad CPU list $cpuIds")
+        // brief P2g: as the bridge, a CPU outside the start-up set is refused with the bridge's words
+        cpusAtInit?.let { allowed -> cpuIds.firstOrNull { it !in allowed }?.let { fail(EngineError.ARG, "CPU $it is not available to this process") } }
+        threadCpus = cpuIds.sorted()
     }
+
+    /**
+     * Brief P2g: the CPUs the stand-in engine "could use at init". When set, [setThreadCpus] refuses any
+     * other CPU as dtb_set_thread_cpus does, so tests can start an engine that refuses the pinning.
+     */
+    @Volatile var cpusAtInit: Set<Int>? = null
+
+    /** The CPUs the stand-in's threads are pinned to (empty = not pinned), as engine_info's thread_cpus. */
+    @Volatile var threadCpus: List<Int> = emptyList()
+        private set
+
+    /** The thread count now (as engine_info's threads). */
+    val threadCount: Int get() = threads
 
     // ------------------------------------------------------------ 2.2 guard
 

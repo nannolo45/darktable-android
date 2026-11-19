@@ -77,6 +77,10 @@ class Timings(
             put("threads", "${(ji["threads"] as? JsonPrimitive)?.content} of ${(ji["threads_max"] as? JsonPrimitive)?.content} at start" +
                 "; pinned to CPUs ${(ji["thread_cpus"] as? JsonArray)?.joinToString(",") { (it as JsonPrimitive).content }?.ifEmpty { "none" }}")
             put("cores", cores?.describe() ?: "?")
+            // brief P2g: which case this run measured
+            put("pinning", AppEngine.pinning.value.describe())
+            put("engine thread CPUs at start", AppEngine.cpusAtStart?.let { FastCores.formatCpuList(it) } ?: "not readable")
+            put("last return to the foreground", AppEngine.lastForeground)
             put("android api", android.os.Build.VERSION.SDK_INT.toString())
             put("photo", "${File(item.rawPath).length() / 1_000_000} MB RAW, ${File(item.rawPath).extension.uppercase(Locale.ROOT)}" +
                 (if (readOnly) ", read-only (changes not measured)" else ""))

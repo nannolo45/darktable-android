@@ -24,9 +24,10 @@ class JniEngineContractTest : DarktableEngineContract() {
 
     override suspend fun stopEngine(e: DarktableEngine) {
         runCatching { e.close() }
-        val cores = (AppEngine.status.value as AppEngine.Status.Ready).cores
-        e.setThreads(if (cores.pin) cores.chosen.size else 0)
-        e.setThreadCpus(if (cores.pin) cores.chosen else emptyList())
+        // the app's own pinning (brief P2g), as it was before the test
+        val pin = AppEngine.pinning.value
+        e.setThreads(if (pin.pinned) pin.cpus.size else 0)
+        if (pin.pinned) e.setThreadCpus(pin.cpus)
     }
 
     /**
