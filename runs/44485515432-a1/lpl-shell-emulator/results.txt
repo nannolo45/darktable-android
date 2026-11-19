@@ -1,0 +1,26 @@
+PASS    app.dtandroid.lplshell.ShellTest.rotationAndBackgroundDoNotReloadThePage
+PASS    app.dtandroid.lplshell.ShellTest.handOffLinkStartsTheDarktableAppWithAnIntentBuiltByTheShell
+PASS    app.dtandroid.lplshell.ShellTest.sameOriginLinkStaysInside
+PASS    app.dtandroid.lplshell.ShellTest.otherIntentLinksAreRefused
+PASS    app.dtandroid.lplshell.ShellTest.firstStartWarnsWhenTheServerIsNotLplAndLetsTheUserContinue
+PASS    app.dtandroid.lplshell.ShellTest.firstStartWithNoServerShowsTheNativeScreenThenChangeAddress
+PASS    app.dtandroid.lplshell.ShellTest.fileChooserIsOfferedAndSeveralFilesReachThePage
+FAIL    app.dtandroid.lplshell.ShellTest.openActionLoadsOnlyPagesOfTheSavedServer
+        java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+        	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+        	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+        	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+        	at app.dtandroid.lplshell.ShellTest.tearDown(ShellTest.kt:70)
+FAIL    app.dtandroid.lplshell.ShellTest.otherOriginOpensOutside
+        java.net.SocketException: Broken pipe
+        	at java.net.SocketOutputStream.socketWrite0(Native Method)
+        	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:116)
+        	at java.net.SocketOutputStream.write(SocketOutputStream.java:144)
+        	at app.dtandroid.lplshell.StubServer.handle(StubServer.kt:75)
+        	at app.dtandroid.lplshell.StubServer.lambda$0$0(StubServer.kt:34)
+        	at app.dtandroid.lplshell.StubServer$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+        	at kotlin.concurrent.ThreadsKt$thread$thread$1.run(Thread.kt:30)
+passed 7, failed 2, total 9
+runner: INSTRUMENTATION_RESULT: shortMsg=Process crashed.
+runner: INSTRUMENTATION_CODE: 0
+RESULT: NOT OK

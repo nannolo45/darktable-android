@@ -1,0 +1,164 @@
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+app.dtandroid.lplshell.ShellTest:
+INSTRUMENTATION_STATUS: test=rotationAndBackgroundDoNotReloadThePage
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=rotationAndBackgroundDoNotReloadThePage
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=handOffLinkStartsTheDarktableAppWithAnIntentBuiltByTheShell
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=handOffLinkStartsTheDarktableAppWithAnIntentBuiltByTheShell
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=sameOriginLinkStaysInside
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=sameOriginLinkStaysInside
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=otherIntentLinksAreRefused
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=otherIntentLinksAreRefused
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=firstStartWarnsWhenTheServerIsNotLplAndLetsTheUserContinue
+INSTRUMENTATION_STATUS_CODE: 1
+s_glBindAttribLocation: bind attrib 0 name position
+s_glBindAttribLocation: bind attrib 1 name color
+s_glBindAttribLocation: bind attrib 2 name localCoord
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=firstStartWarnsWhenTheServerIsNotLplAndLetsTheUserContinue
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=firstStartWithNoServerShowsTheNativeScreenThenChangeAddress
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=firstStartWithNoServerShowsTheNativeScreenThenChangeAddress
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=fileChooserIsOfferedAndSeveralFilesReachThePage
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fileChooserIsOfferedAndSeveralFilesReachThePage
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=openActionLoadsOnlyPagesOfTheSavedServer
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+	at app.dtandroid.lplshell.ShellTest.tearDown(ShellTest.kt:70)
+
+INSTRUMENTATION_STATUS: stream=
+Error in openActionLoadsOnlyPagesOfTheSavedServer(app.dtandroid.lplshell.ShellTest):
+java.lang.AssertionError: Activity never becomes requested state "[DESTROYED]" (last lifecycle transition = "RESUMED")
+	at androidx.test.core.app.ActivityScenario.waitForActivityToBecomeAnyOf(ActivityScenario.java:454)
+	at androidx.test.core.app.ActivityScenario.moveToState(ActivityScenario.java:689)
+	at androidx.test.core.app.ActivityScenario.close(ActivityScenario.java:421)
+	at app.dtandroid.lplshell.ShellTest.tearDown(ShellTest.kt:70)
+
+INSTRUMENTATION_STATUS: test=openActionLoadsOnlyPagesOfTheSavedServer
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=otherOriginOpensOutside
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.dtandroid.lplshell.ShellTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=14
+INSTRUMENTATION_STATUS: stack=java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:116)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:144)
+	at app.dtandroid.lplshell.StubServer.handle(StubServer.kt:75)
+	at app.dtandroid.lplshell.StubServer.lambda$0$0(StubServer.kt:34)
+	at app.dtandroid.lplshell.StubServer$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at kotlin.concurrent.ThreadsKt$thread$thread$1.run(Thread.kt:30)
+
+INSTRUMENTATION_STATUS: stream=
+Process crashed while executing otherOriginOpensOutside(app.dtandroid.lplshell.ShellTest):
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:116)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:144)
+	at app.dtandroid.lplshell.StubServer.handle(StubServer.kt:75)
+	at app.dtandroid.lplshell.StubServer.lambda$0$0(StubServer.kt:34)
+	at app.dtandroid.lplshell.StubServer$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at kotlin.concurrent.ThreadsKt$thread$thread$1.run(Thread.kt:30)
+
+INSTRUMENTATION_STATUS: test=otherOriginOpensOutside
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: shortMsg=Process crashed.
+INSTRUMENTATION_CODE: 0
