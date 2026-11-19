@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     permissions:
-      contents: read
+      contents: write   # ci-logs branch
     env:
       DTA_WORK: /home/runner/dta-work
     steps:
@@ -88,15 +88,29 @@ jobs:
           path: /home/runner/dt-linux
           key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
 
-      - name: Fetch the test image and reference export (darktable-cli, JPEG quality 95)
+      - name: Fetch the test image
         run: |
-          tools/engine-test/fetch-paths.sh /home/runner/dtt "$P2B_RAW" "$P2B_XMP"
+          mkdir -p /tmp/ci-out
+          ok=0
+          for i in 1 2 3; do
+            if tools/engine-test/fetch-paths.sh /home/runner/dtt "$P2B_RAW" "$P2B_XMP" 2>&1 | tee -a /tmp/ci-out/fetch.log; then ok=1; break; fi
+            echo "fetch attempt $i failed" | tee -a /tmp/ci-out/fetch.log; rm -rf /home/runner/dtt; sleep 10
+          done
+          [ "$ok" = 1 ]
           rm -rf /home/runner/dtt/.git-dtt
+
+      - name: Reference export (darktable-cli, JPEG quality 95)
+        run: |
           mkdir -p /home/runner/ref
+          set +e
           /home/runner/dt-linux/bin/darktable-cli "/home/runner/dtt/$P2B_RAW" "/home/runner/dtt/$P2B_XMP" /home/runner/ref/export.jpg \
             --core --configdir /tmp/cli-config --cachedir /tmp/cli-cache \
             --conf plugins/imageio/format/jpeg/quality=95 > /home/runner/ref/cli.log 2>&1
-          ls -l /home/runner/ref
+          rc=$?
+          tail -n 40 /home/runner/ref/cli.log; cp /home/runner/ref/cli.log /tmp/ci-out/ 2>/dev/null
+          ls -l /home/runner/ref | tee /tmp/ci-out/ref.txt
+          echo "darktable-cli exit $rc" | tee -a /tmp/ci-out/ref.txt
+          [ -s /home/runner/ref/export.jpg ]
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -105,6 +119,12 @@ jobs:
             /home/runner/ref
             /home/runner/dtt
           retention-days: 7
+
+      - name: Push logs to ci-logs branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-linux "${{ job.status }}"
 
   apk:
     needs: [tag, engine]
