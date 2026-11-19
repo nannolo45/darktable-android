@@ -324,11 +324,13 @@ internal object FolderThumb {
         }.getOrNull()
     }
 
+    /** Written whole and atomically like the photo's state (`AtomicFiles`); a failure only loses the thumbnail. */
     fun store(f: File, image: RenderedImage) {
         runCatching {
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            java.io.DataOutputStream(tmp.outputStream().buffered()).use { s -> s.writeInt(image.width); s.writeInt(image.height); s.write(image.rgba) }
-            if (!tmp.renameTo(f)) tmp.delete()
+            val bytes = java.io.ByteArrayOutputStream(8 + image.rgba.size).also { b ->
+                java.io.DataOutputStream(b).use { s -> s.writeInt(image.width); s.writeInt(image.height); s.write(image.rgba) }
+            }.toByteArray()
+            app.dtandroid.lpl.atomicWrite(f, bytes)
         }
     }
 }

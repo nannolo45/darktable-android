@@ -35,6 +35,8 @@ data class PhotoRecord(
     val previewPending: Boolean = false,
     /** order in which photos were taken, for the list */
     val added: Long = 0,
+    /** taken back from a folder whose state was lost: the version guard is checked again before a sync */
+    val recovered: Boolean = false,
 ) {
     val key get() = server to id
 }
@@ -53,22 +55,32 @@ class WorkStore(val root: File) {
 
     fun hasRaw(r: PhotoRecord) = raw(r).isFile
 
-    /** Every record on disk. Unreadable state files are skipped (their folder stays). */
-    fun loadAll(): List<PhotoRecord> {
+    /** What is on disk: the photos with a readable state, and photo folders whose state cannot be read. */
+    class Loaded(val records: List<PhotoRecord>, val withoutState: List<File>)
+
+    /**
+     * Every record on disk. State files are only ever replaced whole ([AtomicFiles]); temporary files a
+     * write left when the process died are removed. A folder whose state is missing or unreadable is
+     * reported in [Loaded.withoutState], never silently dropped: it may hold an edit.
+     */
+    fun load(): Loaded {
         val out = ArrayList<PhotoRecord>()
+        val lost = ArrayList<File>()
         for (sd in root.listFiles().orEmpty()) for (pd in sd.listFiles().orEmpty()) {
-            val f = File(pd, "state.json")
-            if (!f.isFile) continue
-            runCatching { decode(json.parseToJsonElement(f.readText()) as JsonObject) }.getOrNull()?.let { r ->
-                if (folder(r.server, r.id) == pd) out += r
-            }
+            if (!pd.isDirectory) continue
+            pd.listFiles().orEmpty().filter { AtomicFiles.isLeftover(it.name) }.forEach { it.delete() }
+            val r = readWhole(File(pd, "state.json"))?.let { b ->
+                runCatching { decode(json.parseToJsonElement(b.decodeToString()) as JsonObject) }.getOrNull()
+            }?.takeIf { folder(it.server, it.id) == pd }
+            if (r != null) out += r else lost += pd
         }
-        return out.sortedBy { it.added }
+        return Loaded(out.sortedBy { it.added }, lost)
     }
 
+    fun loadAll(): List<PhotoRecord> = load().records
+
+    /** Write the photo's state (whole, atomically). Throws [java.io.IOException] when it cannot be written. */
     fun save(r: PhotoRecord) {
-        val d = folder(r.server, r.id)
-        d.mkdirs()
         atomicWrite(stateFile(r.server, r.id), encode(r).toString().toByteArray())
     }
 
@@ -91,6 +103,7 @@ class WorkStore(val root: File) {
         put("read_only", r.readOnly)
         put("preview_pending", r.previewPending)
         put("added", r.added)
+        put("recovered", r.recovered)
     }
 
     private fun decode(o: JsonObject): PhotoRecord? {
@@ -102,6 +115,7 @@ class WorkStore(val root: File) {
             PhotoStatus.of(o["status"].str()) ?: PhotoStatus.DIRTY,
             o["synced_ts"].num() ?: 0.0, o["synced_hash"].str() ?: "", o["error"].str() ?: "",
             o["read_only"].bool() ?: false, o["preview_pending"].bool() ?: false, o["added"].long() ?: 0,
+            o["recovered"].bool() ?: false,
         )
     }
 

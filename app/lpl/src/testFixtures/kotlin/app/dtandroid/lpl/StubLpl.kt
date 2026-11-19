@@ -49,6 +49,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var password: String = ""
     @Volatile var dropOriginalAfter: Long = -1
     @Volatile var redirect: Boolean = false
+    /** every answer waits this long first (a slow network), in ms */
+    @Volatile var delayMs: Long = 0
     /** how many of the next requests are dropped without an answer (connection closed) */
     @Volatile var dropNext: Int = 0
 
@@ -108,6 +110,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val out = c.getOutputStream()
         val req = read(input) ?: return
         if (!running) return
+        if (delayMs > 0) Thread.sleep(delayMs)
         if (dropNext > 0) { dropNext--; return }
         val token = req.headers["x-lpl-token"]
         fun record(status: Int) {

@@ -41,7 +41,8 @@ class FileThumbnailStore(private val dir: File) : ThumbnailStore {
     override fun store(item: SeriesItem, image: RenderedImage) {
         dir.mkdirs()
         val f = file(item)
-        val tmp = File(dir, f.name + ".tmp")
+        // a temporary file of its own per write: two renders of one photo may store its thumbnail at once
+        val tmp = runCatching { File.createTempFile(f.name, ".tmp", dir) }.getOrNull() ?: return
         runCatching {
             DataOutputStream(tmp.outputStream().buffered()).use { s ->
                 s.writeInt(image.width); s.writeInt(image.height); s.write(image.rgba)
