@@ -195,6 +195,14 @@ int dtb_history(char **json)
   return DTB_OK;
 }
 
+/* desktop's history panel pops the items in memory (dt_dev_pop_history_items).
+ * The bridge does that, then writes the history and reloads its develop
+ * object from the library, as compress and undo do: modules whose items are
+ * above `end` then show the defaults a fresh session computes for them.
+ * Without the reload they keep defaults computed when they were created;
+ * several modules' defaults depend on whether the instance is the first in
+ * the pipe (dt_iop_is_first_instance, for example exposure's
+ * compensate_hilite_pres), which an instance delete or move changes. */
 int dtb_history_goto(int end)
 {
   NEED_WRITABLE();
@@ -205,7 +213,8 @@ int dtb_history_goto(int end)
   dt_dev_pop_history_items_ext(&dtb_S.dev, end);
   dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
-  dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
+  dt_dev_write_history(&dtb_S.dev);
+  dtb__reload_dev();
   dtb__change_end(DTB_CHANGE_OTHER, NULL);
   return DTB_OK;
 }

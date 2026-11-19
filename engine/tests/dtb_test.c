@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * Test driver for the bridge prototype (brief S3). Uses dtbridge.h only.
+ * Test driver for the engine bridge (briefs S3 and P1a). Uses dtbridge.h,
+ * libc and json-glib (to read the bridge's JSON); never darktable's headers.
  *
  *   dtb_test <workdir> <command> [args]
  *
@@ -8,28 +9,36 @@
  * lib/darktable below it). <workdir> holds the config, cache and private
  * library of this run; the library is recreated for every invocation.
  *
- * Commands (one per test; run_tests.sh drives them and compares with
- * darktable-cli):
- *   check <xmp>                               print the guard's JSON; exit 3 if problems
- *   render <raw> <xmp> <out.ppm>              T1: full render at scale 1
- *   param <raw> <xmp> <outdir>                T2
- *   instances <raw> <xmp> <outdir>            T3
- *   history <raw> <xmp> <outdir>              T4
- *   region <raw> <xmp> <outdir>               T5
- *   guard <raw> <xmp> <outdir>                T6 (expects outdir/newer.xmp, outdir/unknown.xmp)
- *   timing <raw> <xmp> <outdir>               T7
- *   cancel <raw> <xmp> <outdir>               T8
- *   mask <raw> <xmp> <outdir>                 T9
- *   extras <raw> <xmp> <outdir>               X1: preview, export, move, delete
- *   exposures <raw> <xmp>                    list exposure instances (T3, fresh session)
- *   modules <raw> <xmp>                       print modules and history JSON
- * Results are printed as "RESULT key value" lines; exit code 0 = the checks
- * the driver can do on its own passed. Pixel comparisons with darktable-cli
- * are done by run_tests.sh.
+ * Commands (run_tests.sh drives them and compares with darktable-cli):
+ *   check <xmp>                    print the guard's JSON; exit 3 if problems
+ *   render <raw> <xmp> <out.ppm>   T1: full render at scale 1
+ *   param <raw> <xmp> <outdir>     T2: exposure +1 EV
+ *   instances <raw> <xmp> <outdir> T3
+ *   history <raw> <xmp> <outdir>   T4
+ *   region <raw> <xmp> <outdir>    T5: render_region equals the crop of the full render
+ *   guard <raw> <xmp> <outdir>     T6 (expects outdir/newer.xmp, outdir/unknown.xmp)
+ *   timing <raw> <xmp> <outdir>    T7
+ *   cancel <raw> <xmp> <outdir>    T8
+ *   mask <raw> <xmp> <outdir>      T9
+ *   extras <raw> <xmp> <outdir>    X1: preview, export, move, delete
+ *   api <raw> <xmp> <outdir>       C1: engine_info, image_info, modules JSON, can_switch
+ *   params <raw> <xmp> <outdir>    C2: paths, types, ranges, params_set, grouping, reset
+ *   undo <raw> <xmp> <outdir>      C3: undo/redo equality over whole-history states
+ *   actions <raw> <xmp> <outdir>   C4: module_action (temperature, lens, lut3d, denoiseprofile)
+ *   threads <raw> <xmp> <outdir>   C5: set_threads, set_thread_cpus
+ *   readonly <raw> <xmp> <outdir>  C6: read-only refusal (expects outdir/newer.xmp)
+ *   output <raw> <xmp> <outdir>    C7: atomic xmp_write, export options, metadata_reload
+ *   exposures <raw> <xmp>          list exposure instances (fresh session)
+ *   modules <raw> <xmp>            print modules and history JSON
+ * Results are "RESULT key value" lines; exit code 0 = the checks the driver
+ * can do on its own passed. Pixel comparisons with darktable-cli are done by
+ * run_tests.sh.
  */
 #include "dtbridge.h"
 
+#include <dirent.h>
 #include <errno.h>
+#include <json-glib/json-glib.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -58,6 +67,17 @@ static int g_fail = 0;
       fprintf(stdout, "FAIL %s:%d: %s returned %d [%s]\n", __FILE__,     \
               __LINE__, #expr, _r, dtb_last_error());                   \
       exit(1);                                                          \
+    }                                                                   \
+  } while(0)
+
+/* expect a given return code */
+#define EXPECT(expr, code)                                              \
+  do {                                                                  \
+    const int _r = (expr);                                              \
+    if(_r != (code)) {                                                  \
+      fprintf(stdout, "FAIL %s:%d: %s returned %d, expected %d [%s]\n", \
+              __FILE__, __LINE__, #expr, _r, (code), dtb_last_error()); \
+      g_fail = 1;                                                       \
     }                                                                   \
   } while(0)
 
@@ -95,7 +115,14 @@ static void write_ppm(const char *path, const uint8_t *rgba, int w, int h)
   fclose(f);
 }
 
-static void engine_start(const char *workdir)
+static char *read_file(const char *path)
+{
+  gchar *s = NULL;
+  if(!g_file_get_contents(path, &s, NULL, NULL)) return NULL;
+  return s;
+}
+
+static void engine_start_ext(const char *workdir, int threads, const char *extra_rc)
 {
   const char *prefix = getenv("DT_PREFIX");
   if(!prefix)
@@ -111,9 +138,171 @@ static void engine_start(const char *workdir)
   char *configdir = path_join(workdir, "config");
   char *cachedir = path_join(workdir, "cache");
   char *tmpdir = path_join(workdir, "tmp");
-  dtb_paths_t p = { configdir, cachedir, datadir, moduledir, tmpdir, library, 0 };
-  MUST(dtb_init(&p));
+  mkdir(configdir, 0700);
+  if(extra_rc)
+  {
+    // darktable reads darktablerc at start-up; the app can do the same
+    char *rc = path_join(configdir, "darktablerc");
+    FILE *f = fopen(rc, "w");
+    if(f)
+    {
+      fputs(extra_rc, f);
+      fclose(f);
+    }
+    free(rc);
+  }
+  dtb_paths_t p = { configdir, cachedir, datadir, moduledir, tmpdir, library };
+  MUST(dtb_init(&p, threads));
 }
+
+static void engine_start(const char *workdir) { engine_start_ext(workdir, 0, NULL); }
+
+/* ---------------------------------------------------------------- */
+/* JSON helpers                                                      */
+
+static JsonNode *jparse_owned(char *s)
+{
+  if(!s)
+  {
+    fprintf(stdout, "FAIL no JSON returned [%s]\n", dtb_last_error());
+    exit(1);
+  }
+  GError *e = NULL;
+  JsonNode *n = json_from_string(s, &e);
+  if(!n)
+  {
+    fprintf(stdout, "FAIL invalid JSON from the bridge: %s\n", e ? e->message : "?");
+    exit(1);
+  }
+  dtb_free(s);
+  return n;
+}
+
+static char *get_modules_str(void)
+{
+  char *s = NULL;
+  MUST(dtb_modules(&s));
+  return s;
+}
+
+static char *get_history_str(void)
+{
+  char *s = NULL;
+  MUST(dtb_history(&s));
+  return s;
+}
+
+static JsonNode *get_modules(void) { return jparse_owned(get_modules_str()); }
+static JsonNode *get_history(void) { return jparse_owned(get_history_str()); }
+
+static JsonNode *get_json(int (*f)(char **))
+{
+  char *s = NULL;
+  MUST(f(&s));
+  return jparse_owned(s);
+}
+
+static JsonObject *find_mod(JsonNode *mods, const char *op, int prio)
+{
+  JsonArray *a = json_node_get_array(mods);
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(!strcmp(json_object_get_string_member(o, "op"), op)
+       && json_object_get_int_member(o, "priority") == prio)
+      return o;
+  }
+  return NULL;
+}
+
+/* a member of params at a JSON pointer-like path "a/0/b" */
+static JsonNode *param_node(JsonObject *mod, const char *path)
+{
+  JsonNode *n = json_object_get_member(mod, "params");
+  gchar **parts = g_strsplit(path, "/", -1);
+  for(int i = 0; parts[i] && n; i++)
+  {
+    if(JSON_NODE_TYPE(n) == JSON_NODE_OBJECT)
+      n = json_object_get_member(json_node_get_object(n), parts[i]);
+    else if(JSON_NODE_TYPE(n) == JSON_NODE_ARRAY)
+    {
+      JsonArray *a = json_node_get_array(n);
+      const guint k = atoi(parts[i]);
+      n = k < json_array_get_length(a) ? json_array_get_element(a, k) : NULL;
+    }
+    else
+      n = NULL;
+  }
+  g_strfreev(parts);
+  return n;
+}
+
+static double param_num(const char *op, int prio, const char *path)
+{
+  JsonNode *m = get_modules();
+  JsonObject *o = find_mod(m, op, prio);
+  JsonNode *n = o ? param_node(o, path) : NULL;
+  const double v = n && JSON_NODE_TYPE(n) == JSON_NODE_VALUE ? json_node_get_double(n) : NAN;
+  json_node_unref(m);
+  return v;
+}
+
+static int module_info(const char *op, int prio, double *exposure, char *name, size_t name_len,
+                       int *enabled)
+{
+  JsonNode *m = get_modules();
+  JsonObject *o = find_mod(m, op, prio);
+  if(o)
+  {
+    if(name) g_strlcpy(name, json_object_get_string_member(o, "instance_name"), name_len);
+    if(enabled) *enabled = json_object_get_boolean_member(o, "enabled");
+    if(exposure)
+    {
+      JsonNode *n = param_node(o, "exposure");
+      *exposure = n ? json_node_get_double(n) : NAN;
+    }
+  }
+  json_node_unref(m);
+  return o != NULL;
+}
+
+static int history_count(int *end)
+{
+  JsonNode *h = get_history();
+  JsonObject *o = json_node_get_object(h);
+  const int n = json_array_get_length(json_object_get_array_member(o, "items"));
+  if(end) *end = json_object_get_int_member(o, "end");
+  json_node_unref(h);
+  return n;
+}
+
+static void print_exposure_instances(const char *tag)
+{
+  for(int prio = 0; prio < 8; prio++)
+  {
+    double v = NAN;
+    char name[128];
+    int en = 0;
+    if(module_info("exposure", prio, &v, name, sizeof(name), &en))
+      fprintf(stdout, "RESULT %s exposure.%d name='%s' enabled=%d exposure=%.4f\n", tag, prio, name, en, v);
+  }
+}
+
+static int xmp_problems(const char *path)
+{
+  char *s = NULL;
+  if(dtb_xmp_check(path, &s)) return -2;
+  JsonNode *n = jparse_owned(s);
+  JsonObject *o = json_node_get_object(n);
+  const int r = json_object_get_boolean_member(o, "parsed")
+                  ? (int)json_array_get_length(json_object_get_array_member(o, "problems"))
+                  : -1;
+  json_node_unref(n);
+  return r;
+}
+
+/* ---------------------------------------------------------------- */
+/* pixels                                                            */
 
 /* full render at scale 1; returns malloc'ed RGBA */
 static uint8_t *render_full(int *w, int *h, double *seconds)
@@ -121,7 +310,7 @@ static uint8_t *render_full(int *w, int *h, double *seconds)
   MUST(dtb_render_size(1.0f, w, h));
   uint8_t *buf = malloc((size_t)4 * *w * *h);
   const double t0 = now();
-  MUST(dtb_render(0, 0, *w, *h, 1.0f, buf));
+  MUST(dtb_render_region(0, 0, *w, *h, 1.0f, buf));
   if(seconds) *seconds = now() - t0;
   return buf;
 }
@@ -141,91 +330,43 @@ static void diff_stats(const uint8_t *a, const uint8_t *b, size_t n_px, int *max
   *meand = (double)sum / (3.0 * n_px);
 }
 
-/* count history items and read history_end from the JSON (no JSON parser in
- * the driver on purpose: it only uses dtbridge.h and libc) */
-static int history_count(int *end)
+/* a screen-sized region in the middle at scale 0.5: quick, and enough to
+ * see whether two states render the same */
+static uint8_t *render_probe(int *pw, int *ph)
 {
-  char *j = dtb_history_json();
-  int n = 0;
-  for(const char *p = j; (p = strstr(p, "\"num\"")); p++) n++;
-  if(end)
-  {
-    const char *e = strstr(j, "\"history_end\":");
-    *end = e ? atoi(e + strlen("\"history_end\":")) : -1;
-  }
-  dtb_free(j);
-  return n;
+  int w, h;
+  MUST(dtb_render_size(0.5f, &w, &h));
+  *pw = w < 800 ? w : 800;
+  *ph = h < 600 ? h : 600;
+  uint8_t *buf = malloc((size_t)4 * *pw * *ph);
+  MUST(dtb_render_region((w - *pw) / 2, (h - *ph) / 2, *pw, *ph, 0.5f, buf));
+  return buf;
 }
 
-/* the value of params.<param> of instance op/prio in the modules JSON */
-static int module_info(const char *op, int prio, const char *param, double *value,
-                       char *name, size_t name_len, int *enabled)
+static int probe_diff(const uint8_t *a, const uint8_t *b, int w, int h)
 {
-  char *j = dtb_modules_json();
-  char key[256];
-  snprintf(key, sizeof(key), "\"operation\":\"%s\"", op);
-  int found = 0;
-  for(char *p = strstr(j, key); p; p = strstr(p + 1, key))
-  {
-    char *end = strstr(p, "}}");
-    char *pr = strstr(p, "\"multi_priority\":");
-    if(!pr || (end && pr > end) || atoi(pr + 17) != prio) continue;
-    found = 1;
-    if(name)
-    {
-      char *in = strstr(p, "\"instance_name\":\"");
-      name[0] = 0;
-      if(in)
-      {
-        in += 17;
-        size_t k = 0;
-        while(in[k] && in[k] != '"' && k + 1 < name_len) { name[k] = in[k]; k++; }
-        name[k] = 0;
-      }
-    }
-    if(enabled)
-    {
-      char *en = strstr(p, "\"enabled\":");
-      *enabled = en && !strncmp(en + 10, "true", 4);
-    }
-    if(param && value)
-    {
-      char pk[256];
-      snprintf(pk, sizeof(pk), "\"%s\":", param);
-      char *pv = strstr(strstr(p, "\"params\":"), pk);
-      *value = pv && (!end || pv < end) ? atof(pv + strlen(pk)) : NAN;
-    }
-    break;
-  }
-  dtb_free(j);
-  return found;
-}
-
-static void print_exposure_instances(const char *tag)
-{
-  for(int prio = 0; prio < 8; prio++)
-  {
-    double v = NAN;
-    char name[128];
-    int en = 0;
-    if(module_info("exposure", prio, "exposure", &v, name, sizeof(name), &en))
-      fprintf(stdout, "RESULT %s exposure.%d name='%s' enabled=%d exposure=%.4f\n", tag, prio, name, en, v);
-  }
+  int mx;
+  double mean;
+  diff_stats(a, b, (size_t)w * h, &mx, &mean);
+  return mx;
 }
 
 /* ---------------------------------------------------------------- */
+/* S3 tests                                                          */
 
 static int cmd_check(const char *xmp)
 {
-  int n = 0;
-  char *j = dtb_xmp_check(xmp, &n);
-  if(!j)
+  char *j = NULL;
+  const int r = dtb_xmp_check(xmp, &j);
+  if(r)
   {
     fprintf(stdout, "FAIL check: %s\n", dtb_last_error());
     return 1;
   }
-  fprintf(stdout, "%s\nRESULT problems %d\n", j, n);
+  fprintf(stdout, "%s\n", j);
   dtb_free(j);
+  const int n = xmp_problems(xmp);
+  fprintf(stdout, "RESULT problems %d\n", n);
   return n == 0 ? 0 : 3;
 }
 
@@ -250,21 +391,21 @@ static int cmd_param(const char *raw, const char *xmp, const char *outdir)
   int end0, end1;
   const int n0 = history_count(&end0);
   double ev = NAN;
-  CHECK(module_info("exposure", 0, "exposure", &ev, NULL, 0, NULL), "no exposure.0");
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 1.0)));
+  CHECK(module_info("exposure", 0, &ev, NULL, 0, NULL), "no exposure.0");
+  char v[64];
+  snprintf(v, sizeof(v), "%.9g", ev + 1.0);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
   const int n1 = history_count(&end1);
   double ev1 = NAN;
-  module_info("exposure", 0, "exposure", &ev1, NULL, 0, NULL);
+  module_info("exposure", 0, &ev1, NULL, 0, NULL);
   fprintf(stdout, "RESULT exposure_before %.4f\nRESULT exposure_after %.4f\n", ev, ev1);
   fprintf(stdout, "RESULT history_before %d end %d\nRESULT history_after %d end %d\n", n0, end0, n1, end1);
   CHECK(n1 == n0 + 1 && end1 == end0 + 1, "history did not grow by exactly one (%d -> %d)", n0, n1);
   CHECK(fabs(ev1 - (ev + 1.0)) < 1e-5, "exposure not set");
-  char *x = path_join(outdir, "param.xmp");
-  MUST(dtb_xmp_write(x));
+  MUST(dtb_xmp_write(path_join(outdir, "param.xmp")));
   int w, h;
   uint8_t *buf = render_full(&w, &h, NULL);
-  char *o = path_join(outdir, "param_bridge.ppm");
-  write_ppm(o, buf, w, h);
+  write_ppm(path_join(outdir, "param_bridge.ppm"), buf, w, h);
   free(buf);
   MUST(dtb_close());
   return g_fail;
@@ -278,22 +419,21 @@ static int cmd_instances(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_instance_duplicate("exposure", 0, &newp));
   fprintf(stdout, "RESULT new_priority %d\n", newp);
   double base = NAN, copy = NAN;
-  module_info("exposure", 0, "exposure", &base, NULL, 0, NULL);
-  module_info("exposure", newp, "exposure", &copy, NULL, 0, NULL);
+  module_info("exposure", 0, &base, NULL, 0, NULL);
+  module_info("exposure", newp, &copy, NULL, 0, NULL);
   CHECK(fabs(base - copy) < 1e-6, "duplicate did not copy parameters (%f vs %f)", base, copy);
-  MUST(dtb_param_set_float("exposure", newp, "exposure", -0.5f));
+  MUST(dtb_param_set("exposure", newp, "exposure", "-0.5"));
   MUST(dtb_set_enabled("exposure", newp, 0));
   int en = 1;
-  module_info("exposure", newp, NULL, NULL, NULL, 0, &en);
+  module_info("exposure", newp, NULL, NULL, 0, &en);
   CHECK(en == 0, "copy not switched off");
   MUST(dtb_set_enabled("exposure", newp, 1));
-  module_info("exposure", newp, NULL, NULL, NULL, 0, &en);
+  module_info("exposure", newp, NULL, NULL, 0, &en);
   CHECK(en == 1, "copy not switched on");
   print_exposure_instances("after");
   int end;
   fprintf(stdout, "RESULT history %d\n", history_count(&end));
-  char *x = path_join(outdir, "instances.xmp");
-  MUST(dtb_xmp_write(x));
+  MUST(dtb_xmp_write(path_join(outdir, "instances.xmp")));
   int w, h;
   uint8_t *buf = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "instances_bridge.ppm"), buf, w, h);
@@ -312,19 +452,16 @@ static int cmd_history(const char *raw, const char *xmp, const char *outdir)
   uint8_t *top = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "history_top.ppm"), top, w, h);
 
-  // one step back: the state before the last item
   const int k = end - 1;
   MUST(dtb_history_goto(k));
   uint8_t *back = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "history_back.ppm"), back, w, h);
-  // the XMP written now has history_end k: darktable-cli renders step k from it
   MUST(dtb_xmp_write(path_join(outdir, "history_back.xmp")));
   int mx;
   double mean;
   diff_stats(top, back, (size_t)w * h, &mx, &mean);
   fprintf(stdout, "RESULT goto %d differs_from_top max %d mean %.4f\n", k, mx, mean);
 
-  // and forward again: must equal the first render
   MUST(dtb_history_goto(end));
   uint8_t *again = render_full(&w, &h, NULL);
   diff_stats(top, again, (size_t)w * h, &mx, &mean);
@@ -336,7 +473,7 @@ static int cmd_history(const char *raw, const char *xmp, const char *outdir)
   const int n2 = history_count(&end2);
   fprintf(stdout, "RESULT compressed history %d end %d\n", n2, end2);
   CHECK(n2 <= n, "compress grew the history");
-  CHECK(end2 == n2, "history_end %d does not match the %d items after compress", end2, n2);
+  CHECK(end2 == n2, "end %d does not match the %d items after compress", end2, n2);
   uint8_t *comp = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "history_compressed.ppm"), comp, w, h);
   diff_stats(top, comp, (size_t)w * h, &mx, &mean);
@@ -351,16 +488,21 @@ static int cmd_history(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* T5: dtb_render_region must equal the same crop of the full render. With
+ * DTB_TEST_DEMOSAIC_METHOD=<enum constant> (t5_bisect.sh) demosaic is set
+ * to that method first. */
 static int cmd_region(const char *raw, const char *xmp, const char *outdir)
 {
   MUST(dtb_open(raw, xmp));
-  // diagnosis only (t5_bisect.sh): render with another demosaic method
   const char *dm = getenv("DTB_TEST_DEMOSAIC_METHOD");
   if(dm)
   {
-    MUST(dtb_param_set_int("demosaic", 0, "demosaicing_method", atoi(dm)));
+    char v[128];
+    snprintf(v, sizeof(v), "\"%s\"", dm);
+    MUST(dtb_param_set("demosaic", 0, "demosaicing_method", v));
     fprintf(stdout, "RESULT demosaicing_method %s\n", dm);
   }
+  fprintf(stdout, "RESULT margin_env %s\n", getenv("DTB_REGION_MARGIN") ? getenv("DTB_REGION_MARGIN") : "default");
   int w, h;
   uint8_t *full = render_full(&w, &h, NULL);
   const int rw = 512, rh = 512;
@@ -372,40 +514,33 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
   for(int i = 0; i < 3; i++)
   {
     const double t0 = now();
-    MUST(dtb_render(xs[i], ys[i], rw, rh, 1.0f, reg));
+    MUST(dtb_render_region(xs[i], ys[i], rw, rh, 1.0f, reg));
     const double t = now() - t0;
     for(int y = 0; y < rh; y++)
       memcpy(crop + (size_t)4 * rw * y, full + 4 * ((size_t)(ys[i] + y) * w + xs[i]), (size_t)4 * rw);
     int mx;
     double mean;
     diff_stats(reg, crop, (size_t)rw * rh, &mx, &mean);
-    fprintf(stdout, "RESULT region %d at %d,%d max %d mean %.4f render_s %.3f\n", i, xs[i], ys[i], mx, mean, t);
+    // where the differing pixels are: their largest distance from the region's edge
+    int far = -1;
+    for(int y = 0; y < rh; y++)
+      for(int x = 0; x < rw; x++)
+      {
+        const size_t k = 4 * ((size_t)y * rw + x);
+        if(reg[k] != crop[k] || reg[k + 1] != crop[k + 1] || reg[k + 2] != crop[k + 2])
+        {
+          const int d = MIN(MIN(x, rw - 1 - x), MIN(y, rh - 1 - y));
+          if(d > far) far = d;
+        }
+      }
+    fprintf(stdout, "RESULT region %d at %d,%d max %d mean %.4f deepest_diff_from_edge %d render_s %.3f\n",
+            i, xs[i], ys[i], mx, mean, far, t);
     char name[64];
     snprintf(name, sizeof(name), "region%d.ppm", i);
     write_ppm(path_join(outdir, name), reg, rw, rh);
     snprintf(name, sizeof(name), "region%d_crop.ppm", i);
     write_ppm(path_join(outdir, name), crop, rw, rh);
     fprintf(stdout, "RESULT region%d_origin %d %d\n", i, xs[i], ys[i]);
-
-    // measurement for the write-up, not part of the pass/fail check: the
-    // same region rendered with a margin around it and cropped
-    const int margins[3] = { 16, 64, 256 };
-    for(int k = 0; k < 3; k++)
-    {
-      const int m = margins[k];
-      const int px = xs[i] - m < 0 ? 0 : xs[i] - m, py = ys[i] - m < 0 ? 0 : ys[i] - m;
-      const int pw = (xs[i] + rw + m > w ? w : xs[i] + rw + m) - px;
-      const int ph = (ys[i] + rh + m > h ? h : ys[i] + rh + m) - py;
-      uint8_t *pad = malloc((size_t)4 * pw * ph);
-      const double t1 = now();
-      MUST(dtb_render(px, py, pw, ph, 1.0f, pad));
-      const double tp = now() - t1;
-      for(int y = 0; y < rh; y++)
-        memcpy(reg + (size_t)4 * rw * y, pad + 4 * ((size_t)(ys[i] - py + y) * pw + (xs[i] - px)), (size_t)4 * rw);
-      diff_stats(reg, crop, (size_t)rw * rh, &mx, &mean);
-      fprintf(stdout, "RESULT region %d margin %d max %d mean %.4f render_s %.3f\n", i, m, mx, mean, tp);
-      free(pad);
-    }
   }
   free(reg);
   free(crop);
@@ -420,15 +555,17 @@ static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
   for(int i = 0; i < 2; i++)
   {
     char *bx = path_join(outdir, bad[i]);
-    int n = 0;
-    char *j = dtb_xmp_check(bx, &n);
+    char *j = NULL;
+    dtb_xmp_check(bx, &j);
+    const int n = xmp_problems(bx);
     fprintf(stdout, "RESULT check %s problems %d %s\n", bad[i], n, j ? j : "(null)");
     CHECK(n > 0, "%s not reported", bad[i]);
     dtb_free(j);
 
-    // opening it gives a read-only session, which refuses to write anywhere
     MUST(dtb_open(raw, bx));
-    CHECK(dtb_is_read_only(), "%s: session not read-only", bad[i]);
+    JsonNode *info = get_json(dtb_image_info);
+    CHECK(json_object_get_boolean_member(json_node_get_object(info), "read_only"), "%s: session not read-only", bad[i]);
+    json_node_unref(info);
     int r = dtb_xmp_write(bx);
     fprintf(stdout, "RESULT write_over_%s %d\n", bad[i], r);
     CHECK(r == DTB_E_READ_ONLY, "write over %s not refused", bad[i]);
@@ -438,16 +575,16 @@ static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
     CHECK(r == DTB_E_READ_ONLY, "write from read-only session not refused");
     MUST(dtb_close());
 
-    // a healthy session must not overwrite the bad file either
     MUST(dtb_open(raw, xmp));
-    CHECK(!dtb_is_read_only(), "good XMP opened read-only");
+    info = get_json(dtb_image_info);
+    CHECK(!json_object_get_boolean_member(json_node_get_object(info), "read_only"), "good XMP opened read-only");
+    json_node_unref(info);
     r = dtb_xmp_write(bx);
     fprintf(stdout, "RESULT healthy_session_write_over_%s %d\n", bad[i], r);
     CHECK(r == DTB_E_READ_ONLY, "healthy session overwrote %s", bad[i]);
     MUST(dtb_close());
   }
-  int n = 0;
-  dtb_free(dtb_xmp_check(xmp, &n));
+  const int n = xmp_problems(xmp);
   fprintf(stdout, "RESULT check original problems %d\n", n);
   CHECK(n == 0, "original XMP reported");
   return g_fail;
@@ -463,26 +600,25 @@ static int cmd_timing(const char *raw, const char *xmp, const char *outdir)
   double t_first, t_again, t_late, t_early, t_region;
   uint8_t *buf = render_full(&w, &h, &t_first);
   free(buf);
-  buf = render_full(&w, &h, &t_again);  // nothing changed
+  buf = render_full(&w, &h, &t_again);
   free(buf);
 
-  // late module: vignette sits after the tone mappers, near the end
   MUST(dtb_set_enabled("vignette", 0, 1));
   buf = render_full(&w, &h, &t_late);
   free(buf);
-  // early module: exposure
   double ev = 0;
-  module_info("exposure", 0, "exposure", &ev, NULL, 0, NULL);
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.25)));
+  module_info("exposure", 0, &ev, NULL, 0, NULL);
+  char v[64];
+  snprintf(v, sizeof(v), "%.9g", ev + 0.25);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
   buf = render_full(&w, &h, &t_early);
   free(buf);
 
-  // screen-sized region after a late change, as the app would ask for it
-  MUST(dtb_param_set_float("vignette", 0, "brightness", -0.3f));
+  MUST(dtb_param_set("vignette", 0, "brightness", "-0.3"));
   uint8_t *reg = malloc((size_t)4 * 1920 * 1080);
   const int rw = w < 1920 ? w : 1920, rh = h < 1080 ? h : 1080;
   t0 = now();
-  MUST(dtb_render((w - rw) / 2, (h - rh) / 2, rw, rh, 1.0f, reg));
+  MUST(dtb_render_region((w - rw) / 2, (h - rh) / 2, rw, rh, 1.0f, reg));
   t_region = now() - t0;
   free(reg);
 
@@ -492,12 +628,13 @@ static int cmd_timing(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_render_preview(1024, &pv, &pw, &ph));
   const double t_prev_first = now() - t0;
   dtb_free(pv);
-  MUST(dtb_param_set_float("vignette", 0, "brightness", -0.5f));
+  MUST(dtb_param_set("vignette", 0, "brightness", "-0.5"));
   t0 = now();
   MUST(dtb_render_preview(1024, &pv, &pw, &ph));
   const double t_prev_late = now() - t0;
   dtb_free(pv);
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.5)));
+  snprintf(v, sizeof(v), "%.9g", ev + 0.5);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
   t0 = now();
   MUST(dtb_render_preview(1024, &pv, &pw, &ph));
   const double t_prev_early = now() - t0;
@@ -534,30 +671,30 @@ static int cmd_cancel(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_open(raw, xmp));
   int w, h;
   double t_full;
-  uint8_t *ref = render_full(&w, &h, &t_full);  // also warms the input
-  // make the next render a full one: change an early module
+  uint8_t *ref = render_full(&w, &h, &t_full);
   double ev = 0;
-  module_info("exposure", 0, "exposure", &ev, NULL, 0, NULL);
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.1)));
+  module_info("exposure", 0, &ev, NULL, 0, NULL);
+  char v[64];
+  snprintf(v, sizeof(v), "%.9g", ev + 0.1);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
   uint8_t *buf = malloc((size_t)4 * w * h);
   double t_uncancelled;
   {
     const double t0 = now();
-    MUST(dtb_render(0, 0, w, h, 1.0f, buf));
+    MUST(dtb_render_region(0, 0, w, h, 1.0f, buf));
     t_uncancelled = now() - t0;
   }
-  // start a render and cancel it from another thread; each attempt changes
-  // exposure first, so a full re-render is in flight, not a cache hit
   double worst = 0;
   for(int i = 0; i < 3; i++)
   {
-    MUST(dtb_param_set_float("exposure", 0, "exposure", (float)(ev + 0.2 + 0.05 * i)));
+    snprintf(v, sizeof(v), "%.9g", ev + 0.2 + 0.05 * i);
+    MUST(dtb_param_set("exposure", 0, "exposure", v));
     const double delays[3] = { 0.05, 0.3 * t_uncancelled, 0.6 * t_uncancelled };
     cancel_arg_t a = { delays[i], 0 };
     pthread_t th;
     pthread_create(&th, NULL, cancel_thread, &a);
     const double t0 = now();
-    const int r = dtb_render(0, 0, w, h, 1.0f, buf);
+    const int r = dtb_render_region(0, 0, w, h, 1.0f, buf);
     const double t1 = now();
     pthread_join(th, NULL);
     const double latency = t1 - a.t_cancel;
@@ -567,9 +704,9 @@ static int cmd_cancel(const char *raw, const char *xmp, const char *outdir)
     if(latency > worst) worst = latency;
   }
   fprintf(stdout, "RESULT cancel_worst_latency_s %.3f\n", worst);
-  // the pipe must still produce the right image afterwards
-  MUST(dtb_param_set_float("exposure", 0, "exposure", (float)ev));
-  MUST(dtb_render(0, 0, w, h, 1.0f, buf));
+  snprintf(v, sizeof(v), "%.9g", ev);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
+  MUST(dtb_render_region(0, 0, w, h, 1.0f, buf));
   int mx;
   double mean;
   diff_stats(ref, buf, (size_t)w * h, &mx, &mean);
@@ -588,15 +725,13 @@ static int cmd_mask(const char *raw, const char *xmp, const char *outdir)
   uint8_t *before = render_full(&w, &h, NULL);
   int p = -1;
   MUST(dtb_instance_new("exposure", 0, &p));
-  MUST(dtb_param_set_float("exposure", p, "exposure", 2.0f));
-  // circle in the centre, radius 10 % of the image, soft border
+  MUST(dtb_param_set("exposure", p, "exposure", "2.0"));
   MUST(dtb_mask_add_circle("exposure", p, 0.5f, 0.5f, 0.1f, 0.02f));
   uint8_t *after = render_full(&w, &h, NULL);
   write_ppm(path_join(outdir, "mask_before.ppm"), before, w, h);
   write_ppm(path_join(outdir, "mask_bridge.ppm"), after, w, h);
   MUST(dtb_xmp_write(path_join(outdir, "mask.xmp")));
 
-  // local effect: inside a small centre box vs the image corners
   const int cw = w / 20, ch = h / 20;
   long long in_d = 0, out_d = 0;
   long in_n = 0, out_n = 0;
@@ -617,13 +752,10 @@ static int cmd_mask(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
-/* X1, beyond T1 to T9: the API functions those tests do not reach */
 static int cmd_extras(const char *raw, const char *xmp, const char *outdir)
 {
   MUST(dtb_open(raw, xmp));
   int w, h;
-
-  // preview: a downscaled whole image from the second pipeline
   uint8_t *pv = NULL;
   int pw, ph;
   MUST(dtb_render_preview(1024, &pv, &pw, &ph));
@@ -631,10 +763,8 @@ static int cmd_extras(const char *raw, const char *xmp, const char *outdir)
   dtb_free(pv);
   fprintf(stdout, "RESULT preview %dx%d\n", pw, ph);
 
-  // export through darktable's own export path
-  MUST(dtb_export_jpeg(path_join(outdir, "x_export.jpg"), 95, 0, 0));
+  MUST(dtb_export(path_join(outdir, "x_export.jpg"), "{\"format\":\"jpeg\",\"quality\":95}"));
 
-  // move: exposure.0 one step later in the pipe
   print_exposure_instances("start");
   MUST(dtb_instance_move("exposure", 0, 1));
   MUST(dtb_xmp_write(path_join(outdir, "x_move.xmp")));
@@ -642,20 +772,18 @@ static int cmd_extras(const char *raw, const char *xmp, const char *outdir)
   write_ppm(path_join(outdir, "x_move_bridge.ppm"), buf, w, h);
   free(buf);
 
-  // delete: make two new instances, delete the first new one, then delete
-  // priority 0 (the next instance takes priority 0)
   int p1 = -1, p2 = -1;
   MUST(dtb_instance_new("exposure", 0, &p1));
-  MUST(dtb_param_set_float("exposure", p1, "exposure", 0.3f));
+  MUST(dtb_param_set("exposure", p1, "exposure", "0.3"));
   MUST(dtb_instance_duplicate("exposure", p1, &p2));
-  MUST(dtb_param_set_float("exposure", p2, "exposure", -0.4f));
+  MUST(dtb_param_set("exposure", p2, "exposure", "-0.4"));
   MUST(dtb_instance_delete("exposure", p1));
-  CHECK(!module_info("exposure", p1, NULL, NULL, NULL, 0, NULL), "deleted instance still listed");
+  CHECK(!module_info("exposure", p1, NULL, NULL, 0, NULL), "deleted instance still listed");
   MUST(dtb_instance_delete("exposure", 0));
   int last = 0;
   for(int i = 0; i < 8; i++)
-    if(module_info("exposure", i, NULL, NULL, NULL, 0, NULL)) last++;
-  CHECK(module_info("exposure", 0, NULL, NULL, NULL, 0, NULL), "no exposure.0 after deleting priority 0");
+    if(module_info("exposure", i, NULL, NULL, 0, NULL)) last++;
+  CHECK(module_info("exposure", 0, NULL, NULL, 0, NULL), "no exposure.0 after deleting priority 0");
   CHECK(dtb_instance_delete("vignette", 0) == DTB_E_ARG, "deleting the last instance not refused");
   print_exposure_instances("after");
   fprintf(stdout, "RESULT exposure_instances_after %d\n", last);
@@ -669,6 +797,889 @@ static int cmd_extras(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* ---------------------------------------------------------------- */
+/* P1a tests                                                         */
+
+/* C1: engine_info, image_info, the modules JSON */
+static int cmd_api(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  JsonNode *ei = get_json(dtb_engine_info);
+  JsonObject *e = json_node_get_object(ei);
+  JsonObject *pl = json_object_get_object_member(e, "plugins");
+  fprintf(stdout, "RESULT engine darktable %s api %ld threads %ld/%ld plugins %ld/%ld\n",
+          json_object_get_string_member(e, "darktable_version"), (long)json_object_get_int_member(e, "api_version"),
+          (long)json_object_get_int_member(e, "threads"), (long)json_object_get_int_member(e, "threads_max"),
+          (long)json_object_get_int_member(pl, "loaded"), (long)json_object_get_int_member(pl, "files"));
+  CHECK(json_object_get_int_member(e, "api_version") == DTB_API_VERSION, "api_version");
+  CHECK(json_object_get_int_member(pl, "files") > 0
+        && json_object_get_int_member(pl, "files") == json_object_get_int_member(pl, "loaded")
+        && json_array_get_length(json_object_get_array_member(pl, "missing")) == 0,
+        "not every plugin loaded");
+  json_node_unref(ei);
+
+  EXPECT(dtb_modules(&(char *){ NULL }), DTB_E_STATE);  // no session yet
+  MUST(dtb_open(raw, xmp));
+  JsonNode *ii = get_json(dtb_image_info);
+  JsonObject *im = json_node_get_object(ii);
+  int w, h;
+  MUST(dtb_render_size(1.0f, &w, &h));
+  JsonObject *ex = json_object_get_object_member(im, "exif");
+  fprintf(stdout, "RESULT image %ldx%ld raw %ldx%ld class %s maker %s model %s iso %g datetime %s rating %ld\n",
+          (long)json_object_get_int_member(im, "width"), (long)json_object_get_int_member(im, "height"),
+          (long)json_object_get_int_member(im, "raw_width"), (long)json_object_get_int_member(im, "raw_height"),
+          json_object_get_string_member(im, "image_class"),
+          json_object_get_string_member(ex, "maker"), json_object_get_string_member(ex, "model"),
+          json_object_get_null_member(ex, "iso") ? -1.0 : json_object_get_double_member(ex, "iso"),
+          json_object_get_null_member(ex, "datetime") ? "null" : json_object_get_string_member(ex, "datetime"),
+          (long)json_object_get_int_member(im, "rating"));
+  CHECK(json_object_get_int_member(im, "width") == w && json_object_get_int_member(im, "height") == h,
+        "image_info size differs from render_size");
+  const char *expect_class = getenv("DTB_TEST_CLASS");
+  if(expect_class)
+    CHECK(!strcmp(json_object_get_string_member(im, "image_class"), expect_class), "image class %s, expected %s",
+          json_object_get_string_member(im, "image_class"), expect_class);
+  CHECK(!json_object_get_boolean_member(im, "read_only"), "opened read-only");
+  json_node_unref(ii);
+
+  JsonNode *mods = get_modules();
+  JsonArray *a = json_node_get_array(mods);
+  static const char *keys[] = { "op", "name", "priority", "instance_name", "iop_order", "enabled",
+                                "can_switch", "default_enabled", "hidden", "deprecated", "one_instance",
+                                "supports_blending", "version", "in_history", "params", NULL };
+  int missing = 0, no_switch = 0, in_hist = 0, deprecated = 0, one = 0, structs = 0, arrays = 0, enums = 0;
+  int last_order = -1000000, order_ok = 1;
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    for(int k = 0; keys[k]; k++)
+      if(!json_object_has_member(o, keys[k]))
+      {
+        missing++;
+        fprintf(stdout, "INFO module %s lacks %s\n", json_object_get_string_member(o, "op"), keys[k]);
+      }
+    if(!json_object_get_boolean_member(o, "can_switch")) no_switch++;
+    if(json_object_get_boolean_member(o, "in_history")) in_hist++;
+    if(json_object_get_boolean_member(o, "deprecated")) deprecated++;
+    if(json_object_get_boolean_member(o, "one_instance")) one++;
+    const int order = json_object_get_int_member(o, "iop_order");
+    if(order < last_order) order_ok = 0;
+    last_order = order;
+    JsonObject *p = json_object_get_object_member(o, "params");
+    GList *mem = json_object_get_members(p);
+    for(GList *m = mem; m; m = g_list_next(m))
+    {
+      JsonNode *n = json_object_get_member(p, m->data);
+      if(JSON_NODE_TYPE(n) == JSON_NODE_OBJECT) structs++;
+      if(JSON_NODE_TYPE(n) == JSON_NODE_ARRAY) arrays++;
+      if(JSON_NODE_TYPE(n) == JSON_NODE_VALUE && json_node_get_value_type(n) == G_TYPE_STRING
+         && g_str_has_prefix(json_node_get_string(n), "DT_")) enums++;
+    }
+    g_list_free(mem);
+  }
+  fprintf(stdout, "RESULT modules %u, without switch %d, in history %d, deprecated %d, one_instance %d; params: %d struct, %d array, %d enum-like fields\n",
+          json_array_get_length(a), no_switch, in_hist, deprecated, one, structs, arrays, enums);
+  CHECK(missing == 0, "%d missing keys", missing);
+  CHECK(order_ok, "modules not in pipeline order");
+  CHECK(no_switch > 0 && in_hist > 0 && deprecated > 0 && arrays > 0 && enums > 0, "flags or param tree incomplete");
+
+  // the nested shapes the specification names
+  JsonObject *rc = find_mod(mods, "rgbcurve", 0);
+  JsonNode *node = rc ? param_node(rc, "curve_nodes/0/1/x") : NULL;
+  CHECK(node && JSON_NODE_TYPE(node) == JSON_NODE_VALUE, "rgbcurve curve_nodes[0][1].x not in the tree");
+  JsonObject *ex0 = find_mod(mods, "exposure", 0);
+  node = ex0 ? param_node(ex0, "mode") : NULL;
+  CHECK(node && json_node_get_value_type(node) == G_TYPE_STRING, "exposure mode is not an enum name");
+  JsonObject *dm = find_mod(mods, "demosaic", 0);
+  CHECK(dm && !json_object_get_boolean_member(dm, "can_switch"), "demosaic should have no switch");
+  EXPECT(dtb_set_enabled("demosaic", 0, 0), DTB_E_ARG);
+  EXPECT(dtb_set_enabled("nosuchmodule", 0, 1), DTB_E_NOT_FOUND);
+  EXPECT(dtb_set_enabled("exposure", 99, 1), DTB_E_NOT_FOUND);
+  // no NaN or infinity anywhere: the JSON parsed, so they were written as null
+  json_node_unref(mods);
+
+  JsonNode *hist = get_history();
+  JsonObject *ho = json_node_get_object(hist);
+  JsonArray *items = json_object_get_array_member(ho, "items");
+  int hk = 0;
+  for(guint i = 0; i < json_array_get_length(items); i++)
+  {
+    JsonObject *o = json_array_get_object_element(items, i);
+    if(json_object_has_member(o, "num") && json_object_has_member(o, "op") && json_object_has_member(o, "priority")
+       && json_object_has_member(o, "name") && json_object_has_member(o, "instance_name")
+       && json_object_has_member(o, "enabled"))
+      hk++;
+  }
+  CHECK(json_object_has_member(ho, "end") && hk == (int)json_array_get_length(items), "history JSON shape");
+  json_node_unref(hist);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* C2: parameter paths, types, ranges, params_set, grouping, reset */
+static int cmd_params(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  int n0 = history_count(NULL);
+
+  // errors: nothing changes
+  EXPECT(dtb_param_set("exposure", 0, "exposure", "\"one\""), DTB_E_TYPE);
+  EXPECT(dtb_param_set("exposure", 0, "exposure", "true"), DTB_E_TYPE);
+  EXPECT(dtb_param_set("exposure", 0, "exposure", "19"), DTB_E_RANGE);
+  EXPECT(dtb_param_set("exposure", 0, "exposure", "-18.5"), DTB_E_RANGE);
+  EXPECT(dtb_param_set("exposure", 0, "nosuchfield", "1"), DTB_E_NOT_FOUND);
+  EXPECT(dtb_param_set("exposure", 0, "exposure[1]", "1"), DTB_E_NOT_FOUND);
+  EXPECT(dtb_param_set("exposure", 0, "exposure..x", "1"), DTB_E_ARG);
+  EXPECT(dtb_param_set("exposure", 0, "exposure", "{"), DTB_E_ARG);
+  EXPECT(dtb_param_set("exposure", 0, "mode", "1"), DTB_E_TYPE);                 // enum by name only
+  EXPECT(dtb_param_set("exposure", 0, "mode", "\"EXPOSURE_MODE_NOPE\""), DTB_E_RANGE);
+  EXPECT(dtb_param_set("exposure", 0, "compensate_exposure_bias", "1"), DTB_E_TYPE);
+  EXPECT(dtb_param_set("rgbcurve", 0, "curve_nodes[3][0].x", "0.5"), DTB_E_NOT_FOUND);  // 3 channels
+  EXPECT(dtb_param_set("rgbcurve", 0, "curve_nodes[0][0].x", "1.5"), DTB_E_RANGE);
+  EXPECT(dtb_param_set("rgbcurve", 0, "curve_nodes[0]", "0.5"), DTB_E_TYPE);
+  EXPECT(dtb_param_set("rgbcurve", 0, "curve_num_nodes[0]", "2.5"), DTB_E_TYPE);
+  EXPECT(dtb_params_set("exposure", 0, "{\"exposure\": 1.0, \"black\": 5}"), DTB_E_RANGE);
+  EXPECT(dtb_params_set("exposure", 0, "[1]"), DTB_E_ARG);
+  CHECK(history_count(NULL) == n0, "a refused change added history");
+  double ev0 = param_num("exposure", 0, "exposure");
+
+  // a path into an array of structs, an int array element, an enum by name
+  MUST(dtb_param_set("rgbcurve", 0, "curve_nodes[0][0].y", "0.08"));
+  CHECK(fabs(param_num("rgbcurve", 0, "curve_nodes/0/0/y") - 0.08) < 1e-6, "curve_nodes[0][0].y not set");
+  MUST(dtb_param_set("rgbcurve", 0, "preserve_colors", "\"DT_RGB_NORM_NONE\""));
+  JsonNode *m = get_modules();
+  JsonObject *rc = find_mod(m, "rgbcurve", 0);
+  CHECK(rc && json_object_get_boolean_member(rc, "enabled"), "param_set did not switch rgbcurve on");
+  CHECK(rc && !strcmp(json_node_get_string(param_node(rc, "preserve_colors")), "DT_RGB_NORM_NONE"), "enum not set");
+  json_node_unref(m);
+  const int n1 = history_count(NULL);
+  fprintf(stdout, "RESULT history after two rgbcurve changes %d -> %d\n", n0, n1);
+  CHECK(n1 == n0 + 1, "consecutive param_set on one instance did not merge (%d -> %d)", n0, n1);
+
+  // seal: the next change is a new item
+  MUST(dtb_history_seal());
+  MUST(dtb_param_set("rgbcurve", 0, "curve_nodes[0][1].y", "0.95"));
+  const int n2 = history_count(NULL);
+  CHECK(n2 == n1 + 1, "change after seal did not start a new item (%d -> %d)", n1, n2);
+  // another instance: new item
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.25"));
+  const int n3 = history_count(NULL);
+  CHECK(n3 == n2 + 1, "change on another instance merged (%d -> %d)", n2, n3);
+  // set_enabled seals first, and the next param_set is a new item again
+  MUST(dtb_set_enabled("vignette", 0, 1));
+  MUST(dtb_param_set("vignette", 0, "brightness", "-0.4"));
+  const int n4 = history_count(NULL);
+  CHECK(n4 == n3 + 2, "set_enabled + param_set on the same instance: %d -> %d, expected +2", n3, n4);
+  // params_set: several fields, one step
+  MUST(dtb_history_seal());
+  MUST(dtb_params_set("exposure", 0, "{\"exposure\": 0.75, \"black\": 0.002, \"compensate_exposure_bias\": true}"));
+  const int n5 = history_count(NULL);
+  CHECK(n5 == n4 + 1, "params_set made %d items", n5 - n4);
+  CHECK(fabs(param_num("exposure", 0, "exposure") - 0.75) < 1e-6 && fabs(param_num("exposure", 0, "black") - 0.002) < 1e-6,
+        "params_set values not set");
+  fprintf(stdout, "RESULT grouping history %d -> %d -> %d -> %d -> %d -> %d\n", n0, n1, n2, n3, n4, n5);
+  MUST(dtb_xmp_write(path_join(outdir, "params.xmp")));
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "params_bridge.ppm"), buf, w, h);
+  free(buf);
+
+  // module_reset: back to the defaults. A new instance starts from the
+  // defaults for its place (exposure's first instance has its own, see
+  // reload_defaults in iop/exposure.c), so change one and reset it
+  int np = -1;
+  MUST(dtb_instance_new("exposure", 0, &np));
+  m = get_modules();
+  JsonNode *fresh = json_node_copy(json_object_get_member(find_mod(m, "exposure", np), "params"));
+  json_node_unref(m);
+  MUST(dtb_params_set("exposure", np, "{\"exposure\": -1.5, \"black\": 0.01, \"mode\": \"EXPOSURE_MODE_DEFLICKER\"}"));
+  MUST(dtb_set_enabled("exposure", np, 0));
+  const int nr0 = history_count(NULL);
+  MUST(dtb_module_reset("exposure", np));
+  CHECK(history_count(NULL) == nr0 + 1, "reset is not one history item");
+  m = get_modules();
+  JsonObject *e1 = find_mod(m, "exposure", np);
+  if(!json_node_equal(fresh, json_object_get_member(e1, "params")))
+  {
+    gchar *x = json_to_string(fresh, FALSE), *y = json_to_string(json_object_get_member(e1, "params"), FALSE);
+    fprintf(stdout, "INFO new instance params %s\nINFO reset params        %s\n", x, y);
+    g_free(x);
+    g_free(y);
+  }
+  CHECK(json_node_equal(fresh, json_object_get_member(e1, "params")), "reset params differ from the instance's defaults");
+  CHECK(json_object_get_boolean_member(e1, "enabled"), "reset did not switch the module on (desktop does)");
+  json_node_unref(m);
+  json_node_unref(fresh);
+  // and the first instance: reset twice gives the same params
+  MUST(dtb_module_reset("exposure", 0));
+  char *r1 = get_modules_str();
+  MUST(dtb_module_reset("exposure", 0));
+  char *r2 = get_modules_str();
+  CHECK(!strcmp(r1, r2), "reset is not idempotent");
+  fprintf(stdout, "RESULT exposure.0 before %g, after reset %g\n", ev0, param_num("exposure", 0, "exposure"));
+  dtb_free(r1);
+  dtb_free(r2);
+  EXPECT(dtb_module_reset("exposure", 42), DTB_E_NOT_FOUND);
+  fprintf(stdout, "RESULT exposure before %g, reset to defaults\n", ev0);
+  MUST(dtb_instance_delete("exposure", np));
+  MUST(dtb_xmp_write(path_join(outdir, "reset.xmp")));
+  buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "reset_bridge.ppm"), buf, w, h);
+  free(buf);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* C3: undo and redo restore whole-history states exactly */
+typedef struct state_t
+{
+  char *modules, *history;
+  uint8_t *px;
+} state_t;
+
+static int g_pw, g_ph;
+
+static state_t state_take(void)
+{
+  state_t s = { get_modules_str(), get_history_str(), render_probe(&g_pw, &g_ph) };
+  return s;
+}
+
+static int state_equal(const state_t *a, const char *label)
+{
+  state_t b = state_take();
+  const int mj = strcmp(a->modules, b.modules) == 0;
+  const int hj = strcmp(a->history, b.history) == 0;
+  const int px = probe_diff(a->px, b.px, g_pw, g_ph);
+  fprintf(stdout, "RESULT %s modules %s history %s pixels max %d\n", label, mj ? "equal" : "DIFFER",
+          hj ? "equal" : "DIFFER", px);
+  if(!mj || !hj)
+  {
+    // the first difference, for the log
+    const char *x = mj ? a->history : a->modules, *y = mj ? b.history : b.modules;
+    size_t i = 0;
+    while(x[i] && x[i] == y[i]) i++;
+    const size_t s = i > 120 ? i - 120 : 0;
+    fprintf(stdout, "INFO first difference at %zu\nINFO had: %.300s\nINFO got: %.300s\n", i, x + s, y + s);
+  }
+  dtb_free(b.modules);
+  dtb_free(b.history);
+  free(b.px);
+  return mj && hj && px == 0;
+}
+
+static void state_free(state_t *s)
+{
+  dtb_free(s->modules);
+  dtb_free(s->history);
+  free(s->px);
+}
+
+static int undo_can(int *redo)
+{
+  JsonNode *n = get_json(dtb_undo_state);
+  JsonObject *o = json_node_get_object(n);
+  const int u = json_object_get_boolean_member(o, "can_undo");
+  if(redo) *redo = json_object_get_boolean_member(o, "can_redo");
+  json_node_unref(n);
+  return u;
+}
+
+static int cmd_undo(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  int redo = 0;
+  CHECK(!undo_can(&redo) && !redo, "fresh session can undo or redo");
+  EXPECT(dtb_undo(), DTB_E_STATE);
+  EXPECT(dtb_redo(), DTB_E_STATE);
+
+#define NSTEPS 12
+  state_t st[NSTEPS + 1];
+  const char *what[NSTEPS];
+  int k = 0, p = -1;
+  st[k] = state_take();
+  what[k] = "param_set x2 (merged)";
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.1"));
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.3"));
+  st[++k] = state_take();
+  what[k] = "set_enabled vignette";
+  MUST(dtb_set_enabled("vignette", 0, 1));
+  st[++k] = state_take();
+  what[k] = "params_set";
+  MUST(dtb_params_set("vignette", 0, "{\"brightness\": -0.6, \"saturation\": -0.2}"));
+  st[++k] = state_take();
+  what[k] = "instance_new";
+  MUST(dtb_instance_new("exposure", 0, &p));
+  st[++k] = state_take();
+  what[k] = "param_set new instance";
+  MUST(dtb_param_set("exposure", p, "exposure", "-0.7"));
+  st[++k] = state_take();
+  what[k] = "instance_rename";
+  MUST(dtb_instance_rename("exposure", p, "darker"));
+  st[++k] = state_take();
+  what[k] = "instance_move";
+  MUST(dtb_instance_move("exposure", p, 1));
+  st[++k] = state_take();
+  what[k] = "instance_duplicate";
+  int p2 = -1;
+  MUST(dtb_instance_duplicate("exposure", p, &p2));
+  st[++k] = state_take();
+  what[k] = "instance_delete priority 0";
+  MUST(dtb_instance_delete("exposure", 0));
+  st[++k] = state_take();
+  what[k] = "module_reset";
+  MUST(dtb_module_reset("vignette", 0));
+  st[++k] = state_take();
+  what[k] = "history_goto";
+  int end;
+  history_count(&end);
+  MUST(dtb_history_goto(end - 3));
+  st[++k] = state_take();
+  what[k] = "history_compress";
+  MUST(dtb_history_compress());
+  st[++k] = state_take();
+  fprintf(stdout, "RESULT states %d\n", k + 1);
+
+  // undo back to the start, checking each state
+  int ok = 1;
+  for(int i = k - 1; i >= 0; i--)
+  {
+    MUST(dtb_undo());
+    char label[160];
+    snprintf(label, sizeof(label), "undo of '%s' (state %d)", what[i], i);
+    ok &= state_equal(&st[i], label);
+  }
+  CHECK(ok, "undo did not restore every state exactly");
+  CHECK(!undo_can(&redo) && redo, "after undoing everything: can_undo or not can_redo");
+  EXPECT(dtb_undo(), DTB_E_STATE);
+  // and forward again
+  ok = 1;
+  for(int i = 1; i <= k; i++)
+  {
+    MUST(dtb_redo());
+    char label[160];
+    snprintf(label, sizeof(label), "redo of '%s' (state %d)", what[i - 1], i);
+    ok &= state_equal(&st[i], label);
+  }
+  CHECK(ok, "redo did not restore every state exactly");
+  EXPECT(dtb_redo(), DTB_E_STATE);
+  // a new change after an undo clears the redo states
+  MUST(dtb_undo());
+  // (priority 0 is gone: the remaining instances were renumbered)
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.2"));
+  undo_can(&redo);
+  CHECK(!redo, "redo still possible after a new change");
+  MUST(dtb_xmp_write(path_join(outdir, "undo.xmp")));
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "undo_bridge.ppm"), buf, w, h);
+  free(buf);
+  for(int i = 0; i <= k; i++) state_free(&st[i]);
+
+  // depth: 60 sealed changes, at least 50 undo steps
+  int steps = 0;
+  for(int i = 0; i < 60; i++)
+  {
+    char v[32];
+    snprintf(v, sizeof(v), "%.3f", 0.01 * i);
+    MUST(dtb_param_set("exposure", 0, "exposure", v));
+    MUST(dtb_history_seal());
+  }
+  while(dtb_undo() == DTB_OK && steps < 1000) steps++;
+  fprintf(stdout, "RESULT undo depth after 60 changes: %d steps\n", steps);
+  CHECK(steps >= 50, "only %d undo steps", steps);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* C4: module actions */
+static JsonNode *action(const char *op, int prio, const char *a, const char *args, int expect)
+{
+  char *res = NULL;
+  const int r = dtb_module_action(op, prio, a, args, &res);
+  if(r != expect)
+  {
+    fprintf(stdout, "FAIL module_action %s %s %s returned %d, expected %d [%s]\n", op, a, args ? args : "", r,
+            expect, dtb_last_error());
+    g_fail = 1;
+  }
+  if(r || !res)
+  {
+    dtb_free(res);
+    return NULL;
+  }
+  return jparse_owned(res);
+}
+
+/* the LUT root folder of C4, with one small .cube file generated here (a
+ * gentle warm tone curve); returns the darktablerc line that sets it, which
+ * must be in place before the engine starts */
+static char *actions_prepare(const char *outdir)
+{
+  char *lutdir = path_join(outdir, "luts");
+  mkdir(outdir, 0700);
+  mkdir(lutdir, 0700);
+  char *cube = path_join(lutdir, "warm.cube");
+  FILE *f = fopen(cube, "w");
+  if(!f)
+  {
+    fprintf(stdout, "FAIL cannot write %s\n", cube);
+    exit(1);
+  }
+  fprintf(f, "TITLE \"warm\"\nLUT_3D_SIZE 2\n");
+  for(int b = 0; b < 2; b++)
+    for(int g = 0; g < 2; g++)
+      for(int r = 0; r < 2; r++)
+        fprintf(f, "%.3f %.3f %.3f\n", r ? 1.0 : 0.06, g ? 0.96 : 0.03, b ? 0.85 : 0.0);
+  fclose(f);
+  return g_strdup_printf("plugins/darkroom/lut3d/def_path=%s\n", lutdir);
+}
+
+static int cmd_actions(const char *raw, const char *xmp, const char *outdir)
+{
+  char *cube = path_join(outdir, "luts/warm.cube");
+  MUST(dtb_open(raw, xmp));
+  action("exposure", 0, "anything", NULL, DTB_E_NOT_FOUND);
+  action("temperature", 0, "nosuchaction", NULL, DTB_E_NOT_FOUND);
+
+  // white balance
+  JsonNode *wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  double T0 = 0, tint0 = 0;
+  if(wb)
+  {
+    JsonObject *o = json_node_get_object(wb);
+    T0 = json_object_get_double_member(o, "temperature");
+    tint0 = json_object_get_double_member(o, "tint");
+    fprintf(stdout, "RESULT get_wb %.1f K tint %.4f preset %s\n", T0, tint0,
+            json_object_get_null_member(o, "preset") ? "null" : json_object_get_string_member(o, "preset"));
+    CHECK(T0 >= 1901 && T0 <= 25000, "temperature out of range");
+    json_node_unref(wb);
+  }
+  action("temperature", 0, "set_wb", "{\"temperature\": 100000, \"tint\": 1}", DTB_E_RANGE);
+  action("temperature", 0, "set_wb", "{\"temperature\": \"warm\"}", DTB_E_TYPE);
+  action("temperature", 0, "set_wb", "{\"temperature\": 4500, \"tint\": 1.05}", DTB_OK);
+  wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  if(wb)
+  {
+    JsonObject *o = json_node_get_object(wb);
+    const double T1 = json_object_get_double_member(o, "temperature"), tint1 = json_object_get_double_member(o, "tint");
+    fprintf(stdout, "RESULT after set_wb 4500/1.05: get_wb %.1f K tint %.4f preset %s\n", T1, tint1,
+            json_object_get_string_member(o, "preset"));
+    // the module's own conversion is a binary search to 1 K
+    CHECK(fabs(T1 - 4500) < 2.0 && fabs(tint1 - 1.05) < 0.002, "set_wb then get_wb: %.1f %.4f", T1, tint1);
+    CHECK(!strcmp(json_object_get_string_member(o, "preset"), "user modified"), "set_wb mode");
+    json_node_unref(wb);
+  }
+  JsonNode *pr = action("temperature", 0, "list_presets", NULL, DTB_OK);
+  const char *camera_preset = NULL;
+  if(pr)
+  {
+    JsonArray *a = json_node_get_array(pr);
+    fprintf(stdout, "RESULT white balance presets %u:", json_array_get_length(a));
+    for(guint i = 0; i < json_array_get_length(a); i++)
+    {
+      JsonObject *o = json_array_get_object_element(a, i);
+      fprintf(stdout, " '%s'", json_object_get_string_member(o, "name"));
+      if(!camera_preset && !strcmp(json_object_get_string_member(o, "kind"), "camera"))
+        camera_preset = g_strdup(json_object_get_string_member(o, "name"));
+    }
+    fprintf(stdout, "\n");
+    CHECK(json_array_get_length(a) >= 2, "no standard modes listed");
+    json_node_unref(pr);
+  }
+  action("temperature", 0, "apply_preset", "{\"name\": \"no such preset\"}", DTB_E_NOT_FOUND);
+  action("temperature", 0, "apply_preset", "{\"name\": \"camera reference\"}", DTB_OK);
+  wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  if(wb)
+  {
+    CHECK(!strcmp(json_object_get_string_member(json_node_get_object(wb), "preset"), "camera reference"), "mode");
+    json_node_unref(wb);
+  }
+  if(camera_preset)
+  {
+    char args[256];
+    snprintf(args, sizeof(args), "{\"name\": \"%s\"}", camera_preset);
+    action("temperature", 0, "apply_preset", args, DTB_OK);
+    wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+    if(wb)
+    {
+      const char *got = json_object_get_string_member(json_node_get_object(wb), "preset");
+      fprintf(stdout, "RESULT camera preset '%s' applied, get_wb reports '%s'\n", camera_preset, got);
+      CHECK(!strcmp(got, camera_preset), "camera preset not reported back");
+      json_node_unref(wb);
+    }
+    snprintf(args, sizeof(args), "{\"name\": \"%s\", \"tuning\": 99}", camera_preset);
+    action("temperature", 0, "apply_preset", args, DTB_E_RANGE);
+  }
+  else
+    fprintf(stdout, "INFO no camera white balance presets for this camera\n");
+  action("temperature", 0, "set_wb", "{\"temperature\": 5200, \"tint\": 0.98}", DTB_OK);
+
+  // lens
+  JsonNode *cams = action("lens", 0, "list_cameras", NULL, DTB_OK);
+  if(cams)
+  {
+    fprintf(stdout, "RESULT lensfun cameras %u\n", json_array_get_length(json_node_get_array(cams)));
+    CHECK(json_array_get_length(json_node_get_array(cams)) > 100, "too few cameras");
+    json_node_unref(cams);
+  }
+  JsonNode *mods = get_modules();
+  JsonObject *lens = find_mod(mods, "lens", 0);
+  gchar *cam = g_strdup(json_node_get_string(param_node(lens, "camera")));
+  gchar *lensname = g_strdup(json_node_get_string(param_node(lens, "lens")));
+  json_node_unref(mods);
+  fprintf(stdout, "RESULT lens params now: camera '%s' lens '%s'\n", cam, lensname);
+  action("lens", 0, "list_lenses", "{\"camera\": \"no such camera\"}", DTB_E_NOT_FOUND);
+  if(cam[0])
+  {
+    char args[512];
+    snprintf(args, sizeof(args), "{\"camera\": \"%s\"}", cam);
+    JsonNode *lenses = action("lens", 0, "list_lenses", args, DTB_OK);
+    const char *pick = NULL;
+    if(lenses)
+    {
+      JsonArray *a = json_node_get_array(lenses);
+      fprintf(stdout, "RESULT lenses for '%s': %u\n", cam, json_array_get_length(a));
+      // a lens other than the current one, to see the change
+      for(guint i = 0; i < json_array_get_length(a) && !pick; i++)
+      {
+        const char *mdl = json_object_get_string_member(json_array_get_object_element(a, i), "model");
+        if(strcmp(mdl, lensname)) pick = mdl;
+      }
+      if(pick)
+      {
+        snprintf(args, sizeof(args), "{\"camera\": \"%s\", \"lens\": \"%s\"}", cam, pick);
+        action("lens", 0, "set_lens", args, DTB_OK);
+        mods = get_modules();
+        lens = find_mod(mods, "lens", 0);
+        fprintf(stdout, "RESULT set_lens '%s': params lens '%s' scale %.5f crop %.3f\n", pick,
+                json_node_get_string(param_node(lens, "lens")), json_node_get_double(param_node(lens, "scale")),
+                json_node_get_double(param_node(lens, "crop")));
+        CHECK(!strcmp(json_node_get_string(param_node(lens, "lens")), pick), "set_lens did not set the lens");
+        json_node_unref(mods);
+        // and back to the original lens, which the rest compares with
+        snprintf(args, sizeof(args), "{\"camera\": \"%s\", \"lens\": \"%s\"}", cam, lensname);
+        if(lensname[0]) action("lens", 0, "set_lens", args, DTB_OK);
+      }
+      json_node_unref(lenses);
+    }
+    snprintf(args, sizeof(args), "{\"camera\": \"%s\", \"lens\": \"no such lens at all\"}", cam);
+    action("lens", 0, "set_lens", args, DTB_E_NOT_FOUND);
+  }
+  else
+    fprintf(stdout, "INFO the image's camera is not set in lens params\n");
+  g_free(cam);
+  g_free(lensname);
+
+  // lut3d
+  action("lut3d", 0, "set_file", "{\"path\": \"/etc/passwd\"}", DTB_E_ARG);
+  action("lut3d", 0, "set_file", "{\"path\": \"../x.cube\"}", DTB_E_ARG);
+  action("lut3d", 0, "set_file", "{\"path\": \"missing.cube\"}", DTB_E_IO);
+  char args[1024];
+  snprintf(args, sizeof(args), "{\"path\": \"%s\"}", cube);
+  action("lut3d", 0, "set_file", args, DTB_OK);
+  mods = get_modules();
+  JsonObject *lut = find_mod(mods, "lut3d", 0);
+  CHECK(!strcmp(json_node_get_string(param_node(lut, "filepath")), "warm.cube")
+        && json_object_get_boolean_member(lut, "enabled"), "lut3d filepath not set relative to the root");
+  json_node_unref(mods);
+
+  // denoise (profiled)
+  JsonNode *pf = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+  const char *other = NULL;
+  if(pf)
+  {
+    JsonArray *a = json_node_get_array(pf);
+    fprintf(stdout, "RESULT noise profiles %u:", json_array_get_length(a));
+    for(guint i = 0; i < json_array_get_length(a); i++)
+      fprintf(stdout, " '%s'", json_object_get_string_member(json_array_get_object_element(a, i), "name"));
+    fprintf(stdout, "\n");
+    CHECK(json_array_get_length(a) >= 1
+          && json_object_get_boolean_member(json_array_get_object_element(a, 0), "auto"), "no automatic entry");
+    if(json_array_get_length(a) > 1)
+      other = g_strdup(json_object_get_string_member(json_array_get_object_element(a, 1), "name"));
+    json_node_unref(pf);
+  }
+  action("denoiseprofile", 0, "set_profile", "{\"name\": \"no such profile\"}", DTB_E_NOT_FOUND);
+  if(other)
+  {
+    snprintf(args, sizeof(args), "{\"name\": \"%s\"}", other);
+    action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+    const double a0 = param_num("denoiseprofile", 0, "a/0");
+    fprintf(stdout, "RESULT set_profile '%s': a[0] %g\n", other, a0);
+    CHECK(a0 > 0, "profile a not set");
+  }
+  action("denoiseprofile", 0, "set_profile", "{\"name\": \"auto\"}", DTB_OK);
+  CHECK(param_num("denoiseprofile", 0, "a/0") == -1.0 || param_num("denoiseprofile", 0, "a/0") > 0,
+        "automatic profile not set");
+
+  MUST(dtb_xmp_write(path_join(outdir, "actions.xmp")));
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "actions_bridge.ppm"), buf, w, h);
+  free(buf);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* C5: thread count and pinning */
+static int count_threads_pinned_to(const char *list)
+{
+  DIR *d = opendir("/proc/self/task");
+  if(!d) return -1;
+  int n = 0;
+  struct dirent *e;
+  while((e = readdir(d)))
+  {
+    if(e->d_name[0] == '.') continue;
+    char p[512];
+    snprintf(p, sizeof(p), "/proc/self/task/%s/status", e->d_name);
+    gchar *s = read_file(p);
+    if(!s) continue;
+    const char *c = strstr(s, "Cpus_allowed_list:");
+    if(c)
+    {
+      c += strlen("Cpus_allowed_list:");
+      while(*c == ' ' || *c == '\t') c++;
+      if(!strncmp(c, list, strlen(list)) && (c[strlen(list)] == '\n' || c[strlen(list)] == '\0')) n++;
+    }
+    g_free(s);
+  }
+  closedir(d);
+  return n;
+}
+
+static long info_int(const char *key)
+{
+  JsonNode *n = get_json(dtb_engine_info);
+  const long v = json_object_get_int_member(json_node_get_object(n), key);
+  json_node_unref(n);
+  return v;
+}
+
+static int cmd_threads(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  const long max = info_int("threads_max");
+  MUST(dtb_open(raw, xmp));
+  int pw, ph;
+  uint8_t *ref = render_probe(&pw, &ph);
+  MUST(dtb_set_threads(1));
+  CHECK(info_int("threads") == 1, "threads not 1");
+  // a change, so that the render really runs with one thread
+  MUST(dtb_param_set("exposure", 0, "black", "0.001"));
+  const double t0 = now();
+  uint8_t *one = render_probe(&pw, &ph);
+  const double t1 = now() - t0;
+  MUST(dtb_set_threads(1000));
+  CHECK(info_int("threads") == max, "threads above the start-up count not clamped");
+  MUST(dtb_param_set("exposure", 0, "black", "0.0"));
+  const double t2 = now();
+  uint8_t *all = render_probe(&pw, &ph);
+  const double t3 = now() - t2;
+  MUST(dtb_set_threads(0));
+  CHECK(info_int("threads") == max, "threads not restored");
+  CHECK(probe_diff(ref, all, pw, ph) == 0, "render with all threads differs");
+  fprintf(stdout, "RESULT threads max %ld; probe render 1 thread %.3f s, %ld threads %.3f s (x86_64, 2 cores); 1 vs all max diff %d\n",
+          max, t1, max, t3, probe_diff(one, all, pw, ph) /* black differs */);
+
+  // pinning: every engine thread on CPU 0
+  EXPECT(dtb_set_thread_cpus((int[]){ 4096 }, 1), DTB_E_ARG);
+  EXPECT(dtb_set_thread_cpus(NULL, 1), DTB_E_ARG);
+  const int before = count_threads_pinned_to("0");
+  MUST(dtb_set_thread_cpus((int[]){ 0 }, 1));
+  MUST(dtb_param_set("exposure", 0, "black", "0.002"));
+  uint8_t *pinned = render_probe(&pw, &ph);
+  const int after = count_threads_pinned_to("0");
+  JsonNode *ei = get_json(dtb_engine_info);
+  JsonArray *tc = json_object_get_array_member(json_node_get_object(ei), "thread_cpus");
+  CHECK(json_array_get_length(tc) == 1 && json_array_get_int_element(tc, 0) == 0, "thread_cpus not reported");
+  json_node_unref(ei);
+  fprintf(stdout, "RESULT threads pinned to CPU 0: %d before, %d after (engine thread + %ld OpenMP threads expected)\n",
+          before, after, max - 1);
+  CHECK(after >= before + max, "fewer threads pinned than the engine thread and its workers (%d -> %d)", before, after);
+  MUST(dtb_set_thread_cpus(NULL, 0));
+  const int unpinned = count_threads_pinned_to("0");
+  fprintf(stdout, "RESULT after unpinning: %d threads still on CPU 0 only\n", unpinned);
+  CHECK(unpinned <= before, "unpinning left threads pinned");
+  MUST(dtb_param_set("exposure", 0, "black", "0.0"));
+  uint8_t *again = render_probe(&pw, &ph);
+  CHECK(probe_diff(ref, again, pw, ph) == 0, "render after pinning differs");
+  free(ref);
+  free(one);
+  free(all);
+  free(pinned);
+  free(again);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* C6: a read-only session refuses every mutating call */
+static int cmd_readonly(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)xmp;
+  char *bad = path_join(outdir, "newer.xmp");
+  gchar *before = read_file(bad);
+  MUST(dtb_open(raw, bad));
+  char *res = NULL;
+  int n = 0, refused = 0;
+#define RO(expr)                                                               \
+  do {                                                                         \
+    n++;                                                                       \
+    const int _r = (expr);                                                     \
+    if(_r == DTB_E_READ_ONLY) refused++;                                       \
+    else { fprintf(stdout, "FAIL read-only: %s returned %d\n", #expr, _r); g_fail = 1; } \
+  } while(0)
+  int np;
+  RO(dtb_param_set("exposure", 0, "exposure", "1.0"));
+  RO(dtb_params_set("exposure", 0, "{\"exposure\": 1.0}"));
+  RO(dtb_set_enabled("vignette", 0, 1));
+  RO(dtb_module_reset("exposure", 0));
+  RO(dtb_module_action("temperature", 0, "set_wb", "{\"temperature\": 5000, \"tint\": 1}", &res));
+  RO(dtb_module_action("temperature", 0, "apply_preset", "{\"name\": \"as shot\"}", &res));
+  RO(dtb_module_action("lens", 0, "set_lens", "{\"camera\": \"x\", \"lens\": \"y\"}", &res));
+  RO(dtb_module_action("lut3d", 0, "set_file", "{\"path\": \"x.cube\"}", &res));
+  RO(dtb_module_action("denoiseprofile", 0, "set_profile", "{\"name\": \"auto\"}", &res));
+  RO(dtb_instance_new("exposure", 0, &np));
+  RO(dtb_instance_duplicate("exposure", 0, &np));
+  RO(dtb_instance_delete("exposure", 0));
+  RO(dtb_instance_move("exposure", 0, 1));
+  RO(dtb_instance_rename("exposure", 0, "x"));
+  RO(dtb_history_goto(0));
+  RO(dtb_history_compress());
+  RO(dtb_undo());
+  RO(dtb_redo());
+  RO(dtb_mask_add_circle("exposure", 0, 0.5f, 0.5f, 0.1f, 0.01f));
+  RO(dtb_metadata_reload(bad));
+  RO(dtb_xmp_write(path_join(outdir, "ro_out.xmp")));
+  fprintf(stdout, "RESULT read-only session: %d of %d mutating calls refused\n", refused, n);
+  // what stays allowed: reading, rendering, export
+  JsonNode *m = get_modules();
+  json_node_unref(m);
+  JsonNode *h = get_history();
+  json_node_unref(h);
+  int w, hh;
+  uint8_t *px = render_probe(&w, &hh);
+  free(px);
+  JsonNode *wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  if(wb) json_node_unref(wb);
+  MUST(dtb_export(path_join(outdir, "ro_export.jpg"), "{\"max_width\": 512, \"max_height\": 512}"));
+  MUST(dtb_close());
+  gchar *after = read_file(bad);
+  CHECK(before && after && !strcmp(before, after), "the guarded XMP changed");
+  struct stat sb;
+  CHECK(stat(path_join(outdir, "ro_out.xmp"), &sb) != 0, "a read-only session wrote an XMP");
+  g_free(before);
+  g_free(after);
+  return g_fail;
+}
+
+/* C7: atomic xmp_write, export options, metadata_reload */
+static int count_temp_files(const char *dir)
+{
+  DIR *d = opendir(dir);
+  int n = 0;
+  struct dirent *e;
+  while(d && (e = readdir(d)))
+    if(e->d_name[0] == '.' && strstr(e->d_name, ".xmp.")) n++;
+  if(d) closedir(d);
+  return n;
+}
+
+static int cmd_output(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  char *out = path_join(outdir, "out.xmp");
+  unlink(out);
+  MUST(dtb_xmp_write(out));
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.4"));
+  MUST(dtb_xmp_write(out));  // over an existing, healthy file
+  CHECK(xmp_problems(out) == 0, "written XMP fails the guard");
+  CHECK(count_temp_files(outdir) == 0, "temporary files left next to the XMP");
+  EXPECT(dtb_xmp_write(path_join(outdir, "no/such/dir/x.xmp")), DTB_E_IO);
+  CHECK(count_temp_files(outdir) == 0, "temporary files left after a failed write");
+
+  // exports: format, depth, size, profile
+  struct { const char *name, *opts; int expect; } ex[] = {
+    { "e_default.jpg", NULL, DTB_OK },
+    { "e_q80_small.jpg", "{\"format\": \"jpeg\", \"quality\": 80, \"max_width\": 1000, \"max_height\": 1000}", DTB_OK },
+    { "e_8.png", "{\"format\": \"png\", \"bit_depth\": 8}", DTB_OK },
+    { "e_16.png", "{\"format\": \"png\", \"bit_depth\": 16, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    { "e_16.tif", "{\"format\": \"tiff\", \"bit_depth\": 16, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    { "e_32.tif", "{\"format\": \"tiff\", \"bit_depth\": 32, \"max_width\": 400, \"max_height\": 400}", DTB_OK },
+    { "e.webp", "{\"format\": \"webp\", \"quality\": 90, \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    { "e_adobe.jpg", "{\"profile\": \"adobergb\", \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    { "e_p3.jpg", "{\"profile\": \"displayp3\", \"max_width\": 800, \"max_height\": 800}", DTB_OK },
+    { "e_srgb.jpg", "{\"profile\": \"srgb\", \"max_width\": 800, \"max_height\": 800, \"high_quality\": false}", DTB_OK },
+    { "e_up.jpg", "{\"max_width\": 9000, \"max_height\": 9000, \"upscale\": true}", DTB_OK },
+    { "bad1.jpg", "{\"format\": \"bmp\"}", DTB_E_ARG },
+    { "bad2.jpg", "{\"format\": \"jpeg\", \"bit_depth\": 16}", DTB_E_ARG },
+    { "bad3.jpg", "{\"quality\": 0}", DTB_E_RANGE },
+    { "bad4.jpg", "{\"colour\": 1}", DTB_E_ARG },
+    { "bad5.jpg", "{\"profile\": \"prophoto\"}", DTB_E_ARG },
+    { "bad6.jpg", "{\"upscale\": 1}", DTB_E_TYPE },
+  };
+  for(size_t i = 0; i < sizeof(ex) / sizeof(ex[0]); i++)
+  {
+    char *p = path_join(outdir, ex[i].name);
+    unlink(p);
+    const int r = dtb_export(p, ex[i].opts);
+    struct stat sb;
+    const long size = stat(p, &sb) == 0 ? (long)sb.st_size : -1;
+    fprintf(stdout, "RESULT export %s %s -> %d, %ld bytes\n", ex[i].name, ex[i].opts ? ex[i].opts : "(defaults)", r, size);
+    CHECK(r == ex[i].expect, "export %s returned %d, expected %d", ex[i].name, r, ex[i].expect);
+    if(ex[i].expect == DTB_OK) CHECK(size > 0, "export %s wrote nothing", ex[i].name);
+  }
+
+  // metadata_reload: a copy of the XMP with another rating and a colour
+  // label; history must stay as it is
+  gchar *text = read_file(out);
+  GString *s = g_string_new(text);
+  gchar *pos = strstr(s->str, "xmp:Rating=\"");
+  CHECK(pos != NULL, "no rating in the written XMP");
+  if(pos)
+  {
+    const gsize at = pos - s->str + strlen("xmp:Rating=\"");
+    gsize len = 0;
+    while(s->str[at + len] != '"') len++;
+    g_string_erase(s, at, len);
+    g_string_insert(s, at, "4");
+  }
+  // a colour label: darktable writes them as darktable:colorlabels <rdf:Seq>
+  pos = strstr(s->str, "<darktable:history>");
+  if(pos)
+    g_string_insert(s, pos - s->str,
+                    "<darktable:colorlabels>\n    <rdf:Seq>\n     <rdf:li>0</rdf:li>\n     <rdf:li>3</rdf:li>\n    </rdf:Seq>\n   </darktable:colorlabels>\n   ");
+  char *meta = path_join(outdir, "meta.xmp");
+  g_file_set_contents(meta, s->str, -1, NULL);
+  g_string_free(s, TRUE);
+  g_free(text);
+  char *hist_before = get_history_str();
+  char *mods_before = get_modules_str();
+  MUST(dtb_metadata_reload(meta));
+  char *hist_after = get_history_str();
+  char *mods_after = get_modules_str();
+  CHECK(!strcmp(hist_before, hist_after) && !strcmp(mods_before, mods_after), "metadata_reload changed the edit");
+  JsonNode *ii = get_json(dtb_image_info);
+  JsonObject *im = json_node_get_object(ii);
+  JsonArray *labels = json_object_get_array_member(im, "color_labels");
+  fprintf(stdout, "RESULT metadata_reload: rating %ld, labels %u%s%s\n", (long)json_object_get_int_member(im, "rating"),
+          json_array_get_length(labels),
+          json_array_get_length(labels) > 0 ? " first " : "",
+          json_array_get_length(labels) > 0 ? json_array_get_string_element(labels, 0) : "");
+  CHECK(json_object_get_int_member(im, "rating") == 4, "rating not reloaded");
+  CHECK(json_array_get_length(labels) == 2, "colour labels not reloaded");
+  json_node_unref(ii);
+  // the reloaded metadata go out with the next write, the edit as before
+  MUST(dtb_xmp_write(path_join(outdir, "meta_out.xmp")));
+  gchar *mo = read_file(path_join(outdir, "meta_out.xmp"));
+  CHECK(mo && strstr(mo, "xmp:Rating=\"4\""), "rating not written back");
+  g_free(mo);
+  EXPECT(dtb_metadata_reload(path_join(outdir, "missing.xmp")), DTB_E_IO);
+  MUST(dtb_close());
+  return g_fail;
+}
+
 int main(int argc, char **argv)
 {
   if(argc < 3)
@@ -678,20 +1689,38 @@ int main(int argc, char **argv)
   }
   setvbuf(stdout, NULL, _IOLBF, 0);
   const char *cmd = argv[2];
-  engine_start(argv[1]);
-  fprintf(stdout, "RESULT engine %s\n", dtb_engine_version());
+  if(!strcmp(cmd, "actions") && argc == 6)
+  {
+    char *rc = actions_prepare(argv[5]);
+    engine_start_ext(argv[1], 0, rc);
+    g_free(rc);
+  }
+  else
+    engine_start(argv[1]);
+  {
+    char *s = NULL;
+    MUST(dtb_engine_info(&s));
+    JsonNode *n = jparse_owned(s);
+    fprintf(stdout, "RESULT engine %s\n", json_object_get_string_member(json_node_get_object(n), "darktable_version"));
+    json_node_unref(n);
+  }
   int r = 2;
   if(!strcmp(cmd, "check") && argc == 4) r = cmd_check(argv[3]);
   else if(!strcmp(cmd, "render") && argc == 6) r = cmd_render(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "param") && argc == 6) r = cmd_param(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "instances") && argc == 6) r = cmd_instances(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "history") && argc == 6) r = cmd_history(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "region") && argc == 6) r = cmd_region(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "guard") && argc == 6) r = cmd_guard(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "timing") && argc == 6) r = cmd_timing(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "cancel") && argc == 6) r = cmd_cancel(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "mask") && argc == 6) r = cmd_mask(argv[3], argv[4], argv[5]);
-  else if(!strcmp(cmd, "extras") && argc == 6) r = cmd_extras(argv[3], argv[4], argv[5]);
+  else if(argc == 6)
+  {
+    static const struct { const char *name; int (*f)(const char *, const char *, const char *); } cmds[] = {
+      { "param", cmd_param }, { "instances", cmd_instances }, { "history", cmd_history },
+      { "region", cmd_region }, { "guard", cmd_guard }, { "timing", cmd_timing },
+      { "cancel", cmd_cancel }, { "mask", cmd_mask }, { "extras", cmd_extras },
+      { "api", cmd_api }, { "params", cmd_params }, { "undo", cmd_undo },
+      { "actions", cmd_actions }, { "threads", cmd_threads }, { "readonly", cmd_readonly },
+      { "output", cmd_output },
+    };
+    for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
+      if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);
+    if(r == 2) fprintf(stderr, "unknown command: %s\n", cmd);
+  }
   else if(!strcmp(cmd, "exposures") && argc == 5)
   {
     MUST(dtb_open(argv[3], argv[4]));
@@ -704,10 +1733,10 @@ int main(int argc, char **argv)
   else if(!strcmp(cmd, "modules") && argc == 5)
   {
     MUST(dtb_open(argv[3], argv[4]));
-    char *j = dtb_modules_json();
+    char *j = get_modules_str();
     fprintf(stdout, "%s\n", j);
     dtb_free(j);
-    char *hj = dtb_history_json();
+    char *hj = get_history_str();
     fprintf(stdout, "%s\n", hj);
     dtb_free(hj);
     r = 0;
