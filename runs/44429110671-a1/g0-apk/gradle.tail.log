@@ -1,0 +1,173 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :g0:preBuild UP-TO-DATE
+> Task :g0:preArm64DebugBuild UP-TO-DATE
+> Task :g0:mergeArm64DebugNativeDebugMetadata NO-SOURCE
+> Task :engine-jni:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-jni:preBuild UP-TO-DATE
+> Task :engine-jni:preDebugBuild UP-TO-DATE
+> Task :engine-jni:generateDebugResValues
+> Task :engine-jni:generateDebugResources
+> Task :engine-jni:packageDebugResources
+> Task :engine-jni:processDebugNavigationResources
+> Task :g0:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-jni:javaPreCompileDebug
+> Task :engine-jni:parseDebugLocalResources
+> Task :engine-jni:compileDebugLibraryResources
+> Task :engine-jni:writeDebugAarMetadata
+> Task :engine-jni:generateDebugRFile
+> Task :g0:processArm64DebugNavigationResources
+> Task :g0:checkArm64DebugAarMetadata
+> Task :g0:compileArm64DebugNavigationResources
+> Task :g0:generateArm64DebugResValues
+> Task :g0:mapArm64DebugSourceSetPaths
+> Task :g0:generateArm64DebugResources
+> Task :g0:packageArm64DebugResources
+> Task :g0:createArm64DebugCompatibleScreenManifests
+> Task :engine-jni:extractDeepLinksDebug
+> Task :g0:parseArm64DebugLocalResources
+> Task :g0:extractDeepLinksArm64Debug
+> Task :g0:javaPreCompileArm64Debug
+> Task :engine-jni:mergeDebugShaders
+> Task :engine-jni:compileDebugShaders NO-SOURCE
+> Task :engine-jni:generateDebugAssets UP-TO-DATE
+> Task :engine-jni:mergeDebugAssets
+> Task :g0:mergeArm64DebugShaders
+> Task :g0:compileArm64DebugShaders NO-SOURCE
+> Task :g0:generateArm64DebugAssets UP-TO-DATE
+> Task :g0:mergeArm64DebugResources
+> Task :engine-jni:processDebugManifest
+> Task :g0:packEngineArm64Debug
+> Task :g0:processArm64DebugMainManifest
+> Task :g0:processArm64DebugManifest
+> Task :g0:mergeArm64DebugAssets
+> Task :g0:processArm64DebugManifestForPackage
+> Task :g0:desugarArm64DebugFileDependencies
+> Task :g0:compressArm64DebugAssets
+> Task :g0:processArm64DebugResources
+> Task :g0:checkArm64DebugDuplicateClasses
+> Task :engine-jni:compileDebugKotlin
+> Task :engine-jni:configureCMakeDebug[arm64-v8a]
+> Task :engine-jni:compileDebugJavaWithJavac NO-SOURCE
+> Task :engine-jni:bundleLibRuntimeToJarDebug
+> Task :engine-jni:bundleLibCompileToJarDebug
+> Task :engine-jni:processDebugJavaRes
+> Task :g0:compileArm64DebugKotlin
+> Task :g0:mergeExtDexArm64Debug
+> Task :g0:compileArm64DebugJavaWithJavac NO-SOURCE
+> Task :g0:dexBuilderArm64Debug
+> Task :g0:mergeArm64DebugGlobalSynthetics
+> Task :g0:processArm64DebugJavaRes
+> Task :engine-jni:bundleLibRuntimeToDirDebug
+> Task :g0:mergeProjectDexArm64Debug
+> Task :g0:mergeArm64DebugJavaResource
+> Task :engine-jni:buildCMakeDebug[arm64-v8a]
+> Task :g0:mergeLibDexArm64Debug
+> Task :engine-jni:configureCMakeDebug[x86_64]
+> Task :engine-jni:buildCMakeDebug[x86_64]
+> Task :engine-jni:mergeDebugJniLibFolders
+> Task :g0:mergeArm64DebugJniLibFolders
+> Task :engine-jni:mergeDebugNativeLibs
+> Task :g0:validateSigningArm64Debug
+> Task :g0:writeArm64DebugAppMetadata
+> Task :engine-jni:copyDebugJniLibsProjectOnly
+> Task :g0:writeArm64DebugSigningConfigVersions
+> Task :g0:preX86_64DebugBuild UP-TO-DATE
+> Task :g0:mergeArm64DebugNativeLibs
+> Task :g0:mergeX86_64DebugNativeDebugMetadata NO-SOURCE
+> Task :g0:checkX86_64DebugAarMetadata
+> Task :g0:processX86_64DebugNavigationResources
+> Task :g0:compileX86_64DebugNavigationResources
+> Task :g0:stripArm64DebugDebugSymbols
+> Task :g0:generateX86_64DebugResValues
+> Task :g0:mapX86_64DebugSourceSetPaths
+> Task :g0:generateX86_64DebugResources
+> Task :g0:packageX86_64DebugResources
+> Task :g0:createX86_64DebugCompatibleScreenManifests
+> Task :g0:parseX86_64DebugLocalResources
+> Task :g0:extractDeepLinksX86_64Debug
+> Task :g0:mergeX86_64DebugResources
+> Task :g0:processX86_64DebugMainManifest
+> Task :g0:processX86_64DebugManifest
+> Task :g0:javaPreCompileX86_64Debug
+> Task :g0:mergeX86_64DebugShaders
+> Task :g0:compileX86_64DebugShaders NO-SOURCE
+> Task :g0:generateX86_64DebugAssets UP-TO-DATE
+> Task :g0:packageArm64Debug
+> Task :g0:createArm64DebugApkListingFileRedirect
+> Task :g0:processX86_64DebugManifestForPackage
+> Task :g0:assembleArm64Debug
+> Task :g0:processX86_64DebugResources
+> Task :g0:packEngineX86_64Debug
+> Task :g0:mergeX86_64DebugAssets
+> Task :g0:desugarX86_64DebugFileDependencies
+> Task :g0:checkX86_64DebugDuplicateClasses
+> Task :g0:mergeX86_64DebugJniLibFolders
+> Task :g0:mergeLibDexX86_64Debug
+> Task :g0:compressX86_64DebugAssets
+> Task :g0:mergeX86_64DebugNativeLibs
+> Task :g0:validateSigningX86_64Debug
+> Task :g0:writeX86_64DebugAppMetadata
+> Task :g0:writeX86_64DebugSigningConfigVersions
+> Task :g0:preX86_64DebugAndroidTestBuild SKIPPED
+> Task :g0:stripX86_64DebugDebugSymbols
+> Task :g0:checkX86_64DebugAndroidTestAarMetadata
+> Task :g0:processX86_64DebugAndroidTestNavigationResources
+> Task :g0:compileX86_64DebugAndroidTestNavigationResources
+> Task :g0:generateX86_64DebugAndroidTestResValues
+> Task :g0:mapX86_64DebugAndroidTestSourceSetPaths
+> Task :g0:generateX86_64DebugAndroidTestResources
+> Task :g0:mergeX86_64DebugAndroidTestResources
+> Task :g0:processX86_64DebugAndroidTestManifest
+> Task :g0:javaPreCompileX86_64DebugAndroidTest
+> Task :g0:processX86_64DebugAndroidTestResources
+> Task :g0:mergeX86_64DebugAndroidTestShaders
+> Task :g0:compileX86_64DebugAndroidTestShaders NO-SOURCE
+> Task :g0:generateX86_64DebugAndroidTestAssets UP-TO-DATE
+> Task :g0:mergeX86_64DebugAndroidTestAssets
+> Task :g0:compressX86_64DebugAndroidTestAssets
+> Task :g0:checkX86_64DebugAndroidTestDuplicateClasses
+> Task :g0:desugarX86_64DebugAndroidTestFileDependencies
+> Task :g0:mergeExtDexX86_64DebugAndroidTest
+> Task :g0:mergeLibDexX86_64DebugAndroidTest
+> Task :g0:mergeX86_64DebugAndroidTestJniLibFolders
+> Task :g0:mergeX86_64DebugAndroidTestNativeLibs NO-SOURCE
+> Task :g0:stripX86_64DebugAndroidTestDebugSymbols NO-SOURCE
+> Task :g0:validateSigningX86_64DebugAndroidTest
+> Task :g0:writeX86_64DebugAndroidTestSigningConfigVersions
+> Task :g0:mergeExtDexX86_64Debug
+> Task :g0:compileX86_64DebugKotlin
+> Task :g0:compileX86_64DebugJavaWithJavac NO-SOURCE
+> Task :g0:dexBuilderX86_64Debug
+> Task :g0:mergeX86_64DebugGlobalSynthetics
+> Task :g0:processX86_64DebugJavaRes
+> Task :g0:mergeProjectDexX86_64Debug
+> Task :g0:bundleX86_64DebugClassesToCompileJar
+> Task :g0:mergeX86_64DebugJavaResource
+> Task :g0:packageX86_64Debug
+> Task :g0:createX86_64DebugApkListingFileRedirect
+> Task :g0:assembleX86_64Debug
+> Task :g0:compileX86_64DebugAndroidTestKotlin
+> Task :g0:compileX86_64DebugAndroidTestJavaWithJavac NO-SOURCE
+> Task :g0:dexBuilderX86_64DebugAndroidTest
+> Task :g0:mergeProjectDexX86_64DebugAndroidTest
+> Task :g0:mergeX86_64DebugAndroidTestGlobalSynthetics
+> Task :g0:processX86_64DebugAndroidTestJavaRes
+> Task :g0:mergeX86_64DebugAndroidTestJavaResource
+> Task :g0:packageX86_64DebugAndroidTest
+> Task :g0:createX86_64DebugAndroidTestApkListingFileRedirect
+> Task :g0:assembleX86_64DebugAndroidTest
+
+BUILD SUCCESSFUL in 1m 59s
+130 actionable tasks: 130 executed
