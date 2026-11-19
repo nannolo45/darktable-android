@@ -63,6 +63,8 @@ for f in $(adb shell run-as $PKG ls files/p2b-test 2>/dev/null | tr -d '\r'); do
 done
 adb shell run-as $PKG du -sk files/engine 2>/dev/null | tr -d '\r' > "$OUT/p2b-test/unpacked-du-kb.txt"
 adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
+# brief P2f: the app's own lines without darktable's per-module "-d perf" lines, which fill the log
+grep -vE "dev_pixelpipe\]|DTB_TIMING" "$OUT/logcat.txt" | grep -E " (dt-android|dt-android-test|darktable|TestRunner|AndroidRuntime|DEBUG|libc) *:" > "$OUT/logcat-app.txt" || true
 grep -E " F DEBUG|Fatal signal|FATAL EXCEPTION| E AndroidRuntime| E dt-android" "$OUT/logcat.txt" > "$OUT/crashes.txt" || true
 {
   echo "install_s $(el "$t0" "$t1")"

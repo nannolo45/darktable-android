@@ -38,6 +38,21 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 22:00 UTC: run 44616800258 (2f2f375): with the time limits the emulator job ended (26 minutes of
+  instrumentation, red). 29 of 39 tests ran and passed (the contract suite, P2b's scenarios, l1, l6); l2, l3 and l5 failed
+  waiting 5 minutes for the darkroom to open a photo, l4 timed out after 10 minutes, then the process died with
+  "Scudo ERROR: corrupted chunk header" (native heap corruption) and the P2f tests never ran. The darkroom's
+  timeline in l2 shows the photo opened in the engine (open end at +28.9 s) but no preview after it, then a
+  LightPhotoLibrary preview render (+30.0 to +30.9 s), then nothing: the darkroom stopped working from there on.
+  Not yet known why: the thread dump came back empty (`Thread.getAllStackTraces()`), and logcat was cut to its last
+  4000 lines, filled with heartbeat lines. **This is treated as a bug in the app, not a slow test.**
+  Done now: (a) `JniEngine`: `renderCancel` and the calls that replace the session's pipes (open, close, cache drop,
+  shutdown) exclude each other (dtbridge.h: cancel must not run concurrently with close; P2f made cancels from other
+  threads frequent and background sessions close right after their render). Read of the bridge: the pipes are
+  embedded in the session, so this alone may not explain the corruption. (b) Diagnostics: the darkroom scheduler's
+  state, every thread's stack (by thread group) and the timeline are written on any test failure; the app's own log
+  lines (without darktable's per-module lines) are kept whole. Next: rerun, read where it waits, fix.
+
 - 2026-11-19 21:20: **the emulator job of run 44596781567 (b9dbd85) ran 105 minutes without ending; cancelled.**
   What is known: the instrumentation output reached the 27th of 39 tests (`JniEngineContractTest.
   exposureMakesThePictureBrighter`, which passed on every earlier run) before the log stops; the output was block

@@ -386,6 +386,7 @@ jobs:
           cp "$E/device.txt" "$E/instrument.txt" "$E/instrument-summary.txt" "$E/crashes.txt" "$E/timings.txt" "$L/" 2>/dev/null || true
           for f in "$E"/p2b-test/*; do case "$f" in *.jpg) ;; *) cp "$f" "$L/p2b-test/" ;; esac; done
           tail -n 4000 "$E/logcat.txt" > "$L/logcat-tail.txt" 2>/dev/null || true
+          tail -n 20000 "$E/logcat-app.txt" > "$L/logcat-app.txt" 2>/dev/null || true
           echo "test_rc: ${{ steps.r.outputs.test_rc }}" > "$L/summary.txt"
 
       - name: Push logs to ci-logs branch

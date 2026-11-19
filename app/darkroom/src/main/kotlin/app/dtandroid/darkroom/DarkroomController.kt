@@ -114,6 +114,11 @@ class DarkroomController(
 
     private val dragging get() = dragSize != null
 
+    /** Brief P2f: the scheduler's state in words, for test failures and the timings page. */
+    fun schedulerState(): String = "lock ${if (lock.isLocked) "held" else "free"}, interactive $interactive, background ${if (bgActive) "running" else "idle"}, " +
+        "dragging $dragging, quiet ${quiet()}, photo ${_state.value.current?.fileName} open ${_state.value.info != null}, loading ${_state.value.loading}, " +
+        "fetching $fetching, working ${_state.value.working}"
+
     private fun quiet(): Boolean =
         interactive.get() == 0 && !dragging && (System.nanoTime() - lastInteractiveEnd) / 1_000_000 >= QUIET_MS
 

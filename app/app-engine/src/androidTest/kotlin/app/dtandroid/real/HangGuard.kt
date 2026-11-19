@@ -20,12 +20,19 @@ object HangGuard {
         .outerRule(object : TestWatcher() {
             override fun failed(e: Throwable, d: Description) {
                 runCatching {
-                    val sb = StringBuilder("${d.displayName}: $e\n\n## timeline\n${Timeline.text()}\n\n## threads\n")
-                    for ((t, st) in Thread.getAllStackTraces()) {
+                    val sb = StringBuilder("${d.displayName}: $e\n\n## darkroom scheduler\n")
+                    sb.append(runCatching { AppHost.controller.schedulerState() }.getOrElse { "?" }).append("\n\n## timeline\n${Timeline.text()}\n\n## threads\n")
+                    // every thread of the process (Thread.getAllStackTraces() came back empty in run 44616800258)
+                    var g = Thread.currentThread().threadGroup!!
+                    while (g.parent != null) g = g.parent
+                    val ts = arrayOfNulls<Thread>(g.activeCount() * 2 + 16)
+                    val n = g.enumerate(ts, true)
+                    for (t in ts.take(n).filterNotNull()) {
                         sb.append("\"${t.name}\" ${t.state}\n")
-                        st.take(40).forEach { sb.append("    at ").append(it).append('\n') }
+                        t.stackTrace.take(40).forEach { sb.append("    at ").append(it).append('\n') }
                     }
                     File(TestFiles.out, "failure-${d.methodName}.txt").writeText(sb.toString())
+                    android.util.Log.e("dt-android-test", sb.toString().take(30_000))
                 }
             }
         })

@@ -119,9 +119,19 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     override suspend fun shutdown() = onEngine {
-        if (initialised) NativeBridge.shutdown()
-        initialised = false
+        synchronized(cancelGuard) { if (initialised) NativeBridge.shutdown(); initialised = false }
     }
+
+    /**
+     * Brief P2f: dtbridge.h says dtb_render_cancel() "must not be called concurrently with dtb_close()": it
+     * writes to the pipe of the render in flight, which close frees. The app now cancels often from other
+     * threads (interactive work stopping background renders, P2f), and a background task closes its own
+     * session right after its render; run 44616800258 ended in heap corruption ("Scudo ERROR: corrupted chunk
+     * header"). So [renderCancel] and every call that frees or replaces the session's pipes (open, close,
+     * shutdown) exclude each other with this lock. The lock is held only for the native cancel (a few
+     * instructions) or by the engine thread for the open or close itself.
+     */
+    private val cancelGuard = Any()
 
     override suspend fun engineInfo(): EngineInfo = onEngine { EngineInfo.fromJson(get(NativeBridge.JSON_ENGINE_INFO)) }
 
@@ -152,9 +162,11 @@ class JniEngine private constructor() : DarktableEngine {
 
     // ------------------------------------------------------------------ 2.3 session
 
-    override suspend fun open(rawPath: String, xmpPath: String?) = onEngine { requireInit(); check(NativeBridge.open(rawPath, xmpPath)) }
+    override suspend fun open(rawPath: String, xmpPath: String?) = onEngine {
+        requireInit(); check(synchronized(cancelGuard) { NativeBridge.open(rawPath, xmpPath) })
+    }
 
-    override suspend fun close() = onEngine { requireInit(); check(NativeBridge.close()) }
+    override suspend fun close() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.close() }) }
 
     override suspend fun imageInfo(): ImageInfo = onEngine { ImageInfo.fromJson(get(NativeBridge.JSON_IMAGE_INFO)) }
 
@@ -269,10 +281,10 @@ class JniEngine private constructor() : DarktableEngine {
     override fun renderCancel() {
         if (!initialised) return
         cancels.incrementAndGet()
-        NativeBridge.renderCancel()
+        synchronized(cancelGuard) { if (initialised) NativeBridge.renderCancel() }
     }
 
-    override suspend fun cacheDrop() = onEngine { requireInit(); check(NativeBridge.cacheDrop()) }
+    override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }
 
     // ------------------------------------------------------------------ 2.8 output
 
