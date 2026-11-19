@@ -122,9 +122,24 @@ sealed class Control {
         val textDefault: String?,
         /** true when the parameter is an integer */
         val integer: Boolean,
+        /**
+         * The track's colour stops as desktop sets them when the panel is built (P1c), in the order
+         * desktop set them; empty for a plain slider.
+         */
+        val gradient: List<GradientStop> = emptyList(),
+        /** desktop recomputes the stops while editing (P1c); the app shows them as extracted for now */
+        val gradientRecomputed: Boolean = false,
+        /** desktop's fill from the zero point to the value ("fill feedback") */
+        val fillFeedback: Boolean = true,
     ) : Control() {
         override val isEditable get() = binding !is Binding.None
     }
+
+    /**
+     * One colour stop of a slider (bauhaus.c, dt_bauhaus_slider_set_stop): [position] in 0..1 of the
+     * hard range, colour as the 0..1 RGB values desktop gives cairo.
+     */
+    data class GradientStop(val position: Double, val red: Double, val green: Double, val blue: Double)
 
     data class Entry(val label: String, val value: Int, val sensitive: Boolean)
 

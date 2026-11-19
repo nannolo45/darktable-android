@@ -56,6 +56,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.BlendMode
+import app.dtandroid.ui.theme.SliderGradient
 
 /** What the generated controls need from the screen. */
 class PanelContext(
@@ -222,8 +225,30 @@ fun SliderControl(
         }
         Spacer(Modifier.height(DtTheme.space.s))
         BoxWithConstraints(Modifier.fillMaxWidth().height(z.sliderTrack + z.sliderMarkerHeight)) {
+            // P1c: a slider with colour stops shows them in its track, as desktop's
+            // _draw_baseline (bauhaus.c) does: the gradient over the track's colour, the fill only
+            // for sliders with desktop's fill feedback, brightening ("screen") so the colours stay
+            val gradientAlpha = DtTheme.alpha.sliderGradient
+            val gradient = remember(slider, width, gradientAlpha) {
+                SliderGradient.brush(
+                    slider.gradient.map { SliderGradient.Stop(it.position, it.red, it.green, it.blue) },
+                    slider.softMin, slider.softMax, slider.hardMin, slider.hardMax, width.toFloat(),
+                    gradientAlpha,
+                )
+            }
             Box(Modifier.fillMaxWidth().height(z.sliderTrack).background(c.sliderTrack)) {
-                Box(Modifier.fillMaxWidth(fraction).height(z.sliderTrack).background(if (enabled) c.sliderFill else c.header))
+                if (gradient != null) {
+                    Box(Modifier.fillMaxWidth().height(z.sliderTrack).background(gradient))
+                    if (slider.fillFeedback) {
+                        Box(
+                            Modifier.fillMaxWidth(fraction).height(z.sliderTrack).drawBehind {
+                                drawRect(if (enabled) c.sliderFill else c.header, blendMode = BlendMode.Screen)
+                            },
+                        )
+                    }
+                } else {
+                    Box(Modifier.fillMaxWidth(fraction).height(z.sliderTrack).background(if (enabled) c.sliderFill else c.header))
+                }
             }
             DtIconImage(
                 DtIcon.SliderMarker, null, textColor, z.sliderMarkerWidth,

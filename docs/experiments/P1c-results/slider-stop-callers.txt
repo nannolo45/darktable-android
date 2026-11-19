@@ -1,0 +1,31 @@
+src/iop/agx.c: _paint_slider_gradient <- {_setup_hue_slider <- {_create_primaries_page <- {gui_init}}, _setup_purity_slider <- {_create_primaries_page <- {gui_init}}}
+src/iop/agx.c: _setup_purity_slider <- {_create_primaries_page <- {gui_init}}
+src/iop/channelmixerrgb.c: _paint_hue <- {_auto_set_illuminant <- {_spot_settings_changed_callback, color_picker_apply}, _spot_settings_changed_callback, gui_changed <- {_commit_profile_callback, _develop_ui_pipe_finished_callback, gui_focus, gui_reset, gui_update, reload_defaults}}
+src/iop/channelmixerrgb.c: _paint_temperature_background <- {gui_init}
+src/iop/channelmixerrgb.c: _update_RGB_slider_stop <- {_update_RGB_colors <- {gui_changed <- {_commit_profile_callback, _develop_ui_pipe_finished_callback, gui_focus, gui_reset, gui_update, reload_defaults}}}
+src/iop/channelmixerrgb.c: _update_xy_color <- {_update_illuminant_color <- {_auto_set_illuminant <- {_spot_settings_changed_callback, color_picker_apply}, _develop_ui_pipe_finished_callback, _illum_xy_callback, _preview_pipe_finished_callback, gui_changed <- {_commit_profile_callback, _develop_ui_pipe_finished_callback, gui_focus, gui_reset, gui_update, reload_defaults}}}
+src/iop/colorbalance.c: gui_init
+src/iop/colorbalance.c: update_saturation_slider_color <- {_cycle_layout_callback, set_HSL_sliders <- {apply_autocolor <- {color_picker_apply}, apply_gain_neutralize <- {color_picker_apply}, apply_gamma_neutralize <- {color_picker_apply}, apply_lift_neutralize <- {color_picker_apply}, gui_changed <- {gui_update}}}
+src/iop/colorbalancergb.c: gui_init
+src/iop/colorbalancergb.c: paint_chroma_slider <- {gui_changed <- {color_picker_apply, gui_update}}
+src/iop/colorbalancergb.c: paint_hue_sliders <- {gui_changed <- {color_picker_apply, gui_update}}
+src/iop/colorchecker.c: gui_init
+src/iop/colorequal.c: commit_params <- {gui_post_expose <- {mouse_leave}}
+src/iop/colorharmonizer.c: _paint_hue_slider <- {_paint_all_hue_sliders <- {gui_changed <- {_anchor_hue_slider_changed, _apply_auto_detect_harmony <- {_auto_detect_button_enable_idle, _auto_detect_callback}, _apply_harmony_guide <- {_on_vectorscope_harmony_changed, _set_from_vectorscope_callback}, _on_vectorscope_harmony_changed, color_picker_apply, gui_update}}}
+src/iop/colorharmonizer.c: _paint_sat_slider <- {_paint_all_sat_sliders <- {_custom_hue_changed, _on_vectorscope_harmony_changed, gui_changed <- {_anchor_hue_slider_changed, _apply_auto_detect_harmony <- {_auto_detect_button_enable_idle, _auto_detect_callback}, _apply_harmony_guide <- {_on_vectorscope_harmony_changed, _set_from_vectorscope_callback}, _on_vectorscope_harmony_changed, color_picker_apply, gui_update}}}
+src/iop/colorize.c: gui_init
+src/iop/colorize.c: update_saturation_slider_end_color <- {color_picker_apply, gui_changed, gui_update}
+src/iop/colorreconstruction.c: gui_init
+src/iop/exposure.c: _paint_hue <- {_auto_set_exposure <- {_spot_settings_changed_callback, color_picker_apply}, _spot_settings_changed_callback}
+src/iop/graduatednd.c: _update_saturation_slider_end_color <- {color_picker_apply, gui_changed, gui_update}
+src/iop/graduatednd.c: gui_init
+src/iop/primaries.c: _paint_hue_slider <- {gui_changed <- {_signal_profile_changed, _signal_profile_user_changed}}
+src/iop/primaries.c: _paint_purity_slider <- {gui_changed <- {_signal_profile_changed, _signal_profile_user_changed}}
+src/iop/sigmoid.c: gui_init
+src/iop/splittoning.c: gui_init
+src/iop/splittoning.c: gui_init_section <- {gui_init}
+src/iop/splittoning.c: update_balance_slider_colors <- {color_picker_apply, colorpick_callback, gui_changed, gui_update}
+src/iop/splittoning.c: update_saturation_slider_end_color <- {color_picker_apply, gui_changed, gui_update}
+src/iop/temperature.c: _color_finetuning_slider <- {_preference_changed, _preset_tune_callback, gui_reset, gui_update, temp_label_click}
+src/iop/temperature.c: _color_rgb_sliders <- {_preference_changed, _preset_tune_callback, gui_reset, gui_update, temp_label_click}
+src/iop/temperature.c: _color_temptint_sliders <- {_preference_changed, _preset_tune_callback, gui_reset, gui_update, temp_label_click}

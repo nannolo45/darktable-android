@@ -107,6 +107,8 @@ class DtTextSizes(t: TokenSource) {
 class DtAlpha(t: TokenSource) {
     /** history steps above the current one */
     val dimmed: Float = t.number("alpha.dimmed").toFloat()
+    /** colour stops of a slider's track: desktop paints them at 0.4 (bauhaus.c, _draw_baseline) */
+    val sliderGradient: Float = t.number("alpha.sliderGradient").toFloat()
 }
 
 /** All tokens of one palette. */

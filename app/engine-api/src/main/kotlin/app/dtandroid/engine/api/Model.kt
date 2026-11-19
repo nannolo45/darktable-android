@@ -332,6 +332,8 @@ data class HistoryItem(
     val name: String,
     val instanceName: String,
     val enabled: Boolean,
+    /** An item the engine could not load (read-only session, unknown module); no effect on the picture. */
+    val unknown: Boolean = false,
 )
 
 /** history() (engine-api.md 2.6). `end` is the number of items in effect. */
@@ -346,6 +348,7 @@ data class History(val end: Int, val items: List<HistoryItem>) {
                 put("name", i.name)
                 put("instance_name", i.instanceName)
                 put("enabled", i.enabled)
+                put("unknown", i.unknown)
             })
         })
     }
@@ -364,6 +367,7 @@ data class History(val end: Int, val items: List<HistoryItem>) {
                         name = i.str("name"),
                         instanceName = i.strOrNull("instance_name") ?: "",
                         enabled = i.bool("enabled"),
+                        unknown = (i["unknown"] as? JsonPrimitive)?.booleanOrNull ?: false,
                     )
                 },
             )

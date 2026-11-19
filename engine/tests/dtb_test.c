@@ -508,6 +508,50 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_param_set("demosaic", 0, "demosaicing_method", v));
     fprintf(stdout, "RESULT demosaicing_method %s\n", dm);
   }
+  // DTB_TEST_PARAMS="op:path=value;...": parameter changes before the
+  // region test (t5_bisect.sh, P1c), for example "spektrafilm:grain_on=false"
+  const char *tp = getenv("DTB_TEST_PARAMS");
+  if(tp && *tp)
+  {
+    gchar **items = g_strsplit(tp, ";", -1);
+    for(int i = 0; items[i]; i++)
+    {
+      gchar **kv = g_strsplit(items[i], "=", 2);
+      gchar **opp = kv[0] && kv[1] ? g_strsplit(kv[0], ":", 2) : NULL;
+      if(opp && opp[0] && opp[1])
+      {
+        MUST(dtb_param_set(opp[0], 0, opp[1], kv[1]));
+        fprintf(stdout, "RESULT param %s.%s = %s\n", opp[0], opp[1], kv[1]);
+      }
+      g_strfreev(opp);
+      g_strfreev(kv);
+    }
+    g_strfreev(items);
+  }
+  // DTB_TEST_ON="op,op": switch modules on with their defaults (P1c)
+  const char *ton = getenv("DTB_TEST_ON");
+  if(ton && *ton)
+  {
+    gchar **ops = g_strsplit(ton, ",", -1);
+    for(int i = 0; ops[i]; i++)
+    {
+      const int r = dtb_set_enabled(ops[i], 0, 1);
+      fprintf(stdout, "RESULT on %s: %d\n", ops[i], r);
+    }
+    g_strfreev(ops);
+  }
+  // DTB_TEST_OFF="op,op": switch modules off (t5_bisect.sh, P1c)
+  const char *toff = getenv("DTB_TEST_OFF");
+  if(toff && *toff)
+  {
+    gchar **ops = g_strsplit(toff, ",", -1);
+    for(int i = 0; ops[i]; i++)
+    {
+      const int r = dtb_set_enabled(ops[i], 0, 0);
+      fprintf(stdout, "RESULT off %s: %d\n", ops[i], r);
+    }
+    g_strfreev(ops);
+  }
   fprintf(stdout, "RESULT margin_env %s\n", getenv("DTB_REGION_MARGIN") ? getenv("DTB_REGION_MARGIN") : "default");
   int w, h;
   uint8_t *full = render_full(&w, &h, NULL);
@@ -548,6 +592,43 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
     write_ppm(path_join(outdir, name), crop, rw, rh);
     fprintf(stdout, "RESULT region%d_origin %d %d\n", i, xs[i], ys[i]);
   }
+  // P1c: the same regions again, in reverse order: a region must not depend
+  // on what was rendered before it
+  for(int i = 2; i >= 0; i--)
+  {
+    uint8_t *again = malloc((size_t)4 * rw * rh);
+    MUST(dtb_render_region(xs[i], ys[i], rw, rh, 1.0f, again));
+    for(int y = 0; y < rh; y++)
+      memcpy(crop + (size_t)4 * rw * y, full + 4 * ((size_t)(ys[i] + y) * w + xs[i]), (size_t)4 * rw);
+    int mx;
+    double mean;
+    diff_stats(again, crop, (size_t)rw * rh, &mx, &mean);
+    fprintf(stdout, "RESULT region %d again (reverse order) vs full max %d mean %.4f\n", i, mx, mean);
+    free(again);
+  }
+  // information (P1c): the same at scale 0.5, the app's zoomed-out view
+  {
+    int hw, hh;
+    MUST(dtb_render_size(0.5f, &hw, &hh));
+    uint8_t *hfull = malloc((size_t)4 * hw * hh);
+    MUST(dtb_render_region(0, 0, hw, hh, 0.5f, hfull));
+    const int rx[2] = { (hw - 256) / 2 + 1, 0 }, ry[2] = { (hh - 256) / 2 + 1, 0 };
+    uint8_t *hr = malloc((size_t)4 * 256 * 256), *hc = malloc((size_t)4 * 256 * 256);
+    for(int i = 0; i < 2; i++)
+    {
+      MUST(dtb_render_region(rx[i], ry[i], 256, 256, 0.5f, hr));
+      for(int y = 0; y < 256; y++)
+        memcpy(hc + (size_t)4 * 256 * y, hfull + 4 * ((size_t)(ry[i] + y) * hw + rx[i]), (size_t)4 * 256);
+      int mx;
+      double mean;
+      diff_stats(hr, hc, (size_t)256 * 256, &mx, &mean);
+      fprintf(stdout, "RESULT half_scale region at %d,%d vs full render at scale 0.5: max %d mean %.4f\n", rx[i], ry[i],
+              mx, mean);
+    }
+    free(hr);
+    free(hc);
+    free(hfull);
+  }
   free(reg);
   free(crop);
   free(full);
@@ -555,10 +636,99 @@ static int cmd_region(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* a small whole-image render, for comparing history states */
+static uint8_t *preview_px(int *w, int *h)
+{
+  uint8_t *p = NULL;
+  MUST(dtb_render_preview(384, &p, w, h));
+  return p;
+}
+
+/* P1c item 1: the history of a read-only session lists every entry of the
+ * XMP, flags the one the engine does not know, has end <= items, and
+ * history_goto works for every position; an unknown item changes nothing */
+static void guard_history(const char *xmp_path, const char *unknown_op)
+{
+  char *cj = NULL;
+  MUST(dtb_xmp_check(xmp_path, &cj));
+  JsonNode *cn = jparse_owned(cj);
+  const int entries = json_object_get_int_member(json_node_get_object(cn), "entries");
+  JsonArray *probs = json_object_get_array_member(json_node_get_object(cn), "problems");
+  const int problem_num = json_array_get_length(probs)
+                            ? json_object_get_int_member(json_array_get_object_element(probs, 0), "num") : -1;
+  json_node_unref(cn);
+
+  JsonNode *h = get_history();
+  JsonObject *ho = json_node_get_object(h);
+  JsonArray *items = json_object_get_array_member(ho, "items");
+  const int n = json_array_get_length(items);
+  const int end = json_object_get_int_member(ho, "end");
+  int unknown = 0, unknown_at = -1, flag_missing = 0;
+  for(int k = 0; k < n; k++)
+  {
+    JsonObject *it = json_array_get_object_element(items, k);
+    if(!json_object_has_member(it, "unknown")) { flag_missing++; continue; }
+    if(json_object_get_boolean_member(it, "unknown"))
+    {
+      unknown++;
+      unknown_at = k;
+      CHECK(unknown_op && !strcmp(json_object_get_string_member(it, "op"), unknown_op)
+              && !strcmp(json_object_get_string_member(it, "name"), unknown_op),
+            "unknown item %d has op '%s'", k, json_object_get_string_member(it, "op"));
+    }
+    CHECK(json_object_get_int_member(it, "num") == k, "item %d has num %ld", k,
+          (long)json_object_get_int_member(it, "num"));
+  }
+  json_node_unref(h);
+  fprintf(stdout, "RESULT read-only history %s: %d XMP entries, %d items, end %d, unknown items %d (at %d)\n",
+          xmp_path, entries, n, end, unknown, unknown_at);
+  CHECK(flag_missing == 0, "%d items without the unknown flag", flag_missing);
+  CHECK(end >= 0 && end <= n, "end %d outside 0..%d", end, n);
+  // every XMP entry is an item; the engine may add items of its own (a
+  // module that is on by default and missing from an old XMP's history)
+  CHECK(n >= entries, "%d items for %d XMP entries", n, entries);
+  CHECK(!unknown_op || unknown_at >= problem_num, "unknown item at %d, the XMP has it at %d", unknown_at, problem_num);
+  CHECK(unknown == (unknown_op ? 1 : 0), "%d unknown items, expected %d", unknown, unknown_op ? 1 : 0);
+
+  int w0, h0;
+  uint8_t *p0 = preview_px(&w0, &h0);
+  uint8_t *prev = NULL;
+  int moved = 0, unknown_step = -1;
+  for(int k = 0; k <= n; k++)
+  {
+    const int r = dtb_history_goto(k);
+    CHECK(r == DTB_OK, "history_goto(%d) of %d returned %d", k, n, r);
+    if(r) continue;
+    int e = -1;
+    history_count(&e);
+    CHECK(e == k, "after history_goto(%d) end is %d", k, e);
+    moved++;
+    int w, hh;
+    uint8_t *pk = preview_px(&w, &hh);
+    if(prev && k == unknown_at + 1 && w == w0 && hh == h0)
+    {
+      unknown_step = probe_diff(prev, pk, w, hh);
+      CHECK(unknown_step == 0, "the unknown item changed the picture (max %d)", unknown_step);
+    }
+    free(prev);
+    prev = pk;
+  }
+  free(prev);
+  MUST(dtb_history_goto(end));
+  int w1, h1;
+  uint8_t *p1 = preview_px(&w1, &h1);
+  const int back = (w1 == w0 && h1 == h0) ? probe_diff(p0, p1, w0, h0) : 999;
+  CHECK(back == 0, "back at end %d the picture differs from the opened one (max %d)", end, back);
+  free(p0);
+  free(p1);
+  fprintf(stdout, "RESULT read-only history_goto: %d of %d positions; step over the unknown item max %d;"
+          " back at end %d max %d\n", moved, n + 1, unknown_step, end, back);
+}
+
 static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
 {
-  const char *bad[2] = { "newer.xmp", "unknown.xmp" };
-  for(int i = 0; i < 2; i++)
+  const char *bad[3] = { "newer.xmp", "unknown.xmp", "unknown_first.xmp" };
+  for(int i = 0; i < 3; i++)
   {
     char *bx = path_join(outdir, bad[i]);
     char *j = NULL;
@@ -572,6 +742,7 @@ static int cmd_guard(const char *raw, const char *xmp, const char *outdir)
     JsonNode *info = get_json(dtb_image_info);
     CHECK(json_object_get_boolean_member(json_node_get_object(info), "read_only"), "%s: session not read-only", bad[i]);
     json_node_unref(info);
+    guard_history(bx, i >= 1 ? "s3notamodule" : NULL);
     int r = dtb_xmp_write(bx);
     fprintf(stdout, "RESULT write_over_%s %d\n", bad[i], r);
     CHECK(r == DTB_E_READ_ONLY, "write over %s not refused", bad[i]);
@@ -1463,6 +1634,79 @@ static int cmd_actions(const char *raw, const char *xmp, const char *outdir)
   CHECK(param_num("denoiseprofile", 0, "a/0") == -1.0 || param_num("denoiseprofile", 0, "a/0") > 0,
         "automatic profile not set");
 
+  // P1c item 6: every entry carries its position as "index", set_profile
+  // takes it, and two entries of one name are told apart by it
+  pf = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+  if(pf)
+  {
+    JsonArray *a = json_node_get_array(pf);
+    const guint n = json_array_get_length(a);
+    int bad_index = 0, dup_pairs = 0, dup_distinct = 0, by_index_ok = 0;
+    for(guint i = 0; i < n; i++)
+    {
+      JsonObject *e = json_array_get_object_element(a, i);
+      if(!json_object_has_member(e, "index") || json_object_get_int_member(e, "index") != (gint64)i) bad_index++;
+    }
+    CHECK(bad_index == 0, "%d noise profile entries without their position as index", bad_index);
+    for(guint i = 1; i < n; i++)
+    {
+      snprintf(args, sizeof(args), "{\"index\": %u}", i);
+      action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+      if(param_num("denoiseprofile", 0, "a/0") > 0) by_index_ok++;
+      const char *ni = json_object_get_string_member(json_array_get_object_element(a, i), "name");
+      for(guint k = 1; k < i; k++)
+      {
+        if(strcmp(ni, json_object_get_string_member(json_array_get_object_element(a, k), "name"))) continue;
+        // the same name twice: both reachable by index, and the name selects the first
+        dup_pairs++;
+        double ai[3], ak[3], an[3];
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          ai[c] = param_num("denoiseprofile", 0, pth);
+        }
+        snprintf(args, sizeof(args), "{\"index\": %u}", k);
+        action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          ak[c] = param_num("denoiseprofile", 0, pth);
+        }
+        snprintf(args, sizeof(args), "{\"name\": \"%s\"}", ni);
+        action("denoiseprofile", 0, "set_profile", args, DTB_OK);
+        for(int c = 0; c < 3; c++)
+        {
+          char pth[16];
+          snprintf(pth, sizeof(pth), "a/%d", c);
+          an[c] = param_num("denoiseprofile", 0, pth);
+        }
+        const gboolean distinct = ai[0] != ak[0] || ai[1] != ak[1] || ai[2] != ak[2];
+        if(distinct) dup_distinct++;
+        fprintf(stdout, "RESULT noise profile name '%s' at index %u and %u: a[0] %g and %g (%s); by name: %g\n", ni,
+                k, i, ak[0], ai[0], distinct ? "different profiles" : "same values", an[0]);
+        CHECK(an[0] == ak[0] && an[1] == ak[1] && an[2] == ak[2], "set_profile by name did not take the first entry");
+      }
+    }
+    CHECK(by_index_ok == (int)n - 1, "set_profile by index set a profile for %d of %u entries", by_index_ok, n - 1);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 0}", DTB_OK);
+    const double a_auto = param_num("denoiseprofile", 0, "a/0");
+    CHECK(a_auto == -1.0 || a_auto > 0, "index 0 did not set the automatic profile");
+    snprintf(args, sizeof(args), "{\"index\": %u}", n);
+    action("denoiseprofile", 0, "set_profile", args, DTB_E_RANGE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": -1}", DTB_E_RANGE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 1.5}", DTB_E_TYPE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": \"1\"}", DTB_E_TYPE);
+    action("denoiseprofile", 0, "set_profile", "{\"index\": 1, \"name\": \"auto\"}", DTB_E_ARG);
+    fprintf(stdout, "RESULT noise profile index: %u entries, index = position, %d set by index, %d repeated names"
+            " (%d with different values), errors RANGE/TYPE/ARG as specified\n", n, by_index_ok, dup_pairs,
+            dup_distinct);
+    json_node_unref(pf);
+    // back to the automatic profile, as the rest of the test expects
+    action("denoiseprofile", 0, "set_profile", "{\"name\": \"auto\"}", DTB_OK);
+  }
+
   MUST(dtb_xmp_write(path_join(outdir, "actions.xmp")));
   int w, h;
   uint8_t *buf = render_full(&w, &h, NULL);
@@ -1636,6 +1880,287 @@ static int cmd_readonly(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* C8 (P1c item 2): the edit a session starts from, within one process.
+ * open(raw, NULL) without a sidecar is the default edit every time; open
+ * with an XMP (given, or the sidecar next to the RAW) is exactly that XMP's
+ * edit, whatever earlier sessions changed. */
+typedef struct
+{
+  char *modules, *history;
+  uint8_t *px;
+  int w, h;
+} snap_t;
+
+static snap_t snap(void)
+{
+  snap_t s;
+  s.modules = get_modules_str();
+  s.history = get_history_str();
+  s.px = preview_px(&s.w, &s.h);
+  return s;
+}
+
+static void snap_free(snap_t *s)
+{
+  dtb_free(s->modules);
+  dtb_free(s->history);
+  free(s->px);
+}
+
+static void snap_same(const snap_t *a, const char *what)
+{
+  snap_t b = snap();
+  const int mod = !strcmp(a->modules, b.modules), his = !strcmp(a->history, b.history);
+  const int px = (a->w == b.w && a->h == b.h) ? probe_diff(a->px, b.px, a->w, a->h) : 999;
+  fprintf(stdout, "RESULT %s: modules %s, history %s, pixels max %d\n", what, mod ? "equal" : "DIFFER",
+          his ? "equal" : "DIFFER", px);
+  CHECK(mod && his && px == 0, "%s differs from the expected edit", what);
+  snap_free(&b);
+}
+
+static void some_edits(void)
+{
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.5"));
+  MUST(dtb_history_seal());
+  int np = 0;
+  MUST(dtb_instance_duplicate("exposure", 0, &np));
+  MUST(dtb_param_set("exposure", np, "exposure", "-0.7"));
+  MUST(dtb_set_enabled("vignette", 0, 1));
+  MUST(dtb_history_seal());
+  // items above the end, as P2b's reproduction left them
+  int end = 0;
+  history_count(&end);
+  MUST(dtb_history_goto(end - 1));
+}
+
+static int copy_file(const char *from, const char *to)
+{
+  gchar *buf = NULL;
+  gsize len = 0;
+  if(!g_file_get_contents(from, &buf, &len, NULL)) return 1;
+  const gboolean ok = g_file_set_contents(to, buf, len, NULL);
+  g_free(buf);
+  return ok ? 0 : 1;
+}
+
+static int cmd_reopen(const char *raw, const char *xmp, const char *outdir)
+{
+  // the default edit: the first import in this process (fresh library)
+  MUST(dtb_open(raw, NULL));
+  snap_t d0 = snap();
+  int d0_end = -1;
+  const int d0_items = history_count(&d0_end);
+  fprintf(stdout, "RESULT default edit: %d history items, end %d\n", d0_items, d0_end);
+  // every item of the default edit is in effect (a first import shows them all)
+  CHECK(d0_end == d0_items && d0_items > 0, "default edit: end %d with %d items", d0_end, d0_items);
+  {
+    int w, h;
+    uint8_t *buf = render_full(&w, &h, NULL);
+    write_ppm(path_join(outdir, "reopen_default_bridge.ppm"), buf, w, h);
+    free(buf);
+  }
+  some_edits();
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, NULL));
+  snap_same(&d0, "open(raw, NULL) after an edited session");
+  {
+    int e = -1;
+    const int n = history_count(&e);
+    CHECK(e == n, "default edit after reopening: end %d with %d items", e, n);
+  }
+  some_edits();
+  MUST(dtb_xmp_write(path_join(outdir, "reopen_edited.xmp")));
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, xmp));
+  snap_t x0 = snap();
+  some_edits();
+  MUST(dtb_close());
+  MUST(dtb_open(raw, xmp));
+  snap_same(&x0, "open(raw, xmp) after an edited session");
+  MUST(dtb_close());
+
+  MUST(dtb_open(raw, path_join(outdir, "reopen_edited.xmp")));
+  MUST(dtb_close());
+  MUST(dtb_open(raw, NULL));
+  snap_same(&d0, "open(raw, NULL) after a session on another XMP");
+  MUST(dtb_close());
+  MUST(dtb_open(raw, xmp));
+  snap_same(&x0, "open(raw, xmp) after a session on another XMP");
+  MUST(dtb_close());
+
+  // the sidecar next to the RAW counts as the XMP
+  char *dir = path_join(outdir, "sidecar");
+  mkdir(dir, 0700);
+  gchar *base = g_path_get_basename(raw);
+  char *copy = path_join(dir, base);
+  gchar *side = g_strconcat(copy, ".xmp", NULL);
+  CHECK(copy_file(raw, copy) == 0 && copy_file(xmp, side) == 0, "cannot copy the RAW and its sidecar");
+  MUST(dtb_open(copy, NULL));
+  snap_same(&x0, "open(copy, NULL) with a sidecar");
+  some_edits();
+  MUST(dtb_close());
+  MUST(dtb_open(copy, NULL));
+  snap_same(&x0, "open(copy, NULL) with a sidecar, after an edited session");
+  MUST(dtb_close());
+  unlink(side);
+  MUST(dtb_open(copy, NULL));
+  snap_same(&d0, "open(copy, NULL) after its sidecar was removed");
+  MUST(dtb_close());
+  unlink(copy);
+  g_free(base);
+  g_free(side);
+  snap_free(&d0);
+  snap_free(&x0);
+  return g_fail;
+}
+
+/* C9 (P1c item 5): consecutive parameter changes of one instance between
+ * seals (a slider drag) only resynchronise that item in the pipes
+ * (DT_DEV_PIPE_TOP_CHANGED, as desktop). After each drag the picture must
+ * equal a fresh session of the same edit, and at the end darktable-cli's. */
+static int cmd_drag(const char *raw, const char *xmp, const char *outdir)
+{
+  const char *klass = getenv("DTB_TEST_CLASS");
+  const gboolean bayer = klass && !strcmp(klass, "bayer");
+  struct { const char *op, *path, *v[3]; const char *before; int sealed; } cases[] = {
+    { "exposure", "exposure", { "0.3", "0.6", "0.9" }, NULL },
+    // three separate changes (a new item each, appended on top)
+    { "colorbalancergb", "saturation_global", { "0.1", "0.2", "0.3" }, NULL, 1 },
+    { "exposure", "black", { "0.001", "0.002", "0.003" }, NULL, 1 },
+    { "colorbalancergb", "vibrance", { "0.1", "0.2", "0.3" }, NULL },
+    { "sigmoid", "middle_grey_contrast", { "1.6", "1.8", "2.0" }, NULL },
+    { "temperature", "red", { "2.0", "1.9", "1.8" }, NULL },
+    // white balance dragged while color calibration adapts from it
+    { "temperature", "blue", { "1.3", "1.2", "1.1" }, "channelmixerrgb" },
+    { "colorin", "type", { "\"DT_COLORSPACE_STANDARD_MATRIX\"", "\"DT_COLORSPACE_LIN_REC709\"",
+                           "\"DT_COLORSPACE_ENHANCED_MATRIX\"" }, NULL },
+    { "demosaic", "demosaicing_method", { "\"DT_IOP_DEMOSAIC_RCD\"", "\"DT_IOP_DEMOSAIC_AMAZE\"",
+                                          "\"DT_IOP_DEMOSAIC_LMMSE\"" }, NULL },
+  };
+  char *tmpx = path_join(outdir, "drag_step.xmp");
+  MUST(dtb_open(raw, xmp));
+  int worst = 0, n = 0;
+  for(size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+  {
+    if(!strcmp(cases[c].op, "demosaic") && !bayer) continue;
+    if(cases[c].before) MUST(dtb_set_enabled(cases[c].before, 0, 1));
+    MUST(dtb_history_seal());
+    int items0 = history_count(NULL);
+    for(int k = 0; k < 3; k++)
+    {
+      MUST(dtb_param_set(cases[c].op, 0, cases[c].path, cases[c].v[k]));
+      if(cases[c].sealed) MUST(dtb_history_seal());
+      // the app renders the small picture after every step
+      int w, h;
+      uint8_t *p = preview_px(&w, &h);
+      free(p);
+    }
+    const int items1 = history_count(NULL);
+    int pw, ph, qw, qh;
+    uint8_t *probe = render_probe(&pw, &ph);
+    uint8_t *prev = preview_px(&qw, &qh);
+    MUST(dtb_history_seal());
+    MUST(dtb_xmp_write(tmpx));
+    MUST(dtb_close());
+    MUST(dtb_open(raw, tmpx));
+    int pw2, ph2, qw2, qh2;
+    uint8_t *probe2 = render_probe(&pw2, &ph2);
+    uint8_t *prev2 = preview_px(&qw2, &qh2);
+    const int d1 = (pw == pw2 && ph == ph2) ? probe_diff(probe, probe2, pw, ph) : 999;
+    const int d2 = (qw == qw2 && qh == qh2) ? probe_diff(prev, prev2, qw, qh) : 999;
+    fprintf(stdout, "RESULT %s %s.%s (3 steps, %d item%s): region vs fresh session max %d, preview max %d\n",
+            cases[c].sealed ? "sealed changes" : "drag", cases[c].op, cases[c].path, items1 - items0,
+            items1 - items0 == 1 ? "" : "s", d1, d2);
+    CHECK(items1 - items0 == (cases[c].sealed ? 3 : 1), "%s made %d items", cases[c].op, items1 - items0);
+    CHECK(d1 == 0 && d2 == 0, "after a drag of %s.%s the picture differs from a fresh session", cases[c].op,
+          cases[c].path);
+    worst = MAX(worst, MAX(d1, d2));
+    n++;
+    free(probe);
+    free(probe2);
+    free(prev);
+    free(prev2);
+  }
+  fprintf(stdout, "RESULT drag: %d drags, worst difference to a fresh session %d\n", n, worst);
+  MUST(dtb_xmp_write(path_join(outdir, "drag.xmp")));
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "drag_bridge.ppm"), buf, w, h);
+  free(buf);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* P1c item 5: where the time of a small preview render after a change goes.
+ * Prints per-step medians; run with DTB_TIMING=1 for the bridge's own step
+ * timers and DTB_DT_DEBUG=perf for darktable's per-module times. */
+static int cmp_dbl(const void *a, const void *b)
+{
+  const double x = *(const double *)a, y = *(const double *)b;
+  return x < y ? -1 : x > y;
+}
+
+static double median(double *v, int n)
+{
+  qsort(v, n, sizeof(double), cmp_dbl);
+  return n % 2 ? v[n / 2] : 0.5 * (v[n / 2 - 1] + v[n / 2]);
+}
+
+static void cost_series(const char *label, const char *op, const char *path, double base, int seal, int size,
+                        int n)
+{
+  double tp[64], tr[64];
+  for(int i = 0; i < n; i++)
+  {
+    char v[32];
+    snprintf(v, sizeof(v), "%.4f", base + 0.01 * (i + 1));
+    // the step's marker first, so the change's own timers count to this step
+    fprintf(stderr, "DTB_STEP %s %d %d\n", label, size, i);
+    fprintf(stdout, "DTB_STEP %s %d %d\n", label, size, i);
+    double t0 = now();
+    if(op) MUST(dtb_param_set(op, 0, path, v));
+    if(op && seal) MUST(dtb_history_seal());
+    tp[i] = (now() - t0) * 1e3;
+    t0 = now();
+    uint8_t *px = NULL;
+    int w, h;
+    MUST(dtb_render_preview(size, &px, &w, &h));
+    tr[i] = (now() - t0) * 1e3;
+    dtb_free(px);
+  }
+  const double mp = median(tp, n), mr = median(tr, n);  // sorts both
+  fprintf(stdout, "RESULT cost %s size %d: change %.2f ms, preview render %.2f ms (medians of %d; min %.2f max %.2f)\n",
+          label, size, mp, mr, n, tr[0], tr[n - 1]);
+}
+
+static int cmd_cost(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  uint8_t *px = NULL;
+  int w, h;
+  // warm: input loaded, pipe built, caches filled
+  for(int k = 0; k < 3; k++)
+  {
+    MUST(dtb_render_preview(320, &px, &w, &h));
+    dtb_free(px);
+  }
+  fprintf(stdout, "RESULT cost preview size %dx%d\n", w, h);
+  const int n = 9;
+  cost_series("unchanged", NULL, NULL, 0, 0, 320, n);
+  // a late module: color balance rgb (P2b's late change), merged into one
+  // item as a slider drag does, then one item per step (sealed)
+  cost_series("late_drag", "colorbalancergb", "vibrance", 0.1, 0, 320, n);
+  cost_series("late_sealed", "colorbalancergb", "vibrance", 0.3, 1, 320, n);
+  cost_series("early_drag", "exposure", "exposure", 0.5, 0, 320, n);
+  cost_series("late_drag", "colorbalancergb", "vibrance", 0.1, 0, 1024, n);
+  cost_series("unchanged", NULL, NULL, 0, 0, 1024, n);
+  MUST(dtb_close());
+  return g_fail;
+}
+
 /* C7: atomic xmp_write, export options, metadata_reload */
 static int count_temp_files(const char *dir)
 {
@@ -1784,7 +2309,8 @@ int main(int argc, char **argv)
       { "cancel", cmd_cancel }, { "mask", cmd_mask }, { "extras", cmd_extras },
       { "api", cmd_api }, { "params", cmd_params }, { "undo", cmd_undo },
       { "actions", cmd_actions }, { "threads", cmd_threads }, { "readonly", cmd_readonly },
-      { "output", cmd_output },
+      { "output", cmd_output }, { "reopen", cmd_reopen },
+      { "cost", cmd_cost }, { "drag", cmd_drag },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

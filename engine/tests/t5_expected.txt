@@ -1,0 +1,75 @@
+# Expected differences of test T5 (render_region vs the crop of the full render),
+# the one sanctioned exception to T5's tolerance 0 (brief P1c, item 3).
+# A line: image case region max mean module cause. A comparison not listed here
+# must be exact; a listed one fails above its bounds. Measured on x86_64; the
+# write-up (docs/experiments/P1c-engine-followups.md, item 3) has the numbers
+# and the reasoning.
+# image case region max mean module cause
+#
+# X-Trans image, top-left corner region (all differences within 10 px of the image's
+# own top and left edge). lens (embedded metadata) _modify_roi_in_md() (iop/lens.cc)
+# asks demosaic for the input bounding box of the window's own border: for a corner
+# window that box starts at raw (131,78), for the whole image at (103,2), so
+# Markesteijn demosaic (iop/demosaicing/xtrans.c) interpolates the raw pixels next to
+# the image edge as border pixels of its window in the region and as inner pixels in
+# the full render. A margin cannot move a window that already starts at the image edge;
+# only a window reaching the middle of the image's left and top edges would (5x more
+# pixels). Not a bridge error.
+raf base 1 11 0.0077
+#
+# P1c module sweep on the 10 MP image (each module switched on with its defaults).
+# shadows and highlights, lowpass, soften, bloom, denoise (profiled), monochrome:
+# the bridge widens the margin to the module's tiling overlap (render.c,
+# _reach_modules); what remains is at most 1 level (2 in one shadhi region). For
+# shadhi and lowpass (gaussian by default) the blur is recursive (common/gaussian.c),
+# so its reach has no end and the window edge still shows; for the others the
+# remaining 1-level differences were not analysed further. Without the wider margin:
+# shadhi max 28, soften 23, bloom 37, denoiseprofile 5, lowpass 2, monochrome 3.
+cr2 on-shadhi 0 2 0.0781
+cr2 on-shadhi 1 1 0.0731
+cr2 on-shadhi 2 1 0.0257
+cr2 on-lowpass 0 1 0.0020
+cr2 on-lowpass 1 1 0.0004
+cr2 on-lowpass 2 1 0.0003
+cr2 on-soften 0 1 0.0004
+cr2 on-soften 1 1 0.0003
+cr2 on-soften 2 1 0.0002
+cr2 on-bloom 0 1 0.0010
+cr2 on-bloom 1 1 0.0003
+cr2 on-bloom 2 1 0.0005
+cr2 on-denoiseprofile 0 1 0.0260
+cr2 on-denoiseprofile 1 1 0.0406
+cr2 on-denoiseprofile 2 1 0.0398
+cr2 on-monochrome 0 1 0.0099
+cr2 on-monochrome 1 1 0.0004
+cr2 on-monochrome 2 1 0.0003
+# surface blur (bilateral.cc) and astrophoto denoise (nlmeans.c): rounding, 1 level
+# in about 1 of 10 000 values, independent of the margin.
+cr2 on-bilateral 0 1 0.0001
+cr2 on-bilateral 1 1 0.0001
+cr2 on-bilateral 2 1 0.0002
+cr2 on-nlmeans 0 1 0.0002
+cr2 on-nlmeans 1 1 0.0002
+cr2 on-nlmeans 2 1 0.0002
+# local contrast (bilat.c, bilateral grid of common/bilateral.c): a wider margin
+# (256) halves the difference (max 18 -> 9) but no margin tried removes it; most
+# likely the grid's cells are laid out from the window's origin and size (not
+# verified in the code).
+cr2 on-bilat 0 9 1.6135
+cr2 on-bilat 1 4 1.0405
+cr2 on-bilat 2 5 1.5362
+# defringe (defringe.c) averages the edge chroma over the whole window it is given,
+# and global tonemap (globaltonemap.c, drago) takes the window's largest luminance:
+# both are statistics of the window, so a region differs from the full render
+# whatever the margin.
+cr2 on-defringe 0 81 0.2194
+cr2 on-defringe 1 92 0.6026
+cr2 on-defringe 2 92 1.4553
+cr2 on-globaltonemap 0 1 0.2162
+cr2 on-globaltonemap 1 70 63.7601
+cr2 on-globaltonemap 2 48 30.9887
+#
+# spektrafilm image, region near the bottom right: 1 level in 0.0003 % of the values
+# (2 of 786 432) on the 4-core CI runner, exact on the 2-core workspace (same build);
+# most likely rounding that depends on the number of threads. Not analysed further.
+arw base 2 1 0.0001

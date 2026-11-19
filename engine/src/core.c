@@ -79,6 +79,18 @@ JsonNode *dtb__json_parse(const char *text)
 /* ------------------------------------------------------------------ */
 /* lifecycle                                                          */
 
+double dtb__t(void)
+{
+  return g_get_monotonic_time() * 1e-3;
+}
+
+void dtb__tlog(const char *what, const double t0)
+{
+  static int on = -1;
+  if(on < 0) on = g_getenv("DTB_TIMING") != NULL;
+  if(on) fprintf(stderr, "DTB_TIMING %s %.3f\n", what, dtb__t() - t0);
+}
+
 int dtb_init(const dtb_paths_t *p, int threads)
 {
   if(dtb_inited) return dtb__err(DTB_E_STATE, "already initialised");
@@ -104,6 +116,19 @@ int dtb_init(const dtb_paths_t *p, int threads)
   // only dtb_xmp_write() does, after the version guard
   a[argc++] = g_strdup("--conf");
   a[argc++] = g_strdup("write_sidecar_files=never");
+  // DTB_DT_DEBUG="perf,params": darktable's own debug output (-d perf ...),
+  // for measurements only (P1c item 5)
+  const char *dbg = g_getenv("DTB_DT_DEBUG");
+  if(dbg)
+  {
+    gchar **parts = g_strsplit(dbg, ",", 6);
+    for(int i = 0; parts[i] && argc < 30; i++)
+    {
+      a[argc++] = g_strdup("-d");
+      a[argc++] = g_strdup(parts[i]);
+    }
+    g_strfreev(parts);
+  }
   a[argc] = NULL;
 
   g_mkdir_with_parents(p->configdir, 0700);

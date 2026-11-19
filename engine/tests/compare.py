@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Compare two 8-bit images (PNG or PPM) channel by channel.
 
-usage: python3 -I compare.py A B [--crop x y w h] [--tolerance N]
+usage: python3 -I compare.py A B [--crop x y w h] [--tolerance N] [--mean-tolerance M]
 
 --crop takes the region from B (B is the larger image).
 Prints max and mean absolute difference, PSNR and the share of differing
-values; exits 0 if max <= tolerance (default 1), else 1.
+values; exits 0 if max <= tolerance (default 1) and, when given, mean <=
+mean tolerance; else 1.
 """
 import math
 import sys
@@ -21,7 +22,12 @@ def load(path):
 def main(argv):
     args = argv[1:]
     tol = 1
+    mean_tol = None
     crop = None
+    if "--mean-tolerance" in args:
+        i = args.index("--mean-tolerance")
+        mean_tol = float(args[i + 1])
+        del args[i:i + 2]
     if "--tolerance" in args:
         i = args.index("--tolerance")
         tol = int(args[i + 1])
@@ -45,7 +51,7 @@ def main(argv):
     diff_share = float((d > 0).mean()) * 100
     print(f"size {a.shape[1]}x{a.shape[0]} max {mx} mean {mean:.5f} "
           f"psnr {psnr:.2f} differing_values_pct {diff_share:.4f}")
-    return 0 if mx <= tol else 1
+    return 0 if mx <= tol and (mean_tol is None or mean <= mean_tol) else 1
 
 
 if __name__ == "__main__":

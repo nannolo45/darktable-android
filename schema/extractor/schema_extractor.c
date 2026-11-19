@@ -118,7 +118,17 @@ typedef struct node_t
   int n_values;        // number of values a driver takes
   int default_pos;     // position at default parameters
   gboolean bound;      // bound to a module parameter
+  gchar *grad0;        // slider colour stops as the panel was built (P1c)
+  int grad_by;         // GRAD_BY_* bits: what made desktop recompute them
 } node_t;
+
+/* what changed a slider's colour stops after the panel was built (P1c) */
+enum
+{
+  GRAD_BY_LIST = 1,        // a list or switch the sweep set (the module's callbacks)
+  GRAD_BY_SLIDER = 2,      // moving a slider of the module (gui_changed)
+  GRAD_BY_GUI_UPDATE = 4,  // dt_iop_gui_update() with other parameters (undo, history)
+};
 
 typedef struct ctx_t
 {
@@ -425,6 +435,35 @@ static node_t *_new_node(ctx_t *c, GtkWidget *w, node_kind_t k, JsonBuilder *b)
 static void _walk_children(ctx_t *c, GtkWidget *w, JsonBuilder *b);
 static void _walk(ctx_t *c, GtkWidget *w, JsonBuilder *b);
 
+/* a slider's colour stops (dt_bauhaus_slider_set_stop: position in 0..1 of
+ * the hard range, colour as linear 0..1 RGB as given), rounded to 1e-4 so the
+ * file is stable across runs; also the fingerprint to compare them later */
+static double _r4(const double v) { return round(v * 1e4) / 1e4; }
+
+static gchar *_grad_fp(GtkWidget *w)
+{
+  if(!w || DT_BAUHAUS_WIDGET(w)->type != DT_BAUHAUS_SLIDER) return g_strdup("");
+  const dt_bauhaus_slider_data_t *d = &DT_BAUHAUS_WIDGET(w)->slider;
+  GString *s = g_string_new(NULL);
+  for(int k = 0; k < d->grad_cnt; k++)
+    g_string_append_printf(s, "%.4f %.4f %.4f %.4f;", _r4(d->grad_pos[k]), _r4(d->grad_col[k][0]),
+                           _r4(d->grad_col[k][1]), _r4(d->grad_col[k][2]));
+  return g_string_free(s, FALSE);
+}
+
+/* mark every slider whose stops differ from those of the built panel */
+static void _grad_check(ctx_t *c, const int by)
+{
+  for(guint i = 0; i < c->nodes->len; i++)
+  {
+    node_t *n = c->nodes->pdata[i];
+    if(n->kind != NK_SLIDER || !n->w || !n->grad0) continue;
+    gchar *now = _grad_fp(n->w);
+    if(strcmp(now, n->grad0)) n->grad_by |= by;
+    g_free(now);
+  }
+}
+
 static void _bauhaus_node(ctx_t *c, GtkWidget *w, JsonBuilder *b)
 {
   dt_iop_module_t *m = c->m;
@@ -512,6 +551,22 @@ static void _bauhaus_node(ctx_t *c, GtkWidget *w, JsonBuilder *b)
     _add_str(b, "format", d->format);
     _add_bool(b, "fill_feedback", d->fill_feedback);
     _add_int(b, "gradient_stops", d->grad_cnt);
+    // the stops themselves (P1c), in the order desktop set them:
+    // [position in 0..1 of the hard range, red, green, blue]
+    if(d->grad_cnt > 0)
+    {
+      json_builder_set_member_name(b, "gradient");
+      json_builder_begin_array(b);
+      for(int k = 0; k < d->grad_cnt; k++)
+      {
+        json_builder_begin_array(b);
+        json_builder_add_double_value(b, _r4(d->grad_pos[k]));
+        for(int ch = 0; ch < 3; ch++) json_builder_add_double_value(b, _r4(d->grad_col[k][ch]));
+        json_builder_end_array(b);
+      }
+      json_builder_end_array(b);
+    }
+    n->grad0 = _grad_fp(w);
     if(d->curve)
     {
       const float q1 = d->curve(0.25f, DT_BAUHAUS_GET), q2 = d->curve(0.5f, DT_BAUHAUS_GET),
@@ -870,9 +925,11 @@ static void _observe(ctx_t *c, JsonBuilder *b, const assign_t *as, int nas, cons
   }
   gchar *vis = _snapshot(c, FALSE);
   gchar *sen = _snapshot(c, TRUE);
+  if(nas) _grad_check(c, GRAD_BY_LIST);
   // the same parameters, as an undo or history step would show them
   dt_iop_gui_update(c->m);
   _pump();
+  if(nas) _grad_check(c, GRAD_BY_GUI_UPDATE);
   gchar *vis2 = _snapshot(c, FALSE);
 
   json_builder_begin_object(b);
@@ -911,6 +968,41 @@ static void _observe(ctx_t *c, JsonBuilder *b, const assign_t *as, int nas, cons
   g_free(vis);
   g_free(sen);
   g_free(vis2);
+}
+
+/* P1c: move each slider a user can reach to its soft limits and two inner
+ * points, as a drag
+ * would (dt_bauhaus_slider_set runs the module's callbacks and
+ * gui_changed), and see which sliders' colour stops change; then show the
+ * same parameters through dt_iop_gui_update. Back to defaults after each. */
+static void _poke_sliders(ctx_t *c)
+{
+  _reset_module(c);
+  gchar *vis = _snapshot(c, FALSE);
+  gchar *sen = _snapshot(c, TRUE);
+  for(guint i = 0; i < c->nodes->len; i++)
+  {
+    node_t *n = c->nodes->pdata[i];
+    if(n->kind != NK_SLIDER || !n->w || vis[n->id] != '1' || sen[n->id] != '1') continue;
+    const dt_bauhaus_slider_data_t *d = &DT_BAUHAUS_WIDGET(n->w)->slider;
+    // the soft limits and two inner points: a hue slider's limits (0 and
+    // 360 degrees) give the same colour, the inner points do not
+    const float lim[4] = { d->soft_min, d->soft_min + 0.25f * (d->soft_max - d->soft_min),
+                           d->soft_min + 0.5f * (d->soft_max - d->soft_min), d->soft_max };
+    for(int k = 0; k < 4; k++)
+    {
+      if(!n->w) break;
+      dt_bauhaus_slider_set(n->w, lim[k]);
+      _pump();
+      _grad_check(c, GRAD_BY_SLIDER);
+      dt_iop_gui_update(c->m);
+      _pump();
+      _grad_check(c, GRAD_BY_GUI_UPDATE);
+      _reset_module(c);
+    }
+  }
+  g_free(vis);
+  g_free(sen);
 }
 
 static void _sweep(ctx_t *c, JsonBuilder *b)
@@ -1181,6 +1273,32 @@ static void _do_module(dt_iop_module_t *m, int position)
     _add_bool(b, "skipped", TRUE);
   json_builder_end_object(b);
 
+  // P1c: which sliders' colour stops desktop recomputes while editing
+  if(!g_getenv("DT_SCHEMA_NO_SWEEP"))
+  {
+    dt_iop_request_focus(m);
+    _pump();
+    _poke_sliders(&c);
+    dt_iop_request_focus(NULL);
+    _pump();
+  }
+  json_builder_set_member_name(b, "gradient_recomputed");
+  json_builder_begin_object(b);
+  for(guint i = 0; i < c.nodes->len; i++)
+  {
+    node_t *n = c.nodes->pdata[i];
+    if(!n->grad_by) continue;
+    gchar *key = g_strdup_printf("%d", n->id);
+    json_builder_set_member_name(b, key);
+    g_free(key);
+    json_builder_begin_array(b);
+    if(n->grad_by & GRAD_BY_LIST) json_builder_add_string_value(b, "list");
+    if(n->grad_by & GRAD_BY_SLIDER) json_builder_add_string_value(b, "slider");
+    if(n->grad_by & GRAD_BY_GUI_UPDATE) json_builder_add_string_value(b, "gui_update");
+    json_builder_end_array(b);
+  }
+  json_builder_end_object(b);
+
   // leave the module as it was: default parameters, default on/off state
   _reset_module(&c);
   if(m->off && !m->default_enabled && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(m->off)))
@@ -1195,6 +1313,8 @@ static void _do_module(dt_iop_module_t *m, int position)
       g_object_remove_weak_pointer(G_OBJECT(n->w), (gpointer *)&n->w);
     else
       destroyed++;
+    g_free(n->grad0);
+    n->grad0 = NULL;
   }
   _add_int(b, "nodes_destroyed", destroyed);
   _add_int(b, "getter_mismatches", c.n_mismatch_getter);

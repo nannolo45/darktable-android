@@ -35,7 +35,7 @@ Error codes: `STATE -1`, `ARG -2`, `NOT_FOUND -3`, `TYPE -4`, `RANGE -5`, `IO -6
 ### 2.3 Session
 | Function | Meaning |
 |---|---|
-| `open(raw_path, xmp_path?)` | Import and load. The guard runs first; if it fails the image opens **read-only**: every mutating call and `xmp_write` return `READ_ONLY`. The RAW is only ever read. |
+| `open(raw_path, xmp_path?)` | Import and load. The session starts from exactly the edit of `xmp_path`, or, without it, of the sidecar `<raw>.xmp` if one exists; without either, from the default edit (as a first import shows it), every time, whatever an earlier session in the same process did. The guard runs first; if it fails the image opens **read-only**: every mutating call and `xmp_write` return `READ_ONLY`. The RAW is only ever read. |
 | `close()` | Does not write anything. |
 | `image_info()` → JSON | `{ "width", "height" (processed, scale 1), "raw_width", "raw_height", "image_class": "bayer" | "xtrans" | "nonraw" | "monochrome", "read_only", "exif": { "maker", "model", "lens", "iso", "aperture", "exposure", "focal_length", "datetime" }, "rating", "color_labels": [..] }`. `image_class` selects the control schema (S5). |
 | `metadata_reload(xmp_path)` | Re-read rating, colour labels and tags from an XMP (after LightPhotoLibrary merged them) without touching the history. |
@@ -57,7 +57,7 @@ Error codes: `STATE -1`, `ARG -2`, `NOT_FOUND -3`, `TYPE -4`, `RANGE -5`, `IO -6
 | `params_set(op, priority, {path: value, ...})` | Several fields as one history step. |
 | `set_enabled(op, priority, enabled)` | `ARG` for modules with `can_switch` false. |
 | `module_reset(op, priority)` | Back to the module's defaults for this image. |
-| `module_action(op, priority, action, args JSON)` → JSON | Escape hatch for what a module's desktop panel computes itself. P1a implements the mechanism and these actions: `temperature`: `get_wb` → `{temperature, tint}`, `set_wb {temperature, tint}`, `list_presets`, `apply_preset {name}`; `lens`: `list_cameras`, `list_lenses {camera}`, `set_lens {camera, lens}`; `lut3d`: `set_file {path}`; `denoiseprofile`: `list_profiles`, `set_profile {name}`. Unknown action → `NOT_FOUND`. More actions are added per module in later work packages without changing this signature. |
+| `module_action(op, priority, action, args JSON)` → JSON | Escape hatch for what a module's desktop panel computes itself. P1a implements the mechanism and these actions: `temperature`: `get_wb` → `{temperature, tint}`, `set_wb {temperature, tint}`, `list_presets`, `apply_preset {name}`; `lens`: `list_cameras`, `list_lenses {camera}`, `set_lens {camera, lens}`; `lut3d`: `set_file {path}`; `denoiseprofile`: `list_profiles` → `[ {index, name, auto, iso} ]` (`index`: position in desktop's profile list, 0 = the automatic entry), `set_profile {index}` or `{name}` (a name selects the first entry of that name; names can repeat, indices do not). Unknown action → `NOT_FOUND`. More actions are added per module in later work packages without changing this signature. |
 
 History grouping: consecutive `param_set` calls on the same instance merge into one history item until `history_seal()`; any other mutating call seals first. The app seals when the finger lifts.
 
@@ -67,8 +67,8 @@ History grouping: consecutive `param_set` calls on the same instance merge into 
 ### 2.6 History
 | Function | Meaning |
 |---|---|
-| `history()` → JSON | `{ "end", "items": [ { "num", "op", "priority", "name", "instance_name", "enabled" } ] }` |
-| `history_goto(end)` | State after the first `end` items; a following change discards the items above, as on desktop. It is navigation: allowed in a read-only session, and not an undo step (undo and redo cover edits only; this differs from desktop on purpose). |
+| `history()` → JSON | `{ "end", "items": [ { "num", "op", "priority", "name", "instance_name", "enabled", "unknown" } ] }`, `0 <= end <=` number of items. `unknown` is true for an item the engine could not load (in a read-only session: an XMP entry whose operation the engine does not know); it keeps its place and its operation name (also as `name`) and has no effect on the picture. |
+| `history_goto(end)` | Works for every `end` from 0 to the number of items, unknown items included. State after the first `end` items; a following change discards the items above, as on desktop. It is navigation: allowed in a read-only session, and not an undo step (undo and redo cover edits only; this differs from desktop on purpose). |
 | `history_compress()` | |
 | `history_seal()` | |
 | `undo()` / `redo()` / `undo_state()` → `{can_undo, can_redo}` | Step through whole-history states recorded before each sealed change (at least 50 steps). After `undo`, `modules()`, `history()` and renders equal the earlier state exactly. |
@@ -80,7 +80,7 @@ All renders return RGBA8, alpha 255, in sRGB for now.
 |---|---|
 | `render_size(scale)` → `{w, h}` | |
 | `render_preview(max_size)` → buffer, w, h | Whole image, from the downscaled input, for immediate feedback. |
-| `render_region(x, y, w, h, scale)` → buffer | Exactly the requested region. **The bridge renders with an internal margin of at least 16 px and crops it away**, because a bare region differs from the full render near its edges (S3, test T5). Callers never stitch a view from several regions. |
+| `render_region(x, y, w, h, scale)` → buffer | Exactly the requested region. **The bridge renders with an internal margin and crops it away**, because a bare region differs from the full render near its edges (S3, test T5): at least 32 px, wider (up to 256 px) when a switched-on module reaches further, and for raw images a window on the same colour filter phase as a full render (P1c). The differences that remain are listed with bounds in `engine/tests/t5_expected.txt`. Callers never stitch a view from several regions. |
 | `render_cancel()` | From any thread. The running render returns `CANCELLED`; cancel takes effect between modules. |
 
 The pipelines keep their caches between calls. `cache_drop()` exists for measurements.
@@ -121,5 +121,5 @@ The contract tests were run against the real engine; where they disagreed, the e
 - `history_compress` keeps modules that end up switched off (as upstream documents) and drops the items above the end.
 - `in_history` of a module is true for any item in the list, also above the end.
 - Exif date and time are given as `YYYY-MM-DDTHH:MM:SS`.
-- **Known gaps in the bridge, to fix in the next engine package:** in a read-only session with an unknown module, `history().end` can be larger than the number of items and `history_goto(end)` is refused (the app clamps); within one process, `open(raw, NULL)` returns the history the private library still holds for that file, not the default edit.
+- **Known gaps in the bridge, to fix in the next engine package:** in a read-only session with an unknown module, `history().end` can be larger than the number of items and `history_goto(end)` is refused (the app clamps); within one process, `open(raw, NULL)` returns the history the private library still holds for that file, not the default edit. *Fixed by P1c: see 2.3 (`open`), 2.6 (`unknown` items) and the noise profile `index` in 2.4.*
 

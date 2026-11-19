@@ -535,11 +535,9 @@ class DarkroomController(
     private suspend fun renderBefore() {
         val layer = lock.withLock {
             val info = _state.value.info ?: return
-            val h = engine.history()
-            // P2b: in a read-only session whose XMP names a module the engine does not know, the bridge
-            // reports an end counting that dropped item (end 10, 9 items) and history_goto(end) is then
-            // refused; going back to the number of items it holds restores the same state.
-            val end = minOf(h.end, h.items.size)
+            // since P1c end <= items always (unknown items of a read-only session are listed), so the
+            // clamp P2b needed here is gone
+            val end = engine.history().end
             try {
                 engine.historyGoto(0)
                 val img = engine.renderPreview(previewMaxSize)

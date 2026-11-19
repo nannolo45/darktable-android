@@ -67,9 +67,11 @@ message(STATUS "darktable definitions: ${DT_DEFS}")
 
 find_package(PkgConfig REQUIRED)
 # lcms2 and lensfun: the white balance and lens actions (src/actions.c) call
-# them directly, as the modules do; both are darktable dependencies already
+# them directly, as the modules do; sqlite3: the session reads the image's
+# history rows before darktable rewrites them (src/session.c, P1c). All three
+# are darktable dependencies already
 pkg_check_modules(DTB_DEPS REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0 json-glib-1.0 libxml-2.0
-                  lcms2 lensfun)
+                  lcms2 lensfun sqlite3)
 find_package(OpenMP REQUIRED COMPONENTS C)
 
 # NO_CMAKE_FIND_ROOT_PATH: a cross toolchain (Android NDK) would otherwise
