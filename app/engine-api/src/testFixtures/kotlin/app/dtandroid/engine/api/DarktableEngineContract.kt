@@ -266,7 +266,8 @@ abstract class DarktableEngineContract {
         assertEquals(start + 1, engine.history().end)
         assertEquals(start + 3, engine.history().items.size)
         assertEquals(modsAt1, engine.modules())
-        expect(EngineError.RANGE) { engine.historyGoto(start + 10) }
+        // P2b: the bridge answers ARG for an end outside 0..items (the real engine is the truth here)
+        expect(EngineError.ARG) { engine.historyGoto(start + 10) }
 
         engine.historyGoto(0)
         assertEquals(0, engine.history().end)

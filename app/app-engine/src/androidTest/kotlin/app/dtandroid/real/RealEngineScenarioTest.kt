@@ -165,6 +165,13 @@ class RealEngineScenarioTest {
             waitFor("preview of a read-only photo") { c.state.value.preview != null }
             val exposure = TestFiles.engine().modules().first { it.op == "exposure" }
             val slider = c.schema.modules.getValue("exposure").allControls().filterIsInstance<Control.Slider>().first { it.label == "exposure" }
+            // "before" in a read-only session goes to position 0 and back (bridge gap: end > items, see the report)
+            val endBefore = c.state.value.history.end
+            c.setBefore(true)
+            assertNotNull(c.state.value.beforePreview)
+            c.setBefore(false)
+            TestFiles.record(res, "read_only_history_end_and_items", "${c.state.value.history.end} ${c.state.value.history.items.size} (before: $endBefore)")
+            assertNull("before and back without an error: ${c.state.value.message}", c.state.value.message)
             c.setSlider(InstanceKey("exposure", 0), slider.binding, 2.0, false)
             assertTrue("refused with a message", c.state.value.message?.contains("READ_ONLY") == true)
             assertEquals(exposure.params, TestFiles.engine().modules().first { it.op == "exposure" }.params)

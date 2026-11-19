@@ -600,7 +600,8 @@ class FakeEngine(
      */
     override suspend fun historyGoto(end: Int) = onEngine {
         val s = requireSession()
-        if (end !in 0..s.items.size) fail(EngineError.RANGE, "history end $end outside 0..${s.items.size}")
+        // as dtb_history_goto: ARG for an end outside 0..items (P2b)
+        if (end !in 0..s.items.size) fail(EngineError.ARG, "history end $end outside 0..${s.items.size}")
         s.openGroup = null
         s.end = end
     }

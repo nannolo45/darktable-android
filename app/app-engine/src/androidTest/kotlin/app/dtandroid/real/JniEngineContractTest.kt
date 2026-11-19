@@ -29,7 +29,17 @@ class JniEngineContractTest : DarktableEngineContract() {
         e.setThreadCpus(if (cores.pin) cores.chosen else emptyList())
     }
 
-    override fun sampleRaw(): String = TestFiles.raw.path
+    /**
+     * A fresh copy of the RAW for each test, under the test's own folder. The engine keeps a session's
+     * history in its private library for the life of the process, and dtb_open(raw, NULL) of an image
+     * opened before loads that history (not the default edit), so tests sharing one file would see each
+     * other's edits; the fake engine has no such memory. Found in P2b (report, section 3).
+     */
+    override fun sampleRaw(): String {
+        val f = java.io.File(tmp.root, TestFiles.raw.name)
+        if (!f.isFile) { TestFiles.raw.copyTo(f); f.setWritable(false, false) }
+        return f.path
+    }
 
     override fun writeXmpWithUnknownModule(file: File) = TestFiles.writeXmpWithUnknownModule(file)
 }
