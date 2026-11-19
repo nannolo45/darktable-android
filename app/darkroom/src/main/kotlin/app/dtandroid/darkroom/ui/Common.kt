@@ -37,13 +37,15 @@ fun DtText(
     color: Color,
     modifier: Modifier = Modifier,
     maxLines: Int = 1,
+    /** brief P2f: file names are shortened in the middle, so the number at their end stays visible */
+    middle: Boolean = false,
 ) {
     BasicText(
         text = text,
         style = style.copy(color = color),
         modifier = modifier,
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
+        maxLines = if (middle) 1 else maxLines,
+        overflow = if (middle) TextOverflow.MiddleEllipsis else TextOverflow.Ellipsis,
     )
 }
 

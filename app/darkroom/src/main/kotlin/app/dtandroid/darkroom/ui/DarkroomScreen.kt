@@ -84,6 +84,7 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
         PhoneTopBar(controller, s, onBack, onDone, menu)
         PhotoView(controller, s, DtTheme.space.m, twoFingerUndo = true, Modifier.fillMaxWidth().height(DtTheme.sizes.photoPhoneHeight))
         InfoLine(s)
+        LastEditLine(s)
         if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripPhone, DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight, centered = false)
         Notices(s)
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -120,7 +121,8 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(DtTheme.space.xxs)) {
-                DtText(s.current?.fileName ?: "", DtTheme.type.title, c.textStrong)
+                // brief P2f: shortened in the middle, so the number at the end of the name stays visible
+                DtText(s.current?.fileName ?: "", DtTheme.type.title, c.textStrong, middle = true)
                 DtText(seriesLine(s), DtTheme.type.small, c.textMuted)
             }
             DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
@@ -132,9 +134,10 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
     }
 }
 
+/** Brief P2f: the photo menu behind an icon, so the title keeps its room. */
 @Composable
 private fun MoreButton(controller: DarkroomController) {
-    DtTextButton("more", { controller.setOverlay(Overlay.HostMenu) })
+    DtIconButton(DtIcon.More, "more", DtTheme.colors.text, { controller.setOverlay(Overlay.HostMenu) }, iconSize = DtTheme.sizes.iconLarge)
 }
 
 private const val HALF_TURN = 180f
@@ -180,6 +183,23 @@ private fun Notices(s: DarkroomState) {
     s.message?.let {
         Box(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs)) {
             DtText(it, DtTheme.type.small, c.textMuted, maxLines = 3)
+        }
+    }
+    // brief P2f: the open photo's sync, while it runs (R16)
+    s.syncStep?.let {
+        Column(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs)) {
+            DtText(it, DtTheme.type.small, c.textMuted)
+            ProgressLine(s.syncProgress ?: 0f, Modifier.padding(top = DtTheme.space.xxs))
+        }
+    }
+}
+
+/** Brief P2f (R15): the last edit as LightPhotoLibrary reports it, on the phone under the info line. */
+@Composable
+private fun LastEditLine(s: DarkroomState) {
+    s.lastEdit?.let {
+        Box(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel), contentAlignment = Alignment.Center) {
+            DtText(it, DtTheme.type.small, DtTheme.colors.textMuted)
         }
     }
 }
@@ -228,7 +248,7 @@ private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBac
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xl, Alignment.CenterHorizontally),
         ) {
-            DtText(s.current?.fileName ?: "", DtTheme.type.title, c.textStrong)
+            DtText(s.current?.fileName ?: "", DtTheme.type.title, c.textStrong, middle = true)
             DtText(s.info?.exif?.let { exifLine(it, withCamera = false) } ?: "", DtTheme.type.label, c.textMuted)
             Row(
                 Modifier.height(DtTheme.sizes.touch).clickable(role = Role.Button) { controller.toggleFilmstrip() }
@@ -260,6 +280,7 @@ private fun ImageInformation(s: DarkroomState) {
         e?.let { "lens" to it.lens },
         e?.let { "exposure" to exifLine(it, withCamera = false) },
         s.info?.let { "size" to "${it.width} × ${it.height}" },
+        s.lastEdit?.let { "last edit" to it },
     )
     Column(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.l),
         verticalArrangement = Arrangement.spacedBy(DtTheme.space.m)) {

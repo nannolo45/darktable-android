@@ -49,8 +49,12 @@ class FakeEditor : EditorPort {
     override suspend fun xmpReadOnly(xmp: File) = xmp.isFile && xmp.readText().contains("newer-module")
     override suspend fun writeIfOpen(raw: File, xmp: File) { if (openRaw == raw) writes += xmp }
     override suspend fun reloadIfOpen(raw: File, xmp: File) { if (openRaw == raw) reloads += xmp }
+    /** brief P2f: run while a preview "renders" (a test sends a heartbeat from here to see the step) */
+    @Volatile var duringRender: (suspend () -> Unit)? = null
+
     override suspend fun renderPreview(raw: File, xmp: File, out: File): Boolean {
         if (busy) return false
+        duringRender?.invoke()
         renders += raw
         out.writeBytes(previewBytes)
         return true

@@ -22,6 +22,7 @@ import app.dtandroid.lpl.ServerNotAddedException
 import app.dtandroid.lpl.ServerOrigin
 import app.dtandroid.lpl.ServerStore
 import app.dtandroid.lpl.SyncOutcome
+import app.dtandroid.lpl.Step as LplStep
 import app.dtandroid.lpl.WorkStore
 import app.dtandroid.schema.SchemaLoader
 import app.dtandroid.schema.layout.BuiltinLayouts
@@ -95,7 +96,29 @@ object AppHost {
     }
 
     val controller: DarkroomController by lazy {
-        DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { it.source = Source }
+        DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
+            c.source = Source
+            // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
+            AppEngine.scope.launch {
+                kotlinx.coroutines.flow.combine(c.state, agent.steps, agent.photos) { st, steps, _ -> st.current to steps }.collect { (item, steps) ->
+                    val it0 = item ?: return@collect
+                    val (origin, id) = lplPhotoOf(it0) ?: return@collect
+                    val r = agent.record(origin, id) ?: return@collect
+                    val step = steps[origin to id]
+                    val stepText = step?.let { s -> when (s.step) {
+                        LplStep.SENDING_EDIT -> "syncing: sending the edit"
+                        LplStep.RENDERING_PREVIEW -> "syncing: making the preview"
+                        LplStep.SENDING_PREVIEW -> "syncing: sending the preview"
+                        LplStep.DOWNLOADING -> "downloading"
+                        else -> s.step
+                    } }
+                    val last = if (agent.isDirty(r) && !r.readOnly) "edited here, not synced yet" else r.lastEdit?.line(thisDevice = servers.installId)
+                    val cur = c.state.value
+                    if (cur.syncStep != stepText || cur.syncProgress != step?.progress?.toFloat() || cur.lastEdit != last)
+                        c.setPhotoNotes(it0.rawPath, stepText, step?.progress?.toFloat(), last)
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------ LightPhotoLibrary
@@ -330,6 +353,8 @@ object AppHost {
     const val HEARTBEAT_MS = 2_000L
 
     private suspend fun runJob(origin: ServerOrigin, job: Job) {
+        // R13: a job handed out again (never reported done) that already ran here is reported, not run twice
+        agent.ranBefore(origin, job)?.let { agent.jobDone(origin, job, it); return }
         val ok = when (job.kind) {
             "sync", "release" -> agent.runSyncOrRelease(origin, job)
             "edit", "open" -> {

@@ -43,6 +43,11 @@ import app.dtandroid.darkroom.ui.toImageBitmap
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.lpl.PhotoRecord
 import app.dtandroid.lpl.PhotoStatus
+import app.dtandroid.lpl.Step
+import app.dtandroid.darkroom.HostAction
+import app.dtandroid.darkroom.Words
+import app.dtandroid.darkroom.ui.PhotoList
+import app.dtandroid.darkroom.ui.PhotoListScreen
 import app.dtandroid.lpl.Progress
 import app.dtandroid.lpl.ServerOrigin
 import app.dtandroid.lpl.UserText
@@ -103,124 +108,120 @@ fun StartScreen(status: AppEngine.Status, onRetry: () -> Unit = {}) = Page {
 }
 
 /**
- * The list: the photos from LightPhotoLibrary (brief P2e item 3) with their status in the contract's
- * words and what the user can do with each, then the photos copied in through the file picker (P2b).
+ * The list (brief P2f deliverable 5, replacing P2e's rows of four buttons): one row per photo with its
+ * thumbnail, name (shortened in the middle), one status line in plain words with the contract's states
+ * behind it, the last edit (R15) and a thin bar while it downloads or syncs. Tapping a row opens the
+ * photo; "more" holds sync now, open in LightPhotoLibrary and remove from this phone. Per server a header
+ * with this device's name, whether it is connected, what waits, and one "sync now".
  */
 @Composable
 fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrigin, Long) -> Unit) = Page {
     val lib by vm.library.collectAsState()
     val photos by vm.agent.photos.collectAsState()
     val progress by vm.agent.progress.collectAsState()
+    val steps by vm.agent.steps.collectAsState()
     val errors by vm.agent.lastError.collectAsState()
     val lplThumbs by vm.lplThumbs.collectAsState()
     val servers = remember(photos, lib) { vm.servers.list() }
-    Column(Modifier.fillMaxSize()) {
-        TopBar("dt-android") {
-            DtTextButton("server", { vm.showServerForm() })
-            DtTextButton("about", { vm.show(Screen.ABOUT) })
-            DtTextButton("open photos", onOpen, enabled = lib.busy == null)
+    val sections = ArrayList<PhotoList.Section>()
+    for (srv in servers) {
+        val mine = photos.filter { it.server == srv.origin }
+        val waiting = mine.count { vm.agent.isDirty(it) || it.status == PhotoStatus.DIRTY || it.previewPending }
+        val err = errors[srv.origin]
+        val conn = when {
+            err != null -> err.userText
+            srv.origin in errors -> "connected"
+            else -> "not contacted yet"
         }
-        Divider()
-        lib.busy?.let { Paragraph(it, muted = true) }
-        for (m in lib.messages) Paragraph(m, muted = true)
-        lib.confirmRemove?.let { r ->
-            Paragraph("${r.filename} has an edit that LightPhotoLibrary does not have yet. Remove it from this phone anyway? The edit is lost.")
-            Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
-                DtTextButton("keep it", { vm.keep() })
-                DtTextButton("remove anyway", { vm.remove(r, evenUnsynced = true) })
-            }
-            Divider()
-        }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-            for (srv in servers) {
-                val mine = photos.filter { it.server == srv.origin }
-                item(key = "server-${srv.origin.url}") {
-                    PanelHeading("LightPhotoLibrary · this phone is \"${srv.deviceName}\"")
-                    val err = errors[srv.origin]
-                    Row(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
-                        DtText(if (err != null) err.userText else if (srv.origin in errors) "connected" else srv.origin.url,
-                            DtTheme.type.small, DtTheme.colors.textMuted, Modifier.weight(1f), maxLines = 2)
-                        DtTextButton("sync now", { vm.syncAll() }, enabled = mine.isNotEmpty())
-                    }
-                    if (mine.isEmpty()) Paragraph("No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".", muted = true)
-                    Divider()
-                }
-                items(mine, key = { "lpl-${it.server.url}-${it.id}" }) { r ->
-                    LplRow(vm, r, progress[r.key], lplThumbs[r.key], onOpenInLpl)
-                    Divider()
-                }
-            }
-            if (servers.isEmpty()) item(key = "no-server") {
-                PanelHeading("LightPhotoLibrary")
-                Paragraph("To edit photos from your LightPhotoLibrary, add its server: tap \"server\".", muted = true)
-                Divider()
-            }
-            item(key = "local") {
-                PanelHeading("photos from this phone's files")
-                if (lib.items.isEmpty() && lib.busy == null) {
-                    Paragraph("Tap \"open photos\" and pick one or several RAW files, optionally with their .xmp files. " +
-                        "The app works on copies in its own folder; your originals are never changed.", muted = true)
-                }
-            }
-            itemsIndexed(lib.items, key = { _, it -> "local-${it.fileName}" }) { i, item ->
-                val thumb = lib.thumbnails[item.fileName]
-                PhotoRow(thumb, item.fileName, if (File(item.xmpPath).isFile) "with edit" else "not edited yet", Modifier
-                    .clickable(role = Role.Button) { vm.openDarkroom(i) }
-                    .semantics { contentDescription = "open ${item.fileName}" })
-                Divider()
-            }
-        }
+        val line = "this phone is \"${srv.deviceName}\" · $conn" + if (waiting > 0) " · ${Words.count(waiting, "photo")} waiting to sync" else ""
+        sections += PhotoList.Section(
+            key = srv.origin.url, title = "LightPhotoLibrary", line = line,
+            action = HostAction("sync now", enabled = mine.isNotEmpty()) { vm.syncAll() },
+            empty = "No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".",
+            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl) },
+        )
     }
+    if (servers.isEmpty()) sections += PhotoList.Section(
+        key = "no-server", title = "LightPhotoLibrary",
+        action = HostAction("add server") { vm.showServerForm() },
+        empty = "To edit photos from your LightPhotoLibrary, add its server.",
+    )
+    sections += PhotoList.Section(
+        key = "local", title = "photos from this phone's files",
+        empty = if (lib.busy == null) "Tap \"open photos\" and pick one or several RAW files, optionally with their .xmp files. " +
+            "The app works on copies in its own folder; your originals are never changed." else null,
+        rows = lib.items.mapIndexed { i, item ->
+            PhotoList.Row(
+                key = item.fileName, name = item.fileName,
+                status = if (File(item.xmpPath).isFile) "edited" else "not edited yet",
+                thumb = lib.thumbnails[item.fileName], onOpen = { vm.openDarkroom(i) },
+            )
+        },
+    )
+    PhotoListScreen(
+        title = "dt-android",
+        sections = sections,
+        topActions = listOf(HostAction("open photos", enabled = lib.busy == null) { onOpen() }),
+        menu = listOf(
+            HostAction("LightPhotoLibrary server…") { vm.showServerForm() },
+            HostAction("timings…") { vm.openTimings() },
+            HostAction("about") { vm.show(Screen.ABOUT) },
+        ),
+        messages = listOfNotNull(lib.busy) + lib.messages,
+        question = lib.confirmRemove?.let { r ->
+            "${r.filename} has an edit that LightPhotoLibrary does not have yet. Remove it from this phone anyway? The edit is lost." to listOf(
+                HostAction("keep it") { vm.keep() },
+                HostAction("remove anyway") { vm.remove(r, evenUnsynced = true) },
+            )
+        },
+    )
 }
 
-/** A photo's row: thumbnail, name and a line under it. */
-@Composable
-private fun PhotoRow(thumb: RenderedImage?, name: String, line: String, modifier: Modifier = Modifier, actions: @Composable () -> Unit = {}) {
-    val bmp = remember(thumb) { thumb?.toImageBitmap() }
-    Column(modifier.fillMaxWidth().padding(horizontal = DtTheme.space.l, vertical = DtTheme.space.xs)) {
-        Row(
-            Modifier.fillMaxWidth().height(DtTheme.sizes.thumbPhoneHeight),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(DtTheme.space.l),
-        ) {
-            Box(Modifier.size(DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight).background(DtTheme.colors.photoBackground)) {
-                if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            }
-            Column(Modifier.weight(1f)) {
-                DtText(name, DtTheme.type.body, DtTheme.colors.textStrong)
-                DtText(line, DtTheme.type.small, DtTheme.colors.textMuted, maxLines = 2)
-            }
-        }
-        actions()
-    }
-}
-
-/** An LPL photo: status in the contract's word with plain words, and open, sync now, open in LPL, remove. */
-@Composable
-private fun LplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, thumb: RenderedImage?, onOpenInLpl: (ServerOrigin, Long) -> Unit) {
-    val line = statusLine(vm, r, p)
-    PhotoRow(thumb, r.filename, line, Modifier.semantics { contentDescription = "${r.filename}: $line" }) {
-        Row(Modifier.fillMaxWidth().padding(top = DtTheme.space.xs), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
-            DtTextButton("open", { vm.openLplPhoto(r) })
-            DtTextButton("sync now", { vm.syncNow(r) }, enabled = !r.readOnly && r.status != PhotoStatus.DOWNLOADING)
-            DtTextButton("in LightPhotoLibrary", { onOpenInLpl(r.server, r.id) })
-            DtTextButton("remove", { vm.remove(r) })
-        }
-    }
-}
-
-/** The status as LPL names it, and what it means, in a few words (brief P2e item 3). */
-private fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?): String {
+private fun lplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step?, thumb: RenderedImage?, origin: ServerOrigin,
+                   onOpenInLpl: (ServerOrigin, Long) -> Unit): PhotoList.Row {
     val dirty = vm.agent.isDirty(r)
+    val last = when {
+        dirty && !r.readOnly -> "edited here, not synced yet"
+        else -> r.lastEdit?.line(thisDevice = vm.servers.installId)
+    }
+    return PhotoList.Row(
+        key = "${r.id}", name = r.filename,
+        status = statusLine(vm, r, p, step),
+        progress = step?.let { it.progress?.toFloat() ?: 0f } ?: p?.let { if (it.total > 0) it.done.toFloat() / it.total else 0f },
+        lastEdit = last, thumb = thumb,
+        actions = listOf(
+            HostAction("sync now", enabled = !r.readOnly && r.status != PhotoStatus.DOWNLOADING) { vm.syncNow(r) },
+            HostAction("open in LightPhotoLibrary") { onOpenInLpl(origin, r.id) },
+            HostAction("remove from this phone") { vm.remove(r) },
+        ),
+        onOpen = { vm.openLplPhoto(r) },
+    )
+}
+
+/**
+ * The status in plain words, one line, with the contract's state behind it (brief P2e item 3, P2f item 5):
+ * a step that runs (R16) says what happens now.
+ */
+internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step? = null): String {
+    val dirty = vm.agent.isDirty(r)
+    step?.let { st ->
+        val pct = st.progress?.let { String.format(Locale.ROOT, " %d %%", (it * 100).toInt()) } ?: ""
+        return when (st.step) {
+            Step.DOWNLOADING -> "downloading$pct"
+            Step.SENDING_EDIT -> "syncing: sending the edit"
+            Step.RENDERING_PREVIEW -> "syncing: making the preview"
+            Step.SENDING_PREVIEW -> "syncing: sending the preview"
+            else -> st.step
+        }
+    }
     val words = when (r.status) {
         PhotoStatus.DOWNLOADING -> if (p != null) AppHost.progressText("", p.done, p.total).replace("downloading … ", "downloading ")
-                                   else "downloading · not complete, continues when you open it"
-        PhotoStatus.OPENING -> "opening · ready to edit"
-        PhotoStatus.EDITING -> "editing · open in the darkroom"
-        PhotoStatus.DIRTY -> "dirty · ${UserText.WAITING}"
+                                   else "download not complete · continues when you open it"
+        PhotoStatus.OPENING -> "ready to edit"
+        PhotoStatus.EDITING -> "open in the darkroom"
+        PhotoStatus.DIRTY -> UserText.WAITING
         PhotoStatus.SYNCING -> "syncing"
-        PhotoStatus.SYNCED -> if (dirty) "dirty · ${UserText.WAITING}" else "synced" + if (r.previewPending) " · preview still to send" else ""
+        PhotoStatus.SYNCED -> if (dirty) UserText.WAITING else "synced" + if (r.previewPending) " · preview still to send" else ""
         PhotoStatus.ERROR -> "error"
     }
     val extra = when {

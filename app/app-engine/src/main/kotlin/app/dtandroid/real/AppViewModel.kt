@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.dtandroid.darkroom.FileThumbnailStore
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.Words
 import app.dtandroid.darkroom.work.WorkFolder
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
@@ -168,12 +169,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (uris.isEmpty()) return
         val cr = getApplication<Application>().contentResolver
         viewModelScope.launch {
-            _library.update { it.copy(busy = "copying ${uris.size} file(s)…", messages = emptyList()) }
+            _library.update { it.copy(busy = "copying ${Words.count(uris.size, "file")}…", messages = emptyList()) }
             val r = withContext(Dispatchers.IO) {
                 val incoming = uris.map { u -> WorkFolder.Incoming(displayName(u)) { cr.openInputStream(u) ?: throw java.io.IOException("cannot read $u") } }
                 work.import(incoming)
             }
-            _library.update { it.copy(busy = null, messages = r.messages + "${r.imported.size} photo(s) in the working folder from this pick") }
+            _library.update { it.copy(busy = null, messages = r.messages + "${Words.count(r.imported.size, "photo").replaceFirstChar { it.uppercase() }} copied from this pick") }
             refreshLibrary()
         }
     }
@@ -365,7 +366,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             AppEngine.scope.launch {
                 var ok = true
                 for (id in r.ids.take(1)) ok = runCatching { agent.take(r.origin, id) }.isSuccess && ok
-                controller.showMessage("LightPhotoLibrary sent ${r.ids.size} photo(s); they are in the list")
+                controller.showMessage(if (r.ids.size == 1) "1 photo arrived from LightPhotoLibrary; it is in the list" else "${r.ids.size} photos arrived from LightPhotoLibrary; they are in the list")
                 r.done.complete(ok)
             }
             return

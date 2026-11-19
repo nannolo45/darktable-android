@@ -32,6 +32,19 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-19 20:40: **deliverable 1, the cause, measured before any fix** (run 44588278381, b263e06, emulator, test
+  RAW with denoise (profiled), diffuse or sharpen, local contrast and sharpen on): done → XMP posted 122 ms → LPL
+  preview (dtb_export, 1920 px) runs from 153 ms to 10 213 ms → open requested at 163 ms → the darkroom's engine open
+  starts only at 10 217 ms (after the export) → first picture 10 819 ms after the tap, and that was the real preview:
+  nothing at all was on screen before. The reviewer's reading is confirmed: the export runs on the one engine
+  thread under the darkroom's lock, cannot be cancelled, and opening waits behind it with a black frame. Also from the
+  code: the list's thumbnail was dropped whenever the XMP was newer than it (`FolderThumb.load`), which a merged XMP
+  from LightPhotoLibrary makes true. Kept in `P2f-results/f1-before-44588278381.txt` with the heavy edit's XMP.
+  Then in code: deliverables 4 (per-module tables from darktable's "-d perf", timings on any source), 5 (list and top
+  bar on a shared `PhotoListScreen`, middle-shortened names, a "more" icon), 6 (R16 steps in the agent, the heartbeat,
+  the list and the darkroom) and 7 (R15 `agent` on XMP posts, `last_edit`, lines in the list and darkroom), plus
+  R13 (jobs run once) and R14 (`/api/auth/token` with fallback). JVM tests for these pass on the workspace.
+
 - 2026-11-19 19:45 (local, not pushed yet: the "before" run is still on the emulator and a push would cancel it):
   deliverables 2 and 3 in code. Interactive work goes first (`DarkroomController.fg`/`bg`, order described in the
   controller and in the report); the LightPhotoLibrary preview is rendered through the full pipe (cancellable) and

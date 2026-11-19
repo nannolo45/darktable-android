@@ -131,6 +131,11 @@ data class DarkroomState(
     val working: String? = null,
     /** Brief P2f: the share done of [working] (0..1) when known, for a thin progress bar. */
     val workingProgress: Float? = null,
+    /** Brief P2f (R16): the open photo's sync step in plain words while it runs ("syncing: sending the edit"), set by the app */
+    val syncStep: String? = null,
+    val syncProgress: Float? = null,
+    /** Brief P2f (R15): the open photo's last edit in one line, set by the app; null = nothing known */
+    val lastEdit: String? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

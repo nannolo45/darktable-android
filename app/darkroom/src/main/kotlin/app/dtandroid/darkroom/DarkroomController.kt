@@ -283,7 +283,7 @@ class DarkroomController(
         fetching = fetch
         _state.update {
             it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
-                expanded = null, overlay = null, message = null, readOnlyReason = null, info = null)
+                expanded = null, overlay = null, message = null, readOnlyReason = null, info = null, syncStep = null, syncProgress = null, lastEdit = null)
         }
         // told after the state says no photo is open, so the source sees the photo as closed
         if (left != null) source?.left(left)
@@ -874,6 +874,14 @@ class DarkroomController(
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
     fun setOverlay(o: Overlay?) = _state.update { it.copy(overlay = o) }
     fun clearMessage() = _state.update { it.copy(message = null) }
+
+    /**
+     * Brief P2f: what the app knows about the open photo beyond the engine: its sync step and share done
+     * (R16) and its last edit (R15). Only applied while [rawPath] is the open photo.
+     */
+    fun setPhotoNotes(rawPath: String, syncStep: String?, syncProgress: Float?, lastEdit: String?) = _state.update { s ->
+        if (s.current?.rawPath != rawPath) s else s.copy(syncStep = syncStep, syncProgress = syncProgress, lastEdit = lastEdit)
+    }
     fun showMessage(text: String) = _state.update { it.copy(message = text) }
 
     // ------------------------------------------------------------------ helpers for screens
