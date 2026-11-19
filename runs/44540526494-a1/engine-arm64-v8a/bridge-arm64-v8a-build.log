@@ -1,0 +1,53 @@
+[1/10] Building C object CMakeFiles/dtbridge.dir/src/guard.c.o
+[2/10] Building C object CMakeFiles/dtbridge.dir/src/core.c.o
+[3/10] Building C object CMakeFiles/dtbridge.dir/src/session.c.o
+[4/10] Building C object CMakeFiles/dtbridge.dir/src/params.c.o
+[5/10] Building C object CMakeFiles/dtbridge.dir/src/instances.c.o
+[6/10] Building C object CMakeFiles/dtbridge.dir/src/history.c.o
+[7/10] Building C object CMakeFiles/dtbridge.dir/src/render.c.o
+[8/10] Building C object CMakeFiles/dtbridge.dir/src/actions.c.o
+[9/10] Building C object CMakeFiles/dtbridge.dir/src/output.c.o
+[10/10] Linking C shared library libdtbridge.so
+FAILED: [code=1] libdtbridge.so 
+: && /home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android29 --sysroot=/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/sysroot -fPIC -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I/opt/dta/sysroot-arm64-v8a/include -O2 -fPIC -g0 -O3 -DNDEBUG  -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments -L/opt/dta/sysroot-arm64-v8a/lib -Wl,-rpath-link=/opt/dta/sysroot-arm64-v8a/lib -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 -Wl,--push-state,--as-needed -lintl -Wl,--pop-state -Wl,--gc-sections   -Xlinker --dependency-file=CMakeFiles/dtbridge.dir/link.d -shared -Wl,-soname,libdtbridge.so -o libdtbridge.so CMakeFiles/dtbridge.dir/src/core.c.o CMakeFiles/dtbridge.dir/src/guard.c.o CMakeFiles/dtbridge.dir/src/session.c.o CMakeFiles/dtbridge.dir/src/params.c.o CMakeFiles/dtbridge.dir/src/actions.c.o CMakeFiles/dtbridge.dir/src/instances.c.o CMakeFiles/dtbridge.dir/src/history.c.o CMakeFiles/dtbridge.dir/src/render.c.o CMakeFiles/dtbridge.dir/src/output.c.o  /home/runner/dta-work/engine-stage-arm64-v8a/engine/lib/darktable/libdarktable.so  -lm  /opt/dta/sysroot-arm64-v8a/lib/libjson-glib-1.0.so  /opt/dta/sysroot-arm64-v8a/lib/libgio-2.0.so  /opt/dta/sysroot-arm64-v8a/lib/libgobject-2.0.so  /opt/dta/sysroot-arm64-v8a/lib/libglib-2.0.so  /opt/dta/sysroot-arm64-v8a/lib/libxml2.so  /opt/dta/sysroot-arm64-v8a/lib/liblcms2.so  /opt/dta/sysroot-arm64-v8a/lib/liblensfun.so  /home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/21/lib/linux/aarch64/libomp.so  -latomic -lm && :
+ld.lld: error: undefined symbol: sqlite3_prepare_v2
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_bind_int
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_step
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_column_text
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_column_int
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_finalize
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+
+ld.lld: error: undefined symbol: sqlite3_errmsg
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+>>> referenced by session.c
+>>>               CMakeFiles/dtbridge.dir/src/session.c.o:(_rows_read)
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+ninja: build stopped: subcommand failed.
