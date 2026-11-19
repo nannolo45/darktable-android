@@ -59,17 +59,16 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** RGBA8 from the engine to a bitmap Compose can draw. */
+/**
+ * RGBA8 from the engine to a bitmap Compose can draw. An ARGB_8888 bitmap stores its pixels as
+ * R, G, B, A bytes, the engine's order, so the engine's buffer is copied into the bitmap in one
+ * step without converting each pixel (brief P2b: one copy, no per-pixel loop on the main thread).
+ * Alpha is 255 everywhere (engine-api.md 2.7), so premultiplication changes nothing.
+ */
 fun RenderedImage.toImageBitmap(): ImageBitmap {
-    val px = IntArray(width * height)
-    for (i in px.indices) {
-        val r = rgba[i * 4].toInt() and 0xff
-        val g = rgba[i * 4 + 1].toInt() and 0xff
-        val b = rgba[i * 4 + 2].toInt() and 0xff
-        val a = rgba[i * 4 + 3].toInt() and 0xff
-        px[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
-    }
-    return Bitmap.createBitmap(px, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()
+    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    bmp.copyPixelsFromBuffer(java.nio.ByteBuffer.wrap(rgba))
+    return bmp.asImageBitmap()
 }
 
 private class Converted(val layer: PhotoLayer, val bitmap: ImageBitmap)

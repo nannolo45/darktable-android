@@ -44,15 +44,28 @@ abstract class DarktableEngineContract {
 
     protected lateinit var engine: DarktableEngine
 
-    @Before
-    fun startEngine() = runBlocking<Unit> {
-        engine = newEngine()
+    /**
+     * Start [engine] for one test. The default calls [DarktableEngine.init] with a fresh folder for
+     * everything (enough for the fake). A real engine needs its unpacked data and module folders, and
+     * darktable is not known to survive a second start in one process (G0 report, open question 1):
+     * the JNI suite overrides this to start the engine once per process.
+     */
+    protected open suspend fun startEngine(e: DarktableEngine) {
         val d = tmp.newFolder("engine")
-        engine.init(EnginePaths(d.path, d.path, d.path, d.path, d.path))
+        e.init(EnginePaths(d.path, d.path, d.path, d.path, d.path))
+    }
+
+    /** End one test. The default shuts the engine down; the JNI suite closes the session and restores threads. */
+    protected open suspend fun stopEngine(e: DarktableEngine) = e.shutdown()
+
+    @Before
+    fun startEngineForTest() = runBlocking<Unit> {
+        engine = newEngine()
+        startEngine(engine)
     }
 
     @After
-    fun stopEngine() = runBlocking<Unit> { engine.shutdown() }
+    fun stopEngineAfterTest() = runBlocking<Unit> { stopEngine(engine) }
 
     protected fun expect(code: EngineError, block: suspend () -> Unit) = runBlocking {
         try {
@@ -86,9 +99,18 @@ abstract class DarktableEngineContract {
         assertTrue(info.threads >= 1)
         expect(EngineError.STATE) { engine.modules() }
         expect(EngineError.STATE) { engine.imageInfo() }
-        expect(EngineError.ARG) { engine.setThreads(0) }
+        // P2b: dtbridge.h is the truth here: n <= 0 restores the count of init, a larger n is clamped
+        val initial = info.threads
         engine.setThreads(1)
         assertEquals(1, engine.engineInfo().threads)
+        engine.setThreads(initial + 100)
+        assertEquals(initial, engine.engineInfo().threads)
+        engine.setThreads(1)
+        engine.setThreads(0)
+        assertEquals(initial, engine.engineInfo().threads)
+        // an empty CPU list removes the pinning; a CPU id the process cannot use is refused
+        engine.setThreadCpus(emptyList())
+        expect(EngineError.ARG) { engine.setThreadCpus(listOf(-1)) }
     }
 
     @Test
@@ -243,8 +265,13 @@ abstract class DarktableEngineContract {
         engine.historyGoto(start + 1)
         assertEquals(start + 1, engine.history().end)
         assertEquals(start + 3, engine.history().items.size)
-        assertEquals(modsAt1, engine.modules())
-        expect(EngineError.RANGE) { engine.historyGoto(start + 10) }
+        // P2b: "in_history" means an item anywhere in the list, also above the end (the bridge's meaning):
+        // color balance rgb's item is above the end now; everything else equals the state at that step
+        val atGoto = engine.modules()
+        assertTrue(atGoto.first { it.op == "colorbalancergb" }.inHistory)
+        assertEquals(modsAt1.map { it.copy(inHistory = false) }, atGoto.map { it.copy(inHistory = false) })
+        // P2b: the bridge answers ARG for an end outside 0..items (the real engine is the truth here)
+        expect(EngineError.ARG) { engine.historyGoto(start + 10) }
 
         engine.historyGoto(0)
         assertEquals(0, engine.history().end)
@@ -276,7 +303,9 @@ abstract class DarktableEngineContract {
         assertTrue(h.items.size < n)
         assertEquals(h.items.size, h.end)
         assertEquals(1, h.items.count { it.op == "exposure" })
-        assertTrue("a module that ends up off is dropped", h.items.none { it.op == "colorbalancergb" })
+        // P2b: darktable's compress keeps disabled modules (dt_history_compress_on_image, "keep disabled modules
+        // as documented"); the real engine is the truth here, the contract said they were dropped
+        assertEquals("a module that ends up off keeps one item, off", listOf(false), h.items.filter { it.op == "colorbalancergb" }.map { it.enabled })
         assertEquals(mods, result())
     }
 

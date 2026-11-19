@@ -33,7 +33,9 @@ import androidx.compose.ui.semantics.stateDescription
 import app.dtandroid.darkroom.BottomView
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
+import app.dtandroid.darkroom.HostAction
 import app.dtandroid.darkroom.InstanceKey
+import app.dtandroid.darkroom.Overlay
 import app.dtandroid.ui.icons.DtIcon
 import app.dtandroid.ui.icons.DtIconImage
 import app.dtandroid.ui.theme.DtTheme
@@ -55,6 +57,8 @@ fun DarkroomScreen(
     layout: DarkroomLayout? = null,
     /** import and export of module layouts; null where there is no file picker (tests) */
     layoutFiles: LayoutFiles? = null,
+    /** the app's photo menu ("more" in the top bar); empty = no menu (interface preview, tests) */
+    actions: List<HostAction> = emptyList(),
 ) {
     val s by controller.state.collectAsState()
     val live by controller.liveValues.collectAsState()
@@ -67,17 +71,17 @@ fun DarkroomScreen(
             null -> maxWidth >= DtTheme.sizes.tabletMinWidth && maxHeight >= DtTheme.sizes.tabletMinHeight
             else -> layout == DarkroomLayout.TABLET
         }
-        if (tablet) TabletLayout(controller, s, live, onBack, onDone) else PhoneLayout(controller, s, live, onBack, onDone)
-        Overlays(controller, s, tablet)
+        if (tablet) TabletLayout(controller, s, live, onBack, onDone, actions.isNotEmpty()) else PhoneLayout(controller, s, live, onBack, onDone, actions.isNotEmpty())
+        Overlays(controller, s, tablet, actions)
     }
 }
 
 // ----------------------------------------------------------------------- phone
 
 @Composable
-private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit) {
+private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
     Column(Modifier.fillMaxSize()) {
-        PhoneTopBar(controller, s, onBack, onDone)
+        PhoneTopBar(controller, s, onBack, onDone, menu)
         PhotoView(controller, s, DtTheme.space.m, twoFingerUndo = true, Modifier.fillMaxWidth().height(DtTheme.sizes.photoPhoneHeight))
         InfoLine(s)
         if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripPhone, DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight, centered = false)
@@ -98,7 +102,7 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
 }
 
 @Composable
-private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack: () -> Unit, onDone: () -> Unit) {
+private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
     val c = DtTheme.colors
     Row(
         Modifier.fillMaxWidth().padding(start = DtTheme.space.xs, end = DtTheme.space.l, top = DtTheme.space.s, bottom = DtTheme.space.s),
@@ -123,8 +127,14 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
                 Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
         }
         BeforeButton(controller, s)
+        if (menu) MoreButton(controller)
         DtTextButton("done", onDone)
     }
+}
+
+@Composable
+private fun MoreButton(controller: DarkroomController) {
+    DtTextButton("more", { controller.setOverlay(Overlay.HostMenu) })
 }
 
 private const val HALF_TURN = 180f
@@ -177,9 +187,9 @@ private fun Notices(s: DarkroomState) {
 // ----------------------------------------------------------------------- tablet
 
 @Composable
-private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit) {
+private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
     Column(Modifier.fillMaxSize()) {
-        TabletTopBar(controller, s, onBack, onDone)
+        TabletTopBar(controller, s, onBack, onDone, menu)
         Divider()
         Row(Modifier.weight(1f).fillMaxWidth()) {
             Column(Modifier.width(DtTheme.sizes.tabletLeftPanel).fillMaxHeight().verticalScroll(rememberScrollState())) {
@@ -205,7 +215,7 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
 }
 
 @Composable
-private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBack: () -> Unit, onDone: () -> Unit) {
+private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
     val c = DtTheme.colors
     Row(
         Modifier.fillMaxWidth().height(DtTheme.sizes.tabletTopBar).padding(start = DtTheme.space.s, end = DtTheme.space.panel),
@@ -234,6 +244,7 @@ private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBac
         DtIconButton(DtIcon.Undo, "undo", c.textStrong, enabled = s.undo.canUndo, onClick = { controller.launch { undo() } })
         DtIconButton(DtIcon.Redo, "redo", c.textStrong, enabled = s.undo.canRedo, onClick = { controller.launch { redo() } })
         BeforeButton(controller, s)
+        if (menu) MoreButton(controller)
         DtTextButton("done", onDone)
     }
 }

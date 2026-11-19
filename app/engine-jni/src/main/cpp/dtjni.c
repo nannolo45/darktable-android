@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define TAG "darktable"
@@ -456,4 +457,256 @@ Java_app_dtandroid_engine_NativeBridge_exportJpeg(JNIEnv *env, jclass cls, jstri
   const int r = dtb_export(p.s, opts);
   _str_free(&p);
   return r;
+}
+
+/* ================================================================== */
+/* Engine API v1, the whole core (brief P2b): one native per bridge   */
+/* call, used by JniEngine (DarktableEngine over JNI). Functions that */
+/* return JSON put the bridge's code into status[0] and return the    */
+/* JSON text, or NULL on failure. Nothing here parses JSON.           */
+/* ================================================================== */
+
+static void _status(JNIEnv *env, jintArray status, int code)
+{
+  if(!status) return;
+  const jint c = code;
+  (*env)->SetIntArrayRegion(env, status, 0, 1, &c);
+}
+
+/* JSON text -> Java string. The bridge's JSON is UTF-8; NewStringUTF wants
+ * modified UTF-8, which differs only for NUL and characters outside the BMP.
+ * JSON from json-glib never contains a raw NUL; supplementary characters
+ * (possible in Exif text) are replaced, as the G0 log reader does. */
+static jstring _json_status(JNIEnv *env, int code, char *s, jintArray status)
+{
+  _status(env, status, code);
+  if(code != DTB_OK || !s)
+  {
+    dtb_free(s);
+    return NULL;
+  }
+  for(unsigned char *p = (unsigned char *)s; *p; p++)
+    if(*p >= 0xf0)
+    {
+      // a 4-byte UTF-8 sequence: replace every byte of it with '?'
+      int n = 1;
+      while(n < 4 && p[n] && (p[n] & 0xc0) == 0x80) n++;
+      for(int k = 0; k < n; k++) p[k] = '?';
+      p += n - 1;
+    }
+  jstring r = (*env)->NewStringUTF(env, s);
+  dtb_free(s);
+  return r;
+}
+
+/* the JSON getters without arguments */
+#define DTJ_ENGINE_INFO 0
+#define DTJ_IMAGE_INFO 1
+#define DTJ_MODULES 2
+#define DTJ_HISTORY 3
+#define DTJ_UNDO_STATE 4
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint what, jintArray status)
+{
+  char *s = NULL;
+  int r;
+  switch(what)
+  {
+    case DTJ_ENGINE_INFO: r = dtb_engine_info(&s); break;
+    case DTJ_IMAGE_INFO: r = dtb_image_info(&s); break;
+    case DTJ_MODULES: r = dtb_modules(&s); break;
+    case DTJ_HISTORY: r = dtb_history(&s); break;
+    case DTJ_UNDO_STATE: r = dtb_undo_state(&s); break;
+    default: r = DTB_E_ARG; break;
+  }
+  return _json_status(env, r, s, status);
+}
+
+/* modules() split into its two costs, for the timings page: the bridge call
+ * alone (times[0], ns) and the copy into a Java string (times[1], ns). */
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_modulesTimed(JNIEnv *env, jclass cls, jlongArray times, jintArray status)
+{
+  struct timespec a, b, c;
+  char *s = NULL;
+  clock_gettime(CLOCK_MONOTONIC, &a);
+  const int r = dtb_modules(&s);
+  clock_gettime(CLOCK_MONOTONIC, &b);
+  jstring j = _json_status(env, r, s, status);
+  clock_gettime(CLOCK_MONOTONIC, &c);
+  const jlong t[2] = { (b.tv_sec - a.tv_sec) * 1000000000LL + (b.tv_nsec - a.tv_nsec),
+                       (c.tv_sec - b.tv_sec) * 1000000000LL + (c.tv_nsec - b.tv_nsec) };
+  (*env)->SetLongArrayRegion(env, times, 0, 2, t);
+  return j;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_setThreadsCode(JNIEnv *env, jclass cls, jint n)
+{
+  return dtb_set_threads(n);
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_setThreadCpus(JNIEnv *env, jclass cls, jintArray cpus)
+{
+  const jsize n = cpus ? (*env)->GetArrayLength(env, cpus) : 0;
+  if(n == 0) return dtb_set_thread_cpus(NULL, 0);
+  jint *ids = (*env)->GetIntArrayElements(env, cpus, NULL);
+  if(!ids) return DTB_E_ARG;
+  int *c = malloc(sizeof(int) * (size_t)n);
+  for(jsize i = 0; i < n; i++) c[i] = ids[i];
+  (*env)->ReleaseIntArrayElements(env, cpus, ids, JNI_ABORT);
+  const int r = dtb_set_thread_cpus(c, n);
+  free(c);
+  return r;
+}
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_xmpCheckStatus(JNIEnv *env, jclass cls, jstring path, jintArray status)
+{
+  jstr_t p = _str(env, path);
+  char *s = NULL;
+  const int r = dtb_xmp_check(p.s, &s);
+  _str_free(&p);
+  return _json_status(env, r, s, status);
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_metadataReload(JNIEnv *env, jclass cls, jstring path)
+{
+  jstr_t p = _str(env, path);
+  const int r = dtb_metadata_reload(p.s);
+  _str_free(&p);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_paramSet(JNIEnv *env, jclass cls, jstring op, jint prio,
+                                                jstring path, jstring value_json)
+{
+  jstr_t o = _str(env, op), p = _str(env, path), v = _str(env, value_json);
+  const int r = dtb_param_set(o.s, prio, p.s, v.s);
+  _str_free(&o); _str_free(&p); _str_free(&v);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_paramsSet(JNIEnv *env, jclass cls, jstring op, jint prio,
+                                                 jstring values_json)
+{
+  jstr_t o = _str(env, op), v = _str(env, values_json);
+  const int r = dtb_params_set(o.s, prio, v.s);
+  _str_free(&o); _str_free(&v);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_moduleReset(JNIEnv *env, jclass cls, jstring op, jint prio)
+{
+  jstr_t o = _str(env, op);
+  const int r = dtb_module_reset(o.s, prio);
+  _str_free(&o);
+  return r;
+}
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_moduleAction(JNIEnv *env, jclass cls, jstring op, jint prio,
+                                                    jstring action, jstring args_json, jintArray status)
+{
+  jstr_t o = _str(env, op), a = _str(env, action), g = _str(env, args_json);
+  char *s = NULL;
+  const int r = dtb_module_action(o.s, prio, a.s, g.s, &s);
+  _str_free(&o); _str_free(&a); _str_free(&g);
+  return _json_status(env, r, s, status);
+}
+
+/* kind: 0 new, 1 duplicate; out[0] receives the new priority */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_instanceAdd(JNIEnv *env, jclass cls, jint kind, jstring op,
+                                                   jint prio, jintArray out)
+{
+  jstr_t o = _str(env, op);
+  int np = -1;
+  const int r = kind == 0 ? dtb_instance_new(o.s, prio, &np) : dtb_instance_duplicate(o.s, prio, &np);
+  _str_free(&o);
+  const jint v = np;
+  (*env)->SetIntArrayRegion(env, out, 0, 1, &v);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_instanceDelete(JNIEnv *env, jclass cls, jstring op, jint prio)
+{
+  jstr_t o = _str(env, op);
+  const int r = dtb_instance_delete(o.s, prio);
+  _str_free(&o);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_instanceMove(JNIEnv *env, jclass cls, jstring op, jint prio, jint dir)
+{
+  jstr_t o = _str(env, op);
+  const int r = dtb_instance_move(o.s, prio, dir);
+  _str_free(&o);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_instanceRename(JNIEnv *env, jclass cls, jstring op, jint prio, jstring name)
+{
+  jstr_t o = _str(env, op), n = _str(env, name);
+  const int r = dtb_instance_rename(o.s, prio, n.s ? n.s : "");
+  _str_free(&o); _str_free(&n);
+  return r;
+}
+
+/* what: 0 goto(arg), 1 compress, 2 seal, 3 undo, 4 redo */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_historyOp(JNIEnv *env, jclass cls, jint what, jint arg)
+{
+  switch(what)
+  {
+    case 0: return dtb_history_goto(arg);
+    case 1: return dtb_history_compress();
+    case 2: return dtb_history_seal();
+    case 3: return dtb_undo();
+    case 4: return dtb_redo();
+    default: return DTB_E_ARG;
+  }
+}
+
+/* Region into a Java byte array of exactly w*h*4 bytes. On ART a large
+ * array lives in the non-moving large-object space, so the elements are
+ * normally the array itself (no copy); *copied (array of one) tells. */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderRegionInto(JNIEnv *env, jclass cls, jint x, jint y, jint w, jint h,
+                                                        jfloat scale, jbyteArray out, jbooleanArray copied)
+{
+  if(!out || w <= 0 || h <= 0) return DTB_E_ARG;
+  if((*env)->GetArrayLength(env, out) != (jsize)((size_t)w * h * 4)) return DTB_E_ARG;
+  jboolean is_copy = JNI_FALSE;
+  jbyte *buf = (*env)->GetByteArrayElements(env, out, &is_copy);
+  if(!buf) return DTB_E_ENGINE;
+  const int r = dtb_render_region(x, y, w, h, scale, (uint8_t *)buf);
+  // copy back only on success; a failed render leaves the array as it was
+  (*env)->ReleaseByteArrayElements(env, out, buf, r == DTB_OK ? 0 : JNI_ABORT);
+  if(copied) (*env)->SetBooleanArrayRegion(env, copied, 0, 1, &is_copy);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_exportWith(JNIEnv *env, jclass cls, jstring path, jstring options_json)
+{
+  jstr_t p = _str(env, path), o = _str(env, options_json);
+  const int r = dtb_export(p.s, o.s);
+  _str_free(&p); _str_free(&o);
+  return r;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_historySealCode(JNIEnv *env, jclass cls)
+{
+  return dtb_history_seal();
 }

@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Brief P2b: install the x86_64 app on the real engine and its instrumented tests on a connected
+# emulator (adb), push one public test RAW and its XMP, run the engine contract suite
+# (JniEngineContractTest) and the scenario tests (RealEngineScenarioTest), pull the results.
+#
+#   tools/app/emulator-p2b.sh <app apk> <test apk> <raw> <xmp> <out dir>
+#
+# <out dir> receives device.txt, instrument.txt, instrument-summary.txt, p2b-test/ (results.txt,
+# export.jpg, app-edit.jpg, app-edit.xmp, timings.txt, log.txt), logcat.txt, crashes.txt,
+# timings.txt. Exit status 0 only if every test passed.
+set -uo pipefail
+APK="${1:?}"; TAPK="${2:?}"; RAW="${3:?}"; XMP="${4:?}"; OUT="${5:?}"
+PKG=app.dtandroid.real   # app/app-engine/build.gradle.kts
+D=/data/local/tmp/p2b
+mkdir -p "$OUT"
+now() { date +%s.%N; }
+el() { awk "BEGIN{printf \"%.1f\", $2 - $1}"; }
+
+adb wait-for-device
+{
+  echo "sdk: $(adb shell getprop ro.build.version.sdk | tr -d '\r')"
+  echo "abi: $(adb shell getprop ro.product.cpu.abi | tr -d '\r')"
+  echo "cores: $(adb shell nproc | tr -d '\r')"
+  adb shell cat /proc/meminfo | head -2 | tr -d '\r'
+} | tee "$OUT/device.txt"
+
+t0=$(now)
+adb install -r -t "$APK" 2>&1 | tail -1
+adb install -r -t "$TAPK" 2>&1 | tail -1
+t1=$(now)
+adb shell "rm -rf $D && mkdir -p $D"
+adb push "$RAW" "$D/$(basename "$RAW")" >/dev/null
+adb push "$XMP" "$D/test.xmp" >/dev/null
+adb logcat -c || true
+
+t2=$(now)
+adb shell am instrument -w -r \
+  -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" \
+  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest \
+  "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | tr -d '\r' > "$OUT/instrument.txt"
+t3=$(now)
+python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true
+cat "$OUT/instrument-summary.txt"
+grep -E "^OK |FAILURES|Tests run" "$OUT/instrument.txt" | tail -5
+
+mkdir -p "$OUT/p2b-test"
+for f in $(adb shell run-as $PKG ls files/p2b-test 2>/dev/null | tr -d '\r'); do
+  adb exec-out run-as $PKG cat "files/p2b-test/$f" > "$OUT/p2b-test/$f"
+done
+adb shell run-as $PKG du -sk files/engine 2>/dev/null | tr -d '\r' > "$OUT/p2b-test/unpacked-du-kb.txt"
+adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
+grep -E " F DEBUG|Fatal signal|FATAL EXCEPTION| E AndroidRuntime" "$OUT/logcat.txt" > "$OUT/crashes.txt" || true
+{
+  echo "install_s $(el "$t0" "$t1")"
+  echo "instrumentation_s $(el "$t2" "$t3")"
+} | tee "$OUT/timings.txt"
+
+grep -q "^OK (" "$OUT/instrument.txt"

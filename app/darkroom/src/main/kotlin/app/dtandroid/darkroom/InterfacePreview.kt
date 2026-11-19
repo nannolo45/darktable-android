@@ -29,7 +29,7 @@ object InterfacePreview {
             else -> emptyList()
         }
         fileName(i) to FakeEngine.SampleInfo(
-            exif = Exif("Generic", "Camera", "23 mm f/1.4", iso, aperture, exposure, 23.0, "2026:06:01 18:%02d:00".format(i)),
+            exif = Exif("Generic", "Camera", "23 mm f/1.4", iso, aperture, exposure, 23.0, "2026-06-01T18:%02d:00".format(i)),
             startEdit = start,
         )
     }

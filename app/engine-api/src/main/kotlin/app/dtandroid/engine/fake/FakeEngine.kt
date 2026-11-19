@@ -102,7 +102,7 @@ class FakeEngine(
 
         private val DEFAULT_EXIF = Exif(
             maker = "Generic", model = "Camera", lens = "23 mm f/1.4", iso = 400.0, aperture = 2.8,
-            exposure = 1.0 / 250.0, focalLength = 23.0, datetime = "2026:06:01 18:30:00",
+            exposure = 1.0 / 250.0, focalLength = 23.0, datetime = "2026-06-01T18:30:00",
         )
     }
 
@@ -178,6 +178,12 @@ class FakeEngine(
             val k = it.op to it.priority
             if (k in m) m[k] = Live(it.enabled || !catalog[it.op]!!.canSwitch, it.params, true)
         }
+        // P2b: as the bridge, "in_history" means the instance has an item anywhere in the history list,
+        // also above the current end
+        for (it in items) {
+            val k = it.op to it.priority
+            m[k]?.let { l -> if (!l.inHistory) m[k] = l.copy(inHistory = true) }
+        }
         return m
     }
 
@@ -231,13 +237,15 @@ class FakeEngine(
 
     override suspend fun setThreads(n: Int) = onEngine {
         requireInit()
-        if (n < 1 || n > initThreads) fail(EngineError.ARG, "threads must be 1..$initThreads")
-        threads = n
+        // as dtb_set_threads: n <= 0 restores the count of init, a larger n is clamped to it (P2b)
+        threads = if (n <= 0) initThreads else min(n, initThreads)
     }
 
     override suspend fun setThreadCpus(cpuIds: List<Int>) = onEngine {
         requireInit()
-        if (cpuIds.isEmpty() || cpuIds.any { it < 0 }) fail(EngineError.ARG, "bad CPU list $cpuIds")
+        // as dtb_set_thread_cpus: an empty list removes the pinning; ids the process cannot use are refused (P2b)
+        val n = Runtime.getRuntime().availableProcessors()
+        if (cpuIds.any { it < 0 || it >= n }) fail(EngineError.ARG, "bad CPU list $cpuIds")
     }
 
     // ------------------------------------------------------------ 2.2 guard
@@ -598,7 +606,8 @@ class FakeEngine(
      */
     override suspend fun historyGoto(end: Int) = onEngine {
         val s = requireSession()
-        if (end !in 0..s.items.size) fail(EngineError.RANGE, "history end $end outside 0..${s.items.size}")
+        // as dtb_history_goto: ARG for an end outside 0..items (P2b)
+        if (end !in 0..s.items.size) fail(EngineError.ARG, "history end $end outside 0..${s.items.size}")
         s.openGroup = null
         s.end = end
     }
@@ -606,19 +615,14 @@ class FakeEngine(
     override suspend fun historyCompress() = onEngine {
         val s = requireWritable()
         s.beginChange()
-        val live = s.live()
+        // as dt_history_compress_on_image (common/history.c): the items above the end are dropped, and of
+        // the rest the last item of each instance is kept, disabled modules included ("keep disabled
+        // modules as documented"). P2b: the fake dropped modules that end up off; the real engine keeps them.
+        val upTo = s.items.take(s.end)
         val kept = ArrayList<Item>()
         val lastIndex = HashMap<Pair<String, Int>, Int>()
-        s.items.forEachIndexed { n, it -> lastIndex[it.op to it.priority] = n }
-        s.items.forEachIndexed { n, it ->
-            val k = it.op to it.priority
-            if (lastIndex[k] != n) return@forEachIndexed
-            val l = live[k]!!
-            val d = catalog[it.op]!!
-            // modules that end up off are dropped, unless switching them off is the edit
-            if (!l.enabled && !d.defaultEnabled) return@forEachIndexed
-            kept += it
-        }
+        upTo.forEachIndexed { n, it -> lastIndex[it.op to it.priority] = n }
+        upTo.forEachIndexed { n, it -> if (lastIndex[it.op to it.priority] == n) kept += it }
         s.items = kept
         s.end = kept.size
     }
