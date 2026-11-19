@@ -13,7 +13,7 @@
 # timings.txt. Exit status 0 only if every test passed.
 set -uo pipefail
 APK="${1:?}"; TAPK="${2:?}"; RAW="${3:?}"; XMP="${4:?}"; OUT="${5:?}"
-PKG=app.dtandroid
+PKG=app.dtandroid.g0   # application id of the G0 app since P2a (app/g0/build.gradle.kts)
 D=/data/local/tmp/g0
 mkdir -p "$OUT"
 now() { date +%s.%N; }
