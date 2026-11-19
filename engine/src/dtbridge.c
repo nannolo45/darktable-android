@@ -63,6 +63,8 @@ static char g_err[2048];
 static gint g_cancel = 0;
 static gpointer g_active_pipe = NULL;  // dt_dev_pixelpipe_t * of the render in flight
 static gchar *g_argv_store[32];
+static int g_init_threads = 0;          // darktable.num_openmp_threads after dt_init
+static dt_imgid_t g_last_imgid = NO_IMGID;
 
 int dtb__err(int code, const char *fmt, ...)
 {
@@ -122,6 +124,8 @@ int dtb_init(const dtb_paths_t *p)
     return dtb__err(DTB_E_ENGINE, "dt_init failed");
 
   memset(&S, 0, sizeof(S));
+  g_init_threads = darktable.num_openmp_threads;
+  g_last_imgid = NO_IMGID;
   g_inited = TRUE;
   return DTB_OK;
 }
@@ -137,6 +141,134 @@ void dtb_shutdown(void)
     g_free(g_argv_store[i]);
     g_argv_store[i] = NULL;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* engine information and tuning (brief G0)                           */
+
+/* count lib*.so files in <moduledir>/<subdir>; adds names (without "lib" and
+ * ".so") to *names when names is not NULL */
+static int _count_plugin_files(const char *subdir, GList **names)
+{
+  gchar *dir = g_build_filename(darktable.plugindir, subdir, NULL);
+  GDir *d = g_dir_open(dir, 0, NULL);
+  g_free(dir);
+  if(!d) return 0;
+  int n = 0;
+  const gchar *f;
+  while((f = g_dir_read_name(d)))
+  {
+    if(!g_str_has_prefix(f, "lib") || !g_str_has_suffix(f, ".so")) continue;
+    n++;
+    if(names) *names = g_list_prepend(*names, g_strndup(f + 3, strlen(f) - 6));
+  }
+  g_dir_close(d);
+  return n;
+}
+
+typedef const char *(*_plugin_name_f)(const void *);
+static const char *_iop_name(const void *m) { return ((const dt_iop_module_so_t *)m)->op; }
+static const char *_format_name(const void *m)
+{
+  return ((const dt_imageio_module_format_t *)m)->plugin_name;
+}
+static const char *_storage_name(const void *m)
+{
+  return ((const dt_imageio_module_storage_t *)m)->plugin_name;
+}
+
+/* one "kind" object; returns the number of files that did not load */
+static int _plugins_kind(JsonBuilder *b, const char *kind, const char *subdir,
+                         GList *loaded, _plugin_name_f name)
+{
+  GList *files = NULL;
+  const int nfiles = _count_plugin_files(subdir, &files);
+  files = g_list_sort(files, (GCompareFunc)g_strcmp0);
+  json_builder_set_member_name(b, kind);
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "files");
+  json_builder_add_int_value(b, nfiles);
+  json_builder_set_member_name(b, "loaded");
+  json_builder_add_int_value(b, g_list_length(loaded));
+  json_builder_set_member_name(b, "not_loaded");
+  json_builder_begin_array(b);
+  int missing = 0;
+  for(GList *f = files; f; f = g_list_next(f))
+  {
+    gboolean found = FALSE;
+    for(GList *l = loaded; l && !found; l = g_list_next(l))
+      found = !g_strcmp0(name(l->data), f->data);
+    if(!found)
+    {
+      json_builder_add_string_value(b, f->data);
+      missing++;
+    }
+  }
+  json_builder_end_array(b);
+  json_builder_end_object(b);
+  g_list_free_full(files, g_free);
+  return missing;
+}
+
+static char *_json_finish(JsonBuilder *b);
+
+char *dtb_plugins_json(void)
+{
+  if(!g_inited)
+  {
+    dtb__err(DTB_E_STATE, "engine not initialised");
+    return NULL;
+  }
+  JsonBuilder *b = json_builder_new();
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "moduledir");
+  json_builder_add_string_value(b, darktable.plugindir);
+  // dt_iop_load_modules_so: <moduledir>/plugins;
+  // dt_imageio_load_modules_format/_storage: plugins/imageio/format, /storage
+  int missing = _plugins_kind(b, "iop", "plugins", darktable.iop, _iop_name);
+  missing += _plugins_kind(b, "format", "plugins/imageio/format",
+                           darktable.imageio->plugins_format, _format_name);
+  missing += _plugins_kind(b, "storage", "plugins/imageio/storage",
+                           darktable.imageio->plugins_storage, _storage_name);
+  json_builder_set_member_name(b, "not_loaded_total");
+  json_builder_add_int_value(b, missing);
+  json_builder_set_member_name(b, "gui_only");
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "views");
+  json_builder_add_int_value(b, _count_plugin_files("views", NULL));
+  json_builder_set_member_name(b, "lighttable");
+  json_builder_add_int_value(b, _count_plugin_files("plugins/lighttable", NULL));
+  json_builder_end_object(b);
+  json_builder_end_object(b);
+  return _json_finish(b);
+}
+
+int dtb_set_threads(int n)
+{
+  NEED_INIT();
+  // as dt_init's --threads (common/darktable.c), but capped at the start-up
+  // count: some per-thread buffers are sized from it (dt_get_num_threads)
+  const int t = n <= 0 ? g_init_threads : CLAMP(n, 1, g_init_threads);
+  darktable.num_openmp_threads = t;
+  return t;
+}
+
+int dtb_get_threads(void)
+{
+  NEED_INIT();
+  return darktable.num_openmp_threads;
+}
+
+int dtb_cache_drop(void)
+{
+  NEED_INIT();
+  if(S.open) return dtb__err(DTB_E_STATE, "close the image first");
+  if(!dt_is_valid_imgid(g_last_imgid)) return DTB_OK;
+  // the float sizes the bridge renders from, then the 8-bit thumbnails
+  dt_mipmap_cache_evict_at_size(g_last_imgid, DT_MIPMAP_FULL);
+  dt_mipmap_cache_evict_at_size(g_last_imgid, DT_MIPMAP_F);
+  dt_mipmap_cache_remove(g_last_imgid);
+  return DTB_OK;
 }
 
 /* ------------------------------------------------------------------ */
@@ -393,6 +525,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
 
   memset(&S, 0, sizeof(S));
   S.imgid = imgid;
+  g_last_imgid = imgid;
   S.read_only = read_only;
   dt_dev_init(&S.dev, FALSE);
   dt_dev_load_image(&S.dev, imgid);

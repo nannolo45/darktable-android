@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Engine bridge prototype (brief S3). Builds libdtbridge out of tree against an
-# installed darktable and the upstream source it was built from.
+# Engine bridge (briefs S3, G0). Builds libdtbridge out of tree against an
+# installed darktable and the upstream source it was built from. The engine
+# build scripts (tools/build-engine-android.sh, tools/build-engine-linux.sh)
+# run it right after darktable, on darktable's own build tree, with the same
+# toolchain and flags; for Android pass the same CMAKE_TOOLCHAIN_FILE and
+# ANDROID_* settings as darktable's configure.
 #
 #   cmake -S engine -B <build> -G Ninja \
 #     -DDT_SOURCE_DIR=<darktable source> \
@@ -65,8 +69,10 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(DTB_DEPS REQUIRED IMPORTED_TARGET glib-2.0 gobject-2.0 json-glib-1.0 libxml-2.0)
 find_package(OpenMP REQUIRED COMPONENTS C)
 
+# NO_CMAKE_FIND_ROOT_PATH: a cross toolchain (Android NDK) would otherwise
+# re-root this absolute path under its sysroot
 find_library(DARKTABLE_LIB darktable PATHS "${DT_INSTALL_PREFIX}/lib/darktable"
-             "${DT_INSTALL_PREFIX}/lib64/darktable" NO_DEFAULT_PATH REQUIRED)
+             "${DT_INSTALL_PREFIX}/lib64/darktable" NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH REQUIRED)
 get_filename_component(DARKTABLE_LIBDIR "${DARKTABLE_LIB}" DIRECTORY)
 
 add_library(dtbridge SHARED src/dtbridge.c src/xmp_check.c)
@@ -78,5 +84,9 @@ target_compile_options(dtbridge PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
 target_link_libraries(dtbridge PRIVATE ${DARKTABLE_LIB} PkgConfig::DTB_DEPS OpenMP::OpenMP_C m)
 set_target_properties(dtbridge PROPERTIES BUILD_RPATH "${DARKTABLE_LIBDIR}")
 
-enable_testing()
-add_subdirectory(tests)
+# the test driver dtb_test (S3 tests); runs on Linux only
+option(DTB_BUILD_TESTS "build the bridge test driver" ON)
+if(DTB_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

@@ -4,6 +4,9 @@
 # Linux x86_64 reference build of the same darktable commit, with the same
 # feature switches as the Android build (tools/build-engine-android.sh), for
 # the render comparison in the emulator test. Ubuntu 24.04 system libraries.
+# Then builds the engine bridge (engine/) and its test driver against
+# darktable's own build tree, into <install prefix>/bridge-build (brief G0):
+# libdtbridge.so and tests/dtb_test for engine/tests/run_tests.sh.
 #
 #   tools/build-engine-linux.sh <darktable source> <install prefix>
 #   tools/build-engine-linux.sh --deps-only     (install the packages only)
@@ -16,6 +19,8 @@ if [ "${NO_APT:-0}" != 1 ]; then
     libgtk-3-dev libxml2-dev liblensfun-dev libsqlite3-dev librsvg2-dev libpng-dev \
     libjpeg-dev libtiff-dev liblcms2-dev libjson-glib-dev libcurl4-openssl-dev \
     libarchive-dev libexiv2-dev libpugixml-dev libpotrace-dev zlib1g-dev >/dev/null
+  # the bridge's test comparisons (engine/tests/compare.py)
+  $SUDO apt-get install -y -qq --no-install-recommends python3-numpy python3-pil >/dev/null
 fi
 [ "${1:-}" = --deps-only ] && exit 0
 DT_SRC="$(cd "${1:?usage: build-engine-linux.sh <darktable src> <prefix>}" && pwd)"
@@ -37,3 +42,9 @@ cmake -S "$DT_SRC" -B "$BUILD" -G Ninja "${OPTS[@]}"
 cmake --build "$BUILD" -j "$(nproc)"
 cmake --install "$BUILD" > /dev/null
 "$PREFIX/bin/darktable-cli" --version | head -3
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+cmake -S "$REPO/engine" -B "$PREFIX/bridge-build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DDT_SOURCE_DIR="$DT_SRC" -DDT_BUILD_DIR="$BUILD" -DDT_INSTALL_PREFIX="$PREFIX"
+cmake --build "$PREFIX/bridge-build" -j "$(nproc)"
+ls -l "$PREFIX/bridge-build/libdtbridge.so" "$PREFIX/bridge-build/tests/dtb_test"
