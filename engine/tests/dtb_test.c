@@ -139,6 +139,12 @@ static void engine_start_ext(const char *workdir, int threads, const char *extra
   char *cachedir = path_join(workdir, "cache");
   char *tmpdir = path_join(workdir, "tmp");
   mkdir(configdir, 0700);
+  // DTB_TEST_RESOURCELEVEL: darktable's memory budget for runs on a machine
+  // shared with other work; run_tests.sh gives darktable-cli the same
+  const char *level = getenv("DTB_TEST_RESOURCELEVEL");
+  gchar *rc_all = g_strdup_printf("%s%s%s%s", extra_rc ? extra_rc : "", level ? "resourcelevel=" : "",
+                                  level ? level : "", level ? "\n" : "");
+  extra_rc = rc_all[0] ? rc_all : NULL;
   if(extra_rc)
   {
     // darktable reads darktablerc at start-up; the app can do the same
@@ -1357,9 +1363,14 @@ static int cmd_actions(const char *raw, const char *xmp, const char *outdir)
                 json_node_get_double(param_node(lens, "crop")));
         CHECK(!strcmp(json_node_get_string(param_node(lens, "lens")), pick), "set_lens did not set the lens");
         json_node_unref(mods);
-        // and back to the original lens, which the rest compares with
+        // and back to the original lens if Lensfun knows it (the XMP may name
+        // a lens that is not in the database)
+        gboolean known = FALSE;
+        for(guint i = 0; i < json_array_get_length(a) && !known; i++)
+          known = !strcmp(json_object_get_string_member(json_array_get_object_element(a, i), "model"), lensname);
         snprintf(args, sizeof(args), "{\"camera\": \"%s\", \"lens\": \"%s\"}", cam, lensname);
-        if(lensname[0]) action("lens", 0, "set_lens", args, DTB_OK);
+        if(known) action("lens", 0, "set_lens", args, DTB_OK);
+        else fprintf(stdout, "INFO original lens '%s' is not in Lensfun; the fisheye stays set\n", lensname);
       }
       json_node_unref(lenses);
     }
@@ -1464,6 +1475,8 @@ static int cmd_threads(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_open(raw, xmp));
   int pw, ph;
   uint8_t *ref = render_probe(&pw, &ph);
+  char black0[64];
+  snprintf(black0, sizeof(black0), "%.9g", param_num("exposure", 0, "black"));
   MUST(dtb_set_threads(1));
   CHECK(info_int("threads") == 1, "threads not 1");
   // a change, so that the render really runs with one thread
@@ -1473,7 +1486,7 @@ static int cmd_threads(const char *raw, const char *xmp, const char *outdir)
   const double t1 = now() - t0;
   MUST(dtb_set_threads(1000));
   CHECK(info_int("threads") == max, "threads above the start-up count not clamped");
-  MUST(dtb_param_set("exposure", 0, "black", "0.0"));
+  MUST(dtb_param_set("exposure", 0, "black", black0));
   const double t2 = now();
   uint8_t *all = render_probe(&pw, &ph);
   const double t3 = now() - t2;
@@ -1502,7 +1515,7 @@ static int cmd_threads(const char *raw, const char *xmp, const char *outdir)
   const int unpinned = count_threads_pinned_to("0");
   fprintf(stdout, "RESULT after unpinning: %d threads still on CPU 0 only\n", unpinned);
   CHECK(unpinned <= before, "unpinning left threads pinned");
-  MUST(dtb_param_set("exposure", 0, "black", "0.0"));
+  MUST(dtb_param_set("exposure", 0, "black", black0));
   uint8_t *again = render_probe(&pw, &ph);
   CHECK(probe_diff(ref, again, pw, ph) == 0, "render after pinning differs");
   free(ref);

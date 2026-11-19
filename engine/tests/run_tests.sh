@@ -21,6 +21,12 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 export DT_PREFIX
 
 DTB="$BRIDGE_BUILD/tests/dtb_test"
+# DTB_TEST_RESOURCELEVEL (for example "small"): darktable's memory budget, for
+# the bridge and darktable-cli alike, on a machine shared with other work.
+# Unset = darktable's default (as in CI).
+CLI_LEVEL=""
+[ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && CLI_LEVEL="--conf resourcelevel=$DTB_TEST_RESOURCELEVEL"
+[ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && export DTB_TEST_RESOURCELEVEL
 CLI="$DT_PREFIX/bin/darktable-cli"
 CMP="python3 -I $HERE/compare.py"
 mkdir -p "$OUT"
@@ -44,7 +50,7 @@ want() { [ -z "$ONLY" ] || echo " $ONLY " | grep -q " $1 "; }
 # darktable-cli export to PNG, with a configuration of its own
 cli() { # raw xmp out.png log
   rm -f "$3"
-  "$CLI" "$1" "$2" "$3" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" \
+  "$CLI" "$1" "$2" "$3" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" $CLI_LEVEL \
     >> "$4" 2>&1
 }
 
@@ -116,7 +122,7 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
     cmp_rec T3 "$C" "$D/instances_bridge.ppm" "$D/instances_cli.png"
     # what darktable itself reads from the XMP: darktable-cli --verbose prints
     # the history it loaded into its library (the desktop's read path)
-    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core \
+    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" > "$D/T3-cli-history.txt" 2>&1
     rm -f "$D/instances_cli_v.png"
   fi
@@ -213,13 +219,13 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     fi
     # JPEG: the same encoder and quality, so the decoded pixels must match
     rm -f "$D/x_export_cli.jpg"
-    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core --configdir "$OUT/cli-config" \
+    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
       --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
     cmp_rec X1 "$C" "$D/x_export.jpg" "$D/x_export_cli.jpg"
     # preview: a different input (the downscaled mipmap) by design, so this is
     # a measurement against darktable-cli's own downscaled export, not a check
     rm -f "$D/x_preview_cli.png"
-    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core \
+    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     note "INFO X1 $C preview vs darktable-cli 1024 px export: $($CMP "$D/x_preview.ppm" "$D/x_preview_cli.png" --tolerance 255 2>&1)"
   fi
@@ -247,7 +253,18 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     parity C2 params; parity C2 reset
   fi
   if want C3; then drv C3 undo "undo/redo"; parity C3 undo; fi
-  if want C4; then drv C4 actions "module actions"; parity C4 actions; fi
+  if want C4; then
+    drv C4 actions "module actions"
+    # darktable-cli must find the LUT the driver set, in the same root folder
+    if [ -f "$D/actions.xmp" ]; then
+      rm -f "$D/actions_cli.png"
+      "$CLI" "$RAW" "$D/actions.xmp" "$D/actions_cli.png" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+        --cachedir "$OUT/cli-cache" --conf "plugins/darkroom/lut3d/def_path=$D/luts" >> "$D/cli.log" 2>&1
+      cmp_rec C4 "$C" "$D/actions_bridge.ppm" "$D/actions_cli.png"
+    else
+      fail C4 "$C" "actions.xmp was not written"
+    fi
+  fi
   if want C5; then drv C5 threads "set_threads, set_thread_cpus"; fi
   if want C6; then drv C6 readonly "read-only refusal"; fi
   if want C7; then
@@ -257,7 +274,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     if [ -f "$D/out.xmp" ]; then
       cli "$RAW" "$D/out.xmp" "$D/c7_cli.png" "$D/cli.log"
       cmp_rec C7 "$C" "$D/e_8.png" "$D/c7_cli.png" --tolerance 0
-      "$CLI" "$RAW" "$D/out.xmp" "$D/c7_cli.jpg" --core --configdir "$OUT/cli-config" \
+      "$CLI" "$RAW" "$D/out.xmp" "$D/c7_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
         --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
       cmp_rec C7 "$C" "$D/e_default.jpg" "$D/c7_cli.jpg" --tolerance 0
     fi
