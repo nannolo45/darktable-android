@@ -1,0 +1,38 @@
+engine for x86_64, darktable 04477d32a00cc5abaea36d5bee084eb40c6eabb2
+NDK 30.0.16248370, API 29
+configure_seconds 7
+build_seconds 123
+bridge_build_seconds 1
+jobs 4
+
+== sizes (stripped, bytes)
+total	63546485
+darktable_lib_and_plugins	13203384
+darktable_plugins_count	153
+darktable-cli	25624
+dependency_libs	35673754
+share_darktable	10394133
+share_lensfun	4249590
+
+libdtbridge	101664
+load_order_entries	42
+
+== bridge: darktable compile definitions it was built with
+-- darktable definitions: GDK_DISABLE_DEPRECATED;GDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_24;GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_MIN_REQUIRED;GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56;GTK_DISABLE_DEPRECATED;GTK_DISABLE_SINGLE_INCLUDES;HAVE_BUILTIN_CPU_SUPPORTS;HAVE_CONFIG_H;HAVE_LIBRAW=1;_XOPEN_SOURCE=700;ANDROID;_FORTIFY_SOURCE=2;NDEBUG;_DARKTABLE_RELEASE
+
+== sysroot libraries not needed by the engine (not shipped)
+libcairo-script-interpreter.so libgailutil-3.so libgirepository-2.0.so libpcre2-posix.so libpng.so libsqlite3.so libsqlite3.so.3.54.1 libtiffxx.so
+
+== OpenMP
+libdarktable.so NEEDED libomp.so: yes
+-- Found OpenMP_C: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP_CXX: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP: TRUE (found suitable version "5.1", minimum required is "4.5")
+ * OpenMP (required version >= 4.5)
+-- Looking for OpenMP
+
+== ELF load alignment (every PT_LOAD must be >= 0x4000)
+misaligned_files 0
+
+== unresolved NEEDED entries
+missing_needed 0
