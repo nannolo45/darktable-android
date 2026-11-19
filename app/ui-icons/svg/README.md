@@ -8,3 +8,6 @@ replacing one file; adding a file adds an icon.
 
 Supported SVG: what Android's own converter (`Svg2Vector`) accepts; keep to `path`, `rect`, `circle`,
 `line`, `polyline`, with `fill="none"` and a stroke.
+
+One exception to the stroke style: `sliderMarker.svg`, the small filled triangle under a slider's value
+(10 x 6, as in the mockups).

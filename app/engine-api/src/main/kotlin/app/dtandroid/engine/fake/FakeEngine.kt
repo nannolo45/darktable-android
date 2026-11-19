@@ -589,11 +589,17 @@ class FakeEngine(
         )
     }
 
+    /*
+     * history_goto moves the view of the history; it changes no edit. The
+     * specification does not say whether it is an undo step or a mutating
+     * call; here it is neither (the P2a report explains why): it seals the open
+     * group, is not recorded for undo, and works in read-only sessions, where
+     * the history can be looked at but nothing can be written.
+     */
     override suspend fun historyGoto(end: Int) = onEngine {
-        val s = requireWritable()
+        val s = requireSession()
         if (end !in 0..s.items.size) fail(EngineError.RANGE, "history end $end outside 0..${s.items.size}")
-        if (end == s.end) return@onEngine
-        s.beginChange(truncate = false)
+        s.openGroup = null
         s.end = end
     }
 

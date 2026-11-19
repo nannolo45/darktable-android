@@ -60,6 +60,7 @@ class DtSizes(t: TokenSource) {
     val historyNumber = t.dp("size.historyNumber")
     val sheetHeader = t.dp("size.sheetHeader")
     val sheetItem = t.dp("size.sheetItem")
+    val sheetMaxHeight = t.dp("size.sheetMaxHeight")
     val menuItem = t.dp("size.menuItem")
     val panelHeader = t.dp("size.panelHeader")
     val tabletTopBar = t.dp("size.tabletTopBar")
@@ -74,6 +75,9 @@ class DtSizes(t: TokenSource) {
     val thumbTabletHeight = t.dp("size.thumbTabletHeight")
     val thumbRing = t.dp("size.thumbRing")
     val photoPhoneHeight = t.dp("size.photoPhoneHeight")
+    /** window size from which the tablet layout is used (width and height) */
+    val tabletMinWidth = t.dp("size.tabletMinWidth")
+    val tabletMinHeight = t.dp("size.tabletMinHeight")
 }
 
 class DtSpace(t: TokenSource) {

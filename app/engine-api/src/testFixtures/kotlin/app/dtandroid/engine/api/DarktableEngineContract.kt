@@ -249,6 +249,9 @@ abstract class DarktableEngineContract {
         engine.historyGoto(0)
         assertEquals(0, engine.history().end)
         engine.historyGoto(start + 1)
+        // going to a step is not an undo step: undo goes back over the last change
+        val undoBefore = engine.undoState()
+        assertTrue(undoBefore.canUndo)
 
         // a change from an earlier step discards the items above it
         engine.paramSet("sigmoid", 0, "middle_grey_contrast", ParamValue.of(2.0))
@@ -333,7 +336,6 @@ abstract class DarktableEngineContract {
             "instance_delete" to { engine.instanceDelete("exposure", 0) },
             "instance_move" to { engine.instanceMove("exposure", 0, 1) },
             "instance_rename" to { engine.instanceRename("exposure", 0, "x") },
-            "history_goto" to { engine.historyGoto(0) },
             "history_compress" to { engine.historyCompress() },
             "undo" to { engine.undo() },
             "redo" to { engine.redo() },
@@ -348,6 +350,11 @@ abstract class DarktableEngineContract {
             }
         }
         assertEquals("the XMP was not rewritten", original, xmp.readText())
+        // looking at earlier steps is allowed: it changes nothing that could be written
+        val end = engine.history().end
+        engine.historyGoto(0)
+        assertEquals(0, engine.history().end)
+        engine.historyGoto(end)
         assertFalse(File(tmp.root, "other.xmp").exists())
     }
 
