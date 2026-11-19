@@ -1,0 +1,79 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+FAIL    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+        java.lang.AssertionError: a module that ends up off is dropped
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.engine.api.DarktableEngineContract$compressKeepsTheResult$1.invokeSuspend(DarktableEngineContract.kt:301)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+FAIL    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+        java.lang.AssertionError: ARG: end 20 outside 0..13 expected:<RANGE> but was:<ARG>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at app.dtandroid.engine.api.DarktableEngineContract$expect$1.invokeSuspend(DarktableEngineContract.kt:75)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:98)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+FAIL    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+        java.lang.AssertionError: consecutive param_set calls merge expected:<14> but was:<12>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at app.dtandroid.engine.api.DarktableEngineContract$paramSetChangesValueSwitchesOnAndGroupsUntilSealed$1.invokeSuspend(DarktableEngineContract.kt:145)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+FAIL    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+        app.dtandroid.engine.api.EngineException: ARG: end 10 outside 0..9
+        	at app.dtandroid.engine.JniEngine.check(JniEngine.kt:93)
+        	at app.dtandroid.engine.JniEngine.hist(JniEngine.kt:213)
+        	at app.dtandroid.engine.JniEngine.historyGoto$lambda$0(JniEngine.kt:215)
+        	at app.dtandroid.engine.JniEngine.$r8$lambda$TqAUmlUBbgTY-AvV-ZuOYX2-c9o(Unknown Source:0)
+        	at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda20.invoke(D8$$SyntheticClass:0)
+        	at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:77)
+        	at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+FAIL    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+        java.lang.AssertionError
+        	at org.junit.Assert.fail(Assert.java:87)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at org.junit.Assert.assertFalse(Assert.java:65)
+        	at org.junit.Assert.assertFalse(Assert.java:75)
+        	at app.dtandroid.engine.api.DarktableEngineContract$setEnabledAndCanSwitch$1.invokeSuspend(DarktableEngineContract.kt:195)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+FAIL    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+        java.lang.AssertionError: expected:<10> but was:<9>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:120)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.engine.api.DarktableEngineContract$paramsSetIsOneStep$1.invokeSuspend(DarktableEngineContract.kt:178)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+passed 19, failed 6, total 25
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 25,  Failures: 6
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
