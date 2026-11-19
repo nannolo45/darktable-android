@@ -57,7 +57,7 @@ jobs:
           # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
           # debug-keystore form) every build has the same signature, so a newer build installs over an older one
           # and keeps its data. Without the secret a key is made here for this run only and never stored.
-          # The owner added the secret on 19 Nov 2026; builds from then on carry the owner's key.
+          # The owner added the secret on 19 Nov 2026; builds from then on carry the owner's key (same signature every time).
           mkdir -p ~/.android
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
