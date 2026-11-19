@@ -1,0 +1,83 @@
+image {"image": "mire1.cr2", "camera_maker": "Canon", "camera_model": "EOS 40D", "raw": true} -> {"image": "xtransIV.raf", "camera_maker": "Fujifilm", "camera_model": "X-T3", "raw": true}
+module ashift (rotate and perspective)
+  ~ slider param=crop_factor: default 1.6188 -> 1.5
+  ~ slider param=f_length: default 100 -> 18
+module cacorrect (raw chromatic aberrations)
+  ~ combobox param=iterations: hidden by default False -> True
+  ~ page 'bayer': hidden by default False -> True
+  ~ page 'other': hidden by default True -> False
+  ~ toggle param=avoidshift: hidden by default False -> True
+  ~ controls hidden in every observed state: 2 -> 3
+module channelmixerrgb (color calibration)
+  ~ slider 'chroma': default 29.158 -> 18.7995
+  ~ slider 'hue': default 28.5401 -> 70.8551
+  ~ slider param=temperature: default 3927.06 -> 4421.98
+module colorin (input color profile)
+  ~ combobox 'input profile': entries +[('sRGB', 1), ('Adobe RGB (compatible)', 2), ('linear Rec709 RGB', 3), ('Rec709 RGB', 4), ('linear Rec2020 RGB', 5), ('PQ Rec2020 RGB', 6), ('HLG Rec2020 RGB', 7), ('PQ P3 RGB', 8), ('HLG P3 RGB', 9), ('Display P3 RGB', 10), ('linear ProPhoto RGB', 11), ('linear XYZ', 12), ('Lab', 13), ('linear infrared BGR', 14), ('BRG (for testing)', 15)] -[('enhanced color matrix', 1), ('sRGB', 2), ('Adobe RGB (compatible)', 3), ('linear Rec709 RGB', 4), ('Rec709 RGB', 5), ('linear Rec2020 RGB', 6), ('PQ Rec2020 RGB', 7), ('HLG Rec2020 RGB', 8), ('PQ P3 RGB', 9), ('HLG P3 RGB', 10), ('Display P3 RGB', 11), ('linear ProPhoto RGB', 12), ('linear XYZ', 13), ('Lab', 14), ('linear infrared BGR', 15), ('BRG (for testing)', 16)]
+module contrastntexture (contrast & texture)
+  ~ slider param=base_detail_level: hard_max 8.94544 -> 9.64024; soft_max 8.94544 -> 9.64024
+module demosaic (demosaic)
+  ~ combobox param=demosaicing_method: default_pos 5 -> 1025; entries +[('Markesteijn 1-pass', 1025)]; hidden by default False -> True
+  ~ combobox param=demosaicing_method (2): default_pos 5 -> 1025; entries -[('RCD', 5)]; hidden by default True -> False
+  ~ combobox param=demosaicing_method (3): default_pos 5 -> 1025; entries +[('Markesteijn 1-pass', 1025)] -[('RCD', 5)]
+  ~ combobox param=demosaicing_method (4): default_pos 5 -> 1025; entries +[('Markesteijn 1-pass', 1025)] -[('RCD', 5)]
+  ~ combobox param=green_eq: hidden by default False -> True
+  ~ slider param=cs_thrs: default 0.37 -> 0.25625
+  - visibility of combobox green_eq (was: demosaicing_method in ['PPG', 'AMaZE', 'VNG4', 'AMaZE (dual)', 'RCD (dual)', 'RCD', 'LMMSE'])
+  - visibility of combobox lmmse_refine (was: demosaicing_method in ['LMMSE'])
+  - visibility of slider median_thrs (was: demosaicing_method in ['PPG'])
+  ~ visibility of combobox color_smoothing: demosaicing_method in ['PPG', 'AMaZE', 'VNG4', 'RCD', 'LMMSE'] -> demosaicing_method in ['VNG', 'Markesteijn 1-pass', 'Markesteijn 3-pass', 'frequency domain chroma']
+  ~ visibility of slider dual_thrs: demosaicing_method in ['AMaZE (dual)', 'RCD (dual)'] -> demosaicing_method in ['Markesteijn 3-pass (dual)']
+  ~ controls hidden in every observed state: 5 -> 8
+module denoiseprofile (denoise (profiled))
+  ~ combobox 'profile': entries +[('found ISO 250', 0), ('X-T3 iso 80', 1), ('X-T3 iso 160', 2), ('X-T3 iso 200', 3), ('X-T3 iso 250', 4), ('X-T3 iso 320', 5), ('X-T3 iso 400', 6), ('X-T3 iso 500', 7), ('X-T3 iso 640', 8), ('X-T3 iso 800', 9), ('X-T3 iso 1000', 10), ('X-T3 iso 1250', 11), ('X-T3 iso 1600', 12), ('X-T3 iso 2000', 13), ('X-T3 iso 2500', 14), ('X-T3 iso 3200', 15), ('X-T3 iso 4000', 16), ('X-T3 iso 5000', 17), ('X-T3 iso 6400', 18), ('X-T3 iso 8000', 19), ('X-T3 iso 10000', 20), ('X-T3 iso 12800', 21), ('X-T3 iso 25600', 22)] -[('found ISO 1600', 0), ('Canon EOS 40D iso 100', 1), ('Canon EOS 40D iso 125', 2), ('Canon EOS 40D iso 160', 3), ('Canon EOS 40D iso 200', 4), ('Canon EOS 40D iso 250', 5), ('Canon EOS 40D iso 320', 6), ('Canon EOS 40D iso 400', 7), ('Canon EOS 40D iso 500', 8), ('Canon EOS 40D iso 640', 9), ('Canon EOS 40D iso 800', 10), ('Canon EOS 40D iso 1000', 11), ('Canon EOS 40D iso 1250', 12), ('Canon EOS 40D iso 1600', 13), ('Canon EOS 40D iso 3200', 14)]
+  ~ slider param=scattering: default 0.096444 -> 0.00976216
+  ~ slider param=shadows: default 1.13452 -> 1.36356
+module highlights (highlight reconstruction)
+  ~ combobox param=mode: entries -[('guided laplacians', 3)]
+  - visibility of combobox scales (was: mode in ['guided laplacians'])
+  - visibility of slider iterations (was: mode in ['guided laplacians'])
+  - visibility of slider solid_color (was: mode in ['guided laplacians'])
+  ~ visibility of slider noise_level: table over mode, recovery: visible for [[3, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6]] -> mode in ['segmentation based'] and recovery in ['small segments', 'large segments', 'flat small segments', 'flat large segments', 'generic', 'flat generic']
+  ~ controls hidden in every observed state: 2 -> 5
+module lens (lens correction)
+  + combobox 'aperture'  in page:lensfun
+  + combobox 'distance'  in page:lensfun
+  + combobox 'focal length'  in page:lensfun
+  - combobox 'd'  in page:lensfun
+  - combobox 'f/'  in page:lensfun
+  - combobox 'mm'  in page:lensfun
+  ~ button #0: hidden by default False -> True
+  ~ button #1: hidden by default False -> True
+  ~ button 'camera model': hidden by default False -> True
+  ~ button 'lens model': hidden by default False -> True
+  ~ collapsible 'fine-tuning': hidden by default True -> False
+  ~ combobox param=inverse: hidden by default False -> True
+  ~ combobox param=method: default_pos 1 -> 0; entries +[('embedded metadata', 0)]
+  ~ combobox param=target_geom: hidden by default False -> True
+  ~ page 'lensfun': hidden by default False -> True
+  ~ page 'metadata': hidden by default True -> False
+  ~ slider param=cor_ca_b_ft: hidden by default True -> False
+  ~ slider param=cor_ca_r_ft: hidden by default True -> False
+  ~ slider param=cor_dist_ft: hidden by default True -> False
+  ~ slider param=cor_vig_ft: hidden by default True -> False
+  ~ slider param=scale: default 1.00347 -> 1; hidden by default False -> True
+  ~ slider param=scale_md: hidden by default True -> False
+  ~ toggle param=tca_override: hidden by default False -> True
+  + visibility of page 'metadata': method in ['embedded metadata']
+  ~ visibility of combobox modify_flags: method in ['Lensfun database'] -> method in ['embedded metadata', 'Lensfun database']
+  ~ visibility of row None: method in ['Lensfun database'] -> method in ['embedded metadata', 'Lensfun database']
+  ~ controls hidden in every observed state: 8 -> 1
+module rawprepare (raw black/white point)
+  ~ slider param=raw_black_level_separate[0]: default 1030 -> 1018
+  ~ slider param=raw_black_level_separate[1]: default 1030 -> 1018
+  ~ slider param=raw_black_level_separate[2]: default 1026 -> 1018
+  ~ slider param=raw_black_level_separate[3]: default 1026 -> 1018
+  ~ slider param=raw_white_point: default 13600 -> 16383
+module temperature (white balance)
+  ~ combobox 'settings/settings': entries +[('Fujifilm X-T3', 4), ('cloudy', 6), ('incandescent', 7), ('day white fluorescent', 8), ('daylight fluorescent', 9), ('white fluorescent', 10), ('underwater', 11)] -[('Canon EOS 40D', 4), ('shade', 6), ('cloudy', 7), ('tungsten', 8), ('fluorescent', 9), ('flash', 10)]
+  ~ slider 'temperature': default 5105.24 -> 5336.46
+  ~ slider 'tint': default 1.05068 -> 0.978719
+  ~ slider param=blue: default 1.39844 -> 1.71192
+  ~ slider param=red: default 2.11523 -> 1.95033
+  ~ visibility of toggle late_correction: control 'settings' in ['as shot', 'flash', 'user modified', 'daylight', 'shade', 'cloudy', 'tungsten', 'fluorescent'] -> control 'settings' in ['as shot', 'white fluorescent', 'underwater', 'user modified', 'daylight', 'cloudy', 'incandescent', 'day white fluorescent', 'daylight fluorescent']
