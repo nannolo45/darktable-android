@@ -209,7 +209,12 @@ def main():
         flat = walk(m["controls"])
         vis = m["visible_default"]
         sen = m["sensitive_default"]
+        recomputed = m.get("gradient_recomputed", {})
         for n, _ in flat:
+            # P1c: sliders whose colour stops desktop recomputes while
+            # editing, and what made it do so (list, slider, gui_update)
+            if str(n["id"]) in recomputed:
+                n["gradient_recomputed"] = recomputed[str(n["id"])]
             if vis[n["id"]] == "0":
                 n["hidden_by_default"] = True
             if sen[n["id"]] == "0":
