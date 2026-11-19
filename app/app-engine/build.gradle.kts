@@ -74,9 +74,27 @@ android {
         create("arm64") { dimension = "abi"; ndk { abiFilters += "arm64-v8a" } }
         create("x86_64") { dimension = "abi"; ndk { abiFilters += "x86_64" } }
     }
+    // Signing as app/app (main 0071d6a): -Pdta.keystore=<absolute path of a keystore in debug-keystore form>
+    // signs the debug build, and with it the instrumented test APK, with the owner's key (CI writes the
+    // secret SIGNING_KEYSTORE_B64 there; the key is never in the repository). Without the property: the
+    // building machine's debug key.
+    val ownerKeystore: String? = providers.gradleProperty("dta.keystore").orNull
+    signingConfigs {
+        if (ownerKeystore != null) {
+            create("owner") {
+                storeFile = file(ownerKeystore)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
     buildTypes {
-        // debug only: signed with the debug key of the machine that builds it (CI: the owner's key when the secret exists)
-        getByName("debug") { isMinifyEnabled = false }
+        // debug only
+        getByName("debug") {
+            isMinifyEnabled = false
+            if (ownerKeystore != null) signingConfig = signingConfigs.getByName("owner")
+        }
     }
     buildFeatures {
         compose = true

@@ -138,17 +138,20 @@ jobs:
           # Signing. With the repository secret SIGNING_KEYSTORE_B64 (the owner's key, a base64 keystore in the
           # debug-keystore form) every build has the same signature, so a newer build installs over an older one
           # and keeps its data. Without the secret a key is made here for this run only and never stored.
+          # The owner added the secret on 19 Nov 2026. Gradle is told to use it with -Pdta.keystore (see app/app/build.gradle.kts).
           mkdir -p ~/.android
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore "$HOME/owner.keystore"
+            echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
-            echo "signing: owner key"
+            echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
           else
             "$JAVA_HOME_17_X64/bin/keytool" -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
               -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Android Debug,O=Android,C=US" > /dev/null
-            echo "signing: temporary key for this run (no SIGNING_KEYSTORE_B64 secret)"
+            echo "signing: temporary key for this run (this run was given no SIGNING_KEYSTORE_B64 secret)" | tee /tmp/signing.txt
           fi
 
       - name: Rule check and JVM tests (fake engine, screenshots included)
@@ -158,7 +161,7 @@ jobs:
           cd app
           "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 --continue \
             :checkScreenRulesSelfTest :checkScreenRules \
-            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest :app:assembleDebug 2>&1 | tee /tmp/tests.log
+            :engine-api:test :schema:test :ui-theme:testDebugUnitTest :darkroom:testDebugUnitTest $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/tests.log
           rc=${PIPESTATUS[0]}
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           python3 -I ../tools/app/test-summary.py . | tee /tmp/test-summary.txt
@@ -169,7 +172,7 @@ jobs:
         run: |
           start=$(date +%s)
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" \
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG \
             :app-engine:assembleArm64Debug :app-engine:assembleX86_64Debug :app-engine:assembleX86_64DebugAndroidTest :g0:assembleX86_64Debug 2>&1 | tee /tmp/gradle.log
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
           mkdir -p /home/runner/apk
@@ -192,8 +195,11 @@ jobs:
               echo "  permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/    /'
               if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
               if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
-              echo "  signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$a" | grep -E "Signer #1 certificate SHA-256" | sed 's/^/    /'
+              echo "  signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$a" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/    /'
             done
+            t=/home/runner/apk/app-engine-x86_64-androidTest.apk
+            echo; echo "== instrumented test APK"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$t" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/    /'
+            cat /tmp/signing.txt 2>/dev/null
           } | tee "$R"
 
       - name: Publish the phone APK as a release file
@@ -223,6 +229,7 @@ jobs:
             echo "tests_exit: ${{ steps.tests.outputs.rc }}"
             echo "gradle_seconds: ${{ steps.build.outputs.seconds }}"
             echo "runner_cores: $(nproc)"
+            cat /tmp/signing.txt 2>/dev/null
           } > "$L/summary.txt"
           cp /home/runner/apk/apk-report.txt /tmp/test-summary.txt "$L/" 2>/dev/null || true
           tail -n 300 /tmp/tests.log > "$L/tests.tail.log" 2>/dev/null || true
