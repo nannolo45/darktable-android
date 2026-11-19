@@ -125,7 +125,7 @@ static void _rows_match(GArray *pre, const int pre_end)
   const int npre = pre->len;
   const int ndev = g_list_length(dtb_S.dev.history);
   GArray *rows = g_array_new(FALSE, TRUE, sizeof(dtb_row_t));
-  int i = 0, j = 0, consumed = 0, rows_end = (pre_end <= 0) ? 0 : -1, unloaded = 0;
+  int i = 0, j = 0, unloaded = 0;
   while(i < npre || j < ndev)
   {
     const dt_dev_history_item_t *h = j < ndev ? g_list_nth_data(dtb_S.dev.history, j) : NULL;
@@ -137,7 +137,6 @@ static void _rows_match(GArray *pre, const int pre_end)
       r.instance_name = g_strdup(p->instance_name);
       r.dev_index = j++;
       i++;
-      consumed++;
     }
     else if(p)
     {
@@ -160,7 +159,6 @@ static void _rows_match(GArray *pre, const int pre_end)
         r.dev_index = -1;
         unloaded++;
         i++;
-        consumed++;
       }
     }
     else
@@ -172,9 +170,13 @@ static void _rows_match(GArray *pre, const int pre_end)
       r.dev_index = j++;
     }
     g_array_append_val(rows, r);
-    if(rows_end < 0 && consumed >= pre_end) rows_end = rows->len;
   }
-  if(rows_end < 0) rows_end = rows->len;
+  // upstream's end counts positions in the list the library held, skipped
+  // rows included, and is shifted by items the load added itself
+  // (automatic presets, dt_image_shift_history_end): a position in the
+  // merged list. It can exceed the list (the reported gap).
+  (void)pre_end;
+  const int rows_end = MIN(MAX(dtb_S.dev.history_end, 0), (int)rows->len);
 
   dtb_S.rows = rows;
   dtb_S.rows_end = rows_end;

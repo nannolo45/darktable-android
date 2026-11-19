@@ -306,7 +306,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C5; then drv C5 threads "set_threads, set_thread_cpus"; fi
   if want C6; then drv C6 readonly "read-only refusal"; fi
   if want C9; then drv C9 drag "a drag resynchronises one item; picture = fresh session"; parity C9 drag; fi
-  if want C8; then drv C8 reopen "open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit"; fi
+  if want C8; then
+    drv C8 reopen "open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit"
+    # the default edit as darktable-cli makes it from the RAW alone
+    rm -f "$D/reopen_default_cli.png"
+    "$CLI" "$RAW" "$D/reopen_default_cli.png" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" \
+      $CLI_LEVEL >> "$D/cli.log" 2>&1
+    cmp_rec C8 "$C/default-edit-vs-cli" "$D/reopen_default_bridge.ppm" "$D/reopen_default_cli.png"
+  fi
   if want C7; then
     drv C7 output "xmp_write, export, metadata_reload"
     # the default export (JPEG 95) and the 8-bit PNG decode as darktable-cli's

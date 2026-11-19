@@ -1948,12 +1948,27 @@ static int cmd_reopen(const char *raw, const char *xmp, const char *outdir)
   // the default edit: the first import in this process (fresh library)
   MUST(dtb_open(raw, NULL));
   snap_t d0 = snap();
-  fprintf(stdout, "RESULT default edit: %d history items\n", history_count(NULL));
+  int d0_end = -1;
+  const int d0_items = history_count(&d0_end);
+  fprintf(stdout, "RESULT default edit: %d history items, end %d\n", d0_items, d0_end);
+  // every item of the default edit is in effect (a first import shows them all)
+  CHECK(d0_end == d0_items && d0_items > 0, "default edit: end %d with %d items", d0_end, d0_items);
+  {
+    int w, h;
+    uint8_t *buf = render_full(&w, &h, NULL);
+    write_ppm(path_join(outdir, "reopen_default_bridge.ppm"), buf, w, h);
+    free(buf);
+  }
   some_edits();
   MUST(dtb_close());
 
   MUST(dtb_open(raw, NULL));
   snap_same(&d0, "open(raw, NULL) after an edited session");
+  {
+    int e = -1;
+    const int n = history_count(&e);
+    CHECK(e == n, "default edit after reopening: end %d with %d items", e, n);
+  }
   some_edits();
   MUST(dtb_xmp_write(path_join(outdir, "reopen_edited.xmp")));
   MUST(dtb_close());
