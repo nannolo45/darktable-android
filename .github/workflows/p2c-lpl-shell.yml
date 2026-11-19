@@ -62,6 +62,8 @@ jobs:
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore "$HOME/owner.keystore"
+            echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
             echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
@@ -96,7 +98,7 @@ jobs:
           for attempt in 1 2 3; do
             set +e
             "$GRADLE" --no-daemon $refresh -Dorg.gradle.workers.max=4 -Pdta.shellVersionName="$SHELL_VERSION" -Pdta.shellVersionCode="${{ github.run_number }}" \
-              :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
+              $DTA_KEYSTORE_ARG :lpl-shell:assembleDebug :lpl-shell:assembleDebugAndroidTest 2>&1 | tee /tmp/gradle.log
             rc=${PIPESTATUS[0]}
             set -e
             [ "$rc" = 0 ] && break

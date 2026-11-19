@@ -51,6 +51,8 @@ jobs:
           rm -f ~/.android/debug.keystore
           if [ -n "$SIGNING_KEYSTORE_B64" ]; then
             printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore "$HOME/owner.keystore"
+            echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
             "$JAVA_HOME_17_X64/bin/keytool" -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null \
               || { echo "SIGNING_KEYSTORE_B64 is not a usable keystore"; exit 1; }
             echo "signing: owner key (secret of ${#SIGNING_KEYSTORE_B64} characters)" | tee /tmp/signing.txt
@@ -106,7 +108,7 @@ jobs:
         id: build
         run: |
           cd app
-          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" :app:assembleDebug 2>&1 | tee /tmp/gradle.log
+          "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/gradle.log
           mkdir -p /home/runner/out
           cp app/build/outputs/apk/debug/app-debug.apk /home/runner/out/dt-android-preview-arm64-v8a.apk
 
