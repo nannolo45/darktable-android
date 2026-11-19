@@ -5,6 +5,9 @@ Brief: `docs/briefs/P1a-engine-core.md`. Branch `p1a-engine-core`. Pull request 
 
 ## Running log (newest first)
 
+- 2026-11-19 10:13: run 44496589328 (6c84736, after the merge of main) ended: Linux 115 PASS, 6 FAIL (the
+  same T5 cases and numbers); engine both ABIs, APKs built; emulator test passed (exit 0, export vs
+  darktable-cli max 26, mean 0.00092). Report final. Nothing left open on this branch except the review.
 - 2026-11-19 09:59: run 44496589328 still in its Linux tests (about 40 min, as before).
 - 2026-11-19 09:40: run 44496589328: engine for both ABIs and the G0 APKs built on the merge commit; Linux
   tests and emulator test running.

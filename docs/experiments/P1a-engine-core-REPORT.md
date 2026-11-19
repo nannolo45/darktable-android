@@ -29,7 +29,7 @@ agent's Gradle daemons) kills 20 and 26 MP renders.
 | 3g | `export` options, atomic `xmp_write`, `metadata_reload` | **done** (C7) |
 | 3h | Read-only refuses every mutating call | **done** (C6: 20 of 20 on each image; `history_goto` allowed, per the contract) |
 | 4 | Tests covering section 4 on three images, in the Linux CI job, failing it on any failure | **partly**: tests done (C1 to C7 added, T5 strict, the job's T5 exception removed, the job fails on any failure); the acceptance "region test must now pass" is **not met** for raf and arw (above) |
-| 5 | Android engine builds `libdtbridge.so` for both ABIs; G0 app builds against the header | **done**: runs 44478936128, 44489957409 and FINAL_RUN built both ABIs (about 100 KB each) and the APKs; the emulator test passed in 44478936128 and 44489957409 (FINAL_EMU) |
+| 5 | Android engine builds `libdtbridge.so` for both ABIs; G0 app builds against the header | **done**: runs 44478936128, 44489957409 and 44496589328 (after the last merge of main) built both ABIs (about 100 KB each) and the G0 APKs; the emulator test (API 33, x86_64) passed in all three |
 | 6 | Write-up and report | **done** |
 
 Function groups of the specification: 2.1 lifecycle done; 2.2 guard done; 2.3 session done; 2.4 modules
@@ -73,7 +73,11 @@ comparisons, listed below); the job fails because of them, as the brief asks. 66
 same 115/6 and the same T5 numbers. Emulator job (API 33, x86_64, G0 app on the new bridge): test exit 0;
 open 196 ms, preview 191 ms, export 1893 ms, region after a change 349 ms, cancel returns
 `DTB_E_CANCELLED`; export vs darktable-cli on Linux max 26, mean 0.00092, PSNR 75.7 (within G0's
-tolerance, comparison ok); XMP guard ok, RAW unchanged. Run after the last merge of main: FINAL_LINE
+tolerance, comparison ok); XMP guard ok, RAW unchanged. **Final run 44496589328** (commit 6c84736, after the last merge of main; logs under
+`runs/44496589328-a1/`): the same result: Linux 115 PASS, 6 FAIL (the same six T5 comparisons with the same
+numbers, the other 60 pixel comparisons max 0); engine for both ABIs and the G0 APKs built; emulator test
+exit 0, export vs darktable-cli max 26, mean 0.00092 (comparison ok), XMP guard ok, RAW unchanged. The
+workflow's overall conclusion is "failure", only because of T5.
 
 **Pixel parity with darktable-cli** (8-bit, max difference, every case max 0, mean 0): T1 render, T2
 parameter, T3 instances (session and reopened), T4 goto and compress, T9 drawn mask, X1 move and delete,
