@@ -546,7 +546,7 @@ class LplAgent(
                 work.delete(origin, id)
                 _photos.update { list -> list.filter { it.key != r.key } }
                 unsaved.remove(r.key)
-                trace("lpl: ${r.filename} removed from the phone (folder deleted)")
+                trace("lpl: ${r.id}/${r.filename} removed from the phone (folder deleted)")
             }
             RemoveResult.Removed
         }
@@ -569,7 +569,7 @@ class LplAgent(
                 return false
             }
             write(dir)
-            trace("lpl: $what of ${r.filename} written")
+            trace("lpl: $what of ${r.id}/${r.filename} written")
             return true
         }
     }

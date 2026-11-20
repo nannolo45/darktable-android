@@ -156,9 +156,11 @@ class P2fScenarioTest {
             val j = c.launch { setEnabled(InstanceKey(op, 0), true) }
             waitFor("$op on") { j.isCompleted && c.state.value.modules.any { it.op == op && it.enabled } }
         }
-        // the emulator's own darkroom frame, at fit
+        // a phone's darkroom frame (1080 px wide, portrait screen), at fit; the emulator's own frame is small (run
+        // 44701978994: 304 x 250, so its preview stayed at 1024 px). The screen sends its size again only when it changes.
         waitFor("the view's size") { c.currentViewport != null }
-        val fit = c.currentViewport!!.copy(zoom = 1f, centerX = 0.5f, centerY = 0.5f)
+        TestFiles.record(res, "f10_emulator_frame", c.currentViewport!!.let { "${it.widthPx}x${it.heightPx}" })
+        val fit = app.dtandroid.darkroom.Viewport(1080, 1500)
         c.setViewport(fit)
         waitFor("preview of the heavy edit at the frame's size") { c.state.value.preview != null && Math.abs((c.renderTimes.value.previewPx ?: 0) - c.previewSize()) <= 1 && c.state.value.region == null }
         Thread.sleep(1500)

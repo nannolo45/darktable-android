@@ -229,6 +229,8 @@ class LplScenarioTest {
             TestFiles.record(res, "l4_thumbnail_renders", ev.count { it.startsWith("thumbnail pass:") && it.endsWith("render start") })
             TestFiles.record(res, "l4_writes_dropped_after_removal", ev.count { it.contains("not written: the photo is no longer on the phone") })
             TestFiles.record(res, "l4_removal_and_thumbnail_lines", ev.filter { it.startsWith("lpl:") || it.startsWith("thumbnail pass:") }.joinToString(" | "))
+            // photo 51's own lines (file names repeat across the photos of earlier tests; its folder is named 51)
+            TestFiles.record(res, "l4_photo_51", app.dtandroid.darkroom.Timeline.text().lines().filter { "51/" in it }.joinToString(" | "))
         }
     }
 

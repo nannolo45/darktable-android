@@ -246,12 +246,12 @@ class DarkroomController(
                         // no picture: pictureOrClose closed the session already
                         if (pictureOrClose(e, item.rawPath, stamp) == null) { open = false; return@bg null }
                         // brief P2i: a timeline line for thumbnail renders and stores (P2h's l4 failure)
-                        Timeline.mark("thumbnail pass: ${item.fileName} render start")
-                        e.renderPreview(thumbnailSize).also { Timeline.mark("thumbnail pass: ${item.fileName} rendered") }
+                        Timeline.mark("thumbnail pass: ${thumbName(item)} render start")
+                        e.renderPreview(thumbnailSize).also { Timeline.mark("thumbnail pass: ${thumbName(item)} rendered") }
                     } finally { if (open) runCatching { e.close() } }
                 }
             } catch (e: EngineException) { null } ?: continue
-            Timeline.mark("thumbnail pass: ${item.fileName} store")
+            Timeline.mark("thumbnail pass: ${thumbName(item)} store")
             thumbnailStore?.store(item, t)
             val i = _state.value.series.items.indexOf(item)
             if (i >= 0) _state.update { st -> st.copy(thumbnails = st.thumbnails + (i to t)) }
@@ -259,6 +259,9 @@ class DarkroomController(
         }
         return n
     }
+
+    /** Brief P2i: a photo in the timeline: its folder's name and its file name (file names repeat across folders). */
+    private fun thumbName(item: SeriesItem) = "${File(item.rawPath).parentFile?.name}/${item.fileName}"
 
     /** Switch to another photo of the series; the current edit is written to its sidecar first. */
     suspend fun openPhoto(index: Int, saveCurrent: Boolean = true) {
@@ -772,14 +775,16 @@ class DarkroomController(
     /**
      * An interactive render that ends CANCELLED although its own coroutine is still wanted was stopped by a
      * cancel meant for something else: run it again (at most twice) rather than leave the screen without it.
+     * Brief P2i: [still] says whether the picture is still wanted at all (a region is not, once the view is back
+     * at fit: its cancel was meant for it).
      */
-    private suspend fun <T> wanted(block: suspend () -> T): T {
+    private suspend fun <T> wanted(still: () -> Boolean = { true }, block: suspend () -> T): T {
         var n = 0
         while (true) {
             try {
                 return block()
             } catch (e: EngineException) {
-                if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || ++n > 2) throw e
+                if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || !still() || ++n > 2) throw e
                 Timeline.mark("darkroom: a render stopped by a cancel not meant for it, run again")
             }
         }
@@ -833,7 +838,7 @@ class DarkroomController(
         if (regionsPending.incrementAndGet() == 1) _state.update { it.copy(regionPending = true) }
         try {
             val layer = fg {
-                wanted {
+                wanted({ zoomedIn(viewport) }) {
                     // read on every try: the view may be back at fit by now, and then nothing is rendered
                     val vp = viewport?.takeIf { zoomedIn(it) } ?: return@wanted null
                     val info = _state.value.info ?: return@wanted null

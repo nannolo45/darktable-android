@@ -187,6 +187,6 @@ class P2iLplTest {
             assertFalse("round $round: the folder came back (${written.get()} thumbnails written)", dir.exists())
             assertNull(agent.record(o, id))
         }
-        assertNotNull(traced.firstOrNull { it.startsWith("lpl: IMG_0011.CR2 removed from the phone") })
+        assertNotNull(traced.firstOrNull { it.startsWith("lpl: 11/IMG_0011.CR2 removed from the phone") })
     }
 }
