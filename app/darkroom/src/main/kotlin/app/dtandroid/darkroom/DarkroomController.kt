@@ -418,6 +418,8 @@ class DarkroomController(
             Timeline.mark("darkroom: engine open start")
             redoGuard.engineRedoEmpty()
             engine.open(item.rawPath, xmp)
+            // brief P3a: a new session starts from the file: a switch-off left by a failed undo is gone with the old one
+            cropBracketOpen = false
             // brief P2h: 0 x 0 or an engine error from image_info: the session is already closed here
             val info = pictureOrClose(engine, item.rawPath, stamp) ?: noPicture()
             Timeline.mark("darkroom: engine open end")
@@ -818,6 +820,8 @@ class DarkroomController(
     fun cropWanted(s: DarkroomState): InstanceKey? {
         val k = s.expanded ?: return null
         if (k.op != CROP_OP || s.info == null || s.readOnly || s.loading) return null
+        // the engine may still hold crop switched off (an undo that failed): no tool on that state
+        if (cropBracketOpen) return null
         if (schema.modules[k.op]?.aspect == null) return null
         if (cropBlockedBy(s) != null) return null
         return k

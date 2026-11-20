@@ -387,6 +387,9 @@ class P3aCropToolTest {
         c.toggleExpanded(crop)
         c.syncCropTool()
         waitFor("message") { c.state.value.message?.contains(DarkroomController.CROP_NOT_WRITTEN) == true }
+        // asked again (toggleExpanded launched one, this is a second): the tool does not open on that state
+        c.syncCropTool()
+        assertNull(c.cropWanted(c.state.value))
         assertNull(c.state.value.cropTool)
         // the engine holds crop switched off now: nothing may write it
         c.saveIfOpen(c.state.value.current!!.rawPath)
@@ -397,6 +400,10 @@ class P3aCropToolTest {
         assertFalse(out.exists())
         val r = runCatching { c.withPhotoSession(c.state.value.current!!.rawPath, c.state.value.current!!.xmpPath) { "rendered" } }
         assertTrue("no session for LightPhotoLibrary: $r", r.isFailure)
+        // the photo opened again (from its XMP, which still holds the edit from before): all works again
+        e.failUndo = false
+        c.openPhoto(0, saveCurrent = false)
+        assertNotNull(c.cropWanted(c.state.value) ?: run { c.toggleExpanded(crop); c.cropWanted(c.state.value) })
     }
 
     @Test fun anotherModulesChangeWhileTheToolIsOpenWritesTheFrameFirst() = runBlocking {
