@@ -93,8 +93,8 @@ class P3aScenarioTest {
      * report, recorded by [differences]. The history, its end, the parameters and the current hash are compared.
      */
     private fun edit(xmp: String) = xmp
-        .replace(Regex("""\s[A-Za-z]+:[A-Za-z_]*(?:timestamp|Date)="[^"]*""""), "")
-        .replace(Regex("""\sdarktable:history_(?:basic|auto)_hash="[^"]*""""), "")
+        .replace(Regex("""\s+[A-Za-z]+:[A-Za-z_]*(?:timestamp|Date)="[^"]*""""), "")
+        .replace(Regex("""\s+darktable:history_(?:basic|auto)_hash="[^"]*""""), "")
 
     /** The attributes that differ between two XMPs, by name (for the results file). */
     private fun differences(a: String, b: String): String {
