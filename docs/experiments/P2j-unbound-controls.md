@@ -17,3 +17,7 @@ Times UTC. Measurements on the build workspace are x86_64, 2 cores, not phone nu
 - Found while building: framing's "image" (0) and "constant border" (-1) and lens' "use latest algorithm"
   (scale_md_v1 = 0) write values outside the fields' limits, which the bridge refuses (`engine/src/params.c`
   NEED_NUMBER/range check). Lens' toggle moved from a to c.
+- Color harmonizer hues built through upstream's tables (computed by upstream's own code). Emulator test
+  P2jScenarioTest and the darktable-cli comparison added. Darkroom tests on the stand-in engine added.
+- Last code commit f64cacf: p2a-app 44698450917 green (186 tests), p2b-real-engine 44698450965 green (JVM 242,
+  emulator 43/43, compare green: P2j 44.3 / 47.0 / 46.1 dB). APK dt-android-f64cacf1d111. Report written.
