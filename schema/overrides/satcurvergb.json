@@ -1,0 +1,26 @@
+{
+  "op": "satcurvergb",
+  "reason": "brief P2j. protect near-neutrals and its transition width are shown as centre and width of gf_protect_from..gf_protect_to (protect_from_to_to_center_width) and written back by _protect_center_width_changed (protect_center_width_to_from_to) in src/iop/satcurvergb.c; app/schema Formulas.ProtectCenterWidth.",
+  "computed": [
+    {
+      "node": 12,
+      "expect_label": "protect near-neutrals",
+      "formula": "protect_center_width",
+      "role": "center",
+      "params": {
+        "from": "gf_protect_from",
+        "to": "gf_protect_to"
+      }
+    },
+    {
+      "node": 13,
+      "expect_label": "protection transition width",
+      "formula": "protect_center_width",
+      "role": "width",
+      "params": {
+        "from": "gf_protect_from",
+        "to": "gf_protect_to"
+      }
+    }
+  ]
+}

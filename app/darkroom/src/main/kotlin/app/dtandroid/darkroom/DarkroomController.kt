@@ -12,6 +12,10 @@ import app.dtandroid.engine.api.XmpProblemReason
 import app.dtandroid.schema.AspectSpec
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.CropAspect
+import app.dtandroid.schema.Computed
+import app.dtandroid.schema.ComputedList
+import app.dtandroid.schema.ComputedSlider
+import app.dtandroid.schema.ComputedToggle
 import app.dtandroid.schema.Control
 import app.dtandroid.engine.api.LayoutStore
 import app.dtandroid.engine.api.LayoutStoreException
@@ -481,6 +485,7 @@ class DarkroomController(
             }
         }
         val info = engine.imageInfo()
+        livePatched.clear()
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
             s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded)
@@ -519,18 +524,68 @@ class DarkroomController(
     }
 
     /** Exact entry or reset to default of a slider, through its binding. */
-    suspend fun setSlider(key: InstanceKey, binding: Binding, value: Double, integer: Boolean) = change {
-        writeBinding(key, binding, value, integer)
+    suspend fun setSlider(key: InstanceKey, binding: Binding, value: Double, integer: Boolean, controlId: Int? = null) = change {
+        writeBinding(key, binding, value, integer, controlId)
         engine.historySeal()
     }
 
-    private suspend fun writeBinding(key: InstanceKey, binding: Binding, value: Double, integer: Boolean) {
+    // ------------------------------------------------------------------ brief P2j: computed controls
+
+    /** Last value the app set on a computed slider, for values desktop keeps on screen only (hue at chroma 0). */
+    private val remembered = HashMap<Pair<InstanceKey, Int>, Double>()
+
+    /** Parameters written during a drag, before modules() is read again when the finger lifts. */
+    private val livePatched = HashMap<InstanceKey, JsonObject>()
+
+    fun recall(key: InstanceKey, id: Int): Double? = remembered[key to id]
+
+    /** What a computed slider shows: desktop's value from the parameters, else the last value set, else null. */
+    fun computedValue(s: DarkroomState, key: InstanceKey, controlId: Int): Double? {
+        val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedSlider ?: return null
+        val m = s.modules.firstOrNull { it.key == key } ?: return null
+        return model.value(m.params) { id -> remembered[key to id] } ?: remembered[key to controlId]
+    }
+
+    /** An entry of a computed list chosen: the parameters desktop's callback writes, one history step. */
+    suspend fun chooseComputed(key: InstanceKey, controlId: Int, index: Int) = change {
+        val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedList ?: throw EngineException(EngineError.STATE, "no list here")
+        val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        val writes = model.choose(index, m.params)
+        if (writes.isNotEmpty()) {
+            engine.paramsSet(key.op, key.priority, writes)
+            engine.historySeal()
+        }
+    }
+
+    /** A computed switch set: the parameters its callback writes, one history step. */
+    suspend fun toggleComputed(key: InstanceKey, controlId: Int, on: Boolean) = change {
+        val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedToggle ?: throw EngineException(EngineError.STATE, "no switch here")
+        val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        val writes = model.write(on, m.params)
+        if (writes.isNotEmpty()) {
+            engine.paramsSet(key.op, key.priority, writes)
+            engine.historySeal()
+        }
+    }
+
+    private suspend fun writeBinding(key: InstanceKey, binding: Binding, value: Double, integer: Boolean, controlId: Int? = null) {
         when (binding) {
             is Binding.Param -> {
                 engine.paramSet(key.op, key.priority, binding.path, if (integer) JsonPrimitive(Math.round(value)) else JsonPrimitive(value))
                 keepAspect(key, binding.path, value)
             }
             Binding.Aspect -> throw EngineException(EngineError.ARG, "the aspect list is chosen from its entries")
+            Binding.Computed -> {
+                // brief P2j: desktop's callback, repeated on the parameters (as single fields, so a drag merges)
+                val model = controlId?.let { schema.modules[key.op]?.computed?.get(it) } as? ComputedSlider
+                    ?: throw EngineException(EngineError.ARG, "no computed slider here")
+                val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+                remembered[key to model.controlId] = value
+                val p = livePatched[key] ?: m.params
+                val writes = model.write(value, p) { id -> remembered[key to id] }
+                for ((path, v) in writes) engine.paramSet(key.op, key.priority, path, v)
+                livePatched[key] = JsonObject(p + writes)
+            }
             is Binding.Action -> {
                 val cur = _state.value.actionValues[key] ?: (engine.moduleAction(key.op, key.priority, binding.get) as? JsonObject) ?: JsonObject(emptyMap())
                 val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap()
@@ -625,7 +680,7 @@ class DarkroomController(
             val size = dragSize ?: dragPicture.size().also { dragSize = it }
             val layer = fg {
                 try {
-                    writeBinding(d.key, d.binding, d.value, d.integer)
+                    writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
                     markOn(d.key)
                     _state.update { it.copy(message = null) }
                     val info = _state.value.info ?: return@fg null
@@ -646,7 +701,7 @@ class DarkroomController(
         fg {
             dragSize = null
             try {
-                writeBinding(d.key, d.binding, d.value, d.integer)
+                writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
                 engine.historySeal()
                 _state.update { it.copy(message = null) }
             } catch (e: EngineException) {
@@ -1166,6 +1221,7 @@ class DarkroomController(
                 (paramValue(m, b.path) as? JsonPrimitive)?.doubleOrNull
             }
             is Binding.Action -> (s.actionValues[key]?.get(b.field) as? JsonPrimitive)?.doubleOrNull
+            Binding.Computed -> computedValue(s, key, c.id)
             Binding.None, Binding.Aspect -> c.default
         }
     }

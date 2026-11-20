@@ -44,6 +44,8 @@ import app.dtandroid.darkroom.Overlay
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.schema.Binding
+import app.dtandroid.schema.ComputedList
+import app.dtandroid.schema.ComputedToggle
 import app.dtandroid.schema.Control
 import app.dtandroid.schema.ModuleSchema
 import app.dtandroid.schema.ParamRuleInputs
@@ -101,6 +103,8 @@ private fun Controls(controls: List<Control>, ctx: PanelContext) {
     for (c in controls) {
         if (!Rules.isVisible(ctx.module, c, ctx.inputs)) continue
         ControlView(c, ctx)
+        // brief P2j: a control that waits for a later tool says so in one line
+        ctx.module.notes[c.id]?.let { ControlNote(it) }
     }
 }
 
@@ -140,6 +144,12 @@ fun SingleControl(c: Control, ctx: PanelContext, label: String, disabled: Boolea
     }
 }
 
+/** One short line under a control that cannot be used yet, saying what it waits for (brief P2j). */
+@Composable
+fun ControlNote(text: String) {
+    DtText(text, DtTheme.type.tiny, DtTheme.colors.textDisabled, Modifier.padding(bottom = DtTheme.space.xs), maxLines = 2)
+}
+
 /** A quick access entry the app cannot use yet: its name, greyed out, and why. */
 @Composable
 fun UnavailableControl(label: String, reason: String?) {
@@ -163,7 +173,7 @@ private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boo
         enabled = enabled,
         onDrag = { v -> ctx.controller.drag(ctx.key, c.id, c.binding, v, c.integer) },
         onDragEnd = { ctx.controller.endDrag(ctx.key, c.id, c.binding, c.integer) },
-        onReset = { ctx.controller.launch { setSlider(ctx.key, c.binding, c.default, c.integer) } },
+        onReset = { ctx.controller.launch { setSlider(ctx.key, c.binding, c.default, c.integer, c.id) } },
         onExact = { ctx.controller.setOverlay(Overlay.NumberEntry(ctx.key, c.id)) },
     )
 }
@@ -280,6 +290,16 @@ private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boo
         }
         return
     }
+    // brief P2j: a list whose entries and choice are computed from the parameters (override)
+    val computed = ctx.module.computed[c.id] as? ComputedList
+    if (computed != null && c.binding == Binding.Computed) {
+        val p = ctx.instance.params
+        val cur = computed.current(p)
+        val text = cur?.let { computed.entries(p).getOrNull(it)?.label } ?: computed.fallbackText(p) ?: ""
+        val enabled = sensitive && !ctx.readOnly && computed.enabled(p)
+        ListControl(label ?: c.label ?: "", text, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
+        return
+    }
     val current = when (val b = c.binding) {
         is Binding.Param -> ctx.inputs.param(b.path)
         else -> c.entries.getOrNull(c.currentPos)?.value
@@ -308,6 +328,14 @@ fun ListControl(label: String, entry: String, enabled: Boolean, onOpen: () -> Un
 @Composable
 private fun GeneratedToggle(c: Control.Toggle, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val b = c.binding
+    val computed = ctx.module.computed[c.id] as? ComputedToggle
+    if (computed != null && b == Binding.Computed) {
+        val on = computed.on(ctx.instance.params)
+        ToggleControl(label ?: c.label ?: "", on, sensitive && !ctx.readOnly) {
+            ctx.controller.launch { toggleComputed(ctx.key, c.id, !on) }
+        }
+        return
+    }
     val on = when (b) {
         is Binding.Param -> (ctx.instance.params.paramAt(b.path) as? JsonPrimitive)?.booleanOrNull ?: c.default
         else -> c.default

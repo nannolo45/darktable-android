@@ -131,7 +131,9 @@ class SchemaTest {
     @Test
     fun unverifiedRulesNeverHide() {
         val sp = m("spektrafilm")
-        val bad = sp.visibility.values.single { !it.verified }
+        // brief P2j: spektrafilm.json replaces the one unverified visibility rule (the millimetre slider) by desktop's
+        // own condition; the unverified sensitivity rules (scan corrections) still test the property
+        val bad = (sp.visibility.values + sp.sensitivity.values).first { !it.verified }
         assertTrue(Rules.holds(bad, inputs("spektrafilm")))
     }
 

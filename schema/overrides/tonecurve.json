@@ -1,0 +1,47 @@
+{
+  "op": "tonecurve",
+  "reason": "brief P2j. the interpolation method writes the same curve type into tonecurve_type[0..2] (interpolator_callback, src/iop/tonecurve.c) and is shown from tonecurve_type[0]. The graph's scale waits for the curve editor.",
+  "value_list": [
+    {
+      "node": 8,
+      "expect_label": "interpolation method",
+      "read": [
+        "tonecurve_type[0]"
+      ],
+      "entries": [
+        {
+          "label": "cubic spline",
+          "set": {
+            "tonecurve_type[0]": 0,
+            "tonecurve_type[1]": 0,
+            "tonecurve_type[2]": 0
+          }
+        },
+        {
+          "label": "centripetal spline",
+          "set": {
+            "tonecurve_type[0]": 1,
+            "tonecurve_type[1]": 1,
+            "tonecurve_type[2]": 1
+          }
+        },
+        {
+          "label": "monotonic spline",
+          "set": {
+            "tonecurve_type[0]": 2,
+            "tonecurve_type[1]": 2,
+            "tonecurve_type[2]": 2
+          }
+        }
+      ]
+    }
+  ],
+  "note": [
+    {
+      "node": 10,
+      "expect_label": "scale for graph",
+      "text": "needs the curve editor (a later package)",
+      "class": "d"
+    }
+  ]
+}

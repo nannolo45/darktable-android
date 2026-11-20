@@ -1,0 +1,108 @@
+{
+  "op": "colorout",
+  "reason": "brief P2j. output intent writes intent = entry (_intent_changed, src/iop/colorout.c); desktop shows it only with the preference force LittleCMS2, which the phone does not have, so it stays hidden as on desktop. The export profile list is darktable's built-in profiles in out_pos order (src/common/colorspaces.c) plus installed ICC files; an entry writes type and filename (_output_profile_changed). The phone has no ICC folder, so the list is the built-in profiles; gui_update shows the entry whose type and filename match.",
+  "bind_param": [
+    {
+      "node": 0,
+      "expect_label": "output intent",
+      "param": "intent",
+      "param_type": "enum"
+    }
+  ],
+  "value_list": [
+    {
+      "node": 1,
+      "expect_label": "export profile",
+      "read": [
+        "type",
+        "filename"
+      ],
+      "entries": [
+        {
+          "label": "sRGB (web-safe)",
+          "set": {
+            "type": "DT_COLORSPACE_SRGB",
+            "filename": ""
+          }
+        },
+        {
+          "label": "Adobe RGB (compatible)",
+          "set": {
+            "type": "DT_COLORSPACE_ADOBERGB",
+            "filename": ""
+          }
+        },
+        {
+          "label": "linear Rec709 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_LIN_REC709",
+            "filename": ""
+          }
+        },
+        {
+          "label": "Rec709 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_REC709",
+            "filename": ""
+          }
+        },
+        {
+          "label": "linear Rec2020 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_LIN_REC2020",
+            "filename": ""
+          }
+        },
+        {
+          "label": "PQ Rec2020 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_PQ_REC2020",
+            "filename": ""
+          }
+        },
+        {
+          "label": "HLG Rec2020 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_HLG_REC2020",
+            "filename": ""
+          }
+        },
+        {
+          "label": "PQ P3 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_PQ_P3",
+            "filename": ""
+          }
+        },
+        {
+          "label": "HLG P3 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_HLG_P3",
+            "filename": ""
+          }
+        },
+        {
+          "label": "Display P3 RGB",
+          "set": {
+            "type": "DT_COLORSPACE_DISPLAY_P3",
+            "filename": ""
+          }
+        },
+        {
+          "label": "linear ProPhoto RGB",
+          "set": {
+            "type": "DT_COLORSPACE_PROPHOTO_RGB",
+            "filename": ""
+          }
+        },
+        {
+          "label": "BRG (for testing)",
+          "set": {
+            "type": "DT_COLORSPACE_BRG",
+            "filename": ""
+          }
+        }
+      ]
+    }
+  ]
+}

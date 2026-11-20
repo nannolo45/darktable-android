@@ -1,0 +1,14 @@
+{
+  "op": "toneequal",
+  "reason": "brief P2j. curve smoothing writes smoothing = sqrt(2)^(1 + v) (smoothing_callback) and is shown as log(smoothing)/log(sqrt(2)) - 1 (gui_update) in src/iop/toneequal.c; app/schema Formulas.Sqrt2Log.",
+  "computed": [
+    {
+      "node": 13,
+      "expect_label": "curve smoothing",
+      "formula": "sqrt2_log",
+      "params": {
+        "value": "smoothing"
+      }
+    }
+  ]
+}

@@ -28,6 +28,8 @@ class ParamRuleInputs(private val module: ModuleSchema, private val params: Json
     }
 
     override fun control(id: Int): Int? {
+        // brief P2j: a list the app computes from the parameters shows what desktop would show
+        (module.computed[id] as? ComputedList)?.let { return it.ruleValue(params) }
         val c = module.control(id) as? Control.ComboBox ?: return null
         return c.entries.getOrNull(c.currentPos)?.value
     }
@@ -61,6 +63,7 @@ object Rules {
 
     /** Whether a control is shown: by its rule, else hidden only if desktop hid it in every observed state. */
     fun isVisible(m: ModuleSchema, c: Control, inputs: RuleInputs): Boolean {
+        if (c.id in m.hidden) return false
         val r = m.visibility[c.id]
         return r?.let { holds(it, inputs) } ?: (c.id !in m.hiddenInEveryState)
     }

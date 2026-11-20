@@ -1,0 +1,232 @@
+{
+  "op": "borders",
+  "reason": "brief P2j. framing's aspect and position lists are fixed tables on desktop (_aspect_ratios, _pos_h_ratios, _pos_v_ratios with _aspect_changed, _position_h_changed, _position_v_changed in src/iop/borders.c); gui_changed shows the entry within 0.01 of the parameter, otherwise custom.",
+  "value_list": [
+    {
+      "node": 2,
+      "expect_label": "aspect",
+      "read": [
+        "aspect"
+      ],
+      "tolerance": 0.01,
+      "unmatched": "custom...",
+      "entries": [
+        {
+          "label": "image",
+          "set": {
+            "aspect": 0.0
+          }
+        },
+        {
+          "label": "3:1",
+          "set": {
+            "aspect": 3.0
+          }
+        },
+        {
+          "label": "95:33",
+          "set": {
+            "aspect": 2.8787879943847656
+          }
+        },
+        {
+          "label": "CinemaScope 2.39:1",
+          "set": {
+            "aspect": 2.390000104904175
+          }
+        },
+        {
+          "label": "2:1",
+          "set": {
+            "aspect": 2.0
+          }
+        },
+        {
+          "label": "16:9",
+          "set": {
+            "aspect": 1.7777777910232544
+          }
+        },
+        {
+          "label": "5:3",
+          "set": {
+            "aspect": 1.6666666269302368
+          }
+        },
+        {
+          "label": "US Legal 8.5x14",
+          "set": {
+            "aspect": 1.6470588445663452
+          }
+        },
+        {
+          "label": "golden cut",
+          "set": {
+            "aspect": 1.6180340051651
+          }
+        },
+        {
+          "label": "16:10",
+          "set": {
+            "aspect": 1.600000023841858
+          }
+        },
+        {
+          "label": "3:2 (4x6, 10x15cm)",
+          "set": {
+            "aspect": 1.5
+          }
+        },
+        {
+          "label": "A4",
+          "set": {
+            "aspect": 1.414285659790039
+          }
+        },
+        {
+          "label": "DIN",
+          "set": {
+            "aspect": 1.4142135381698608
+          }
+        },
+        {
+          "label": "7:5",
+          "set": {
+            "aspect": 1.399999976158142
+          }
+        },
+        {
+          "label": "4:3",
+          "set": {
+            "aspect": 1.3333333730697632
+          }
+        },
+        {
+          "label": "US Letter 8.5x11",
+          "set": {
+            "aspect": 1.2941176891326904
+          }
+        },
+        {
+          "label": "14:11",
+          "set": {
+            "aspect": 1.2727272510528564
+          }
+        },
+        {
+          "label": "5:4 (8x10)",
+          "set": {
+            "aspect": 1.25
+          }
+        },
+        {
+          "label": "square",
+          "set": {
+            "aspect": 1.0
+          }
+        },
+        {
+          "label": "constant border",
+          "set": {
+            "aspect": -1.0
+          }
+        },
+        {
+          "label": "custom..."
+        }
+      ],
+      "unwritable": {
+        "image": "desktop writes 0 (image) and -1 (constant border) into aspect, whose limits are 1 to 3 ($MIN/$MAX in src/iop/borders.c); the bridge refuses values outside a field's limits, so the app cannot choose these two entries (reset the module for a constant border)",
+        "constant border": "desktop writes 0 (image) and -1 (constant border) into aspect, whose limits are 1 to 3 ($MIN/$MAX in src/iop/borders.c); the bridge refuses values outside a field's limits, so the app cannot choose these two entries (reset the module for a constant border)"
+      }
+    },
+    {
+      "node": 5,
+      "expect_label": "horizontal position",
+      "read": [
+        "pos_h"
+      ],
+      "tolerance": 0.01,
+      "unmatched": "custom...",
+      "entries": [
+        {
+          "label": "center",
+          "set": {
+            "pos_h": 0.5
+          }
+        },
+        {
+          "label": "1/3",
+          "set": {
+            "pos_h": 0.3333333432674408
+          }
+        },
+        {
+          "label": "3/8",
+          "set": {
+            "pos_h": 0.375
+          }
+        },
+        {
+          "label": "5/8",
+          "set": {
+            "pos_h": 0.625
+          }
+        },
+        {
+          "label": "2/3",
+          "set": {
+            "pos_h": 0.6666666865348816
+          }
+        },
+        {
+          "label": "custom..."
+        }
+      ]
+    },
+    {
+      "node": 7,
+      "expect_label": "vertical position",
+      "read": [
+        "pos_v"
+      ],
+      "tolerance": 0.01,
+      "unmatched": "custom...",
+      "entries": [
+        {
+          "label": "center",
+          "set": {
+            "pos_v": 0.5
+          }
+        },
+        {
+          "label": "1/3",
+          "set": {
+            "pos_v": 0.3333333432674408
+          }
+        },
+        {
+          "label": "3/8",
+          "set": {
+            "pos_v": 0.375
+          }
+        },
+        {
+          "label": "5/8",
+          "set": {
+            "pos_v": 0.625
+          }
+        },
+        {
+          "label": "2/3",
+          "set": {
+            "pos_v": 0.6666666865348816
+          }
+        },
+        {
+          "label": "custom..."
+        }
+      ]
+    }
+  ]
+}
