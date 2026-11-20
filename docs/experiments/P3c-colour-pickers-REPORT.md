@@ -78,11 +78,11 @@ pipe (for the input and working profiles). The desktop interface calls are stubb
 lists read and write the test's own values, history and redraws are no-ops). The parameters are compared field by
 field.
 
-17 cases per image: white balance (2 areas), exposure correction to 50 % and 30 % and measure (the answer's
+16 cases per image: white balance (2 areas), exposure correction to 50 % and 30 % and measure (the answer's
 lightness against the slider value desktop's callback writes), rgb levels black / gray / white on a point and an area,
 rgb curve linked and independent with middle grey compensation, color calibration neutral, a target without and
-with channel mixing. **Largest difference 0 on all three images** (bound 1e-6; CI g0-app 44781177183, logs
-`runs/44781177183-a1/g0-linux/<cr2|raf|arw>/C25.log` on the ci-logs branch). Every action could be isolated; none
+with channel mixing. **Largest difference 0 on all three images** (bound 1e-6; CI g0-app 44781177183 and, on the last
+code commit, 44796664175; logs `runs/<run>-a1/g0-linux/<cr2|raf|arw>/C25.log` on the ci-logs branch). Every action could be isolated; none
 needed to be left out. What C25 cannot see: the picked statistics themselves (the bridge calls desktop's own picker
 functions for them, P1b part 2) and color calibration's "measure" mode (not in the engine).
 
@@ -216,16 +216,26 @@ $GRADLE --no-daemon :engine-api:test :schema:test :ui-theme:testDebugUnitTest :d
 
 ## 5. Results with numbers
 
-Final runs on the last code commit: section 6 table (RUNS).
+Last code commit **b6ed1082** (later commits change `docs/` only; the workflows ignore those):
+
+| Workflow | Run | Result |
+|---|---|---|
+| p2a-app | 44796664128 | success: 308 JVM and screenshot tests, 0 failed; rule check; kept list check |
+| p2b-real-engine | 44796664188 | success: JVM tests; emulator OK (72 tests, P3cScenarioTest included); compare `...-p3cok` (white balance 43.78 dB, exposure 45.56 dB, picks ok); APK release **dt-android-b6ed10829d26** |
+| g0-app | 44796664175 | success: engines for arm64-v8a and x86_64; Linux bridge tests 347 PASS, 0 FAIL, C25 0 difference on cr2, raf, arw; emulator job success |
+
+Screenshots (looked at): ci-logs `runs/44796664128-a1/p2a-app/screenshots/{phone,tablet}-p3c-01-picker-point.png`,
+`...-p3c-02-picker-area.png`. Emulator: `runs/44796664188-a1/p2b-emulator/p2b-test/p3c-results.txt`, comparisons
+`runs/44796664188-a1/p2b-compare/compare.txt`, `p3c-picks-compare.txt`. C25: `runs/44796664175-a1/g0-linux/<image>/C25.log`.
 
 | What | Result | Where |
 |---|---|---|
-| C25, bridge picker actions vs darktable's callbacks verbatim | **0** largest difference, 17 cases × 3 images | g0-app, `g0-linux/<image>/C25.log` |
+| C25, bridge picker actions vs darktable's callbacks verbatim | **0** largest difference, 16 cases × 3 images | g0-app, `g0-linux/<image>/C25.log` |
 | Linux bridge tests, all | 347 PASS, 0 FAIL (C1..C25, T1..T9, X1) | g0-app summary |
 | deliverable 3 formulas vs upstream's functions verbatim | filmic rgb 360 cases, 2.6e-7; color balance rgb 36 cases, 5.6e-7 (relative) | `P3cPickerTest` (app/schema), workspace and CI |
 | JVM and screenshot tests | 308 tests, 0 failed (new: 11 schema, 15 darkroom, 4 screenshots) | p2a-app `test-summary.txt` |
 | emulator | OK, 72 tests (new: P3cScenarioTest p1, p2, p3) | p2b `p2b-emulator/instrument-summary.txt` |
-| white balance from an area by touch | red 2.11523 → 1.73655, blue 1.62161 = desktop's formula from the picked mean; `get_wb` mode "from image area"; 2 history items for the resize and the move (limit 1.2) | `p2b-emulator/p2b-test/p3c-results.txt` |
+| white balance from an area by touch | red 2.11523 → 1.73655, blue 1.62161 = desktop's formula from the picked mean; `get_wb` mode "from image area"; one history item per pick (limit 1.2; the scenario's counts, 12 → 13 and 12 → 14, are read while the last pick may still run) | `p2b-emulator/p2b-test/p3c-results.txt` |
 | exposure's spot by touch, target 40 % | exposure 0.70 → −0.128 EV; "measure" on the same area reads 40.0000 % | same |
 | darktable-cli of the app's XMP vs the app's export | white balance 43.78 dB, exposure 45.56 dB (same size; bound 40 dB as G0) | p2b `compare.txt` |
 | emulator picks vs Linux engine | module pickers equal (0); global picker ≤ 0.21 display levels | p2b `p3c-picks-compare.txt` |
@@ -238,7 +248,7 @@ the scenario's waits.
 
 ## 6. Owner instructions
 
-Install the APK of release **APPTAG** (`dt-android-arm64-v8a.apk`) over the old one.
+Install the APK of release **dt-android-b6ed10829d26** (`dt-android-arm64-v8a.apk`) over the old one.
 
 **White balance from an area.** Open a photo, open **white balance**. The row "from image area" has darktable's
 picker icon on the right: tap it. The icon gets a lighter background (armed), the photo shows a frame over almost the

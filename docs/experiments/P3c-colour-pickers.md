@@ -34,7 +34,7 @@ emulator. None is a phone.
 - Emulator: `P3cScenarioTest` (white balance and exposure by injected touches, picks for fixed areas); p2b compare
   job: darktable-cli renders of p3c-wb.xmp and p3c-exposure.xmp, picks against `dtb_pickref` on Linux.
 - CI g0-app 44781177183 (commit 7ecb243e): Linux bridge tests 347 PASS, 0 FAIL; **C25 on cr2, raf and arw: the
-  bridge's five picker actions (17 cases each) equal darktable's own callbacks compiled verbatim, largest difference
+  bridge's five picker actions (16 cases each) equal darktable's own callbacks compiled verbatim, largest difference
   0** (logs `runs/44781177183-a1/g0-linux/<image>/C25.log` on ci-logs). The apk job of that run (and p2a 44781177234)
   failed on a compile error in the darkroom (field limits, smart cast), fixed in the next commit.
 - Deliverable 3: filmic rgb (4 pickers) and color balance rgb (6) set sliders from the picked values;
@@ -42,3 +42,10 @@ emulator. None is a phone.
   cases; the Kotlin formulas match within 2.6e-7 / 5.6e-7 (P3cPickerTest, workspace `gradle :schema:test`).
 - Deliverable 5: `action_list` override (input colour profile, denoise (profiled)), `bind_action` with `args_from`,
   `needs`, `round` (white balance finetune).
+- First emulator run (p2b 44793905374): P3cScenarioTest passed (72 tests OK); darktable-cli of the app's XMPs 43.78
+  dB (white balance) and 45.56 dB (exposure); the picks comparison failed its first bounds (chosen without data:
+  1e-3 / 1e-2 relative): module pickers equal (0), global picker up to 0.21 display levels. Bounds set per kind
+  (module equal, global within one display level), reported in the REPORT section 1.
+- Final runs on b6ed1082: p2a-app 44796664128 success (308 tests, 0 failed); p2b-real-engine 44796664188 success
+  (emulator 72 OK, compare ok, APK dt-android-b6ed10829d26); g0-app 44796664175 success (347 PASS, 0 FAIL; C25 0 on
+  three images). Report written; log closed.
