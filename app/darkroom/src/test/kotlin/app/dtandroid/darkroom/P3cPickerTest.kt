@@ -59,6 +59,10 @@ class P3cPickerTest {
         @Volatile var cropX: Double? = null
         override suspend fun moduleAction(op: String, priority: Int, action: String, args: JsonObject): JsonElement {
             actions += Triple(op, action, args)
+            // the stand-in keeps rgblevels' levels[3][3] as one row of nine (the schema does not give the dimensions):
+            // the second and third channels' picks are answered here, unchanged
+            if (op == "rgblevels" && action == "pick" && (args["channel"]?.jsonPrimitive?.content?.toInt() ?: 0) != 0)
+                return JsonObject(mapOf("changed" to JsonPrimitive(false)))
             return e.moduleAction(op, priority, action, args)
         }
         override suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult {
@@ -76,7 +80,10 @@ class P3cPickerTest {
                 r.copy(points = r.points.map { p -> p?.let { (it.first - c) / (1 - c) to it.second } })
             } else e.coordsTransform(direction, points.map { (c + it.first * (1 - c)) to it.second }, options)
         }
-        fun last(op: String) = actions.last { it.first == op }
+        /** the last action of [op] that is not a read (get_wb, list_*: the darkroom reads those after every change) */
+        fun last(op: String) = actions.last { it.first == op && !reads(it.second) }
+        fun changes() = actions.filter { !reads(it.second) }
+        private fun reads(a: String) = a.startsWith("get_") || a.startsWith("list_")
     }
 
     private fun controller(index: Int = 0): Pair<DarkroomController, Hooked> {
@@ -87,11 +94,16 @@ class P3cPickerTest {
             CoroutineScope(SupervisorJob() + Dispatchers.Default), previewMaxSize = 600)
         c.setViewport(Viewport(400, 300))
         runBlocking { c.start(InterfacePreview.series(File(dir, "series")), index, filmstrip = false, thumbnails = false) }
+        lastController = c
         return c to engine
     }
 
     private suspend fun waitFor(what: String, ms: Long = 10_000, cond: () -> Boolean) =
-        try { withTimeout(ms) { while (!cond()) delay(5) } } catch (e: Exception) { throw AssertionError("timed out: $what") }
+        try { withTimeout(ms) { while (!runCatching(cond).getOrDefault(false)) delay(5) } } catch (e: Exception) {
+            throw AssertionError("timed out: $what; picker ${lastController?.state?.value?.picker}, message ${lastController?.state?.value?.message}")
+        }
+
+    private var lastController: DarkroomController? = null
 
     private suspend fun arm(c: DarkroomController, key: InstanceKey, control: Int) {
         if (c.state.value.expanded != key) c.toggleExpanded(key)
@@ -172,7 +184,7 @@ class P3cPickerTest {
         c.togglePicker(wb, 4)
         delay(50)
         assertNull(c.state.value.picker)
-        assertTrue(e.actions.isEmpty())
+        assertTrue(e.changes().isEmpty())
     }
 
     // ------------------------------------------------------------------ gestures
@@ -220,17 +232,17 @@ class P3cPickerTest {
     @Test fun anAreaPickerGetsASmallAreaFromATapAndAPointPickerFollowsTheFinger() = runBlocking {
         val (c, e) = controller()
         arm(c, wb, 4)
-        val n = e.actions.size
+        val n = e.changes().size
         c.pickerTap(0.5f, 0.5f, 0.1f, 0.1f)
-        waitFor("picked") { e.actions.size > n }
+        waitFor("picked") { e.changes().size > n }
         close(e.last("temperature").third.area(), listOf(0.45, 0.45, 0.55, 0.55), 1e-6)
         // levels' black: a drag away from the point carries the point
         arm(c, levels, 7)
-        val m = e.actions.size
+        val m = e.changes().size
         c.pickerDragStart(PickerTool.GRAB_NONE, 0.2f, 0.3f)
         c.pickerDragMove(0.3f, 0.4f)
         c.pickerDragEnd()
-        waitFor("picked") { e.actions.size > m }
+        waitFor("picked") { e.changes().size > m }
         close(e.last("rgblevels").third.point(), listOf(0.3, 0.4), 1e-6)
     }
 
@@ -310,17 +322,17 @@ class P3cPickerTest {
         assertEquals(50.0, args["lightness"]!!.jsonPrimitive.double, 0.0)
         close(args.area(), listOf(0.02, 0.02, 0.98, 0.98))
         // a new target in correction mode picks again (desktop's _spot_settings_changed_callback)
-        val n = e.actions.size
+        val n = e.changes().size
         c.setSlider(exposure, Binding.Setting("exposure/lightness"), 30.0, false, 22)
-        waitFor("picked again") { e.actions.size > n }
+        waitFor("picked again") { e.changes().size > n }
         assertEquals(30.0, e.last("exposure").third["lightness"]!!.jsonPrimitive.double, 0.0)
         // measure: the measured lightness becomes the target; changing the mode alone picks nothing
-        val m = e.actions.size
+        val m = e.changes().size
         c.chooseSetting(exposure, 14, 1)
         delay(50)
-        assertEquals(m, e.actions.size)
+        assertEquals(m, e.changes().size)
         c.pickerTap(0.5f, 0.5f, 0.1f, 0.1f)
-        waitFor("measured") { e.actions.size > m }
+        waitFor("measured") { e.changes().size > m }
         args = e.last("exposure").third
         assertEquals("measure", args["mode"]!!.jsonPrimitive.content)
         waitFor("target written back") { c.settingValue(c.state.value, "exposure", "exposure/lightness")?.content?.toDouble() != 30.0 }
@@ -353,9 +365,9 @@ class P3cPickerTest {
         assertEquals("illuminant_from_area", e.last("channelmixerrgb").second)
         assertEquals(true, e.last("channelmixerrgb").third["use_mixing"]!!.jsonPrimitive.content.toBoolean())
         // a target with chroma: the area mapping; changing it while armed picks again
-        val n = e.actions.size
+        val n = e.changes().size
         c.setSlider(calibration, Binding.Setting("channelmixerrgb/chroma"), 20.0, false, 26)
-        waitFor("picked again") { e.actions.size > n }
+        waitFor("picked again") { e.changes().size > n }
         val (_, action, args) = e.last("channelmixerrgb")
         assertEquals("spot", action)
         val t = args["target"] as JsonObject
