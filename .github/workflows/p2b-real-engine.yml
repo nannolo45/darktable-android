@@ -463,14 +463,28 @@ jobs:
           fi
           ed=$(check "$A/app-edit.jpg" /tmp/cli-app-edit.jpg "app-written XMP: app export vs darktable-cli" | tail -1)
           echo "g0=$g0" >> "$GITHUB_OUTPUT"; echo "edit=$ed" >> "$GITHUB_OUTPUT"
+          # brief P2j: XMPs the app wrote through controls desktop keeps outside the parameters (color calibration's
+          # hue and chroma, spektrafilm's lists with the same data pack, framing's lists), rendered by darktable-cli
+          for i in 1 2 3; do python3 -I schema/extractor/fetch_spektrafilm_pack.py /home/runner/sfxdg "$SF_REF" > /tmp/ci-out/sf-pack-compare.log 2>&1 && break; sleep 10; done
+          p2j=ok
+          for name in colorcalibration spektrafilm framing; do
+            if [ ! -f "$A/p2j-$name.xmp" ]; then echo "p2j $name: no XMP from the emulator" | tee -a /tmp/ci-out/compare.txt; p2j=bad; continue; fi
+            XDG_DATA_HOME=/home/runner/sfxdg /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/p2j-$name.xmp" "/tmp/cli-p2j-$name.jpg" \
+              --core --configdir "/tmp/cli-config-p2j-$name" --cachedir "/tmp/cli-cache-p2j-$name" \
+              --conf plugins/imageio/format/jpeg/quality=95 > "/tmp/ci-out/cli-p2j-$name.log" 2>&1 || true
+            r=$(check "$A/p2j-$name.jpg" "/tmp/cli-p2j-$name.jpg" "p2j $name: app export vs darktable-cli of the app's XMP" | tail -1)
+            [ "$r" = ok ] || p2j=bad
+            cp "$A/p2j-$name.xmp" /tmp/ci-out/ 2>/dev/null || true
+          done
+          echo "p2j=$p2j" >> "$GITHUB_OUTPUT"
           cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
 
       - name: Push logs to ci-logs branch
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok'
         run: exit 1

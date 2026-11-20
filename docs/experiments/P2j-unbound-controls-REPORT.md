@@ -75,15 +75,15 @@ editors, masks), **e** not part of the edit (desktop keeps it in its configurati
 | 52 | lens correction | mm | b | `lens.cc` `_lens_comboentry_focal_update`, `_lens_set` | editable list: focal lengths from a fixed table limited to the lens' range; writes `focal` | buildable with the existing `list_lenses` (range); not built in this package unless time allows |
 | 53 | lens correction | f/ | b | `lens.cc` `_lens_comboentry_aperture_update`, `_lens_set` | editable list of f-numbers from the lens' smallest; writes `aperture` | as 52 |
 | 54 | lens correction | d | b | `lens.cc` `_lens_comboentry_distance_update`, `_lens_set` | editable list of distances; writes `distance` | as 52 |
-| 55 | lens correction | use latest algorithm | a | `lens.cc` `_use_latest_md_algo_callback`, `gui_changed` | writes `md_version = 2`, `scale_md_v1 = 0`; shown only while `md_version` is the old one | build |
+| 55 | lens correction | use latest algorithm | c (was a) | `lens.cc` `_use_latest_md_algo_callback`, `gui_changed` | writes `md_version = 2`, `scale_md_v1 = 0`; shown only while `md_version` is the old one | not built: `scale_md_v1 = 0` is outside the field's limits (0.9 to 1.1), which the bridge refuses (`engine/src/params.c`); needs a bridge path that writes what the callback writes. Hidden in every state the extractor saw |
 | 56 | retouch | mask opacity | d | `retouch.c` `rt_mask_opacity_callback` | opacity of the selected shape (in the masks) | disabled, "needs the mask tools" |
 | 57 | framing | aspect | a | `borders.c` `_aspect_changed`, `gui_changed` | entry writes `aspect` from `_aspect_ratios`; shown by matching within 0.01, otherwise "custom..." | build |
 | 58 | framing | horizontal position | a | `borders.c` `_position_h_changed`, `gui_changed` | `pos_h` from `_pos_h_ratios` | build |
 | 59 | framing | vertical position | a | `borders.c` `_position_v_changed`, `gui_changed` | `pos_v` from `_pos_v_ratios` | build |
 | 60 | watermark | (file) | b | `watermark.c` `_watermark_callback`, `refresh_watermarks` | the SVG files in darktable's data and configuration folders (`watermarks/`); writes `filename` | not built in this package: the app would list the engine's data folder (no bridge call needed); stays disabled with "needs the watermark list" |
 
-Totals: **a 22** (6, 8, 11, 13, 15, 16, 34, 38-42, 44-47, 49, 50, 55, 57-59), **b 11** (4, 9, 10, 12, 33, 35, 48,
-52-54, 60), **c 3** (5, 32, 51), **d 23** (1-3, 7, 14, 17-31, 36, 37, 56), **e 1** (43). 60 in all.
+Totals: **a 21** (6, 8, 11, 13, 15, 16, 34, 38-42, 44-47, 49, 50, 57-59), **b 11** (4, 9, 10, 12, 33, 35, 48,
+52-54, 60), **c 4** (5, 32, 51, 55; 55 moved from a while building), **d 23** (1-3, 7, 14, 17-31, 36, 37, 56), **e 1** (43). 60 in all.
 
 Differences from the brief's guesses: rgb curve's and tone curve's interpolation and spektrafilm's format are fixed
 tables (a, not b); color zones' interpolation is d, because it changes the curve of the channel tab shown above

@@ -24,16 +24,22 @@ object Formulas {
         "illuminant_hue_chroma" to setOf("hue", "chroma"),
         "protect_center_width" to setOf("center", "width"),
         "sqrt2_log" to setOf("value"),
+        "ryb_hue" to setOf("value"),
     )
 
+    /** color harmonizer's two hue tables (`s_ucs_to_ryb_lut`, `s_ryb_to_ucs_lut`), from the override */
+    class HueTables(val ucsToRyb: FloatArray, val rybToUcs: FloatArray)
+
     /** The model of one slider: [formula] with [role], parameters by the formula's own names, partner control ids. */
-    fun slider(controlId: Int, formula: String, role: String, params: Map<String, String>, partners: Map<String, Int>): ComputedSlider =
+    fun slider(controlId: Int, formula: String, role: String, params: Map<String, String>, partners: Map<String, Int>,
+               tables: HueTables? = null): ComputedSlider =
         when (formula) {
             "illuminant_hue_chroma" -> IlluminantHueChroma(controlId, role, params.getValue("x"), params.getValue("y"),
                 params.getValue("temperature"), partners["hue"], params["temperature_min"]?.toFloat() ?: 1667f,
                 params["temperature_max"]?.toFloat() ?: 25000f)
             "protect_center_width" -> ProtectCenterWidth(controlId, role, params.getValue("from"), params.getValue("to"))
             "sqrt2_log" -> Sqrt2Log(controlId, params.getValue("value"))
+            "ryb_hue" -> RybHue(controlId, params.getValue("value"), tables ?: throw IllegalArgumentException("ryb_hue needs hue_tables"))
             else -> throw IllegalArgumentException("unknown formula $formula")
         }
 
@@ -205,5 +211,41 @@ object Formulas {
 
         override fun write(v: Double, p: JsonObject, recall: (Int) -> Double?) =
             linkedMapOf(param to f32(SQRT2.pow(1f + v.toFloat())))
+    }
+
+    // ------------------------------------------------------------------ color harmonizer (colorharmonizer.c)
+
+    /** `_hue_lerp`: between two hues on the circle, result in [0, 1). */
+    private fun hueLerp(a0: Float, b0: Float, t: Float): Float {
+        var a = a0
+        var b = b0
+        if (b - a > 0.5f) b -= 1f else if (a - b > 0.5f) a -= 1f
+        var r = a + t * (b - a)
+        if (r < 0f) r += 1f
+        return r
+    }
+
+    /** `_ucs_to_ryb_fast` / `_ryb_to_ucs_fast`: table lookup with linear interpolation. */
+    fun lookup(table: FloatArray, v: Float): Float {
+        val n = table.size
+        val pos = v * n
+        val i0 = pos.toInt() % n
+        val i1 = (i0 + 1) % n
+        return hueLerp(table[i0], table[i1], pos - pos.toInt())
+    }
+
+    /**
+     * Anchor hue and custom node hues: the slider shows RYB degrees, the parameter holds darktable UCS hue in
+     * [0, 1) (`gui_update`: `_ucs_to_ryb_fast(p) * 360`; `_anchor_hue_slider_changed` / `_custom_hue_changed`:
+     * `_ryb_to_ucs_fast(v / 360)`).
+     */
+    class RybHue(override val controlId: Int, val param: String, val tables: HueTables) : ComputedSlider {
+        override fun value(p: JsonObject, recall: (Int) -> Double?): Double? {
+            val u = p.num(param)?.toFloat() ?: return null
+            return (lookup(tables.ucsToRyb, u) * 360f).toDouble()
+        }
+
+        override fun write(v: Double, p: JsonObject, recall: (Int) -> Double?) =
+            linkedMapOf(param to f32(lookup(tables.rybToUcs, v.toFloat() / 360f)))
     }
 }

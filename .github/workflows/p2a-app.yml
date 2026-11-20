@@ -11,7 +11,7 @@ name: p2a-app
 on:
   push:
     branches: [main, p2a-app-foundation, p2d-module-layouts, p2e-lpl-client, p2e-state-fix, p2j-unbound-controls]
-    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
+    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "tools/colorharmonizer-hue-tables.py", "tools/p2j-reference-vectors.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
   workflow_dispatch:
 
 # nothing by default; the job asks for what it needs
@@ -84,6 +84,23 @@ jobs:
 
       - name: Module names for LightPhotoLibrary match the control schema (brief P2f, R15)
         run: python3 -I tools/schema-module-names.py --check
+
+      - name: P2j tables and reference values are upstream's (brief P2j)
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          PIN=$(git ls-tree HEAD upstream/darktable | awk '{print $3}')
+          for f in src/common/colorspaces_inline_conversions.h src/common/illuminants.h src/common/math.h src/common/dttypes.h \
+                   src/common/color_ryb.h src/common/darktable.h src/iop/satcurvergb.c src/iop/colorharmonizer.c; do
+            mkdir -p "/tmp/p2j-src/$(dirname "$f")"
+            curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 120 \
+              -o "/tmp/p2j-src/$f" "https://raw.githubusercontent.com/darktable-org/darktable/$PIN/$f" \
+              || { echo "could not download $f at $PIN"; exit 1; }
+          done
+          python3 -I tools/colorharmonizer-hue-tables.py /tmp/p2j-src --check 2>/dev/null
+          python3 -I tools/colorharmonizer-hue-tables.py /tmp/p2j-src --samples 2>/dev/null | diff - app/schema/src/test/resources/p2j-harmonizer-samples.json
+          python3 -I tools/p2j-reference-vectors.py /tmp/p2j-src 2>/dev/null | diff - app/schema/src/test/resources/p2j-reference.json
+          echo "P2j reference values and tables match upstream at $PIN"
 
       - name: Controls still waiting for a parameter binding are the listed ones (brief P2j)
         run: |

@@ -50,7 +50,7 @@ t2=$(now)
 # and written line by line, so a cut-off run still shows which test was running
 timeout 3000 adb shell am instrument -w -r \
   -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" "${SFARGS[@]}" \
-  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest,app.dtandroid.real.P2fScenarioTest \
+  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest,app.dtandroid.real.P2fScenarioTest,app.dtandroid.real.P2jScenarioTest \
   "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | sed -u 's/\r$//' > "$OUT/instrument.txt"
 t3=$(now)
 python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true

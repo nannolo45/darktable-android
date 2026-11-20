@@ -283,6 +283,34 @@ class P2jComputedTest {
         assertFalse("the vectorscope sync is not shown", Rules.isVisible(mod, mod.control(23)!!, ParamRuleInputs(mod, params())))
     }
 
+    @Test fun harmonizerHuesAsUpstream() {
+        val samples = Json.parseToJsonElement(javaClass.classLoader.getResourceAsStream("p2j-harmonizer-samples.json")!!.readBytes().decodeToString()) as JsonArray
+        val anchor = slider("colorharmonizer", 3)
+        for (e in samples.map { it.jsonObject }) {
+            val x = e.d("x")
+            // parameter (UCS) -> slider (RYB degrees), as gui_update
+            near("ucs->ryb $x", e.d("ucs_to_ryb") * 360, anchor.value(params("anchor_hue" to x), noRecall)!!, 1e-5)
+            // slider -> parameter, as _anchor_hue_slider_changed
+            near("ryb->ucs $x", e.d("ryb_to_ucs"), anchor.write(x * 360, JsonObject(emptyMap()), noRecall).getValue("anchor_hue").double, 1e-5)
+        }
+        // control -> parameters -> control within the tables' step (720 entries, 0.5 degree)
+        for (deg in listOf(10.0, 95.5, 180.0, 300.0)) {
+            val w = anchor.write(deg, JsonObject(emptyMap()), noRecall)
+            val back = anchor.value(JsonObject(w), noRecall)!!
+            assertTrue("anchor $deg -> $back", abs(back - deg) < 1.0)
+        }
+        val mod = m("colorharmonizer")
+        val custom3 = mod.control(18)!!
+        assertEquals(Binding.Computed, (custom3 as Control.Slider).binding)
+        assertEquals("custom_hue[2]", slider("colorharmonizer", 18).write(90.0, JsonObject(emptyMap()), noRecall).keys.single())
+        fun visible(c: Control, rule: String, n: Int) = Rules.isVisible(mod, c, ParamRuleInputs(mod, params("rule" to rule, "num_custom_nodes" to n)))
+        assertTrue(visible(custom3, "DT_COLORHARMONIZER_CUSTOM", 3))
+        assertFalse(visible(custom3, "DT_COLORHARMONIZER_CUSTOM", 2))
+        assertFalse(visible(custom3, "DT_COLORHARMONIZER_TRIAD", 4))
+        assertTrue(visible(mod.control(3)!!, "DT_COLORHARMONIZER_TRIAD", 4))
+        assertFalse(visible(mod.control(3)!!, "DT_COLORHARMONIZER_CUSTOM", 4))
+    }
+
     @Test fun controlsThatWaitSayWhat() {
         assertEquals("needs the colour picker (a later package)", m("exposure").notes[14])
         assertNotNull(m("channelmixerrgb").notes[16])

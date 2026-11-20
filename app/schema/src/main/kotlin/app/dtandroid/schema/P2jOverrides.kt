@@ -72,7 +72,11 @@ internal object P2jOverrides {
             val params = (e["params"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap()
             params.filterKeys { !it.endsWith("_min") && !it.endsWith("_max") }.values.forEach { checkParam(it, "computed") }
             val partners = (e["partners"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.intOrNull ?: -1 } ?: emptyMap()
-            computed[c.id] = try { Formulas.slider(c.id, formula, role, params, partners) } catch (x: NoSuchElementException) {
+            val tables = (o["hue_tables"] as? JsonObject)?.let { t ->
+                fun arr(k: String) = (t[k] as JsonArray).map { it.jsonPrimitive.content.toFloat() }.toFloatArray()
+                Formulas.HueTables(arr("ucs_to_ryb"), arr("ryb_to_ucs"))
+            }
+            computed[c.id] = try { Formulas.slider(c.id, formula, role, params, partners, tables) } catch (x: RuntimeException) {
                 throw SchemaException("$file: formula $formula: ${x.message}")
             }
             bind(c, Binding.Computed)
