@@ -370,6 +370,124 @@ class P2fScenarioTest {
     }
 
     /**
+     * A file of junk bytes darktable cannot decode, as l1's placeholder `OTHER_0023.CR2` (2000 bytes), under a
+     * name of its own per test so no earlier test has met it (brief P2h).
+     */
+    private fun junkFile(name: String): File {
+        val dir = File(TestFiles.ctx.filesDir, "p2h").apply { mkdirs() }
+        return File(dir, name).apply { delete(); writeBytes(ByteArray(2000) { it.toByte() }) }
+    }
+
+    private fun bridgeLogMark(): Long = LongArray(1).also { app.dtandroid.engine.NativeBridge.logSince(Long.MAX_VALUE, it) }[0]
+
+    private fun bridgeLogSince(mark: Long): String {
+        Thread.sleep(300) // the log is read by a thread of its own
+        return app.dtandroid.engine.NativeBridge.logSince(mark, LongArray(1)) ?: ""
+    }
+
+    /**
+     * f7 (brief P2h deliverable 1): what `open` and `image_info` answer for the junk file on the real engine,
+     * recorded with the engine's log lines in between (p2h-f7-engine-log.txt). No render. Nothing asserted
+     * about the answer itself: this test establishes it; f8 checks the app's behaviour for it.
+     */
+    @Test
+    fun f7_imageInfoOfAnUndecodableFile() = kotlinx.coroutines.runBlocking<Unit> {
+        TestFiles.engine()
+        val junk = junkFile("JUNK_F7.CR2")
+        AppHost.controller.closePhoto()
+        val mark = bridgeLogMark()
+        val answer = AppHost.controller.withEngine { e ->
+            runCatching { e.close() }
+            val t0 = System.nanoTime()
+            val open = try { e.open(junk.path, null); "OK" } catch (ex: app.dtandroid.engine.api.EngineException) { "${ex.error}: ${ex.message}" }
+            val tOpen = (System.nanoTime() - t0) / 1_000_000
+            if (open != "OK") return@withEngine "open answered $open ($tOpen ms); image_info not asked"
+            try {
+                val t1 = System.nanoTime()
+                val info = try {
+                    e.imageInfo().let { "ImageInfo ${it.width}x${it.height}, raw ${it.rawWidth}x${it.rawHeight}, class ${it.imageClass}" }
+                } catch (ex: app.dtandroid.engine.api.EngineException) { "error ${ex.error} (${ex.error.code}): ${ex.message}" }
+                "open answered OK ($tOpen ms); image_info answered $info (${(System.nanoTime() - t1) / 1_000_000} ms)"
+            } finally {
+                runCatching { e.close() }
+            }
+        }
+        val log = bridgeLogSince(mark)
+        File(TestFiles.out, "p2h-f7-engine-log.txt").writeText("$answer\n\n$log\n")
+        TestFiles.record(res, "f7_junk_file", "${junk.name}, ${junk.length()} bytes")
+        TestFiles.record(res, "f7_answer", answer)
+        android.util.Log.i("dt-android-test", "P2h f7: $answer")
+        log.lines().filter { it.isNotBlank() }.take(40).forEach { android.util.Log.i("dt-android-test", "P2h f7 engine log: $it") }
+        TestFiles.record(res, "f7", "done")
+    }
+
+    /**
+     * f8 (brief P2h deliverables 2 and 4): the junk file opened in the darkroom gives the sentence at once and
+     * closes its session (no hang, no render); the LightPhotoLibrary preview of the good photo is made right
+     * after, on a session of its own (before P2h the junk file's session could stay open and refuse it); the
+     * junk file's own preview is refused without opening it again; then the good photo opens in the darkroom
+     * with its preview.
+     */
+    @Test
+    fun f8_undecodableFileInTheDarkroomThenTheGoodPhoto() = kotlinx.coroutines.runBlocking<Unit> {
+        TestFiles.engine()
+        val junk = junkFile("JUNK_F8.CR2")
+        val dir = File(TestFiles.ctx.filesDir, "p2h-good").apply { deleteRecursively(); mkdirs() }
+        val raw = File(dir, TestFiles.raw.name).also { TestFiles.raw.copyTo(it); it.setWritable(false, false) }
+        val xmp = File(dir, raw.name + ".xmp").also { TestFiles.xmp.copyTo(it) }
+        val items = listOf(
+            app.dtandroid.darkroom.SeriesItem(junk.name, junk.path, junk.path + ".xmp"),
+            app.dtandroid.darkroom.SeriesItem(raw.name, raw.path, xmp.path),
+        )
+        val c = AppHost.controller
+        c.closePhoto()
+        Timeline.clear()
+        val t0 = System.nanoTime()
+        c.start(app.dtandroid.darkroom.Series("p2h", items), 0, filmstrip = true, thumbnails = false)
+        val tOpen = (System.nanoTime() - t0) / 1_000_000
+        try {
+            val st = c.state.value
+            TestFiles.record(res, "f8_junk_message", "${st.message} ($tOpen ms)")
+            assertEquals(null, st.info)
+            assertEquals("cannot open ${junk.name}: ${app.dtandroid.darkroom.DarkroomController.NO_PICTURE}", st.message)
+            assertEquals("the session is closed", null, c.openRawPath())
+            assertTrue("remembered", c.knownUnreadable(junk.path))
+
+            // the LightPhotoLibrary preview of the good photo, on a session of its own, right away
+            val out = File(TestFiles.out, "p2h-f8-lpl-preview.jpg").apply { delete() }
+            val t1 = System.nanoTime()
+            assertTrue("LPL preview of the good photo", AppHost.Editor.renderPreview(raw, xmp, out))
+            val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(out.path, o)
+            TestFiles.record(res, "f8_lpl_preview_good", "${o.outWidth}x${o.outHeight} ${out.length()} bytes ${(System.nanoTime() - t1) / 1_000_000} ms (emulator)")
+            assertEquals(AppHost.PREVIEW_SIZE, maxOf(o.outWidth, o.outHeight))
+
+            // the junk file's LPL preview: refused without a session
+            val junkOut = File(TestFiles.out, "p2h-f8-junk-preview.jpg").apply { delete() }
+            assertEquals(false, AppHost.Editor.renderPreview(junk, File(junk.path + ".xmp"), junkOut))
+            assertTrue(Timeline.first("darkroom: ${junk.name} known to have no picture, no session opened") != null)
+
+            // the good photo in the darkroom: its preview is shown
+            c.openPhoto(1)
+            waitFor("preview of the good photo", 300_000) { c.state.value.preview != null && c.state.value.index == 1 }
+            assertEquals(raw.path, c.openRawPath())
+            TestFiles.record(res, "f8_good_photo_preview", c.state.value.preview!!.image.let { "${it.width}x${it.height}" })
+
+            // the junk file once more from the filmstrip: the sentence, without opening it
+            c.openPhoto(0)
+            assertEquals("cannot open ${junk.name}: ${app.dtandroid.darkroom.DarkroomController.NO_PICTURE}", c.state.value.message)
+            assertTrue(Timeline.first("darkroom: ${junk.name} known to have no picture, not opened") != null)
+            val noPicture = Timeline.events().filter { it.name.startsWith("darkroom: ${junk.name} has no picture") }
+            assertEquals("found once, then remembered", 1, noPicture.size)
+            TestFiles.record(res, "f8_no_picture_mark", noPicture.first().name)
+        } finally {
+            File(TestFiles.out, "p2h-f8-timeline.txt").writeText(Timeline.text() + "\n")
+            c.closePhoto()
+        }
+        TestFiles.record(res, "f8", "passed")
+    }
+
+    /**
      * f9 (the reviewer's question on the heap corruption of run 44616800258): over every test of this run, no
      * two bridge calls overlapped (dtbridge.h: one engine thread), and every cancel passed to the bridge came
      * while a render ran. Runs last (name order) so it covers the whole process.

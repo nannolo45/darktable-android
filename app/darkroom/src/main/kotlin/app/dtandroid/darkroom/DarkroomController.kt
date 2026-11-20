@@ -4,6 +4,7 @@ package app.dtandroid.darkroom
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
+import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.XmpCheck
@@ -201,10 +202,13 @@ class DarkroomController(
                 fg {
                     for ((i, item) in series.items.withIndex()) {
                         if (source != null && !File(item.rawPath).isFile) continue
+                        if (knownUnreadable(item.rawPath)) continue
                         try {
+                            val stamp = stampOf(item.rawPath)
                             engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
-                            thumbs[i] = engine.renderPreview(thumbnailSize)
-                            engine.close()
+                            // brief P2h: never a render of a session without a picture (closed already then)
+                            if (pictureOrClose(engine, item.rawPath, stamp) == null) continue
+                            try { thumbs[i] = engine.renderPreview(thumbnailSize) } finally { runCatching { engine.close() } }
                         } catch (e: EngineException) {
                             // a photo that cannot be opened has no thumbnail
                         }
@@ -228,12 +232,16 @@ class DarkroomController(
             val t = try {
                 bg("thumbnail ${item.fileName}") { e ->
                     if (_state.value.info != null || fetching) return@bg null
-                    if (item.rawPath in unreadable) return@bg null
+                    // brief P2h: a file known to hold no picture is not opened again until it changes
+                    if (knownUnreadable(item.rawPath)) return@bg null
+                    val stamp = stampOf(item.rawPath)
                     e.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
+                    var open = true
                     try {
-                        if (!hasPicture(e, item)) return@bg null
+                        // no picture: pictureOrClose closed the session already
+                        if (pictureOrClose(e, item.rawPath, stamp) == null) { open = false; return@bg null }
                         e.renderPreview(thumbnailSize)
-                    } finally { runCatching { e.close() } }
+                    } finally { if (open) runCatching { e.close() } }
                 }
             } catch (e: EngineException) { null } ?: continue
             thumbnailStore?.store(item, t)
@@ -283,20 +291,54 @@ class DarkroomController(
     }
 
     /**
-     * Brief P2f: files darktable opened but found no picture in (an undecodable or truncated RAW: size 0 x 0).
+     * Brief P2f: files darktable opened but found no picture in (an undecodable or truncated RAW).
      * Rendering such a session hung the engine thread inside darktable's pipe and was followed by native heap
      * corruption on the emulator (runs 44616800258 and 44623988726, a test file of junk bytes the background
      * thumbnail pass picked up); the app never renders them. See the P2f report for the engine side.
+     *
+     * Brief P2h: kept with the file's size and modification time when it was found so; a file that changed
+     * since (a repaired download) is tried again ([knownUnreadable]). For this process only.
      */
-    private val unreadable: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val unreadable = java.util.concurrent.ConcurrentHashMap<String, FileStamp>()
 
-    private suspend fun hasPicture(e: DarktableEngine, item: SeriesItem): Boolean {
-        val i = e.imageInfo()
-        if (i.width > 0 && i.height > 0 && i.rawWidth >= 0 && i.rawHeight >= 0) return true
-        unreadable += item.rawPath
-        Timeline.mark("darkroom: ${item.fileName} has no picture (${i.width}x${i.height}), not rendered")
+    private data class FileStamp(val length: Long, val modified: Long)
+
+    private fun stampOf(path: String) = File(path).let { FileStamp(it.length(), it.lastModified()) }
+
+    /**
+     * Brief P2h: whether [rawPath] is remembered as holding no picture and has not changed since. A file that
+     * changed is forgotten here, so the caller opens it again.
+     */
+    fun knownUnreadable(rawPath: String): Boolean {
+        val s = unreadable[rawPath] ?: return false
+        if (s == stampOf(rawPath)) return true
+        if (unreadable.remove(rawPath, s)) Timeline.mark("darkroom: ${File(rawPath).name} changed since it had no picture, tried again")
         return false
     }
+
+    /**
+     * Brief P2h: right after `open` of [rawPath] (its [stamp] taken before the open): the session's picture, or
+     * null when there is none. "None" is a picture of 0 x 0 or any engine error from `image_info` except
+     * CANCELLED (the bridge builds the full pipe there and answers DTB_E_ENGINE when the image could not be
+     * loaded): the session is then closed at once and the file remembered, so nothing renders it and no
+     * background pass opens it again until it changes. CANCELLED is passed on (the caller's work runs again).
+     */
+    private suspend fun pictureOrClose(e: DarktableEngine, rawPath: String, stamp: FileStamp): ImageInfo? {
+        val why = try {
+            val i = e.imageInfo()
+            if (i.width > 0 && i.height > 0 && i.rawWidth >= 0 && i.rawHeight >= 0) return i
+            "${i.width}x${i.height}"
+        } catch (ex: EngineException) {
+            if (ex.error == EngineError.CANCELLED) throw ex
+            "image_info answered ${ex.error}: ${ex.message}"
+        }
+        runCatching { e.close() }
+        unreadable[rawPath] = stamp
+        Timeline.mark("darkroom: ${File(rawPath).name} has no picture ($why), session closed, not rendered")
+        return null
+    }
+
+    private fun noPicture(): Nothing = throw EngineException(EngineError.IO, NO_PICTURE)
 
     /** Brief P2f: the photo's last picture, else its thumbnail, while it opens; and what happens, in words. */
     private fun showPlaceholder(index: Int, item: SeriesItem, working: String) {
@@ -343,17 +385,22 @@ class DarkroomController(
         try {
             val xmp = item.xmpPath.takeIf { File(it).isFile }
             val check = xmp?.let { engine.xmpCheck(it) }
+            // brief P2h: a file known to hold no picture is not opened again until it changes
+            if (knownUnreadable(item.rawPath)) {
+                Timeline.mark("darkroom: ${item.fileName} known to have no picture, not opened")
+                noPicture()
+            }
+            val stamp = stampOf(item.rawPath)
             Timeline.mark("darkroom: engine open start")
             engine.open(item.rawPath, xmp)
-            if (!hasPicture(engine, item)) {
-                runCatching { engine.close() }
-                throw EngineException(EngineError.IO, "darktable found no picture in this file (not a RAW it can read, or a broken download)")
-            }
-            val info = engine.imageInfo()
+            // brief P2h: 0 x 0 or an engine error from image_info: the session is already closed here
+            val info = pictureOrClose(engine, item.rawPath, stamp) ?: noPicture()
             Timeline.mark("darkroom: engine open end")
             _state.update { it.copy(info = info, readOnlyReason = if (info.readOnly) readOnlyText(check) else null) }
             refreshLocked()
         } catch (e: EngineException) {
+            // brief P2h: no photo shows as open, so no session stays open either (background work needs its own)
+            runCatching { engine.close() }
             _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: ${e.message}", working = null, workingProgress = null) }
         }
         _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) "rendering…" else it.working) }
@@ -899,8 +946,19 @@ class DarkroomController(
             when {
                 s.info != null && s.current?.rawPath == rawPath -> { usedOpen = true; Result.success(block(e)) }
                 s.info == null && !fetching -> {
+                    // brief P2h: a file without a picture is not opened again until it changes, and a session
+                    // that turns out to have none is closed before [block] could render it
+                    if (knownUnreadable(rawPath)) {
+                        Timeline.mark("darkroom: ${File(rawPath).name} known to have no picture, no session opened")
+                        noPicture()
+                    }
+                    val stamp = stampOf(rawPath)
                     e.open(rawPath, xmpPath.takeIf { File(it).isFile })
-                    try { Result.success(block(e)) } finally { runCatching { e.close() } }
+                    var open = true
+                    try {
+                        if (pictureOrClose(e, rawPath, stamp) == null) { open = false; noPicture() }
+                        Result.success(block(e))
+                    } finally { if (open) runCatching { e.close() } }
                 }
                 else -> null
             }
@@ -1117,5 +1175,8 @@ class DarkroomController(
         const val QUIET_MS = 300L
         private const val BG_POLL_MS = 50L
         private const val CANCEL_REPEAT_MS = 20L
+
+        /** Brief P2f/P2h: what the darkroom says about a file darktable found no picture in. */
+        const val NO_PICTURE = "darktable found no picture in this file (not a RAW it can read, or a broken download)"
     }
 }
