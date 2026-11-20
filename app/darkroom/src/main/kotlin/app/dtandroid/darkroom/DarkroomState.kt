@@ -99,6 +99,8 @@ data class DarkroomState(
     val actionValues: Map<InstanceKey, JsonObject> = emptyMap(),
     val preview: PhotoLayer? = null,
     val region: PhotoLayer? = null,
+    /** Brief P2i: the sharp region of a zoomed-in view is being rendered (the screen says "rendering…") */
+    val regionPending: Boolean = false,
     val beforePreview: PhotoLayer? = null,
     val before: Boolean = false,
     val thumbnails: Map<Int, RenderedImage> = emptyMap(),

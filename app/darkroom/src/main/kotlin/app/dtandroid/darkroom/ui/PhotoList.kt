@@ -67,6 +67,21 @@ object PhotoList {
         val note: String? = null,
         val rows: List<Row> = emptyList(),
     )
+
+    /** Brief P2i: the header's words while the "sync automatically" switch is off. */
+    const val AUTO_SYNC_OFF = "automatic sync is off"
+
+    /** Brief P2i: a photo's status when its edit stays on the phone because automatic sync is off. */
+    const val NOT_SYNCED_HERE = "edited here, not synced yet"
+
+    /**
+     * The line under a server's heading: this device's name, the connection, brief P2i: whether automatic
+     * sync is off, and how many photos have something not sent yet.
+     */
+    fun serverLine(deviceName: String, connection: String, unsent: Int, autoSync: Boolean): String =
+        "this phone is \"$deviceName\" · $connection" +
+            (if (!autoSync) " · $AUTO_SYNC_OFF" else "") +
+            (if (unsent > 0) " · ${app.dtandroid.darkroom.Words.count(unsent, "photo")} ${if (autoSync) "waiting to sync" else "not synced"}" else "")
 }
 
 /**

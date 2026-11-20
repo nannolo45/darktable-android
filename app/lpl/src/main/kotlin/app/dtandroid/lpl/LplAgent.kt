@@ -73,6 +73,10 @@ class LplAgent(
     private val version: () -> String,
     private val clientFor: (ServerOrigin) -> LplClient = { o -> LplClient(o, { servers.password(o) }) },
     private val clock: () -> Double = { System.currentTimeMillis() / 1000.0 },
+    /** Brief P2i: the "sync automatically" switch (deliverable 5); on unless the user switched it off */
+    val settings: SyncSettings = SyncSettings.inMemory(),
+    /** Brief P2i: a line for the app's timeline (removals, refused writes); nothing by default */
+    private val trace: (String) -> Unit = {},
 ) {
     private val _photos = MutableStateFlow<List<PhotoRecord>>(emptyList())
     /** Every photo held, in the order taken. */
@@ -542,10 +546,59 @@ class LplAgent(
                 work.delete(origin, id)
                 _photos.update { list -> list.filter { it.key != r.key } }
                 unsaved.remove(r.key)
+                trace("lpl: ${r.id}/${r.filename} removed from the phone (folder deleted)")
             }
             RemoveResult.Removed
         }
     }
+
+    /**
+     * Brief P2i (P2h's l4 failure): write into a held photo's folder (its thumbnail, its last picture) only
+     * while the phone still holds the photo. [write] runs under the photo's record lock, which [remove] holds
+     * while it deletes the folder, and only when the record and the folder are there: a write that comes after
+     * the removal is dropped, so the removal wins. Before P2i such a write (the background thumbnail pass storing
+     * a thumbnail it had rendered while a `release` job removed the photo) made the folder again
+     * (`AtomicFiles.write` creates missing folders). Returns whether [write] ran.
+     */
+    fun writeIfHeld(origin: ServerOrigin, id: Long, what: String, write: (File) -> Unit): Boolean {
+        synchronized(recordLock(origin to id)) {
+            val r = record(origin, id)
+            val dir = work.folder(origin, id)
+            if (r == null || !dir.isDirectory) {
+                trace("lpl: $what of photo $id not written: the photo is no longer on the phone")
+                return false
+            }
+            write(dir)
+            trace("lpl: $what of ${r.id}/${r.filename} written")
+            return true
+        }
+    }
+
+    // ------------------------------------------------------------------ brief P2i: "sync automatically"
+
+    /** Whether the user lets the app sync by itself (the switch in the app's LightPhotoLibrary settings). */
+    val autoSync: Boolean get() = settings.autoSync.value
+
+    /**
+     * The darkroom left the photo ("done"): its edit is sent now when automatic syncing is on; null when it is
+     * off (the edit stays on the phone, the row says it is not synced yet). The caller calls [left] first.
+     */
+    suspend fun syncAfterDone(origin: ServerOrigin, id: Long): SyncOutcome? {
+        if (!autoSync) { trace("lpl: photo $id kept on the phone: automatic sync is off"); return null }
+        return sync(origin, id)
+    }
+
+    /**
+     * The sync the app starts by itself (the background job, the app coming to the front, previews that waited
+     * for the engine): [syncPending] when automatic syncing is on; null, nothing sent, when it is off.
+     */
+    suspend fun syncPendingAutomatically(includeOpen: Boolean = false): Boolean? {
+        if (!autoSync) return null
+        return syncPending(includeOpen)
+    }
+
+    /** Whether the app may download a photo nobody asked for yet (the next photo of the filmstrip). */
+    val fetchAhead: Boolean get() = autoSync
 
     // ------------------------------------------------------------------ heartbeat and jobs
 
@@ -560,7 +613,9 @@ class LplAgent(
             val st = _steps.value[r.key]
             WorkingSetLine(r.id, r.filename, status, r.checkoutTs, r.syncedTs, r.error, st?.step, st?.progress)
         }
-        return AgentState(lines, open, true, version(), message)
+        // brief P2i: while automatic syncing is off, LightPhotoLibrary is told so in the device's message
+        val msg = if (autoSync) message else listOf(message, SyncSettings.OFF_TEXT).filter { it.isNotEmpty() }.joinToString(" · ")
+        return AgentState(lines, open, true, version(), msg)
     }
 
     /**

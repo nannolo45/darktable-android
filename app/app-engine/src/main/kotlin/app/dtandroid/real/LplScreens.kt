@@ -30,6 +30,7 @@ import app.dtandroid.darkroom.ui.Divider
 import app.dtandroid.darkroom.ui.DtText
 import app.dtandroid.darkroom.ui.DtTextButton
 import app.dtandroid.darkroom.ui.PanelHeading
+import app.dtandroid.darkroom.ui.ToggleControl
 import app.dtandroid.ui.theme.DtTheme
 
 /** A labelled one-line text field in the darkroom's slider-row look. */
@@ -94,6 +95,19 @@ fun ServerScreen(vm: AppViewModel) = Page {
                 f.editing?.let { o -> DtTextButton("remove server", { vm.removeServer(o) }, enabled = f.busy == null) }
             }
             if (f.editing != null) Paragraph("this install's id: ${vm.servers.installId}", muted = true)
+            // brief P2i: the app's one LightPhotoLibrary setting besides the server (default on)
+            val auto by vm.agent.settings.autoSync.collectAsState()
+            Divider()
+            Column(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.xs)) {
+                ToggleControl("sync automatically", auto, enabled = true) { vm.setAutoSync(!auto) }
+            }
+            Paragraph(
+                if (auto) "On: an edit is sent to LightPhotoLibrary when you tap \"done\", and later in the background when the phone was offline."
+                else "Off: nothing is sent or downloaded by itself. An edit stays on this phone until you tap \"sync now\" (in the list, " +
+                    "for all photos or one). Opening a photo that is not on the phone still downloads it, and requests from " +
+                    "LightPhotoLibrary for this phone (save the edit to the NAS, remove it from the phone) are still carried out.",
+                muted = true,
+            )
         }
     }
 }

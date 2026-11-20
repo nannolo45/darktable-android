@@ -23,6 +23,7 @@ import app.dtandroid.lpl.ServerNotAddedException
 import app.dtandroid.lpl.ServerOrigin
 import app.dtandroid.lpl.ServerStore
 import app.dtandroid.lpl.SyncOutcome
+import app.dtandroid.lpl.SyncSettings
 import app.dtandroid.lpl.Step as LplStep
 import app.dtandroid.lpl.WorkStore
 import app.dtandroid.schema.SchemaLoader
@@ -79,13 +80,28 @@ object AppHost {
     val thumbs: ThumbnailStore by lazy {
         object : ThumbnailStore {
             override fun load(item: SeriesItem): RenderedImage? = lplDir(item)?.let { d -> FolderThumb.load(File(d, "thumb.rgba")) } ?: localThumbs.load(item)
-            override fun store(item: SeriesItem, image: RenderedImage) { lplDir(item)?.let { FolderThumb.store(File(it, "thumb.rgba"), image) } ?: localThumbs.store(item, image) }
+            override fun store(item: SeriesItem, image: RenderedImage) {
+                if (lplDir(item) == null) { localThumbs.store(item, image); return }
+                // brief P2i: only while the photo is held; a removal (a `release` job) wins over a late thumbnail
+                writeHeld(item, "thumbnail") { d -> FolderThumb.store(File(d, "thumb.rgba"), image) }
+            }
             override fun loadPicture(item: SeriesItem): RenderedImage? =
                 lplDir(item)?.let { RgbaFile.read(File(it, "picture.rgba")) } ?: localThumbs.loadPicture(item)
             override fun storePicture(item: SeriesItem, image: RenderedImage) {
-                lplDir(item)?.let { RgbaFile.write(File(it, "picture.rgba"), image) } ?: localThumbs.storePicture(item, image)
+                if (lplDir(item) == null) { localThumbs.storePicture(item, image); return }
+                writeHeld(item, "last picture") { d -> RgbaFile.write(File(d, "picture.rgba"), image) }
             }
         }
+    }
+
+    /**
+     * Brief P2i: write into an LPL photo's folder only while the agent holds the photo ([LplAgent.writeIfHeld]);
+     * a photo the agent does not know (its server removed, or the photo removed) gets nothing written.
+     */
+    private fun writeHeld(item: SeriesItem, what: String, write: (File) -> Unit) {
+        val p = lplPhotoOf(item)
+        if (p == null) { Timeline.mark("lpl: $what of ${item.fileName} not written: the photo is not held"); return }
+        agent.writeIfHeld(p.first, p.second, what, write)
     }
 
     /** Brief P2f: the thumbnail is missing or older than the photo's edit: render it again in the background. */
@@ -144,7 +160,12 @@ object AppHost {
         return "dt-android ${appVersion()} / darktable $dt"
     }
 
-    val agent: LplAgent by lazy { LplAgent(servers, work, Editor, ::versionText) }
+    val agent: LplAgent by lazy {
+        LplAgent(servers, work, Editor, ::versionText,
+            // brief P2i: "sync automatically" (default on), kept with the servers
+            settings = SyncSettings(File(app.filesDir, "lpl/settings.json")),
+            trace = { Timeline.mark(it) })
+    }
 
     /** Waits for the engine (the background job may start the process); null when it did not start. */
     suspend fun engineReady(timeoutMs: Long = 120_000): AppEngine.Status.Ready? {
@@ -273,7 +294,8 @@ object AppHost {
             val (origin, id) = lplPhotoOf(item) ?: return
             agent.opened(origin, id)
             val n = next?.let { lplPhotoOf(it) } ?: return
-            if (!File(next.rawPath).isFile) AppEngine.scope.launch { runCatching { agent.take(n.first, n.second, refresh = false) } }
+            // brief P2i: with automatic syncing off nothing is downloaded that the user did not ask for
+            if (!File(next.rawPath).isFile && agent.fetchAhead) AppEngine.scope.launch { runCatching { agent.take(n.first, n.second, refresh = false) } }
         }
 
         override fun left(item: SeriesItem) {
@@ -287,10 +309,13 @@ object AppHost {
         if (total > 0) String.format(Locale.ROOT, "downloading %s… %d %%", name, (done * 100 / total).toInt())
         else String.format(Locale.ROOT, "downloading %s… %.1f MB", name, done / 1e6)
 
-    /** Sync in the background of the process; the darkroom never waits for the network (brief P2e). */
+    /**
+     * Sync in the background of the process; the darkroom never waits for the network (brief P2e). Brief P2i:
+     * only with automatic syncing on; off, the edit stays on the phone until "sync now".
+     */
     fun syncLater(origin: ServerOrigin, id: Long) {
         AppEngine.scope.launch {
-            val o = agent.sync(origin, id)
+            val o = agent.syncAfterDone(origin, id) ?: return@launch
             if (o == SyncOutcome.WAITING) SyncJob.schedule(app)
             else if (agent.pending().isNotEmpty()) SyncJob.schedule(app)
         }
@@ -316,7 +341,8 @@ object AppHost {
         if (loop?.isActive == true) return
         loop = AppEngine.scope.launch {
             // edits that waited while the app was away are sent now (the app is in front: no battery concern)
-            launch { if (agent.pending().isNotEmpty()) agent.syncPending() }
+            // brief P2i: not with automatic syncing off
+            launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
             while (isActive) {
                 if (servers.list().isNotEmpty()) {
                     val jobs = agent.heartbeat()

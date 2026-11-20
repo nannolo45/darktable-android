@@ -64,6 +64,11 @@ class DarkroomController(
     val layouts: LayoutStore,
     private val scope: CoroutineScope,
     private val previewMaxSize: Int = 1024,
+    /**
+     * Brief P2i: the largest preview asked for the view at fit (the longer side of the photo's frame on screen,
+     * at least [previewMaxSize]). See [previewSize] and the P2i report for the choice.
+     */
+    private val fitPreviewMax: Int = FIT_PREVIEW_MAX,
     private val thumbnailSize: Int = 128,
     /** brief P2b: the size of the picture that follows a finger, chosen from measured render times */
     val dragPicture: DragPicture = DragPicture(maxSize = previewMaxSize),
@@ -244,10 +249,13 @@ class DarkroomController(
                     try {
                         // no picture: pictureOrClose closed the session already
                         if (pictureOrClose(e, item.rawPath, stamp) == null) { open = false; return@bg null }
-                        e.renderPreview(thumbnailSize)
+                        // brief P2i: a timeline line for thumbnail renders and stores (P2h's l4 failure)
+                        Timeline.mark("thumbnail pass: ${thumbName(item)} render start")
+                        e.renderPreview(thumbnailSize).also { Timeline.mark("thumbnail pass: ${thumbName(item)} rendered") }
                     } finally { if (open) runCatching { e.close() } }
                 }
             } catch (e: EngineException) { null } ?: continue
+            Timeline.mark("thumbnail pass: ${thumbName(item)} store")
             thumbnailStore?.store(item, t)
             val i = _state.value.series.items.indexOf(item)
             if (i >= 0) _state.update { st -> st.copy(thumbnails = st.thumbnails + (i to t)) }
@@ -255,6 +263,9 @@ class DarkroomController(
         }
         return n
     }
+
+    /** Brief P2i: a photo in the timeline: its folder's name and its file name (file names repeat across folders). */
+    private fun thumbName(item: SeriesItem) = "${File(item.rawPath).parentFile?.name}/${item.fileName}"
 
     /** Switch to another photo of the series; the current edit is written to its sidecar first. */
     suspend fun openPhoto(index: Int, saveCurrent: Boolean = true) {
@@ -330,7 +341,11 @@ class DarkroomController(
     private suspend fun pictureOrClose(e: DarktableEngine, rawPath: String, stamp: FileStamp): ImageInfo? {
         val why = try {
             val i = e.imageInfo()
-            if (i.width > 0 && i.height > 0 && i.rawWidth >= 0 && i.rawHeight >= 0) return i
+            if (i.width > 0 && i.height > 0 && i.rawWidth >= 0 && i.rawHeight >= 0) {
+                // brief P2i: a file remembered as having none that now has a picture is forgotten
+                if (unreadable.remove(rawPath) != null) Timeline.mark("darkroom: ${File(rawPath).name} has a picture now, no longer remembered as unreadable")
+                return i
+            }
             "${i.width}x${i.height}"
         } catch (ex: EngineException) {
             if (ex.error == EngineError.CANCELLED) throw ex
@@ -389,11 +404,10 @@ class DarkroomController(
         try {
             val xmp = item.xmpPath.takeIf { File(it).isFile }
             val check = xmp?.let { engine.xmpCheck(it) }
-            // brief P2h: a file known to hold no picture is not opened again until it changes
-            if (knownUnreadable(item.rawPath)) {
-                Timeline.mark("darkroom: ${item.fileName} known to have no picture, not opened")
-                noPicture()
-            }
+            // brief P2i: a photo the user opens is always tried, even when remembered as having no picture: the
+            // memory is for background passes only (image_info also fails when the full image could not be loaded
+            // for want of memory, and a good photo must not stay refused until the app restarts)
+            if (unreadable.containsKey(item.rawPath)) Timeline.mark("darkroom: ${item.fileName} remembered as having no picture, tried again (the user opened it)")
             val stamp = stampOf(item.rawPath)
             Timeline.mark("darkroom: engine open start")
             engine.open(item.rawPath, xmp)
@@ -409,7 +423,7 @@ class DarkroomController(
             val why = if (isNoPicture(e)) NO_PICTURE else e.message
             _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: $why", working = null, workingProgress = null) }
         }
-        _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) "rendering…" else it.working) }
+        _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) RENDERING else it.working) }
     }
 
     /** brief P2e: a photo of the series got its name or its final paths (from LightPhotoLibrary). */
@@ -751,6 +765,14 @@ class DarkroomController(
     suspend fun redo() = change { if (_state.value.undo.canRedo) engine.redo() }
 
     // ------------------------------------------------------------------ rendering
+    //
+    // Brief P2i: at fit the darkroom shows the preview pipe's picture only, rendered at the size of the photo's
+    // frame on screen ([previewSize]); the full pipe (the sharp region) runs only while the view is zoomed in
+    // beyond fit. On zoom-in the preview is shown scaled up at once and the region follows when ready; zooming
+    // back to fit stops a region render in flight and drops the region. Before P2i the full pipe rendered the
+    // region at fit after every change; demosaic then works on the whole sensor at full resolution (4.7 s of
+    // 5.8 s on the owner's phone with a heavy edit), and a change made meanwhile waited for it, because a render
+    // stops only between modules (the P2i brief and the P2f report, section 3, option A).
 
     private fun cancelRenders() {
         renderJob?.cancel()
@@ -758,13 +780,37 @@ class DarkroomController(
         engine.renderCancel()
     }
 
-    /** Preview first, then the visible region; a newer request cancels this one. */
+    /** Brief P2i: whether [vp] shows the photo larger than at fit (a pinch or a double tap). */
+    private fun zoomedIn(vp: Viewport?) = vp != null && vp.zoom > ZOOM_FIT_LIMIT
+
+    /**
+     * Brief P2i: the preview's longer side: the longer side of the photo's frame on screen at fit, at least
+     * [previewMaxSize] and at most [fitPreviewMax]. The bridge never scales the preview up (it returns at most
+     * the preview pipe's own size, about 1350 px on the longer side of an uncropped 3:2 photo: darktable's
+     * `DT_MIPMAP_F`, see the P2i report), so asking for more than that costs nothing. The same size is used when
+     * zoomed in (the preview is then shown scaled up under the region), so a zoom does not make the preview pipe
+     * render at another size.
+     */
+    fun previewSize(): Int {
+        val vp = viewport ?: return previewMaxSize
+        val info = _state.value.info ?: return previewMaxSize
+        return previewSizeFor(vp.widthPx, vp.heightPx, info.width, info.height, previewMaxSize, fitPreviewMax)
+    }
+
+    /** Brief P2i: the photo view's size and zoom as last reported by the screen (null before the first). */
+    val currentViewport: Viewport? get() = viewport
+
+    /** Brief P2i: the size the last preview was asked at, to render it again when the frame's size changes. */
+    @Volatile private var lastPreviewAsk: Int? = null
+
+    /** Preview first, then, only when zoomed in beyond fit, the visible region; a newer request cancels this one. */
     fun requestRender() {
         cancelRenders()
         renderJob = scope.launch {
             try {
                 renderPreview()
-                renderRegion()
+                // brief P2i: the full pipe only when zoomed in (read now: the user may have zoomed meanwhile)
+                if (zoomedIn(viewport)) renderRegion()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: EngineException) {
@@ -777,21 +823,23 @@ class DarkroomController(
     suspend fun renderNow() {
         cancelRenders()
         renderPreview()
-        renderRegion()
+        if (zoomedIn(viewport)) renderRegion()
         if (_state.value.before) renderBefore()
     }
 
     /**
      * An interactive render that ends CANCELLED although its own coroutine is still wanted was stopped by a
      * cancel meant for something else: run it again (at most twice) rather than leave the screen without it.
+     * Brief P2i: [still] says whether the picture is still wanted at all (a region is not, once the view is back
+     * at fit: its cancel was meant for it).
      */
-    private suspend fun <T> wanted(block: suspend () -> T): T {
+    private suspend fun <T> wanted(still: () -> Boolean = { true }, block: suspend () -> T): T {
         var n = 0
         while (true) {
             try {
                 return block()
             } catch (e: EngineException) {
-                if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || ++n > 2) throw e
+                if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || !still() || ++n > 2) throw e
                 Timeline.mark("darkroom: a render stopped by a cancel not meant for it, run again")
             }
         }
@@ -800,11 +848,15 @@ class DarkroomController(
     private suspend fun renderPreview() {
         val img = fg {
             if (_state.value.info == null) return@fg null
+            val size = previewSize()
+            lastPreviewAsk = size
+            Timeline.mark("darkroom: preview render start ($size px)")
             val t0 = System.nanoTime()
-            wanted { engine.renderPreview(previewMaxSize) }.also {
+            wanted { engine.renderPreview(size) }.also {
                 val ns = System.nanoTime() - t0
                 dragPicture.record(it.width * it.height, ns)
-                _times.update { t -> t.copy(previewMs = ns / 1e6) }
+                _times.update { t -> t.copy(previewMs = ns / 1e6, previewPx = max(it.width, it.height)) }
+                Timeline.mark("darkroom: preview rendered ${it.width}x${it.height} in ${ns / 1_000_000} ms")
             }
         }
         if (img == null) return
@@ -818,29 +870,67 @@ class DarkroomController(
         _state.value.series.items.getOrNull(i)?.let { item -> thumbnailStore?.store(item, thumb) }
     }
 
-    /** Times of the last renders, for the timings page and tests (ms, wherever measured). */
-    data class RenderTimes(val previewMs: Double? = null, val regionMs: Double? = null)
+    /** Times of the last renders, for the timings page and tests (ms, wherever measured); [previewPx] its longer side. */
+    data class RenderTimes(val previewMs: Double? = null, val regionMs: Double? = null, val previewPx: Int? = null)
 
     private val _times = MutableStateFlow(RenderTimes())
     val renderTimes: StateFlow<RenderTimes> = _times.asStateFlow()
 
+    /** Brief P2i: true while an interactive region render runs in the engine; set and cleared under [regionGuard]. */
+    @Volatile private var regionRendering = false
+    private val regionGuard = Any()
+    private val regionsPending = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /** Brief P2i: stop the region render in flight (the view went back to fit); no other render is touched. */
+    private fun cancelRegionRender() = synchronized(regionGuard) { if (regionRendering) engine.renderCancel() }
+
+    /** Brief P2i: how many region renders the darkroom started, for tests (at fit it must start none). */
+    val regionRenders = java.util.concurrent.atomic.AtomicInteger(0)
+
     private suspend fun renderRegion() {
-        val vp = viewport ?: return
-        val layer = fg {
-            val info = _state.value.info ?: return@fg null
-            val r = regionFor(vp, info.width, info.height) ?: return@fg null
-            val size = engine.renderSize(r.scale)
-            val x = r.x.coerceIn(0, size.w - 1)
-            val y = r.y.coerceIn(0, size.h - 1)
-            val w = min(r.w, size.w - x)
-            val h = min(r.h, size.h - y)
-            if (w <= 0 || h <= 0) return@fg null
-            val t0 = System.nanoTime()
-            PhotoLayer(wanted { engine.renderRegion(x, y, w, h, r.scale) }, x, y, r.scale).also {
-                _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
+        if (!zoomedIn(viewport)) return
+        // brief P2i: "rendering…" over the photo while the sharp region of a zoomed-in view is on its way
+        if (regionsPending.incrementAndGet() == 1) _state.update { it.copy(regionPending = true) }
+        try {
+            val layer = fg {
+                wanted({ zoomedIn(viewport) }) {
+                    // read on every try: the view may be back at fit by now, and then nothing is rendered
+                    val vp = viewport?.takeIf { zoomedIn(it) } ?: return@wanted null
+                    val info = _state.value.info ?: return@wanted null
+                    val r = regionFor(vp, info.width, info.height) ?: return@wanted null
+                    val size = engine.renderSize(r.scale)
+                    val x = r.x.coerceIn(0, size.w - 1)
+                    val y = r.y.coerceIn(0, size.h - 1)
+                    val w = min(r.w, size.w - x)
+                    val h = min(r.h, size.h - y)
+                    if (w <= 0 || h <= 0) return@wanted null
+                    regionRenders.incrementAndGet()
+                    Timeline.mark("darkroom: region render start (${w}x$h at scale ${"%.3f".format(java.util.Locale.ROOT, r.scale)})")
+                    val t0 = System.nanoTime()
+                    val img = try {
+                        synchronized(regionGuard) { regionRendering = true }
+                        engine.renderRegion(x, y, w, h, r.scale)
+                    } catch (e: EngineException) {
+                        if (e.error == EngineError.CANCELLED) Timeline.mark("darkroom: region render cancelled")
+                        throw e
+                    } catch (e: CancellationException) {
+                        Timeline.mark("darkroom: region render cancelled")
+                        throw e
+                    } finally {
+                        synchronized(regionGuard) { regionRendering = false }
+                    }
+                    _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
+                    PhotoLayer(img, x, y, r.scale)
+                }
+            } ?: return
+            // shown only while still zoomed in: a zoom back to fit meanwhile drops it
+            if (zoomedIn(viewport)) {
+                _state.update { it.copy(region = layer) }
+                Timeline.mark("darkroom: region shown")
             }
-        } ?: return
-        _state.update { it.copy(region = layer) }
+        } finally {
+            if (regionsPending.decrementAndGet() == 0) _state.update { it.copy(regionPending = false) }
+        }
     }
 
     private data class Region(val x: Int, val y: Int, val w: Int, val h: Int, val scale: Double)
@@ -862,13 +952,35 @@ class DarkroomController(
         return Region(x, y, ceil(x1 * scale).toInt() - x, ceil(y1 * scale).toInt() - y, scale)
     }
 
-    /** The screen's photo view changed size, zoom or position: render the visible region again. */
+    /**
+     * The screen's photo view changed size, zoom or position. Zoomed in: the visible region is rendered again
+     * (the preview, scaled up, shows meanwhile). Brief P2i: at fit no region is rendered; coming back to fit
+     * stops a region render in flight and drops the region; a frame of another size gets a preview of its size.
+     */
     fun setViewport(vp: Viewport) {
         if (vp == viewport) return
+        val before = viewport
         viewport = vp
         regionJob?.cancel()
+        if (!zoomedIn(vp)) {
+            if (zoomedIn(before) || _state.value.region != null) {
+                cancelRegionRender()
+                if (_state.value.region != null) _state.update { it.copy(region = null) }
+                Timeline.mark("darkroom: back at fit, region render stopped and region dropped")
+            }
+            val asked = lastPreviewAsk
+            if (_state.value.info != null && asked != null && previewSize() != asked && !dragging) {
+                regionJob = scope.launch {
+                    delay(VIEWPORT_SETTLE_MS) // wait for the frame to settle (a rotation sends several sizes)
+                    // a render in flight may have asked the old size (run 44704862471): wait for it, then compare
+                    renderJob?.join()
+                    if (_state.value.info != null && !dragging && previewSize() != lastPreviewAsk) requestRender()
+                }
+            }
+            return
+        }
         regionJob = scope.launch {
-            delay(120) // wait for the gesture to settle
+            delay(VIEWPORT_SETTLE_MS) // wait for the gesture to settle
             if (renderJob?.isActive == true) return@launch // the running render ends with the region
             try {
                 renderRegion()
@@ -897,7 +1009,8 @@ class DarkroomController(
             val end = engine.history().end
             try {
                 engine.historyGoto(0)
-                val img = engine.renderPreview(previewMaxSize)
+                // brief P2i: at the preview's size, so "before" and "after" look alike on screen
+                val img = engine.renderPreview(previewSize())
                 PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
             } finally {
                 engine.historyGoto(end)
@@ -1231,6 +1344,35 @@ class DarkroomController(
     companion object {
         /** background work starts only after the darkroom was quiet this long */
         const val QUIET_MS = 300L
+
+        /**
+         * Brief P2i: the largest preview asked for the view at fit. On the owner's phone, with a heavy edit, the
+         * preview after an exposure change took 877 ms at 1024 px and grows a little faster than its pixels
+         * (768 px 424 ms, 1024 px 877 ms); estimated 1080 px about 1.0 s, 1152 px about 1.2 s, 1350 px (the
+         * preview pipe's limit for a 3:2 photo) about 1.75 s. Target: a change at fit shown within about 1.2 s
+         * there, so 1152 px; a phone's landscape frame (1080 px) is below it and gets its own size.
+         */
+        const val FIT_PREVIEW_MAX = 1152
+
+        /** Brief P2i: a zoom up to this counts as fit (the gesture code rounds near 1). */
+        const val ZOOM_FIT_LIMIT = 1.001f
+
+        /**
+         * Brief P2i: the preview's longer side for a view of [viewW] x [viewH] pixels showing a photo of
+         * [imageW] x [imageH] (processed) at fit: the longer side of the photo's frame, kept between [least] and
+         * [most] ([least] wins if they cross); [least] when the view's size is not known.
+         */
+        fun previewSizeFor(viewW: Int, viewH: Int, imageW: Int, imageH: Int, least: Int, most: Int): Int {
+            if (viewW <= 0 || viewH <= 0 || imageW <= 0 || imageH <= 0) return least
+            val fit = min(viewW.toDouble() / imageW, viewH.toDouble() / imageH)
+            val frame = ceil(max(imageW, imageH) * fit - 1e-6).toInt()
+            return max(least, min(frame, most))
+        }
+
+        /** "rendering…": the line over the photo while a picture is on its way. */
+        const val RENDERING = "rendering…"
+
+        private const val VIEWPORT_SETTLE_MS = 120L
         private const val BG_POLL_MS = 50L
         private const val CANCEL_REPEAT_MS = 20L
 

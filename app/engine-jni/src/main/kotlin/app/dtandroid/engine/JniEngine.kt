@@ -274,6 +274,7 @@ class JniEngine private constructor() : DarktableEngine {
         requireInit()
         val wh = IntArray(2)
         val st = IntArray(1)
+        previewCalls.incrementAndGet()
         val px = render { NativeBridge.renderPreview(maxSize, wh, st) }
         check(st[0])
         RenderedImage(wh[0], wh[1], px ?: throw EngineException(EngineError.ENGINE, "no pixels"))
@@ -290,10 +291,15 @@ class JniEngine private constructor() : DarktableEngine {
             throw EngineException(EngineError.ENGINE, "out of memory for a ${w}x$h region")
         }
         val copied = BooleanArray(1)
+        regionCalls.incrementAndGet()
         check(render { NativeBridge.renderRegionInto(x, y, w, h, scale.toFloat(), buf, copied) })
         lastRegionCopied = copied[0]
         RenderedImage(w, h, buf)
     }
+
+    /** Brief P2i, for tests: how many full-pipe renders (`render_region`) and preview renders were asked. */
+    val regionCalls = AtomicLong()
+    val previewCalls = AtomicLong()
 
     /** Counts calls, for tests: how many cancels were sent. */
     val cancels = AtomicLong()

@@ -141,6 +141,14 @@ class Timings(
                 e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.1)); e.historySeal()
                 val (_, tEarly) = perModule("preview after an exposure change") { timed { e.renderPreview(PREVIEW) } }
                 put("preview after an early module change (exposure) ms", ms(tEarly))
+                // brief P2i: at fit the darkroom shows the preview pipe's picture at the frame's size; this is
+                // what a change at fit costs now (the frame of the darkroom's last view, else this screen)
+                val vp = controller.currentViewport
+                val fitSize = DarkroomController.previewSizeFor(vp?.widthPx ?: screenW, vp?.heightPx ?: screenH, info.width, info.height,
+                    PREVIEW, DarkroomController.FIT_PREVIEW_MAX)
+                e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.15)); e.historySeal()
+                val (pf, tFitPreview) = perModule("preview at the darkroom's fit size after an exposure change") { timed { e.renderPreview(fitSize) } }
+                put("preview at the darkroom's fit size (asked $fitSize px, got ${pf.width}x${pf.height}${if (vp != null) ", view ${vp.widthPx}x${vp.heightPx}" else ", this screen"}) after an exposure change ms", ms(tFitPreview))
 
                 progress("drag picture")
                 // the size the app chooses from what it measured so far, then a fixed table of sizes
@@ -174,7 +182,8 @@ class Timings(
                 put("drag picture chosen now", controller.dragPicture.describe())
 
                 progress("sharp region")
-                // what the darkroom renders after the finger lifts: the screen's size at fit, and at 100 %
+                // the full pipe: the screen's size at fit (what the darkroom rendered after a change before P2i; since
+                // P2i only when zoomed in), and at 100 %
                 val fit = minOf(screenW.toDouble() / info.width, screenH.toDouble() / info.height).coerceAtMost(1.0)
                 val fs = e.renderSize(fit)
                 e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.2)); e.historySeal()

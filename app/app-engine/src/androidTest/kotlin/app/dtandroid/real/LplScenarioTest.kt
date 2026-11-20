@@ -199,6 +199,10 @@ class LplScenarioTest {
         val open = s.queueJob(id, "open", listOf(52))
         val edit = s.queueJob(id, "edit", listOf(53))
         val pc = s.queueJob(null, "edit", listOf(53))          // unaddressed: for a PC, never taken by the phone
+        // brief P2i: the timeline of thumbnail renders and stores and of the removal, kept with the results (P2h's
+        // failure of "released: gone from the phone": a thumbnail stored after the removal made the folder again)
+        app.dtandroid.darkroom.Timeline.clear()
+        try {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         val v = vm()
         waitFor("all four jobs reported", 300_000) { listOf(sync, release, open, edit).all { it.status == "done" || it.status == "failed" } }
@@ -217,7 +221,59 @@ class LplScenarioTest {
         // open: the darkroom shows 52; edit (arriving while editing): 53 fetched into the list
         assertEquals("SECOND.cr2", v.controller.state.value.current?.fileName)
         assertNotNull(AppHost.agent.record(s.origin, 53))
+        // brief P2i: run 44704862471 showed the background thumbnail pass starting to render photo 51 after the
+        // release job had removed it (darktable opened the deleted file). When it does, wait for that pass to
+        // finish and check again: its thumbnail must not bring the folder back (before P2i it did)
+        val tl = app.dtandroid.darkroom.Timeline
+        val removedAt = tl.events().firstOrNull { it.name.startsWith("lpl: 51/") && it.name.contains("removed from the phone") }?.nanos
+        val lateRender = removedAt != null && tl.events().any { it.nanos > removedAt && it.name.startsWith("thumbnail pass: 51/") && it.name.endsWith("render start") }
+        if (lateRender) {
+            val end = System.currentTimeMillis() + 60_000
+            while (System.currentTimeMillis() < end && tl.events().none { it.nanos > removedAt!! && it.name.startsWith("thumbnail pass: 51/") && it.name.endsWith(" store") }) Thread.sleep(100)
+            Thread.sleep(500)
+        }
+        TestFiles.record(res, "l4_late_thumbnail_render_of_51", lateRender)
+        assertTrue("released: still gone after the background work", AppHost.agent.record(s.origin, 51) == null && !AppHost.work.folder(s.origin, 51).exists())
         TestFiles.record(res, "l4", "passed")
+        } finally {
+            val t = app.dtandroid.darkroom.Timeline.text()
+            File(TestFiles.out, "p2i-l4-timeline.txt").writeText(t + "\n")
+            val ev = app.dtandroid.darkroom.Timeline.events().map { it.name }
+            TestFiles.record(res, "l4_thumbnail_renders", ev.count { it.startsWith("thumbnail pass:") && it.endsWith("render start") })
+            TestFiles.record(res, "l4_writes_dropped_after_removal", ev.count { it.contains("not written: the photo is no longer on the phone") })
+            TestFiles.record(res, "l4_removal_and_thumbnail_lines", ev.filter { it.startsWith("lpl:") || it.startsWith("thumbnail pass:") }.joinToString(" | "))
+            // photo 51's own lines (file names repeat across the photos of earlier tests; its folder is named 51)
+            TestFiles.record(res, "l4_photo_51", app.dtandroid.darkroom.Timeline.text().lines().filter { "51/" in it }.joinToString(" | "))
+        }
+    }
+
+    /**
+     * l7 (brief P2i deliverable 7, second point): a thumbnail or last picture stored through the app's store after a
+     * `release` job removed the photo does not bring its folder back (the removal wins). Before P2i the store wrote
+     * the file with `AtomicFiles.write`, which makes missing folders, so this test failed.
+     */
+    @Test
+    fun l7_aLateThumbnailDoesNotBringAReleasedPhotoBack() = kotlinx.coroutines.runBlocking<Unit> {
+        val s = stub()
+        rawPhoto(s, 57)
+        AppHost.servers.put(s.origin, "Phone", null)
+        TestFiles.engine()
+        AppHost.agent.take(s.origin, 57)
+        val item = AppHost.itemFor(s.origin, 57)
+        val dir = AppHost.work.folder(s.origin, 57)
+        val img = app.dtandroid.engine.api.RenderedImage(4, 4, ByteArray(64) { 0x7f })
+        AppHost.thumbs.store(item, img)
+        assertTrue("stored while held", File(dir, "thumb.rgba").isFile)
+        val release = s.queueJob(AppHost.servers.installId, "release", listOf(57))
+        for ((o, j) in AppHost.agent.heartbeat().filter { it.first == s.origin }) AppHost.agent.jobDone(o, j, AppHost.agent.runSyncOrRelease(o, j))
+        assertEquals("done", release.status)
+        assertFalse("removed", dir.exists())
+        // the background thumbnail pass and a closing darkroom finishing late
+        AppHost.thumbs.store(item, img)
+        AppHost.thumbs.storePicture(item, img)
+        assertFalse("released: gone from the phone", dir.exists())
+        assertTrue(AppHost.agent.record(s.origin, 57) == null)
+        TestFiles.record(res, "l7", "passed")
     }
 
     @Test
