@@ -1,0 +1,72 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+PASS    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+PASS    app.dtandroid.real.LplScenarioTest.l7_aLateThumbnailDoesNotBringAReleasedPhotoBack
+PASS    app.dtandroid.real.P2fScenarioTest.f10_aChangeAtFitRendersThePreviewOnly
+PASS    app.dtandroid.real.P2fScenarioTest.f1_openRightAfterDoneTimeline
+PASS    app.dtandroid.real.P2fScenarioTest.f2_previewFromTheFullPipeMatchesTheExport
+PASS    app.dtandroid.real.P2fScenarioTest.f3_dragPictureSizesOnA1080PxScreen
+PASS    app.dtandroid.real.P2fScenarioTest.f4_timingsRunOnAPhotoFromLightPhotoLibrary
+PASS    app.dtandroid.real.P2fScenarioTest.f5_spektrafilmHasItsDataAndIsFound
+PASS    app.dtandroid.real.P2fScenarioTest.f6_cropAspectOnTheRealEngine
+PASS    app.dtandroid.real.P2fScenarioTest.f7_imageInfoOfAnUndecodableFile
+PASS    app.dtandroid.real.P2fScenarioTest.f8_undecodableFileInTheDarkroomThenTheGoodPhoto
+PASS    app.dtandroid.real.P2fScenarioTest.f9_theBridgeWasCalledAsItsHeaderAllows
+PASS    app.dtandroid.real.P2jScenarioTest.j1_colorCalibrationCustomIlluminantByHueAndChroma
+PASS    app.dtandroid.real.P2jScenarioTest.j2_spektrafilmAnotherFilmStock
+PASS    app.dtandroid.real.P2jScenarioTest.j3_framingAspectFromItsList
+FAIL    app.dtandroid.real.P3aScenarioTest.c1_dragCornerAndFrameLeaveWriteExport
+        org.junit.ComparisonFailure: expected:<...order_version="4"
+          [
+          ] darktable:history_c...> but was:<...order_version="4"
+          [] darktable:history_c...>
+        	at org.junit.Assert.assertEquals(Assert.java:117)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.real.P3aScenarioTest$c1_dragCornerAndFrameLeaveWriteExport$1.invokeSuspend(P3aScenarioTest.kt:179)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+FAIL    app.dtandroid.real.P3aScenarioTest.c2_noChangeLeavesTheEditAsItWas
+        org.junit.ComparisonFailure: expected:<...order_version="4"
+          [
+          ] darktable:history_c...> but was:<...order_version="4"
+          [] darktable:history_c...>
+        	at org.junit.Assert.assertEquals(Assert.java:117)
+        	at org.junit.Assert.assertEquals(Assert.java:146)
+        	at app.dtandroid.real.P3aScenarioTest$c2_noChangeLeavesTheEditAsItWas$1.invokeSuspend(P3aScenarioTest.kt:250)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+PASS    app.dtandroid.real.P3aScenarioTest.c3_straightenByTouch
+passed 48, failed 2, total 50
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 50,  Failures: 2
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
