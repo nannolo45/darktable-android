@@ -312,6 +312,9 @@ does not call `dt_image_cache_set_change_timestamp` (only adding a history item 
 `dt_dev_add_history_item`), so the XMP keeps the time of the last real change. Contract: after an undo back to a
 state, the XMP written equals the XMP written at that state byte for byte, except `darktable:change_timestamp`, which
 is the time of the latest change (equal too when nothing was changed in between, for example a redo after an undo).
+The `darktable|changed` tag (written to the XMP's tag lists) is also restored as it was at that state: desktop keeps
+it once set, the bridge does not, so that an undo back to the opened state gives the opened XMP again (apart from
+the timestamp). Engine test C18.
 
 ### 6.3 Colour pickers (deliverable 4)
 

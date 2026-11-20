@@ -94,6 +94,7 @@ add_library(dtbridge SHARED
   src/presets.c     # presets (P1b, 5.2)
   src/styles.c      # styles (P1b, 5.3)
   src/times.c       # per-module times of the last render (P1b, 5.6)
+  src/maskdisplay.c # mask display for one render (P1b part 2, 6.8)
 )
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})

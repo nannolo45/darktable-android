@@ -308,6 +308,22 @@ int dtb_render_preview(int max_size, uint8_t **rgba8_out, int *width, int *heigh
  * stitch a view from several regions. */
 int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out);
 
+/* P1b part 2 (engine-api.md 6.1): the same three calls with options for
+ * this call only. options_json NULL or "{}" = the plain call:
+ * { "bypass": [ { "op": s, "priority": n }, ... ],
+ *     the instances are processed as if switched off, for this call only: no
+ *     history item, no undo state, no change to modules(), history() or the
+ *     XMP; sizes and regions are those of the picture without them.
+ *     DTB_E_NOT_FOUND: no such instance; DTB_E_ARG: a module without an on/off
+ *     switch.
+ *   "show_mask": { "op": s, "priority": n } | null }
+ *     desktop's "show mask" overlay of that instance (6.8). */
+int dtb_render_size_ex(float scale, const char *options_json, int *width, int *height);
+int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **rgba8_out, int *width,
+                          int *height);
+int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *options_json,
+                         uint8_t *rgba8_out);
+
 /* Ask the render running on the engine thread to stop. Safe from any
  * thread. The running render returns DTB_E_CANCELLED; the pipeline stops
  * between modules. A cancel while no render runs has no effect. Must not be

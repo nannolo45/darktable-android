@@ -34,6 +34,11 @@ typedef struct dtb_undo_entry_t
   int snap_id;      // id in memory.snapshot_*
   int n_items;      // history items in the snapshot
   int history_end;  // history_end of that state
+  // the image's history hash row at that state (main.history_hash: basic,
+  // auto, current), restored with it (P1b part 2, engine-api.md 6.2)
+  guint8 *hash[3];
+  int hash_len[3];
+  gboolean changed_tag;  // "darktable|changed" attached at that state
 } dtb_undo_entry_t;
 
 /* one entry of the history as the XMP gave it, for read-only sessions whose
@@ -134,6 +139,44 @@ void dtb__history_add(dt_iop_module_t *m, gboolean enable);
  * params_set): lets the pipes resynchronise just that module */
 void dtb__history_add_params(dt_iop_module_t *m, gboolean enable);
 void dtb__undo_clear(void);
+
+/* render.c: render options (engine-api.md 6.1) */
+typedef struct dtb_render_opts_t
+{
+  GPtrArray *bypass;            // dt_iop_module_t *, left out for one call; NULL = none
+  dt_iop_module_t *show_mask;   // "show mask" overlay of this instance; NULL = none
+} dtb_render_opts_t;
+#define DTB_BYPASS_MAX 16
+typedef struct dtb_bypass_t
+{
+  dtb_pipe_t *pipe;
+  int n;
+  dt_dev_pixelpipe_iop_t *piece[DTB_BYPASS_MAX];
+  dt_hash_t hash[DTB_BYPASS_MAX];
+  int processed_width, processed_height;
+} dtb_bypass_t;
+/* parse {"bypass": [...], "show_mask": {...}}; NULL or "" = none */
+int dtb__render_opts_parse(const char *json, dtb_render_opts_t *out);
+/* the same members of an object other calls take (pickers, coordinates) */
+int dtb__render_opts_from(JsonObject *o, dtb_render_opts_t *out);
+void dtb__render_opts_clear(dtb_render_opts_t *o);
+gboolean dtb__render_opts_empty(const dtb_render_opts_t *o);
+/* on a synchronised pipe: leave the bypassed pieces out until _end */
+void dtb__bypass_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_bypass_t *saved);
+void dtb__bypass_end(dtb_bypass_t *saved);
+/* masks display (engine-api.md 6.8): set up the pipe for one render */
+typedef struct dtb_mask_display_t
+{
+  gboolean active;
+  dtb_pipe_t *pipe;
+  dt_iop_module_t *module;
+  void *saved[8];
+  int saved_int[8];
+} dtb_mask_display_t;
+int dtb__mask_display_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_mask_display_t *md);
+void dtb__mask_display_end(dtb_mask_display_t *md);
+/* make sure a pipe exists and is synchronised: full (DT_MIPMAP_FULL) or preview (DT_MIPMAP_F) */
+int dtb__pipe_ready(gboolean full, dtb_pipe_t **out);
 
 /* render.c */
 void dtb__pipes_dirty(dt_dev_pixelpipe_change_t what);

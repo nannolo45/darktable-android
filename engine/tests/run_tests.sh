@@ -3,7 +3,8 @@
 #
 # Bridge tests on three test images: T1 to T9 and X1 (brief S3), C1 to C7
 # (brief P1a, Engine API v1 section 4), C8, C9 (brief P1c), C10 to C16
-# (brief P1b part 1, engine-api.md section 5).
+# (brief P1b part 1, engine-api.md section 5), C17 and later (P1b part 2,
+# section 6).
 #
 #   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 C2 ...]
 #
@@ -380,6 +381,9 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   fi
   if want C14; then drv C14 actions2 "colorin profiles, denoise current, WB tuning, framing aspect, lens md"; parity C14 actions2; fi
   if want C16; then drv C16 times "per-module times of the last render"; fi
+  # P1b part 2 (engine-api.md section 6)
+  if want C17; then drv C17 bypass "a render that leaves one instance out"; fi
+  if want C18; then drv C18 undohash "undo and redo keep the XMP's history hashes"; fi
 done
 
 # C15 once: the engine on its own thread, the process's CPU set changing under it
