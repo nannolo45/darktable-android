@@ -1,4 +1,4 @@
-# P2f: fixes after the first real use — pull request description (DRAFT, results pending)
+# P2f: fixes after the first real use — pull request description
 
 Branch `p2f-first-use-fixes` into `main` (it contains `p2g-engine-start`). Brief: `docs/briefs/P2f-first-use-fixes.md`
 with its addendum, and the reviewer's additions of 19 Nov (copied to the top of the running log
@@ -24,7 +24,7 @@ with its addendum, and the reviewer's additions of 19 Nov (copied to the top of 
 - What the app does now (368b272): after `open`, `image_info` must report a picture larger than 0 x 0, otherwise the
   photo is never rendered: the darkroom says "darktable found no picture in this file (not a RAW it can read, or a
   broken download)", the thumbnail pass and the LightPhotoLibrary preview skip it and remember it.
-  {{RERUN}}
+  Since then the emulator job has run without a hang: run 44634077994 (368b272) took 153 s of instrumentation and run 44638754889 (0ec21b1) 259 s, all 40 tests passed in the latter. That shows the app no longer renders that file and that nothing else hangs in these tests; it does not show the engine is safe with such files (E1).
 - **What is shown and what is not.** Shown: where the engine stopped (inside `renderPreview` of the undecodable file's
   session), the scheduler's state, the log lines that identify the file. Not shown: that the heap corruption comes
   from that render (it followed the same sequence in the one run where it occurred, and section 4 finds no other P2f
@@ -55,8 +55,8 @@ with its addendum, and the reviewer's additions of 19 Nov (copied to the top of 
 | 5 | List screen and darkroom top bar designed; messages correct in number; screenshot tests | **done** | `ui/PhotoList.kt`, `Screens.kt`, `DarkroomScreen.kt`, `ListScreenshotTest.kt` |
 | 6 | Sync progress (R16, app side) in the list, the darkroom and the heartbeat; reviewer: jobs from LightPhotoLibrary visible and correct | **done** | `LplAgent` (`steps`, `notes`, `runSyncOrRelease`), `Model.kt`, `P2fLplTest` |
 | 7 | Edit record (R15, app side): `agent` on XMP posts, last edit in the list and the darkroom, absent without R15; `schema/module-names.json` from the schema by a script | **done** | `LastEdit.kt`, `LplClient`, `tools/schema-module-names.py`, `schema/module-names.json` |
-| 8 | Spektrafilm: where it appears, its data packaged, a render test against darktable-cli | **done** {{SF}} | `SpektrafilmPack.kt`, `app-engine/build.gradle.kts`, workflow, `f5`, `P2fDarkroomTest` |
-| 9 | Tests (JVM and emulator), workflow green, APK, owner instructions | {{CI}} | section 5 and 8 |
+| 8 | Spektrafilm: where it appears, its data packaged, a render test against darktable-cli | **done**: data pack (8.9 MB, CC BY-SA 4.0, pinned commit of darktable-org/darktable-spektrafilm) carried in the APK; the test case renders as darktable-cli renders it with the same pack, PSNR 60.4 dB; found by search; placed as desktop places it | `SpektrafilmPack.kt`, `app-engine/build.gradle.kts`, workflow, `f5`, `P2fDarkroomTest` |
+| 9 | Tests (JVM and emulator), workflow green, APK, owner instructions | **done**: last code commit 0ec21b1, p2b-real-engine 44638754889 green (JVM 222 tests, 1 skipped as on main; emulator 40/40; compare green), p2a-app 44638754878 green (166 tests with the screenshots); both needed a rerun of jobs that stopped on Maven Central | section 5 and 8 |
 | 10 | Crop's aspect list (reviewer): darktable's entries and order, ratio and frame as desktop, flip, margins keep the ratio, XMP both ways, through an override; list of other unbound controls | **done** except the typed ratio | `schema/overrides/crop.json`, `CropAspect.kt`, `CropAspectTest`, `f6`, `P2f-results/unbound-controls-scene-referred.txt` |
 | + | Reviewer: R13 (jobs run once), R14 (password check) | **done** | `RanJobs`, `LplClient.check` |
 
@@ -73,7 +73,7 @@ with its addendum, and the reviewer's additions of 19 Nov (copied to the top of 
    again from the beginning once the darkroom is quiet. A background call that cannot be cancelled (an open, the RAW
    load) is waited for. The LightPhotoLibrary preview is now rendered through the bridge's full pipe (darktable's export
    pipe type, `render_region` over the whole photo at 1920 px) and encoded with Android's JPEG encoder, because
-   `dtb_export` cannot be cancelled. Test f2 compares the two: {{F2}}.
+   `dtb_export` cannot be cancelled. Test f2 compares the two: 1920 x 1278 both, PSNR 41.3 dB on the test XMP (run 44638754889), so the two are close but not equal (the export forces sRGB and its own resampling). On f1's heavy edit the export took 10.2 s on the emulator and the full-pipe render 1.8 s for the same size, which suggests the export processes some modules at a larger scale: the LightPhotoLibrary preview of a heavy edit may now differ visibly from darktable's own export of it. Open question for the reviewer (section 10).
 4. Thumbnails are no longer rendered before the photo the user asked for; a photo without a thumbnail gets one in the
    background when no photo is open (the interface preview on the stand-in engine, which keeps none, still renders its
    generated pictures first).
@@ -83,7 +83,7 @@ to the frame, with a line over the bottom of the photo in plain words ("getting 
 thin bar, "opening NAME…", "rendering…"), gone when the preview is there. Thumbnails older than the XMP are shown and
 rendered again in the background.
 
-**After the fix (f1, emulator, same heavy edit):** {{F1AFTER}}
+**After the fix (f1, emulator, same heavy edit):** run 44638754889 (`P2f-results/emulator-44638754889.txt`): done → XMP posted 214 ms; LightPhotoLibrary preview render started at 520 ms; open requested at 528 ms; **first picture 286 ms after the tap** (the stored picture); the background render was cancelled 800 ms after done and taken up again later; **the real preview 2.6 s after the tap**, while the LightPhotoLibrary render finished only at 8.9 s and was posted at 9.0 s. Before the fix: nothing for 10.8 s, then the real preview, after the export. (The previous run, 44634077994, gave 169 ms and 862 ms; the emulator varies.)
 
 ## 3. Lag with a real edit (item 4 and the addendum)
 
@@ -124,7 +124,7 @@ emulator, about 28 ms on the phone; nothing to remove without the bridge returni
 after every change costs 0.5 ms once loaded.
 
 **The drag picture's size.** The app chooses it from measured times for a 50 ms target (320 px on the owner's phone,
-384 px on the emulator). How 320, 512, 768 and 1024 px look on a 1080 px wide screen: {{F3}}. Per the phone's own table,
+384 px on the emulator). How 320, 512, 768 and 1024 px look on a 1080 px wide screen: the four pictures from test f3 scaled to 1080 px are in the CI logs of run 44638754889 (branch `ci-logs`, `runs/44638754889-a2/p2b-emulator/p2b-test/p2f-drag-{320,512,768,1024}-on-1080.png.gz`; public test RAW). On the emulator they took 60, 68, 91 and 50 ms (the 1024 px figure comes after the pipe is warm, so the order is not meaningful there). Per the phone's own table,
 512 px costs about 45 ms and 768 px about 97 ms after an exposure step: a 512 px drag picture would follow at about
 20 updates a second, 768 px at about 10.
 
@@ -145,12 +145,12 @@ it". Nothing allows two sessions or calls from two threads.
   closes it before releasing the lock; `dtb_open` itself refuses a second session (`DTB_E_STATE`).
 - All bridge calls: still queued to the one engine thread by `JniEngine.onEngine`; the queue runs one task at a time. P2f
   added a counter of overlapping bridge calls (`JniEngine.bridgeOverlaps`), and test f9 asserts it stayed 0 over the
-  whole emulator run: {{F9}}.
+  whole emulator run: 0 (run 44638754889).
 - Cancel from other threads: P2f made it frequent (interactive work stopping background renders). P2b already cancelled
   whenever a change arrived, also when no render ran, which is outside the header's "while a render runs". Now
   `JniEngine.renderCancel` passes the cancel on only while a render runs on the engine thread, and never at the same
   time as open, close, cache drop or shutdown (one lock); cancels asked outside a render are counted, not passed on
-  ({{F9C}} in the emulator run). In the bridge's code the cancel only writes the embedded pipe's `shutdown` field
+  (106 in the emulator run). In the bridge's code the cancel only writes the embedded pipe's `shutdown` field
   (`render.c`, `dt_dev_pixelpipe_set_shutdown`), so even before this it could not free or write freed memory; it is now
   within the letter of the header anyway.
 - Sessions closed right after a render: on the engine thread, after the render returned; ordered by the queue.
@@ -183,7 +183,18 @@ with and without, step and progress in the heartbeat only while running, downloa
 fallback, the five job cases), screenshot tests `ListPhoneScreenshots`, `ListTabletScreenshots`, `TopBarScreenshots`;
 emulator `P2fScenarioTest` f1 to f6 and f9, `HangGuard` (a time limit per test and a dump on failure).
 
-{{RESULTS}}
+**Results (last code commit 0ec21b1).**
+- p2b-real-engine **44638754889**: green. JVM 222 tests, 0 failed, 1 skipped (the real-server run, as on main). Emulator
+  **40/40** (P2b, contract, LightPhotoLibrary scenarios, P2g's t1b, P2f's f1 to f6 and f9), 259 s. Compare: G0 75.7 dB,
+  the app's XMP 74.4 dB, spektrafilm 60.4 dB, the app's crop 1734 x 2601 = 2:3 as read by darktable-cli. Apk and emulator
+  needed a rerun of the jobs (Maven Central "could not find" on the first attempt; no test had run).
+- p2a-app **44638754878**: green (166 tests including 11 new screenshot tests), after one rerun for the same reason.
+- APK: release **`dt-android-0ec21b1386a7`** (`dt-android-arm64-v8a.apk`, owner key). Screenshots of the list and the top
+  bar for the owner: release **`app-preview-0ec21b1386a7`**, files `list-phone-01-empty.png`,
+  `list-phone-02-photos-in-each-state.png`, `list-phone-03-more-sheet.png`, `list-phone-04-download-in-progress.png`, the
+  same four as `list-tablet-…`, `topbar-360dp-short-name.png` (a 14-character name shown whole) and
+  `topbar-360dp-long-name.png`; also in the CI logs, `runs/44638754878-a2/p2a-app/screenshots/`.
+- Workspace (x86_64, 2 cores): `:engine-api:test :schema:test :lpl:test :darkroom:testDebugUnitTest` pass.
 
 ## 6. Jobs from LightPhotoLibrary ("save edited to NAS" for the phone)
 
@@ -256,6 +267,14 @@ photo is open, it runs on the last photo you opened.
 ## 10. Open questions
 
 - The view at fit: which of the options in section 3 (they change what the picture looks like while it is at fit).
+- The LightPhotoLibrary preview now comes from the full pipe (cancellable), 41.3 dB from darktable's export on the
+  test edit and possibly further on heavy edits (section 2). Acceptable, or should the export stay and only run when
+  the app is idle for longer (not cancellable, so an open could wait for it again)?
+- Workflow changes made here: the emulator job's `timeout-minutes` 120 → 75 and the instrumentation bounded to 50
+  minutes (after the hang), longer waits between dependency retries, the spektrafilm steps, the crop and spektrafilm
+  checks in compare, the module-names check in p2a-app, the two new branches in both workflows. Maven Central failed
+  with "could not find" on four of the last six runs; a fallback mirror in `settings.gradle.kts` would be a new
+  dependency source, so it is not added without your agreement.
 - The rule for jobs on an open photo (section 6): keep "save the open changes and send them"?
 - The crop list's typed ratio: wanted now?
 - The unbound controls of the default layout (38, `P2f-results/unbound-controls-scene-referred.txt`): which first?

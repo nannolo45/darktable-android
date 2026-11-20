@@ -38,6 +38,11 @@ from the tip of `p2g-engine-start`. Pull request text: `P2f-first-use-fixes-REPO
 
 ## Running log (newest first)
 
+- 2026-11-20 01:20 UTC: **run 44638754889 (0ec21b1) green**: JVM 222 (1 skipped as on main), emulator 40/40 in 259 s,
+  compare green (spektrafilm 60.4 dB, the app's crop read as 2:3 by darktable-cli); p2a-app 44638754878 green (166).
+  APK `dt-android-0ec21b1386a7`; screenshots in release `app-preview-0ec21b1386a7`. Report completed
+  (`P2f-first-use-fixes-REPORT.md`), results in `P2f-results/emulator-44638754889.txt`. Handing back to the reviewer.
+
 - 2026-11-20 00:45 UTC: run 44638754889 (0ec21b1): the apk job stopped again on Maven Central "could not find"
   (grpc-inprocess, tink: the Android Gradle plugin's own dependencies) after the workflow's three tries; rerun. The
   p2a-app run of the same commit (44638754878) is green after one rerun. Report sections on the lag (with the emulator's
