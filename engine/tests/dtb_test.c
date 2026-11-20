@@ -35,11 +35,18 @@
  *   styles <raw> <xmp> <outdir>    C12: styles (P1b; DTB_TEST_STYLE = a public .dtstyle)
  *   persist <raw> <xmp> <outdir>   C11/C12: presets and styles survive a new process
  *   defedit <raw> <xmp> <outdir>   C13: the default edit and its XMP (P1b deliverable 4)
+ *   actions2 <raw> <xmp> <outdir>  C14: module actions added by P1b
+ *   cpus                           C15: CPUs checked against the process's set now (P1b)
  *   times <raw> <xmp> <outdir>     C16: per-module times of the last render (P1b)
  * Results are "RESULT key value" lines; exit code 0 = the checks the driver
  * can do on its own passed. Pixel comparisons with darktable-cli are done by
  * run_tests.sh.
  */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <sched.h>
+
 #include "dtbridge.h"
 
 #include <dirent.h>
@@ -2905,6 +2912,263 @@ static int cmd_times(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* ---- module actions added by P1b (5.4) ---- */
+static int count_current(JsonArray *a, const char *kind, int *which)
+{
+  int n = 0;
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(kind && strcmp(json_object_get_string_member(o, "kind"), kind)) continue;
+    if(json_object_get_boolean_member(o, "current"))
+    {
+      n++;
+      if(which) *which = i;
+    }
+  }
+  return n;
+}
+
+static int cmd_actions2(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  // colorin
+  JsonNode *pl = action("colorin", 0, "list_profiles", NULL, DTB_OK);
+  if(pl)
+  {
+    JsonArray *a = json_node_get_array(pl);
+    int ci = -1, cw = -1;
+    const int nin = count_current(a, "input", &ci), nwork = count_current(a, "work", &cw);
+    fprintf(stdout, "RESULT colorin profiles: %u entries; current input %s, current work %s\n",
+            json_array_get_length(a), ci >= 0 ? json_object_get_string_member(json_array_get_object_element(a, ci), "type") : "-",
+            cw >= 0 ? json_object_get_string_member(json_array_get_object_element(a, cw), "type") : "-");
+    CHECK(nin == 1 && nwork == 1, "colorin: %d current input and %d current work profiles", nin, nwork);
+    // choose another input profile of the image's own and the working profile sRGB-linear... through param_set
+    const char *pick = NULL;
+    for(guint i = 0; i < json_array_get_length(a) && !pick; i++)
+    {
+      JsonObject *o = json_array_get_object_element(a, i);
+      if(!strcmp(json_object_get_string_member(o, "kind"), "input") && !json_object_get_boolean_member(o, "current")
+         && !strcmp(json_object_get_string_member(o, "filename"), ""))
+        pick = json_object_get_string_member(o, "type");
+    }
+    if(pick)
+    {
+      gchar *v = g_strdup_printf("\"%s\"", pick);
+      MUST(dtb_param_set("colorin", 0, "type", v));
+      g_free(v);
+      MUST(dtb_history_seal());
+      JsonNode *pl2 = action("colorin", 0, "list_profiles", NULL, DTB_OK);
+      int c2 = -1;
+      count_current(json_node_get_array(pl2), "input", &c2);
+      CHECK(c2 >= 0 && !strcmp(json_object_get_string_member(json_array_get_object_element(json_node_get_array(pl2), c2), "type"), pick),
+            "colorin: the profile set is not current");
+      fprintf(stdout, "RESULT colorin set input profile %s\n", pick);
+      json_node_unref(pl2);
+    }
+    json_node_unref(pl);
+  }
+  // denoiseprofile
+  JsonNode *dl = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+  if(dl)
+  {
+    int c = -1;
+    const int n = count_current(json_node_get_array(dl), NULL, &c);
+    fprintf(stdout, "RESULT denoiseprofile: %u entries, current index %d\n", json_array_get_length(json_node_get_array(dl)), c);
+    CHECK(n == 1 && c == 0, "denoiseprofile default: %d current, index %d (expected the automatic entry)", n, c);
+    if(json_array_get_length(json_node_get_array(dl)) > 1)
+    {
+      json_node_unref(action("denoiseprofile", 0, "set_profile", "{\"index\": 1}", DTB_OK));
+      JsonNode *d2 = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+      int c2 = -1;
+      count_current(json_node_get_array(d2), NULL, &c2);
+      CHECK(c2 == 1, "denoiseprofile after set_profile 1: current %d", c2);
+      json_node_unref(d2);
+    }
+    json_node_unref(dl);
+  }
+  // white balance: tuning and preset position
+  JsonNode *wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  if(wb)
+  {
+    JsonObject *o = json_node_get_object(wb);
+    CHECK(json_object_has_member(o, "tuning") && json_object_has_member(o, "preset_index"), "get_wb lacks tuning/preset_index");
+    fprintf(stdout, "RESULT get_wb before: preset %s, preset_index %s\n",
+            json_node_is_null(json_object_get_member(o, "preset")) ? "null" : json_object_get_string_member(o, "preset"),
+            json_node_is_null(json_object_get_member(o, "preset_index")) ? "null" : "set");
+    json_node_unref(wb);
+  }
+  JsonNode *wl = action("temperature", 0, "list_presets", NULL, DTB_OK);
+  if(wl)
+  {
+    JsonArray *a = json_node_get_array(wl);
+    // a camera preset with fine tuning if there is one (else the first)
+    guint first = G_MAXUINT;
+    for(guint i = 0; i < json_array_get_length(a) && first == G_MAXUINT; i++)
+    {
+      JsonObject *p = json_array_get_object_element(a, i);
+      if(!strcmp(json_object_get_string_member(p, "kind"), "camera")
+         && json_object_get_int_member(p, "tuning_max") > json_object_get_int_member(p, "tuning_min"))
+        first = i;
+    }
+    for(guint i = 0; i < json_array_get_length(a) && first == G_MAXUINT; i++)
+      if(!strcmp(json_object_get_string_member(json_array_get_object_element(a, i), "kind"), "camera")) first = i;
+    for(guint i = first; i < json_array_get_length(a); i++)
+    {
+      JsonObject *p = json_array_get_object_element(a, i);
+      if(strcmp(json_object_get_string_member(p, "kind"), "camera")) continue;
+      const int tmin = json_object_get_int_member(p, "tuning_min"), tmax = json_object_get_int_member(p, "tuning_max");
+      const int tune = tmax > tmin ? tmin + 1 : tmin;
+      gchar *args = g_strdup_printf("{\"name\": \"%s\", \"tuning\": %d}", json_object_get_string_member(p, "name"), tune);
+      json_node_unref(action("temperature", 0, "apply_preset", args, DTB_OK));
+      g_free(args);
+      JsonNode *w2 = action("temperature", 0, "get_wb", NULL, DTB_OK);
+      JsonObject *o = json_node_get_object(w2);
+      const gboolean has = !json_node_is_null(json_object_get_member(o, "tuning"));
+      fprintf(stdout, "RESULT get_wb after '%s' tuning %d: tuning %s, preset_index %ld (expected %u)\n",
+              json_object_get_string_member(p, "name"), tune, has ? "set" : "null",
+              has ? (long)json_object_get_int_member(o, "preset_index") : -1L, i);
+      CHECK(has && json_object_get_int_member(o, "tuning") == tune && json_object_get_int_member(o, "preset_index") == (gint64)i,
+            "get_wb does not report the camera preset and tuning that were applied");
+      json_node_unref(w2);
+      break;
+    }
+    json_node_unref(wl);
+  }
+  // framing: the two values outside the field's limits
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": -1}", DTB_OK));
+  CHECK(param_num("borders", 0, "aspect") == -1.0, "constant border not written");
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": 5}", DTB_E_RANGE));
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": \"x\"}", DTB_E_TYPE));
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": 0}", DTB_OK));
+  CHECK(param_num("borders", 0, "aspect") == 0.0, "image aspect not written");
+  // lens: use latest algorithm
+  json_node_unref(action("lens", 0, "use_latest_md", NULL, DTB_OK));
+  {
+    JsonNode *mods = get_modules();
+    JsonObject *lens = find_mod(mods, "lens", 0);
+    const char *v = json_node_get_string(param_node(lens, "md_version"));
+    const double s = json_node_get_double(param_node(lens, "scale_md_v1"));
+    fprintf(stdout, "RESULT lens use_latest_md: md_version %s, scale_md_v1 %g\n", v, s);
+    CHECK(!strcmp(v, "DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2") && s == 0.0, "use_latest_md not written");
+    gchar *cam = g_strdup(json_node_get_string(param_node(lens, "camera")));
+    json_node_unref(mods);
+    if(cam[0])
+    {
+      gchar *args = g_strdup_printf("{\"camera\": \"%s\"}", cam);
+      JsonNode *lenses = action("lens", 0, "list_lenses", args, DTB_OK);
+      int with = 0;
+      for(guint i = 0; lenses && i < json_array_get_length(json_node_get_array(lenses)); i++)
+      {
+        JsonObject *o = json_array_get_object_element(json_node_get_array(lenses), i);
+        CHECK(json_object_has_member(o, "min_aperture") && json_object_has_member(o, "max_aperture"), "no aperture fields");
+        with += !json_node_is_null(json_object_get_member(o, "min_aperture"));
+      }
+      fprintf(stdout, "RESULT list_lenses: %d of %u lenses with min_aperture\n", with,
+              lenses ? json_array_get_length(json_node_get_array(lenses)) : 0);
+      if(lenses) json_node_unref(lenses);
+      g_free(args);
+    }
+    g_free(cam);
+  }
+  // darktable-cli renders the result as the bridge does
+  MUST(dtb_xmp_write(path_join(outdir, "actions2.xmp")));
+  render_to(outdir, "actions2");
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- threads and CPUs (5.5, P2g section 5) ---- */
+/* the engine runs on its own thread here (as in the app), so the main
+ * thread's mask can stand for the process's allowed set and change while
+ * the engine runs */
+static volatile int g_cpus_step = 0;
+static cpu_set_t g_all;
+
+static void cpus_wait(int step)
+{
+  while(g_cpus_step < step) usleep(1000);
+}
+
+static GArray *json_cpus(const char *key)
+{
+  JsonNode *n = get_json(dtb_engine_info);
+  JsonArray *a = json_object_get_array_member(json_node_get_object(n), key);
+  GArray *r = g_array_new(FALSE, FALSE, sizeof(int));
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    const int c = json_array_get_int_element(a, i);
+    g_array_append_val(r, c);
+  }
+  json_node_unref(n);
+  return r;
+}
+
+static int my_cpu_count(void)
+{
+  cpu_set_t s;
+  sched_getaffinity(0, sizeof(s), &s);
+  return CPU_COUNT(&s);
+}
+
+static void *cpus_engine(void *arg)
+{
+  const char *workdir = arg;
+  engine_start(workdir);
+  GArray *a0 = json_cpus("cpus_allowed");
+  fprintf(stdout, "RESULT cpus at start: %u allowed, %ld configured, threads_max %ld\n", a0->len,
+          info_int("cpus_configured"), info_int("threads_max"));
+  CHECK((int)a0->len == CPU_COUNT(&g_all), "cpus_allowed %u, the process has %d", a0->len, CPU_COUNT(&g_all));
+  // the system narrows the process to CPU 0 (the main thread's mask stands for it)
+  g_cpus_step = 1;
+  cpus_wait(2);
+  GArray *a1 = json_cpus("cpus_allowed");
+  fprintf(stdout, "RESULT cpus after narrowing: %u allowed (first %d)\n", a1->len, a1->len ? g_array_index(a1, int, 0) : -1);
+  CHECK(a1->len == 1 && g_array_index(a1, int, 0) == 0, "cpus_allowed does not follow the process's set");
+  EXPECT(dtb_set_thread_cpus((int[]){ 1 }, 1), DTB_E_ARG);
+  MUST(dtb_set_thread_cpus((int[]){ 0, 1 }, 2));
+  GArray *tc = json_cpus("thread_cpus");
+  CHECK(tc->len == 1 && g_array_index(tc, int, 0) == 0, "applied set is not requested ∩ allowed");
+  MUST(dtb_set_thread_cpus(NULL, 0));
+  CHECK(my_cpu_count() == 1, "unpinning gave the engine thread %d CPUs, the process may use 1", my_cpu_count());
+  // the system widens it again: unpinning gives every CPU
+  g_cpus_step = 3;
+  cpus_wait(4);
+  MUST(dtb_set_thread_cpus(NULL, 0));
+  fprintf(stdout, "RESULT cpus after widening and unpinning: engine thread on %d CPUs\n", my_cpu_count());
+  CHECK(my_cpu_count() == CPU_COUNT(&g_all), "unpinning did not restore the process's CPUs now");
+  g_array_free(a0, TRUE);
+  g_array_free(a1, TRUE);
+  g_array_free(tc, TRUE);
+  dtb_shutdown();
+  g_cpus_step = 5;
+  return NULL;
+}
+
+static int cmd_cpus(const char *workdir)
+{
+  sched_getaffinity(0, sizeof(g_all), &g_all);
+  if(CPU_COUNT(&g_all) < 2 || !CPU_ISSET(0, &g_all) || !CPU_ISSET(1, &g_all))
+  {
+    fprintf(stdout, "FAIL cpus: needs CPUs 0 and 1\n");
+    return 1;
+  }
+  pthread_t t;
+  // the engine thread starts with the whole set, before the main thread narrows its own
+  pthread_create(&t, NULL, cpus_engine, (void *)workdir);
+  cpus_wait(1);
+  cpu_set_t one;
+  CPU_ZERO(&one);
+  CPU_SET(0, &one);
+  sched_setaffinity(0, sizeof(one), &one);
+  g_cpus_step = 2;
+  cpus_wait(3);
+  sched_setaffinity(0, sizeof(g_all), &g_all);
+  g_cpus_step = 4;
+  pthread_join(t, NULL);
+  return g_fail;
+}
+
 int main(int argc, char **argv)
 {
   if(argc < 3)
@@ -2914,6 +3178,13 @@ int main(int argc, char **argv)
   }
   setvbuf(stdout, NULL, _IOLBF, 0);
   const char *cmd = argv[2];
+  // C15: the engine on a thread of its own, started by the command
+  if(!strcmp(cmd, "cpus"))
+  {
+    const int rc = cmd_cpus(argv[1]);
+    fprintf(stdout, "RESULT exit %d\n", rc);
+    return rc;
+  }
   if(!strcmp(cmd, "actions") && argc == 6)
   {
     char *rc = actions_prepare(argv[5]);
@@ -2943,7 +3214,7 @@ int main(int argc, char **argv)
       { "output", cmd_output }, { "reopen", cmd_reopen },
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
-      { "styles", cmd_styles }, { "defedit", cmd_defedit }, { "times", cmd_times },
+      { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

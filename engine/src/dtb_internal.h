@@ -172,6 +172,9 @@ void dtb__times_begin(const char *pipe);
 void dtb__times_end(void);
 void dtb__times_reset(void);
 
+/* actions2.c: 1 = no such action there */
+int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+
 /* actions.c */
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 

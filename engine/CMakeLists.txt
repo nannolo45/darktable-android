@@ -86,6 +86,7 @@ add_library(dtbridge SHARED
   src/session.c     # open, close, image information, metadata (2.3)
   src/params.c      # modules and parameters (2.4)
   src/actions.c     # module actions (2.4)
+  src/actions2.c    # module actions added by P1b (5.4)
   src/instances.c   # instances (2.5), prototype mask
   src/history.c     # history, grouping, undo and redo (2.6)
   src/render.c      # rendering (2.7)

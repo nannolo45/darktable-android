@@ -12,6 +12,8 @@
 #define _GNU_SOURCE
 #endif
 #include <sched.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "dtb_internal.h"
 
@@ -25,6 +27,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static gboolean _allowed_now(cpu_set_t *set);
 
 /* common/styles.c; not declared in common/styles.h */
 void dt_import_default_styles(const char *folder);
@@ -101,6 +105,17 @@ int dtb_init(const dtb_paths_t *p, int threads)
   if(!p || !p->datadir || !p->moduledir || !p->configdir || !p->cachedir || !p->library)
     return dtb__err(DTB_E_ARG, "configdir, cachedir, datadir, moduledir and library are required");
   if(threads < 0) return dtb__err(DTB_E_ARG, "threads must be >= 0");
+
+  // P2g report section 5, point 3: darktable sizes its thread count from
+  // omp_get_num_procs() at dt_init. LLVM's OpenMP runtime (the NDK's
+  // libomp) counts the CPUs of the affinity mask it finds when it starts,
+  // so a process started in a small cpuset (an app started in the
+  // background) would keep that small count for its whole life. With
+  // affinity handling disabled it counts the online CPUs. Effective only
+  // when the runtime has not started yet; the caller's own setting wins.
+  // GCC's libgomp (Linux) ignores the variable: there the count follows the
+  // mask the process has when the library loads.
+  g_setenv("KMP_AFFINITY", "disabled", FALSE);
 
   int argc = 0;
   gchar **a = g_argv_store;
@@ -267,6 +282,17 @@ int dtb_engine_info(char **json)
   for(guint i = 0; g_thread_cpus && i < g_thread_cpus->len; i++)
     json_builder_add_int_value(b, g_array_index(g_thread_cpus, int, i));
   json_builder_end_array(b);
+  json_builder_set_member_name(b, "cpus_allowed");
+  json_builder_begin_array(b);
+  {
+    cpu_set_t allowed;
+    if(_allowed_now(&allowed))
+      for(int c = 0; c < CPU_SETSIZE; c++)
+        if(CPU_ISSET(c, &allowed)) json_builder_add_int_value(b, c);
+  }
+  json_builder_end_array(b);
+  json_builder_set_member_name(b, "cpus_configured");
+  json_builder_add_int_value(b, (int)sysconf(_SC_NPROCESSORS_CONF));
 
   json_builder_set_member_name(b, "plugins");
   json_builder_begin_object(b);
@@ -336,31 +362,117 @@ static int _apply_cpus(const cpu_set_t *set)
   return DTB_OK;
 }
 
+/* The CPUs the process may use now (P2g report section 5, points 1 and 2).
+ * The engine thread's own mask is the pinning once pinned, and the start-up
+ * set is stale when the system moved the process to another cpuset (Android
+ * moves an app between its background and foreground cpusets). The process's
+ * cpuset is read from the cgroup files (Android: /dev/cpuset/<group>/cpus;
+ * cgroup v2: cpuset.cpus.effective); without them, the main thread's mask
+ * (sched_getaffinity(getpid())), which the bridge never pins unless the
+ * engine thread is the main thread, in which case the start-up set is used. */
+static gboolean _parse_cpu_list(const char *text, cpu_set_t *set)
+{
+  CPU_ZERO(set);
+  if(!text) return FALSE;
+  gchar **parts = g_strsplit(g_strstrip((gchar *)text), ",", -1);
+  int n = 0;
+  for(int i = 0; parts[i]; i++)
+  {
+    int a = -1, b = -1;
+    if(sscanf(parts[i], "%d-%d", &a, &b) == 2) {}
+    else if(sscanf(parts[i], "%d", &a) == 1) b = a;
+    else continue;
+    for(int c = a; c <= b && c >= 0 && c < CPU_SETSIZE; c++)
+    {
+      CPU_SET(c, set);
+      n++;
+    }
+  }
+  g_strfreev(parts);
+  return n > 0;
+}
+
+static gboolean _cgroup_cpus(cpu_set_t *set)
+{
+  gchar *cg = NULL;
+  if(!g_file_get_contents("/proc/self/cpuset", &cg, NULL, NULL)) return FALSE;
+  g_strstrip(cg);
+  const char *roots[] = { "/dev/cpuset", "/sys/fs/cgroup/cpuset", "/sys/fs/cgroup" };
+  const char *files[] = { "cpus", "cpuset.cpus.effective", "cpuset.effective_cpus", "cpuset.cpus" };
+  gboolean ok = FALSE;
+  for(size_t r = 0; r < G_N_ELEMENTS(roots) && !ok; r++)
+    for(size_t f = 0; f < G_N_ELEMENTS(files) && !ok; f++)
+    {
+      gchar *path = g_strdup_printf("%s%s/%s", roots[r], cg, files[f]);
+      gchar *text = NULL;
+      if(g_file_get_contents(path, &text, NULL, NULL)) ok = _parse_cpu_list(text, set);
+      g_free(text);
+      g_free(path);
+    }
+  g_free(cg);
+  return ok;
+}
+
+static gboolean _allowed_now(cpu_set_t *set)
+{
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  gboolean have_mask = FALSE;
+  const gboolean engine_is_main = (pid_t)syscall(SYS_gettid) == getpid();
+  if(!(engine_is_main && g_thread_cpus && g_thread_cpus->len))
+    have_mask = sched_getaffinity(getpid(), sizeof(mask), &mask) == 0;
+  else if(g_have_init_cpus)
+  {
+    mask = g_init_cpus;
+    have_mask = TRUE;
+  }
+  cpu_set_t cg;
+  const gboolean have_cg = _cgroup_cpus(&cg);
+  if(have_cg && have_mask)
+  {
+    // a CPU outside the cpuset cannot be used whatever the mask says, and
+    // one outside the main thread's mask was excluded by the process
+    cpu_set_t both;
+    CPU_AND(&both, &cg, &mask);
+    if(CPU_COUNT(&both) > 0)
+    {
+      *set = both;
+      return TRUE;
+    }
+    *set = cg;
+    return TRUE;
+  }
+  if(have_cg) { *set = cg; return TRUE; }
+  if(have_mask) { *set = mask; return TRUE; }
+  return FALSE;
+}
+
 int dtb_set_thread_cpus(const int *cpu_ids, int n)
 {
   NEED_INIT();
   if(n < 0 || (n > 0 && !cpu_ids)) return dtb__err(DTB_E_ARG, "bad CPU list");
-  if(n == 0)
-  {
-    if(!g_have_init_cpus) return dtb__err(DTB_E_ENGINE, "start-up CPU set unknown");
-    const int r = _apply_cpus(&g_init_cpus);
-    if(r) return r;
-    g_array_set_size(g_thread_cpus, 0);
-    return DTB_OK;
-  }
+  cpu_set_t allowed;
+  if(!_allowed_now(&allowed)) return dtb__err(DTB_E_ENGINE, "the process's CPU set is unknown");
   cpu_set_t set;
-  CPU_ZERO(&set);
-  for(int i = 0; i < n; i++)
+  if(n == 0)
+    set = allowed;  // unpinned: everything the process may use now
+  else
   {
-    const int c = cpu_ids[i];
-    if(c < 0 || c >= CPU_SETSIZE || (g_have_init_cpus && !CPU_ISSET(c, &g_init_cpus)))
-      return dtb__err(DTB_E_ARG, "CPU %d is not available to this process", c);
-    CPU_SET(c, &set);
+    CPU_ZERO(&set);
+    for(int i = 0; i < n; i++)
+    {
+      const int c = cpu_ids[i];
+      if(c < 0 || c >= CPU_SETSIZE) return dtb__err(DTB_E_ARG, "CPU %d does not exist", c);
+      if(CPU_ISSET(c, &allowed)) CPU_SET(c, &set);
+    }
+    if(CPU_COUNT(&set) == 0)
+      return dtb__err(DTB_E_ARG, "none of the %d CPUs given is available to this process now", n);
   }
   const int r = _apply_cpus(&set);
   if(r) return r;
   g_array_set_size(g_thread_cpus, 0);
-  for(int c = 0; c < CPU_SETSIZE; c++)
-    if(CPU_ISSET(c, &set)) g_array_append_val(g_thread_cpus, c);
+  if(n > 0)
+    for(int c = 0; c < CPU_SETSIZE; c++)
+      if(CPU_ISSET(c, &set)) g_array_append_val(g_thread_cpus, c);
   return DTB_OK;
 }
