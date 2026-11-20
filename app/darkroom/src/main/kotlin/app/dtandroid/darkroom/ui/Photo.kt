@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.positionChanged
@@ -279,13 +280,16 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             // change of rotate and perspective's rotation turns the picture clockwise; see ashift.c's straightening)
             val turn = tool?.rotationLive?.let { (it - controller.rotationValue(s)).toFloat() } ?: 0f
             if (base != null) {
-                rotate(turn, Offset(left + imgW / 2, top + imgH / 2)) {
-                    drawImage(
-                        base,
-                        dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
-                        dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()),
-                        filterQuality = FilterQuality.Medium,
-                    )
+                // the turned picture stays inside the photo's area (the handles may reach beyond it)
+                clipRect {
+                    rotate(turn, Offset(left + imgW / 2, top + imgH / 2)) {
+                        drawImage(
+                            base,
+                            dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
+                            dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()),
+                            filterQuality = FilterQuality.Medium,
+                        )
+                    }
                 }
             }
             val r = region
