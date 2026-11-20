@@ -1,0 +1,88 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :lpl-shell:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :checkScreenRules UP-TO-DATE
+> Task :lpl-shell:preBuild UP-TO-DATE
+> Task :lpl-shell:preDebugBuild UP-TO-DATE
+> Task :lpl-shell:generateDebugBuildConfig
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:writeDebugAarMetadata
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :lpl-shell:checkDebugAarMetadata
+> Task :lpl-shell:processDebugNavigationResources
+> Task :lpl-shell:generateDebugResValues
+> Task :lpl-shell:compileDebugNavigationResources
+> Task :lpl-shell:shellIcons
+> Task :ui-icons:convertIcons
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :lpl-shell:mapDebugSourceSetPaths
+> Task :lpl-shell:generateDebugResources
+> Task :lpl-shell:mergeDebugResources
+> Task :lpl-shell:packageDebugResources
+> Task :lpl-shell:createDebugCompatibleScreenManifests
+> Task :lpl-shell:extractDeepLinksDebug
+> Task :ui-icons:extractDeepLinksDebug
+> Task :ui-theme:extractDeepLinksDebug
+> Task :lpl-shell:parseDebugLocalResources
+> Task :ui-icons:compileDebugLibraryResources
+> Task :ui-theme:compileDebugLibraryResources
+> Task :ui-icons:parseDebugLocalResources
+> Task :ui-theme:parseDebugLocalResources
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:processDebugManifest
+> Task :ui-icons:generateDebugRFile
+> Task :ui-theme:generateDebugRFile
+> Task :lpl-shell:processDebugMainManifest
+> Task :lpl-shell:processDebugManifest
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl-shell:processDebugManifestForPackage
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:javaPreCompileDebug
+> Task :lpl-shell:processDebugResources
+> Task :ui-theme:javaPreCompileDebug
+> Task :lpl-shell:preDebugUnitTestBuild UP-TO-DATE
+> Task :lpl-shell:javaPreCompileDebug
+> Task :lpl-shell:javaPreCompileDebugUnitTest
+> Task :ui-theme:packTokens
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebugUnitTest
+> Task :ui-theme:generateDebugUnitTestStubRFile
+> Task :ui-icons:compileDebugKotlin
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :ui-icons:processDebugJavaRes
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:144:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-theme:processDebugJavaRes
+> Task :ui-theme:compileDebugUnitTestKotlin
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:processDebugUnitTestJavaRes
+> Task :ui-theme:testDebugUnitTest
+> Task :lpl-shell:compileDebugKotlin
+> Task :lpl-shell:compileDebugJavaWithJavac
+> Task :lpl-shell:bundleDebugClassesToRuntimeJar
+> Task :lpl-shell:bundleDebugClassesToCompileJar
+> Task :lpl-shell:processDebugJavaRes
+> Task :lpl-shell:compileDebugUnitTestKotlin
+> Task :lpl-shell:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :lpl-shell:processDebugUnitTestJavaRes
+> Task :lpl-shell:testDebugUnitTest
+
+BUILD SUCCESSFUL in 45s
+65 actionable tasks: 64 executed, 1 up-to-date
