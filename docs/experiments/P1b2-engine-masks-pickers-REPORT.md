@@ -204,7 +204,23 @@ and scenarios on the emulator, comparisons) and `p2a-app`.
 
 ## 6. Results and runs
 
-(filled in with the last code commit's runs)
+Last code commit **64a627fb** (later commits change `docs/` only; the workflows ignore those):
+
+| Workflow | Run | Result |
+|---|---|---|
+| g0-app | 44756552244 | success: engines for arm64-v8a and x86_64; Linux bridge tests 344 PASS, 0 FAIL (C17 to C24 on three images, C23 on cr2; T5, T8 pass on CI); emulator job success |
+| p2b-real-engine | 44756552183 | success after a rerun of failed jobs (first attempt: package mirrors in "Build darktable for Linux", three install attempts); emulator "OK (65 tests)" (contract suite with the new tests, crop scenarios); compare "success-g0ok-editok-sfok-cropok-p2jok-p3aok" |
+| p2a-app | 44755833069 (on f44e9afc; the app has not changed since, and p2a does not run for `engine/`-only changes) | success: crop tool tests, contract suite on FakeEngine |
+
+Workspace (x86_64, 2 cores) numbers:
+- C17 bypass = switched off: max 0 (preview and 1/2 region); session and XMP byte-equal around bypass renders.
+- C18 opened XMP = XMP after undo back (timestamp aside); redo: byte-equal.
+- C19 global picker vs 8-bit picture: 0.414 / 0.001 / 0.30 levels; exposure output = (input − black) × 2^EV, spread
+  ≤ 7.6e-8; temperature vs desktop formula 1.2e-7; exposure spot measures back 50.0000; color calibration area
+  neutral, spread 6e-4.
+- C20 round trips 0.000 (cr2) / 0.512 (raf) / 0.052 (arw) px, bound 1 px.
+- C21, C22, C23 renders vs darktable-cli: max 0 everywhere. C24: 255 255 0 inside, grey outside.
+- Regression subset after the masks commits (T3 T9 X1 C3 C9 C11 C12 C22, three images): 94 PASS, 0 FAIL.
 
 ## 7. Open questions for the reviewer
 

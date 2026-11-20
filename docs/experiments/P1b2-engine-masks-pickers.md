@@ -123,3 +123,6 @@ and will be pushed when the running CI run has finished.
 - Workspace regression subset after the masks commits (T3 T9 X1 C3 C9 C11 C12 C22, three images): 94 PASS, 0 FAIL.
 - 14:45 pushed 64a627fb (header comments; last code commit). p2b-real-engine's first attempt failed in "Build
   darktable for Linux" (package mirrors, three install attempts); failed jobs rerun.
+- 15:40 Final CI on 64a627fb (last code commit): g0-app 44756552244 success (344 PASS, 0 FAIL, both ABIs);
+  p2b-real-engine 44756552183 success after a rerun of the mirror-failed jobs (emulator OK, 65 tests; compare
+  "success-...-cropok-p2jok-p3aok"); p2a-app 44755833069 success (app unchanged since). REPORT complete.
