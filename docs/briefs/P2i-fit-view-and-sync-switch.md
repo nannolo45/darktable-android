@@ -1,7 +1,7 @@
 # P2i: the view at fit shows the preview pipe's picture; a switch for automatic syncing
 
 Decided by the owner on 20 Nov 2026 after a timings run on the phone with a real edit. App side only: **no change
-under `engine/` or `upstream/`**. Branch `p2i-fit-view` from `main` (after P2h is merged). Report
+under `engine/` or `upstream/`**. Branch `p2i-fit-view` from `main` (P2h is merged). Report
 `docs/experiments/P2i-fit-view-REPORT.md`, running log `docs/experiments/P2i-fit-view.md` (pushed at least every
 30 minutes).
 
@@ -41,6 +41,17 @@ inside demosaic before anything happens. That is the lag the owner sees.
    says so as today. The heartbeat continues (the phone stays visible in LightPhotoLibrary) and reports the photos as
    edited and not synced. The header says "automatic sync is off" while it is. Does not touch the LPL contract; if you
    find it would, stop and write why.
+7. **Two follow-ups from P2h's review** (`docs/experiments/P2h-unreadable-files-REPORT.md`):
+   - A photo the **user opens in the darkroom is always tried**, even when it is remembered as having no picture
+     (`knownUnreadable` in `openLocked`): the memory is for background passes only. Reason: `image_info` also fails
+     when the full image could not be loaded for want of memory, and a good photo must not stay refused until the
+     app restarts. Test with the fake engine: first open fails in `image_info`, second open of the unchanged file
+     succeeds.
+   - **l4's "released: gone from the phone" failed once** (run 44695287219, attempt 1). Suspected: the background
+     thumbnail pass stores a thumbnail for a photo a `release` job has just removed, and `AtomicFiles.write` makes
+     the folder again. Establish it (a timeline line for thumbnail renders and stores), fix it (no thumbnail or
+     picture is written for a photo that is no longer in the working set; the removal wins), and add a test that
+     fails without the fix.
 6. Tests: JVM for 1, 2 and 5 (fake engine and stub server); emulator: 4, and the timings page still reports the fit
    and 100 % region numbers (it calls the full pipe itself). Screenshot of the header with the switch off. Both
    workflows green on the last code commit; APK from the usual release step. Owner instructions in the report.
