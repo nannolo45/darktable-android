@@ -917,7 +917,9 @@ class DarkroomController(
             if (_state.value.info != null && asked != null && previewSize() != asked && !dragging) {
                 regionJob = scope.launch {
                     delay(VIEWPORT_SETTLE_MS) // wait for the frame to settle (a rotation sends several sizes)
-                    if (renderJob?.isActive != true && previewSize() != lastPreviewAsk) requestRender()
+                    // a render in flight may have asked the old size (run 44704862471): wait for it, then compare
+                    renderJob?.join()
+                    if (_state.value.info != null && !dragging && previewSize() != lastPreviewAsk) requestRender()
                 }
             }
             return

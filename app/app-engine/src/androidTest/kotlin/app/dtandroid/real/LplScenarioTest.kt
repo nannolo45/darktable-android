@@ -221,6 +221,19 @@ class LplScenarioTest {
         // open: the darkroom shows 52; edit (arriving while editing): 53 fetched into the list
         assertEquals("SECOND.cr2", v.controller.state.value.current?.fileName)
         assertNotNull(AppHost.agent.record(s.origin, 53))
+        // brief P2i: run 44704862471 showed the background thumbnail pass starting to render photo 51 after the
+        // release job had removed it (darktable opened the deleted file). When it does, wait for that pass to
+        // finish and check again: its thumbnail must not bring the folder back (before P2i it did)
+        val tl = app.dtandroid.darkroom.Timeline
+        val removedAt = tl.events().firstOrNull { it.name.startsWith("lpl: 51/") && it.name.contains("removed from the phone") }?.nanos
+        val lateRender = removedAt != null && tl.events().any { it.nanos > removedAt && it.name.startsWith("thumbnail pass: 51/") && it.name.endsWith("render start") }
+        if (lateRender) {
+            val end = System.currentTimeMillis() + 60_000
+            while (System.currentTimeMillis() < end && tl.events().none { it.nanos > removedAt!! && it.name.startsWith("thumbnail pass: 51/") && it.name.endsWith(" store") }) Thread.sleep(100)
+            Thread.sleep(500)
+        }
+        TestFiles.record(res, "l4_late_thumbnail_render_of_51", lateRender)
+        assertTrue("released: still gone after the background work", AppHost.agent.record(s.origin, 51) == null && !AppHost.work.folder(s.origin, 51).exists())
         TestFiles.record(res, "l4", "passed")
         } finally {
             val t = app.dtandroid.darkroom.Timeline.text()
