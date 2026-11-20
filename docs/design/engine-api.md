@@ -136,9 +136,10 @@ database does; `name` in JSON is the stored name (presets in a submenu keep desk
 
 ### 5.1 Open: undecodable files (E1)
 `dtb_open(raw, xmp)` loads the picture before it answers. A file darktable cannot decode is refused with **`DTB_E_IO`**
-and the loader's reason in `dtb_last_error()`, for example `cannot decode <path>: no decoder for this file (load status
-3: unsupported format)`, or `...: file is truncated or corrupt (load status 2)`; no session is left open and nothing
-is written. `DTB_E_IO` also for a picture of 0 x 0 pixels. After such a refusal every render, `image_info` and every
+and the loader's reason in `dtb_last_error()`: `cannot decode <path>: <reason> (load status n)` with darktable's
+`dt_imageio_retval_t` (for example 3, "no loader could decode it (unsupported format, or a truncated or corrupt
+file)", or 7, "read error"), or `cannot import <path>: darktable does not recognise it as a picture` (an empty
+file); no session is left open and nothing is written. `DTB_E_IO` also for a picture of 0 x 0 pixels. After such a refusal every render, `image_info` and every
 session call answer `STATE` ("no image open"), as with no `open`. Every render additionally refuses an input buffer of
 0 x 0 (`ENGINE`), so no pipeline ever starts on an empty input.
 
@@ -146,20 +147,24 @@ session call answer `STATE` ("no image open"), as with no `open`. Every render a
 JSON of one preset (`dtb_presets_list`):
 ```
 { "name": s, "description": s,
-  "builtin": bool,            // darktable's own (write-protected): cannot be renamed, deleted or overwritten
+  "builtin": bool,            // darktable's own (write-protected): cannot be renamed, deleted or overwritten.
+                              // Built-in names carry darktable's "_builtin_" prefix (desktop shows them translated
+                              // without it); submenus are written with "|" as on desktop
   "op_version": n,            // module version the preset was stored for
   "usable": bool,             // op_version == the engine's module version (desktop greys the others out)
   "enabled": bool,            // applying it switches the instance on (true) or off
-  "autoapply": bool,          // applied automatically to new edits whose image matches "filter"
-  "filter": null | {          // null: the preset has no image filter ("only show this preset for matching images" off)
+  "autoapply": bool,          // applied automatically to new edits whose image meets "match"
+  "filter": bool,             // "only show this preset for matching images" (desktop's menu hides it otherwise)
+  "match": {                  // the image conditions; the filter and auto-apply both use them
       "maker": s, "model": s, "lens": s,   // SQL LIKE patterns as stored, "%" = any
-      "iso": [min, max], "exposure": [min, max], "aperture": [min, max], "focal_length": [min, max],
+      "iso": [min, max|null], "exposure": [min, max|null], "aperture": [min, max|null],
+      "focal_length": [min, max|null],     // null = no upper limit (darktable stores FLT_MAX)
       "format": [ "raw" | "ldr" | "hdr" | "matrix" | "monochrome" | "color", ... ]  // [] = any format
     },
-  "fits": bool | null,        // the open image passes the filter (always true without filter); null: no image open.
-                              // Desktop's presets menu shows only presets that fit; the app does the same.
-  "active": bool | null       // the instance's parameters and blending equal the preset's (desktop's check mark);
-                              // null: no image open
+  "matches": bool | null,     // the open image meets "match"; null: no image open
+  "fits": bool | null,        // shown in desktop's menu for the open image: !filter || matches; null: no image open
+  "active": bool | null       // the instance's parameters, blending and switch equal the preset's (desktop's
+                              // check mark, dt_get_active_preset_name); null: no image open
 }
 ```
 
@@ -171,7 +176,7 @@ JSON of one preset (`dtb_presets_list`):
 | `int dtb_preset_rename(const char *op, const char *name, const char *new_name)` | User presets only (`ARG` for built-in); `ARG` if `new_name` exists; `NOT_FOUND` if `name` does not. All versions of that name are renamed together. |
 | `int dtb_preset_delete(const char *op, const char *name)` | User presets only (`ARG` for built-in); all versions of that name. |
 | `int dtb_preset_import(const char *path, int overwrite, char **json)` | Import one `.dtpreset` file (desktop's `dt_presets_import_from_file`). → `{ "op": s, "name": s, "op_version": n, "usable": bool }`. Refused with `ARG` and a reason, nothing stored: unknown module (`unknown_operation`), module version newer than the engine's (`newer_module_version`), blend version newer (`newer_blend_version`), a built-in name, or an existing user preset of that name unless `overwrite`. `IO`: unreadable or not a darktable preset file. An older module version is stored as it is (desktop does the same) and shows `usable: false`. |
-| `int dtb_preset_export(const char *op, const char *name, const char *dir, char **json)` | Write `<dir>/<op>_<name>.dtpreset` as desktop's `dt_presets_save_to_file` (characters not allowed in file names replaced as desktop does). → `{ "path": s }`. Built-in presets can be exported. `IO` if it cannot be written. |
+| `int dtb_preset_export(const char *op, const char *name, const char *dir, char **json)` | Write `<dir>/<name>.dtpreset` as desktop's `dt_presets_save_to_file` (`/<>:"\|*?[]` replaced by `_`, as desktop does; a preset of the same name of another module would get the same file name, as on desktop). The newest stored version of the name. → `{ "path": s }`. Built-in presets can be exported. `NOT_FOUND`, `IO` (folder missing or not writable). |
 
 ### 5.3 Styles
 JSON of one style (`dtb_styles_list`):
@@ -187,11 +192,11 @@ JSON of one style (`dtb_styles_list`):
 
 | C | JSON / meaning |
 |---|---|
-| `int dtb_styles_list(char **json)` | `[ style, ... ]` by name (desktop's order). |
-| `int dtb_style_apply(const char *name, const char *mode)` [M] | Apply to the open image. `mode`: `"append"` (`DT_STYLE_HISTORY_APPEND`: the style's items are added on top of the history) or `"overwrite"` (`DT_STYLE_HISTORY_OVERWRITE`: the history is replaced by the default edit plus the style, as desktop's `dt_styles_apply_to_image` with overwrite), or NULL = desktop's preference `plugins/lighttable/style/applymode`. As on desktop, the items above the history end are discarded first and every style item becomes one history item; it is **one undo step**. A style that is not `usable` is refused with `ARG` and the problems in the message (`style 'x' cannot be applied: item 2 'foo' unknown_operation; ...`), and nothing is changed. `NOT_FOUND`: no such style. The render afterwards equals darktable-cli `--style <name>` (append) / `--style-overwrite` within the usual bound. |
+| `int dtb_styles_list(char **json)` | `[ style, ... ]` by name. Includes darktable's shipped styles (share/darktable/styles: camera styles and examples, 534 at the pinned commit): `dtb_init` imports them from the data folder as desktop and darktable-cli do at start (`dt_import_default_styles`; existing names are left alone; about 0.3 s the first time, 13 ms after, workspace). |
+| `int dtb_style_apply(const char *name, const char *mode)` [M] | Apply to the open image. `mode`: `"append"` (`DT_STYLE_HISTORY_APPEND`: the style's items are added on top of the history) or `"overwrite"` (`DT_STYLE_HISTORY_OVERWRITE`: the history is replaced by the default edit plus the style, as desktop's `dt_styles_apply_to_image` with overwrite), or NULL = desktop's preference `plugins/lighttable/style/applymode`. As on desktop, the items above the history end are discarded first and every style item becomes one history item; it is **one undo step**. A style that is not `usable` is refused with `ARG` and the problems in the message (`style 'x' cannot be applied: item 2 'foo' unknown_operation; ...`), and nothing is changed. `NOT_FOUND`: no such style. The render afterwards equals darktable-cli of the XMP the bridge writes exactly, and darktable-cli `--style <name>` (its append) within 2 levels (P1b report: the two upstream paths place a new instance at different pipe positions). darktable-cli's `--style-overwrite` is not desktop's overwrite (it keeps no default edit) and is not compared. |
 | `int dtb_styles_import(const char *paths_json, int overwrite, char **json)` | Import `.dtstyle` files: `paths_json` is a JSON array of paths (one or several). → `{ "imported": [ { "path", "name", "usable" } ], "refused": [ { "path", "reason" } ] }`. Each file is independent. Refused (in `refused`, not stored): not readable or not a darktable style (`reason` `"io"` / `"not_a_style"`), a style of that name exists and `overwrite` is 0 (`"exists"`). A style with an unknown or newer module **is imported** (it may become usable with a later engine, and desktop imports it too) and listed with `usable: false`; `dtb_style_apply` refuses it. The call returns `DTB_OK` when the array could be read, even if files were refused; `ARG` for a bad array. |
 | `int dtb_style_delete(const char *name)` | `NOT_FOUND` if there is none. |
-| `int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite)` | Create a style from the open image's history, as desktop's "create a style from the current history" (`dt_styles_create_from_image`, module order included). `items_json`: NULL = every history item up to the history end, or a JSON array of history `num`s (as `dtb_history()` lists them) to include. Desktop's dialog keeps one entry per module instance (the last one); the bridge does the same with the chosen items. `ARG`: empty name, a `num` outside 0..end-1, the name exists and `overwrite` is 0. Needs an open image; allowed in a read-only session only if no chosen item is `unknown`. Does not change the edit. |
+| `int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite)` | Create a style from the open image's history, as desktop's "create a style from the current history" (`dt_styles_create_from_image`, module order included). `items_json`: NULL = every history item up to the history end, or a JSON array of history `num`s (as `dtb_history()` lists them) to include. Desktop's dialog keeps one entry per module instance (the last one); the bridge does the same with the chosen items. `ARG`: empty name, a `num` outside 0..end-1, no module item chosen, the name exists and `overwrite` is 0. Needs an open image; `READ_ONLY` when the session's history holds items the engine could not load (`unknown` in `history()`). Does not change the edit. |
 
 ### 5.4 Module actions added (P2j section 6)
 `dtb_module_action` keeps its signature; new actions and fields:
@@ -225,9 +230,14 @@ No signature changes. Behaviour:
   applied is `requested ∩ allowed`; `ARG` only when that is empty. `engine_info.thread_cpus` lists what was applied.
 - `dtb_set_thread_cpus(NULL, 0)` restores the process's allowed set at the time of the call.
 - `engine_info` gains `"cpus_allowed": [ cpu, ... ]` (the process's allowed set now) and `"cpus_configured": n`.
-- Thread count when the process starts with few CPUs allowed: `dtb_init(paths, 0)` sizes the engine for the CPUs the
-  device has (`sysconf(_SC_NPROCESSORS_CONF)`), not for the start-up affinity mask, so `threads_max` is the device's
-  count and `set_threads` can later use all of them. Measured and described in the P1b report.
+- The process's allowed set is its cpuset (`/proc/self/cpuset` with `/dev/cpuset/<group>/cpus` on Android, or the
+  cgroup v2 `cpuset.cpus.effective`) intersected with the main thread's mask; the main thread's mask alone when the
+  cgroup files cannot be read.
+- Thread count when the process starts with few CPUs allowed: `dtb_init` sets `KMP_AFFINITY=disabled` (unless the
+  caller set it) before darktable starts OpenMP, so that LLVM's libomp (Android) counts the online CPUs, not the
+  start-up affinity mask; effective only if the OpenMP runtime has not started yet in the process. GCC's libgomp
+  (Linux) does not read the variable: there `threads_max` is the mask the process had when the library loaded
+  (measured: 1 under `taskset -c 0`). Not verified on a phone started in the background (P1b report).
 
 ### 5.6 Per-module times of the last render (E2)
 `int dtb_render_times(char **json)` →
@@ -236,6 +246,7 @@ No signature changes. Behaviour:
   "total_ms": number,                  // wall time of that render call
   "modules": [ { "op": s, "priority": n, "instance_name": s, "ms": number, "cpu_ms": number, "tiles": n } ] }
 ```
+Renders counted: `render_preview` ("preview") and `render_region` ("full"); `export` and `image_info` are not.
 `modules` in pipeline order, only the modules that ran in that render (modules whose output came from the cache are
 not listed); `ms` is wall time of the module's processing (all tiles), `cpu_ms` the process CPU time over the same
 span. Blending is not included. Needs an open image. Kotlin: `renderTimes(): RenderTimes`; the app's timings page
