@@ -210,7 +210,7 @@ object AppHost {
             // closed such a session and remembered the file before this runs, this is the second guard)
             val info = try { e.imageInfo() } catch (ex: EngineException) {
                 if (ex.error == EngineError.CANCELLED) throw ex
-                Timeline.mark("LPL preview: no picture (image_info answered ${ex.error}: ${ex.message})")
+                Timeline.mark("LPL preview: no picture (image_info answered ${ex.message})")
                 throw EngineException(EngineError.IO, DarkroomController.NO_PICTURE)
             }
             if (info.width <= 0 || info.height <= 0) {

@@ -330,7 +330,7 @@ class DarkroomController(
             "${i.width}x${i.height}"
         } catch (ex: EngineException) {
             if (ex.error == EngineError.CANCELLED) throw ex
-            "image_info answered ${ex.error}: ${ex.message}"
+            "image_info answered ${ex.message}"
         }
         runCatching { e.close() }
         unreadable[rawPath] = stamp
