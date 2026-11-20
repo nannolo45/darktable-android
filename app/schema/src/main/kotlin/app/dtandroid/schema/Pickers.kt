@@ -276,11 +276,15 @@ object PickerReadout {
         return doubleArrayOf(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
     }
 
-    /** sRGB to XYZ (D50), row-major: the sRGB ICC profile's colorants (Bradford-adapted to D50) */
+    /**
+     * sRGB to XYZ (D50), row-major: sRGB's primaries and D65 white (x 0.3127, y 0.3290) adapted by Bradford to
+     * darktable's D50 white (0.9642, 1, 0.8249), as LittleCMS builds the colorants of darktable's sRGB profile; white
+     * maps onto D50 exactly.
+     */
     val SRGB_TO_XYZ_D50 = doubleArrayOf(
-        0.4360747, 0.3850649, 0.1430804,
-        0.2225045, 0.7168786, 0.0606169,
-        0.0139322, 0.0971045, 0.7141733,
+        0.4360412516, 0.3851129108, 0.1430458376,
+        0.2224845402, 0.7169050786, 0.0606103812,
+        0.0139201875, 0.0970672387, 0.7139125738,
     )
 }
 

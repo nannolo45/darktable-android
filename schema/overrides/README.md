@@ -56,3 +56,25 @@ desktop's callback on the parameters (`app/schema`: `Computed.kt`, `Formulas.kt`
 | `note` | one plain line under a control that waits for something (`class` b, c or d of the P2j report) |
 | `hide` | a control that changes nothing on a phone (desktop's configuration only); `reason` says why |
 | `visibility` | replaces the schema's visibility rule by desktop's own condition (`when_all` or `table`) |
+
+## Brief P3c: colour pickers
+
+The extractor marks every control that has a colour picker on desktop: a slider or list with the picker as its quad
+button (`quad.colorpicker`) or a picker toggle button (kind `colorpicker_button`). The app reads the marks into
+`ModuleSchema.pickerMarks` and draws a picker button there; what a picker does comes from these operations
+(`app/schema`: `P3cOverrides.kt`, `Pickers.kt`). A marked control without a `picker` entry shows its button greyed
+out ("not available yet").
+
+| Operation | What it does |
+|---|---|
+| `picker` | the picker of a marked node: `kinds` (`point`, `area`: desktop's `DT_COLOR_PICKER_POINT` / `_AREA`), `label` (what a picker button that stands alone says), and either `action` (a module action of engine-api.md 6.3 called with `area` or `point`: `name`, fixed `args`, `settings` argument path to a setting key, `tab_args` argument to a tabs node whose chosen page it takes (0 while the tabs are hidden), `results` result field to the setting it is written back to, `instead` another action used when the listed settings hold) or `set_slider` (deliverable 3: a formula of `PickerFormulas` and the parameters it writes), or neither (the picker shows the picked values only) |
+| `picker_setting` | an interface-only slider, list or switch that holds a picker setting (desktop keeps it in its configuration): `key`, `default`, for a list `entries` (label to the value passed to the action) and `unwritable` entries with the reason, `reapply_when` (the armed picker picks again when this setting changes and these settings hold) |
+
+| File | Pickers |
+|---|---|
+| `temperature.json` | "from image area" (`wb_from_area`) |
+| `exposure.json` | the exposure slider's spot mapping (`spot`), area mode and target lightness as settings |
+| `channelmixerrgb.json` | the CAT tab's picker (`illuminant_from_area`, or `spot` with the area mapping's target), area mode, "take channel mixing into account" and the target as settings ("measure" greyed out) |
+| `rgblevels.json` | black, gray, white (`pick`, channel from the tabs) |
+| `rgbcurve.json` | "create curve" (`set_nodes_from_area`, channel from the tabs), "show color" (values only) |
+| `tonecurve.json`, `colorzones.json` | "pick color" / "show color" (values only) |
