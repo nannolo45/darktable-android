@@ -401,7 +401,9 @@ class DarkroomController(
         } catch (e: EngineException) {
             // brief P2h: no photo shows as open, so no session stays open either (background work needs its own)
             runCatching { engine.close() }
-            _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: ${e.message}", working = null, workingProgress = null) }
+            // brief P2h: the app's sentence as it is, without the error's name in front
+            val why = if (isNoPicture(e)) NO_PICTURE else e.message
+            _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: $why", working = null, workingProgress = null) }
         }
         _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) "rendering…" else it.working) }
     }
@@ -1178,5 +1180,8 @@ class DarkroomController(
 
         /** Brief P2f/P2h: what the darkroom says about a file darktable found no picture in. */
         const val NO_PICTURE = "darktable found no picture in this file (not a RAW it can read, or a broken download)"
+
+        /** Brief P2h: whether [e] is the app's "no picture" answer (EngineException puts the error's name first). */
+        fun isNoPicture(e: EngineException) = e.error == EngineError.IO && e.message == "${EngineError.IO.name}: $NO_PICTURE"
     }
 }

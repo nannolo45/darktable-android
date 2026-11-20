@@ -122,8 +122,7 @@ class P2hUnreadableTest {
             c.withPhotoSession(bad.rawPath, bad.xmpPath) { e -> e.renderPreview(64) }
             fail("a session on a file without a picture ran its work")
         } catch (e: EngineException) {
-            assertEquals(EngineError.IO, e.error)
-            assertEquals(DarkroomController.NO_PICTURE, e.message)
+            assertTrue(e.message, DarkroomController.isNoPicture(e))
         }
     }
 
