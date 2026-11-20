@@ -55,3 +55,8 @@ Times UTC. Numbers from the build workspace are x86_64 on 2 cores; from CI, the 
   (darktable opened the deleted file). The test ended before that render was stored. l4 now waits for it (010cb15).
 - 010cb15: p2a 44707660011 failed on a Maven 429 (robolectric jar), green on rerun; p2b 44707660180: apk job failed
   on Maven ("could not find kotlin-stdlib"), rerun.
+- 010cb15, last code commit: p2a 44707660011 green on attempt 2; p2b 44707660180 green on attempt 3 (two apk-job
+  Maven failures). Emulator 44/44. f10 at 1080 x 1500: preview shown 458, 281, 243 ms after a change at fit (render
+  425, 260, 222 ms, 1080 px), no region, no `render_region`; zoom in: region 2380 ms; back to fit: cancelled, 91 ms.
+  l4: 51's thumbnail stored before the removal this time (no late render). APK release `dt-android-010cb158501d`.
+- Report written: `P2i-fit-view-REPORT.md`.

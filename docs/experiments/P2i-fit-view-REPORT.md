@@ -12,7 +12,8 @@ contract (PLAN.md section 4) is unchanged (section 5, question 1).
 - **l4's cause: shown, not caught in the act.** The l4 timeline of run 44704862471 shows the background thumbnail pass
   starting to render photo 51 **96 ms after** the `release` job had removed it (darktable opened the deleted file);
   the test ended before that render was stored, so the run passed. That is the suspected sequence up to the last
-  step. The last step (the store making the folder again) is shown by the JVM test and by the emulator test l7,
+  step. In the last run (44707660180) the pass stored 51's thumbnail before the removal, so the late case did not
+  occur there. The last step (the store making the folder again) is shown by the JVM test and by the emulator test l7,
   which call the app's own store after a removal and failed before the fix. The failure itself was not reproduced:
   l4 passed in every run of this package. See section 3, item 7b.
 - **Behaviour changed on purpose, tests changed with it** (not weakened; each still checks what it checked, plus the
@@ -176,7 +177,33 @@ timings page of the same run: sharp region at fit 1080 x 719 after a change 671.
 which a change at fit no longer waits for. Zoomed in (3x): the region shown 338 ms after the zoom, "rendering…" seen;
 back to fit while a region renders: cancelled, nothing pending 10 ms after.
 
-FINAL_RUN_NUMBERS
+**Last code commit 010cb15**, emulator at a 1080 x 1500 frame (preview asked 1080 px), run 44707660180 attempt 3
+(`runs/44707660180-a3/p2b-emulator/p2b-test/p2f-results.txt` on the `ci-logs` branch):
+
+| change at fit | preview shown after | its render (1080 x 719) | per module |
+|---|---|---|---|
+| 1 | 458 ms | 425 ms | 412 ms over 8 modules: diffuse 177, local contrast 86, sigmoid 53, color calibration 34, sharpen 25, … |
+| 2 | 281 ms | 260 ms | 252 ms over 8 modules |
+| 3 | 243 ms | 222 ms | 216 ms over 8 modules |
+
+Again each module once, no demosaic, no region started, no `render_region` call. Zoomed in 3x: "rendering…" seen, the
+region (1080 x 1500 at scale 0.83, full pipe) shown 2380 ms after the zoom (render 2258 ms); back to fit while a
+region rendered after a change: cancelled, nothing pending 91 ms after. The timings page (f4) still reports the fit
+and 100 % regions: sharp region at fit 1080 x 719 after a change 654 ms (demosaic 178, denoise 176, …), at 100 %
+1080 x 1500 2318 ms, and the new line "preview at the darkroom's fit size … 283 ms". f9: 0 overlapping bridge calls.
+l4 passed; l7 passed.
+
+**Runs on the last code commit 010cb15:**
+- p2a-app **44707660011**: green on attempt 2 (attempt 1: Maven Central 429 for a robolectric jar, no change).
+  JVM tests incl. `P2iFitViewTest` 7/7, `P2hUnreadableTest` 7/7, `DragAndBeforeTest` 3/3; rule check; screenshots
+  incl. `list-phone-05-auto-sync-off.png` and `list-tablet-05-auto-sync-off.png`.
+- p2b-real-engine **44707660180**: green on attempt 3 (attempts 1 and 2: the apk job could not fetch
+  `kotlin-stdlib` from Maven Central, no change). Emulator 44 of 44, compare job green.
+- APK: release **`dt-android-010cb158501d`** (`dt-android-arm64-v8a.apk`).
+
+Earlier runs of this package: 44701978982 and 44701978994 (735be90, green; f10 at 304 x 250); 44704862454 (710b957,
+green) and 44704862471 (710b957, f10 failed: the preview for a new frame size was skipped while a render ran; fixed
+in 010cb15).
 
 ## 5. Surprises in upstream, and open questions for the reviewer
 
@@ -202,7 +229,7 @@ Open questions:
 
 ## 6. What to try on the phone (owner), in order
 
-APK: release **APK_TAG** (`dt-android-arm64-v8a.apk`).
+APK: release **`dt-android-010cb158501d`** (`dt-android-arm64-v8a.apk`).
 
 1. Open the heavy edit from LightPhotoLibrary. Move a slider (for example exposure) and lift the finger: the picture
    should change after about one second, with no "rendering…" line, and a second change right after should not wait.
