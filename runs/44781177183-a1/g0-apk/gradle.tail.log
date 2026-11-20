@@ -1,0 +1,178 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRules
+check-screen-rules: 45 files, 0 violations
+
+> Task :app-engine:preBuild
+> Task :app-engine:preArm64DebugBuild
+> Task :app-engine:mergeArm64DebugNativeDebugMetadata NO-SOURCE
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:processResources NO-SOURCE
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:compileKotlin
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:classes UP-TO-DATE
+> Task :lpl:jar
+> Task :engine-api:processResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :app-engine:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-engine:generateArm64DebugBuildConfig
+> Task :darkroom:preBuild
+> Task :darkroom:preDebugBuild
+> Task :darkroom:writeDebugAarMetadata
+> Task :engine-jni:preBuild UP-TO-DATE
+> Task :engine-jni:preDebugBuild UP-TO-DATE
+> Task :engine-jni:writeDebugAarMetadata
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:writeDebugAarMetadata
+> Task :engine-api:compileKotlin
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :app-engine:checkArm64DebugAarMetadata
+> Task :engine-api:jar
+> Task :darkroom:processDebugNavigationResources
+> Task :engine-jni:processDebugNavigationResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :app-engine:processArm64DebugNavigationResources
+> Task :app-engine:compileArm64DebugNavigationResources
+> Task :app-engine:generateArm64DebugResValues
+> Task :darkroom:generateDebugResValues
+> Task :darkroom:generateDebugResources
+> Task :darkroom:packageDebugResources
+> Task :engine-jni:generateDebugResValues
+> Task :engine-jni:generateDebugResources
+> Task :engine-jni:packageDebugResources
+> Task :ui-icons:convertIcons
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :app-engine:mapArm64DebugSourceSetPaths
+> Task :app-engine:generateArm64DebugResources
+> Task :app-engine:mergeArm64DebugResources
+> Task :app-engine:packageArm64DebugResources
+> Task :app-engine:parseArm64DebugLocalResources
+> Task :app-engine:createArm64DebugCompatibleScreenManifests
+> Task :app-engine:extractDeepLinksArm64Debug
+> Task :darkroom:extractDeepLinksDebug
+> Task :darkroom:processDebugManifest
+> Task :engine-jni:extractDeepLinksDebug
+> Task :engine-jni:processDebugManifest
+> Task :ui-icons:extractDeepLinksDebug
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:extractDeepLinksDebug
+> Task :ui-theme:processDebugManifest
+> Task :schema:compileKotlin
+> Task :app-engine:processArm64DebugMainManifest
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes
+> Task :schema:jar
+> Task :app-engine:processArm64DebugManifest
+> Task :app-engine:processArm64DebugManifestForPackage
+> Task :darkroom:compileDebugLibraryResources
+> Task :darkroom:parseDebugLocalResources
+> Task :darkroom:generateDebugRFile
+> Task :engine-jni:compileDebugLibraryResources
+> Task :engine-jni:parseDebugLocalResources
+> Task :engine-jni:generateDebugRFile
+> Task :ui-icons:compileDebugLibraryResources
+> Task :ui-icons:parseDebugLocalResources
+> Task :ui-icons:generateDebugRFile
+> Task :ui-theme:compileDebugLibraryResources
+> Task :ui-theme:parseDebugLocalResources
+> Task :ui-theme:generateDebugRFile
+> Task :app-engine:processArm64DebugResources
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:javaPreCompileDebug
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:compileDebugKotlin
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :ui-theme:javaPreCompileDebug
+> Task :darkroom:javaPreCompileDebug
+> Task :engine-jni:checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:151:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :engine-jni:compileDebugKotlin
+> Task :engine-jni:javaPreCompileDebug
+> Task :engine-jni:compileDebugJavaWithJavac NO-SOURCE
+> Task :engine-jni:bundleLibCompileToJarDebug
+> Task :app-engine:javaPreCompileArm64Debug
+> Task :app-engine:mergeArm64DebugShaders
+> Task :app-engine:compileArm64DebugShaders NO-SOURCE
+> Task :app-engine:generateArm64DebugAssets UP-TO-DATE
+> Task :app-engine:packEngineArm64Debug
+> Task :darkroom:mergeDebugShaders
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets
+> Task :engine-jni:mergeDebugShaders
+> Task :engine-jni:compileDebugShaders NO-SOURCE
+> Task :engine-jni:generateDebugAssets UP-TO-DATE
+> Task :engine-jni:mergeDebugAssets
+> Task :ui-icons:mergeDebugShaders
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets
+> Task :ui-theme:mergeDebugShaders
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets
+> Task :app-engine:mergeArm64DebugAssets
+> Task :app-engine:compressArm64DebugAssets
+> Task :engine-jni:bundleLibRuntimeToJarDebug
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :app-engine:desugarArm64DebugFileDependencies
+> Task :engine-jni:processDebugJavaRes
+> Task :ui-icons:processDebugJavaRes
+> Task :ui-theme:packTokens
+> Task :ui-theme:processDebugJavaRes
+
+> Task :darkroom:compileDebugKotlin
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/DarkroomController.kt:1379:50 Return type mismatch: expected 'Pair<Double, Double>?', actual 'Pair<Double?, Double?>?'.
+
+> Task :darkroom:compileDebugKotlin FAILED
+> Task :app-engine:checkArm64DebugDuplicateClasses
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':darkroom:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 41s
+99 actionable tasks: 99 executed
