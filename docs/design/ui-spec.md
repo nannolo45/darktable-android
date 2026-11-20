@@ -31,7 +31,7 @@ Layout switches on window size class, not on device type. Both share all logic.
 
 ## 3. Controls
 
-- **Slider** (darktable's "bauhaus" look): label left, value with unit right, a 6 dp track with a lighter fill from the left and a small triangle marker under the value position. Whole row is the touch target (48 dp high). Drag changes the value within the soft range; a long-press or double-tap opens exact numeric entry within the hard range; double-tap on the label resets to default. While dragging, changes are sent continuously and the history item is sealed when the finger lifts.
+- **Slider** (darktable's "bauhaus" look): label left, value with unit right, a 6 dp track with a lighter fill from the left and a small triangle marker under the value position. Whole row is the touch target (48 dp high). Drag changes the value within the soft range; a long-press opens exact numeric entry within the hard range; double-tap on the label or on the bar (the track with its marker) resets to default, as a double click does on desktop (owner, 20 Nov 2026); double-tap on the rest of the row (the value) opens exact entry. While dragging, changes are sent continuously and the history item is sealed when the finger lifts.
 - **List**: label left, current entry right; opens a sheet with the entries.
 - **Switch**: label and a check-style toggle as in darktable.
 - Units, digits, factor and offset come from the schema.
@@ -43,7 +43,7 @@ Layout switches on window size class, not on device type. Both share all logic.
 - History: newest on top, "original" at the bottom, tap to go to a step, steps above the current one dimmed; editing from an earlier step discards the steps above it. Undo and redo are available from the top bar on tablets and by two-finger tap on the photo on phones (plus buttons in the history view).
 - Photo view: pinch to zoom, drag to pan, double-tap toggles fit and 100 %.
 - Read-only images (version guard failed) open with a banner explaining why; all editing controls are disabled.
-- Later screens, already agreed in mockups and specified when their work packages start: masks and blending (`B3-Masks`), crop with draggable corners and movable frame (`B3-Crop`), tone equalizer graph (`B3-ToneEq`), snapshots with a split view (`B3-Snapshots`), export (`B3-Export`).
+- Later screens, already agreed in mockups and specified when their work packages start: masks and blending (`B3-Masks`), crop with draggable corners and movable frame (`B3-Crop`, built in P3a: section 6), tone equalizer graph (`B3-ToneEq`), snapshots with a split view (`B3-Snapshots`), export (`B3-Export`).
 
 ## 5. Theme tokens and icons
 
@@ -78,3 +78,10 @@ Text on its background must keep a contrast of at least 4.5:1; check new palette
 Icons are requested by meaning. Initial set: `power`, `instances`, `reset`, `presets`, `back`, `chevronDown`, `close`, `undo`, `redo`, `splitHandle`. One SVG per icon in one folder, stroke style, 24 dp grid.
 
 Debug builds also read an optional token override file from the app's own folder, so a palette can be tried without rebuilding.
+
+## 6. Crop on the photo (brief P3a)
+
+- The tool opens when crop's panel is expanded on an editable photo, as desktop shows it when crop gets the focus; it closes (and the frame is applied) when the panel is closed, another module is opened, "done" or "back" is tapped, another photo is opened, or any other edit, history step, undo or redo is made.
+- While it is open the photo shows the whole uncropped picture; outside the frame it is dimmed (`color.cropDim`); the frame (`color.cropFrame`, `size.cropFrameLine`) has a rule-of-thirds grid (`color.cropGrid`, `size.cropGridLine`) and handles on the four corners and the four sides (`color.cropHandle` on `color.cropHandleFill`, `size.cropHandle`, `size.cropHandleLine`). The info line shows the size of the cropped picture.
+- A drag that starts within a touch target (`size.touch`) of a corner or a side, inside the frame or up to half a target outside it, resizes from there; a drag that starts elsewhere inside the frame moves it. Two fingers, or a drag that starts away from the frame, pinch and pan the photo. The ratio chosen in the aspect list is kept as desktop keeps it; the frame never leaves the picture.
+- The margins' sliders and the aspect list show the frame live and move it. Read-only photos: no tool.

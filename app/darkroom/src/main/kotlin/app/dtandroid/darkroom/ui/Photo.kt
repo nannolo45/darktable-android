@@ -36,8 +36,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.semantics.Role
@@ -50,6 +55,9 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.PhotoLayer
 import app.dtandroid.darkroom.Viewport
+import app.dtandroid.darkroom.CropToolState
+import app.dtandroid.darkroom.PhotoArea
+import app.dtandroid.schema.CropTool
 import app.dtandroid.engine.api.Exif
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.ui.theme.DtTheme
@@ -83,6 +91,10 @@ private const val TAP_ZOOM_TOLERANCE = 0.05f
 /**
  * The photo on the mid-grey surround: pinch to zoom, drag to pan, double tap
  * toggles fit and 100 %, and on phones a two-finger tap is undo (ui-spec.md 4).
+ *
+ * Brief P3a: with the crop tool open the photo is the uncropped picture with the frame over it (ui-spec.md 6):
+ * a one-finger drag that starts on a handle or inside the frame belongs to the frame; a drag that starts away
+ * from it, or two fingers, pan and zoom as before.
  */
 @Composable
 fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFingerUndo: Boolean, modifier: Modifier = Modifier) {
@@ -94,15 +106,26 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val placeholderImage = s.placeholder
     val placeholder = remember(placeholderImage) { placeholderImage?.toImageBitmap() }
     val info = s.info
+    // brief P3a: the crop tool's uncropped picture and its size (the frame's fractions refer to it)
+    val tool = s.cropTool?.takeIf { !s.before && it.picture != null }
+    val toolPicture = rememberLayer(tool?.picture)
+    val toolOpen = tool != null
     var size by remember { mutableStateOf(IntSize.Zero) }
-    var zoom by remember(s.index) { mutableFloatStateOf(1f) }
-    var cx by remember(s.index) { mutableFloatStateOf(0.5f) }
-    var cy by remember(s.index) { mutableFloatStateOf(0.5f) }
-    val iw = info?.width ?: placeholderImage?.width ?: 1
-    val ih = info?.height ?: placeholderImage?.height ?: 1
+    // the view goes back to fit when the tool opens or closes: the picture changes its size
+    var zoom by remember(s.index, toolOpen) { mutableFloatStateOf(1f) }
+    var cx by remember(s.index, toolOpen) { mutableFloatStateOf(0.5f) }
+    var cy by remember(s.index, toolOpen) { mutableFloatStateOf(0.5f) }
+    val iw = tool?.inW ?: info?.width ?: placeholderImage?.width ?: 1
+    val ih = tool?.inH ?: info?.height ?: placeholderImage?.height ?: 1
     val fit = if (size.width > 0) min(size.width.toFloat() / iw, size.height.toFloat() / ih) else 1f
     val zoom100 = max(1f, 1f / fit)
     val currentFit by rememberUpdatedState(fit)
+    val currentTool by rememberUpdatedState(tool)
+    val touch = DtTheme.sizes.touch
+    val cropLook = CropLook(
+        c.cropDim, c.cropFrame, c.cropGrid, c.cropHandle, c.cropHandleFill, DtTheme.sizes.cropFrameLine, DtTheme.sizes.cropGridLine,
+        DtTheme.sizes.cropHandle, DtTheme.sizes.cropHandleLine, DtTheme.sizes.cropSideHandleLength, DtTheme.sizes.cropSideHandleWidth,
+    )
 
     fun clampCenter() {
         val ds = currentFit * zoom
@@ -125,6 +148,10 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
         Canvas(
             Modifier.fillMaxSize()
                 .onSizeChanged { size = it }
+                .onGloballyPositioned { lc ->
+                    val b = lc.boundsInWindow()
+                    controller.photoArea = PhotoArea(b.left, b.top, b.width, b.height)
+                }
                 .pointerInput(s.index, twoFingerUndo) {
                     detectTapGestures(onDoubleTap = { p ->
                         if (zoom > 1.01f) { zoom = 1f; cx = 0.5f; cy = 0.5f } else {
@@ -139,17 +166,54 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         clampCenter()
                     })
                 }
-                .pointerInput(s.index, twoFingerUndo) {
+                .pointerInput(s.index, twoFingerUndo, toolOpen) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var maxPointers = 1
                         var moved = 0f
                         var zoomed = 1f
                         var upTime = down.uptimeMillis
+                        // brief P3a: the photo's point under a finger, as fractions of the picture shown
+                        fun picturePoint(p: Offset): Pair<Float, Float> {
+                            val ds = currentFit * zoom
+                            val left = size.width / 2f - cx * iw * ds
+                            val top = size.height / 2f - cy * ih * ds
+                            return ((p.x - left) / (iw * ds)) to ((p.y - top) / (ih * ds))
+                        }
+                        // brief P3a: a touch on a handle or inside the frame belongs to the frame
+                        var frame = false
+                        var frameMoved = 0f
+                        if (currentTool != null) {
+                            val ds = currentFit * zoom
+                            val (px, py) = picturePoint(down.position)
+                            val grab = controller.cropHit(px, py, touch.toPx() / (iw * ds), touch.toPx() / (ih * ds))
+                            if (grab != CropTool.GRAB_NONE) {
+                                controller.cropDragStart(grab, px, py)
+                                down.consume()
+                                frame = true
+                            }
+                        }
                         do {
                             val ev = awaitPointerEvent()
                             upTime = ev.changes.maxOf { it.uptimeMillis }
-                            maxPointers = max(maxPointers, ev.changes.count { it.pressed })
+                            val pressed = ev.changes.count { it.pressed }
+                            if (frame) {
+                                if (pressed >= 2 && frameMoved < slop) {
+                                    // a second finger before the frame moved: a pinch, the frame goes back
+                                    controller.cropDragCancel()
+                                    frame = false
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed && ch.positionChanged()) {
+                                        frameMoved += (ch.position - ch.previousPosition).getDistance()
+                                        val (px, py) = picturePoint(ch.position)
+                                        controller.cropDragMove(px, py)
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
+                            maxPointers = max(maxPointers, pressed)
                             val z = ev.calculateZoom()
                             val pan = ev.calculatePan()
                             moved += pan.getDistance()
@@ -165,6 +229,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                 if (z != 1f || (pan != Offset.Zero && zoom > 1f)) ev.changes.forEach { it.consume() }
                             }
                         } while (ev.changes.any { it.pressed })
+                        if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
                         val dt = upTime - down.uptimeMillis
                         if (twoFingerUndo && maxPointers == 2 && moved < slop && abs(zoomed - 1f) < TAP_ZOOM_TOLERANCE && dt < TWO_FINGER_TAP_MS) {
                             controller.launch { undo() }
@@ -178,7 +243,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             val imgW = iw * ds
             val imgH = ih * ds
             drawRect(c.photoBackground, Offset(left, top), Size(imgW, imgH))
-            val base = (if (s.before) before else preview)?.bitmap ?: placeholder
+            val base = (if (tool != null) toolPicture else if (s.before) before else preview)?.bitmap ?: placeholder
             if (base != null) {
                 drawImage(
                     base,
@@ -188,7 +253,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 )
             }
             val r = region
-            if (!s.before && r != null) {
+            if (!s.before && r != null && tool == null) {
                 val sc = r.layer.scale
                 drawImage(
                     r.bitmap,
@@ -197,12 +262,70 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                     filterQuality = FilterQuality.Medium,
                 )
             }
+            if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
-        val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
+        // brief P3a: with the crop tool open, the size the cropped picture will have
+        val note = s.working ?: tool?.let { cropNote(it) }
+            ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
         note?.let { WorkingNote(it, if (s.working != null) s.workingProgress else null, Modifier.align(Alignment.BottomStart)) }
     }
 }
+
+/** Brief P3a: what the crop tool says under the photo: the cropped picture's size, as desktop shows while dragging. */
+fun cropNote(t: CropToolState): String {
+    val (w, h) = t.outputSize()
+    return "crop · $w × $h"
+}
+
+/** Brief P3a: the crop tool's colours and sizes, from the tokens (ui-spec.md 6). */
+class CropLook(
+    val dim: androidx.compose.ui.graphics.Color, val frame: androidx.compose.ui.graphics.Color, val grid: androidx.compose.ui.graphics.Color,
+    val handle: androidx.compose.ui.graphics.Color, val handleFill: androidx.compose.ui.graphics.Color,
+    val frameLine: Dp, val gridLine: Dp, val handleSize: Dp, val handleLine: Dp, val sideLength: Dp, val sideWidth: Dp,
+)
+
+/**
+ * Brief P3a: the frame [g] over the picture drawn at [left], [top], [w] x [h]: the picture outside the frame dimmed,
+ * the frame, a rule-of-thirds grid inside it, square handles on the corners and bars on the sides' middles.
+ */
+fun DrawScope.drawCropFrame(g: CropTool.Clip, left: Float, top: Float, w: Float, h: Float, look: CropLook) {
+    val fx = left + g.x * w
+    val fy = top + g.y * h
+    val fw = g.w * w
+    val fh = g.h * h
+    val right = left + w
+    val bottom = top + h
+    // outside the frame: four bands
+    drawRect(look.dim, Offset(left, top), Size(w, fy - top))
+    drawRect(look.dim, Offset(left, fy + fh), Size(w, bottom - fy - fh))
+    drawRect(look.dim, Offset(left, fy), Size(fx - left, fh))
+    drawRect(look.dim, Offset(fx + fw, fy), Size(right - fx - fw, fh))
+    // the rule of thirds
+    val gl = look.gridLine.toPx()
+    for (i in 1 until THIRDS) {
+        drawRect(look.grid, Offset(fx + fw * i / THIRDS - gl / 2, fy), Size(gl, fh))
+        drawRect(look.grid, Offset(fx, fy + fh * i / THIRDS - gl / 2), Size(fw, gl))
+    }
+    val fl = look.frameLine.toPx()
+    drawRect(look.frame, Offset(fx, fy), Size(fw, fh), style = Stroke(fl))
+    // handles: corners as squares centred on the corners, sides as bars centred on the sides
+    val hs = look.handleSize.toPx()
+    val hl = look.handleLine.toPx()
+    fun handle(x: Float, y: Float, hw: Float, hh: Float) {
+        drawRect(look.handleFill, Offset(x - hw / 2, y - hh / 2), Size(hw, hh))
+        drawRect(look.handle, Offset(x - hw / 2 + hl / 2, y - hh / 2 + hl / 2), Size(hw - hl, hh - hl), style = Stroke(hl))
+    }
+    for (x in listOf(fx, fx + fw)) for (y in listOf(fy, fy + fh)) handle(x, y, hs, hs)
+    val sl = look.sideLength.toPx()
+    val sw = look.sideWidth.toPx()
+    handle(fx + fw / 2, fy, sl, sw)
+    handle(fx + fw / 2, fy + fh, sl, sw)
+    handle(fx, fy + fh / 2, sw, sl)
+    handle(fx + fw, fy + fh / 2, sw, sl)
+}
+
+private const val THIRDS = 3
 
 /**
  * Brief P2f: a quiet line over the bottom of the photo saying what is happening ("opening…",

@@ -69,3 +69,20 @@ background work such as LightPhotoLibrary's preview); `writeIfOpen` during a syn
 
 If any of these turn out unacceptable, the clean fix is the bridge call the brief describes (a render option
 that bypasses one instance); it would replace step 2 only.
+
+## 20 Nov 2026, ~11:40 UTC — first full implementation pushed
+
+- `app/schema` `CropTool`: crop.c's `_aspect_apply`, `_gui_get_grab`, `button_pressed` + `mouse_moved` (drag),
+  `_commit_box` (ratio rounding), in float where crop.c uses float. `tools/p3a-crop-reference.py` copies those
+  functions verbatim from crop.c at the pin, compiles them with stubs and prints reference values
+  (`app/schema/src/test/resources/p3a-crop-reference.json`: 1815 `_aspect_apply` cases, 162 drags of 4 moves,
+  165 commits); `CropToolTest` passes locally (x86_64 workspace) against all of them. p2a-app checks the file
+  is what the script makes from the pinned crop.c.
+- `app/darkroom`: `CropToolState`, `RedoGuard`; controller: tool opens when crop's panel is expanded
+  (`syncCropTool`), bracket in `openCropLocked`, commit in `commitCropLocked`, leave on every other change,
+  photo switch, "done"/"back", export; write guard `cropBracketOpen`. Photo view: uncropped picture, dimming,
+  frame, thirds grid, 4 corner + 4 side handles (tokens), gestures; the info note under the photo shows the
+  cropped size. Slider bar double tap resets (deliverable 5), ui-spec updated (section 3 and new section 6).
+- Tests: `P3aCropToolTest` (darkroom JVM, stand-in engine), `P3aCropScreenshotTest` (phone and tablet, with
+  Compose touch input), `P3aScenarioTest` (emulator, touches injected through UiAutomation, XMP and export for
+  the darktable-cli comparison in the p2b compare job).
