@@ -1,0 +1,54 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+PASS    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+PASS    app.dtandroid.real.LplScenarioTest.l7_aLateThumbnailDoesNotBringAReleasedPhotoBack
+FAIL    app.dtandroid.real.P2fScenarioTest.f10_aChangeAtFitRendersThePreviewOnly
+        java.lang.AssertionError: timed out: preview of the heavy edit at the frame's size
+        	at app.dtandroid.real.P2fScenarioTest.waitFor(P2fScenarioTest.kt:50)
+        	at app.dtandroid.real.P2fScenarioTest.waitFor$default(P2fScenarioTest.kt:47)
+        	at app.dtandroid.real.P2fScenarioTest.f10_aChangeAtFitRendersThePreviewOnly(P2fScenarioTest.kt:165)
+PASS    app.dtandroid.real.P2fScenarioTest.f1_openRightAfterDoneTimeline
+PASS    app.dtandroid.real.P2fScenarioTest.f2_previewFromTheFullPipeMatchesTheExport
+PASS    app.dtandroid.real.P2fScenarioTest.f3_dragPictureSizesOnA1080PxScreen
+PASS    app.dtandroid.real.P2fScenarioTest.f4_timingsRunOnAPhotoFromLightPhotoLibrary
+PASS    app.dtandroid.real.P2fScenarioTest.f5_spektrafilmHasItsDataAndIsFound
+PASS    app.dtandroid.real.P2fScenarioTest.f6_cropAspectOnTheRealEngine
+PASS    app.dtandroid.real.P2fScenarioTest.f7_imageInfoOfAnUndecodableFile
+PASS    app.dtandroid.real.P2fScenarioTest.f8_undecodableFileInTheDarkroomThenTheGoodPhoto
+PASS    app.dtandroid.real.P2fScenarioTest.f9_theBridgeWasCalledAsItsHeaderAllows
+passed 43, failed 1, total 44
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 44,  Failures: 1
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
