@@ -73,3 +73,34 @@ Brief: `docs/briefs/P1b2-engine-masks-pickers.md`. Report: `P1b2-engine-masks-pi
   Kotlin `blendGet` / `blendSet`, `Blend`; FakeEngine keeps blend settings as data in its history (it does not blend
   its picture); contract `blendingGetSetValidateAndGroup`.
 - 14:05 g0-app and p2b-real-engine triggers added for this branch; first engine CI run on items 1 to 6.
+
+### Interim summary (items 1 to 5), 14:20
+
+Built and tested on the workspace, pushed (98565262), CI on it running (g0-app 44749591994, p2b-real-engine
+44749592073; p2a-app 44749591773 green):
+1. bypass renders (`render_*_ex`), C17 on 3 images: session and XMP byte-equal, picture = switched off (max 0);
+2. crop tool without the bracket (bypass render; redo survives; XMP byte-equal after open/close; sharp region when
+   zoomed in), JVM tests changed as listed above (p2a-app green on 56b291c and 98565262);
+3. undo/redo keep the hash row and the changed tag, timestamp as desktop (not moved), C18 on 3 images;
+4. pickers (module and global), histogram, actions temperature / exposure / rgblevels / rgbcurve, C19 on 3 images;
+   channelmixerrgb's area actions not built;
+5. coordinates both ways with optional bypass, C20 on 3 images.
+Items 6 to 8 are also built locally (blending C21; masks C22, C23 with darktable-tests' desktop XMPs; mask display C24)
+and will be pushed when the running CI run has finished.
+
+- 14:15 **Masks: an upstream assumption the bridge has to meet.** `dt_iop_commit_params` (develop/imageop.c) hashes a
+  piece's mask through `dt_masks_get_from_id(darktable.develop, ...)` and `dt_masks_group_hash`, which walk the
+  *global* develop object's forms, not the session's. In the bridge that object has no forms, so a shape edited after
+  it was attached left the piece hash, and the cached output, unchanged: the render showed the old shape until the
+  edit was reopened (C22, max 82 vs darktable-cli). Fix in the bridge: while a pipe synchronises, the global object's
+  form list is the session's (render.c `_forms_swap_in`). After it: C22 renders = darktable-cli of the written XMP,
+  max 0, and a reopened session renders max 0 against the session.
+- **Mask display.** blend.c honours "display mask" only for the module with the focus on the develop object's full
+  pipe; the bridge sets those for the one render, forces the module to run (hash) and runs the pipe with gamma. The
+  mask channel was dropped by colorin's blue-mapping path (`_process_cmatrix_bm`: `cam[3] = 0.0f`) and by colorout
+  (which the darkroom's presented pipe does not run); the bridge carries the channel through same-window modules
+  behind the shown one while a mask is shown. C24: inside the circle 255 255 0, outside grey; exposure (before
+  colorin) and color balance rgb.
+- **Desktop XMPs with masks** (darktable-tests 0004-masks, 0081-mask-groups, 0090-mask-combine,
+  0144-masks-combine-sum, all on mire1.cr2): listed (6/4/8/4 shapes, 1/4/4/1 groups), bridge render = darktable-cli of
+  the desktop XMP, max 0, and = darktable-cli of the XMP the bridge writes from them, max 0 (workspace; C23).
