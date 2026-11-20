@@ -1,6 +1,6 @@
 {
   "op": "borders",
-  "reason": "brief P2j. framing's aspect and position lists are fixed tables on desktop (_aspect_ratios, _pos_h_ratios, _pos_v_ratios with _aspect_changed, _position_h_changed, _position_v_changed in src/iop/borders.c); gui_changed shows the entry within 0.01 of the parameter, otherwise custom.",
+  "reason": "brief P2j. framing's aspect and position lists are fixed tables on desktop (_aspect_ratios, _pos_h_ratios, _pos_v_ratios with _aspect_changed, _position_h_changed, _position_v_changed in src/iop/borders.c); gui_changed shows the entry within 0.01 of the parameter, otherwise custom. Brief P3b (P2j section 6): \"image\" (0) and \"constant border\" (-1) lie outside the field's limits (1 to 3) and are written through the engine's module action borders set_aspect (engine-api.md 5.4).",
   "value_list": [
     {
       "node": 2,
@@ -15,6 +15,12 @@
           "label": "image",
           "set": {
             "aspect": 0.0
+          },
+          "action": {
+            "name": "set_aspect",
+            "args": {
+              "aspect": 0
+            }
           }
         },
         {
@@ -129,16 +135,18 @@
           "label": "constant border",
           "set": {
             "aspect": -1.0
+          },
+          "action": {
+            "name": "set_aspect",
+            "args": {
+              "aspect": -1
+            }
           }
         },
         {
           "label": "custom..."
         }
-      ],
-      "unwritable": {
-        "image": "desktop writes 0 (image) and -1 (constant border) into aspect, whose limits are 1 to 3 ($MIN/$MAX in src/iop/borders.c); the bridge refuses values outside a field's limits, so the app cannot choose these two entries (reset the module for a constant border)",
-        "constant border": "desktop writes 0 (image) and -1 (constant border) into aspect, whose limits are 1 to 3 ($MIN/$MAX in src/iop/borders.c); the bridge refuses values outside a field's limits, so the app cannot choose these two entries (reset the module for a constant border)"
-      }
+      ]
     },
     {
       "node": 5,

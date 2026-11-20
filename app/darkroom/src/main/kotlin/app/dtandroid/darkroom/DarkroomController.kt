@@ -608,6 +608,12 @@ class DarkroomController(
     suspend fun chooseComputed(key: InstanceKey, controlId: Int, index: Int) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedList ?: throw EngineException(EngineError.STATE, "no list here")
         val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        // brief P3b (P2j section 6): values outside a field's limits go through the engine's module action
+        model.chooseAction(index, m.params)?.let { a ->
+            engine.moduleAction(key.op, key.priority, a.action, a.args)
+            engine.historySeal()
+            return@change
+        }
         val writes = model.choose(index, m.params)
         if (writes.isNotEmpty()) {
             engine.paramsSet(key.op, key.priority, writes)
@@ -619,6 +625,11 @@ class DarkroomController(
     suspend fun toggleComputed(key: InstanceKey, controlId: Int, on: Boolean) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedToggle ?: throw EngineException(EngineError.STATE, "no switch here")
         val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        model.action(on, m.params)?.let { a ->
+            engine.moduleAction(key.op, key.priority, a.action, a.args)
+            engine.historySeal()
+            return@change
+        }
         val writes = model.write(on, m.params)
         if (writes.isNotEmpty()) {
             engine.paramsSet(key.op, key.priority, writes)

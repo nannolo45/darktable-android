@@ -215,4 +215,31 @@ class P3bScenarioTest {
         assertTrue(sp.state.value.presets.none { it.name == "p3b test preset" })
         TestFiles.record(res, "s3_passed", "true")
     }
+
+    /**
+     * s4 (deliverable 6, P2j section 6): framing's "image" and "constant border" and lens' "use latest algorithm"
+     * through the darkroom on the real engine (module actions borders set_aspect and lens use_latest_md).
+     */
+    @Test
+    fun s4_framingAndLensValuesOutsideTheLimits() = runBlocking<Unit> {
+        val (c, _) = open("s4")
+        val borders = InstanceKey("borders", 0)
+        val list = AppHost.schema.modules.getValue("borders").computed.getValue(2) as app.dtandroid.schema.ComputedList
+        fun aspect() = (c.state.value.modules.first { it.op == "borders" && it.priority == 0 }.params["aspect"] as JsonPrimitive).content.toDouble()
+        val entries = list.entries(c.state.value.modules.first { it.op == "borders" }.params)
+        val n = c.state.value.history.items.size
+        c.chooseComputed(borders, 2, entries.indexOfFirst { it.label == "image" })
+        val a0 = aspect()
+        c.chooseComputed(borders, 2, entries.indexOfFirst { it.label == "constant border" })
+        val a1 = aspect()
+        val lens = InstanceKey("lens", 0)
+        c.toggleComputed(lens, 24, true)
+        val md = c.state.value.modules.first { it.op == "lens" && it.priority == 0 }.params["md_version"]
+        TestFiles.record(res, "s4", "framing aspect image $a0, constant border $a1, history $n -> ${c.state.value.history.items.size}; lens md_version $md; message ${c.state.value.message}")
+        assertEquals(0.0, a0, 0.0)
+        assertEquals(-1.0, a1, 0.0)
+        assertEquals(n + 3, c.state.value.history.items.size)
+        assertTrue("$md", md.toString().contains("VERSION_2") || md.toString() == "1")
+        TestFiles.record(res, "s4_passed", "true")
+    }
 }

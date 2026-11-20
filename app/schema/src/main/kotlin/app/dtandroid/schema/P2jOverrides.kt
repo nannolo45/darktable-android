@@ -49,6 +49,11 @@ internal object P2jOverrides {
         fun values(e: JsonObject?, op: String): Map<String, JsonPrimitive> =
             e?.mapValues { (k, v) -> checkParam(k, op); v.jsonPrimitive } ?: emptyMap()
 
+        // brief P3b: {"name": action, "args": {...}}: a module action of engine-api.md 5.4
+        fun action(e: JsonObject?): ModuleWrite? = e?.let {
+            ModuleWrite(it.str("name") ?: throw SchemaException("$file: action without name"), (it["args"] as? JsonObject) ?: JsonObject(emptyMap()))
+        }
+
         fun bind(c: Control, b: Binding): Unit = run {
             m = m.copy(controls = Overrides.replace(m.controls, c.id) {
                 when (it) {
@@ -91,7 +96,8 @@ internal object P2jOverrides {
             if (raw.map { it.str("label") } != c.entries.map { it.label })
                 throw SchemaException("$file: value_list ${c.id}: entries differ from the schema's ${c.entries.map { it.label }}")
             val items = raw.mapIndexed { i, it ->
-                ValueList.Item(it.str("label")!!, c.entries[i].value, (it["set"] as? JsonObject)?.let { s -> values(s, "value_list") }, it.bool("section") ?: false)
+                ValueList.Item(it.str("label")!!, c.entries[i].value, (it["set"] as? JsonObject)?.let { s -> values(s, "value_list") }, it.bool("section") ?: false,
+                    action(it["action"] as? JsonObject))
             }
             val unmatched = e.str("unmatched")?.let { l -> items.indexOfFirst { it.label == l && !it.section }.takeIf { it >= 0 } ?: throw SchemaException("$file: no entry $l") }
             val unwritable = (e["unwritable"] as? JsonObject)?.entries?.associate { (l, why) ->
@@ -144,7 +150,8 @@ internal object P2jOverrides {
             val e = ee.jsonObject
             val c = target(e, "toggle_writes") as? Control.Toggle ?: throw SchemaException("$file: toggle_writes: node is not a switch")
             unbound(c, "toggle_writes")
-            computed[c.id] = ToggleWrites(c.id, values(e["set"] as? JsonObject, "toggle_writes"), values(e["on_when"] as? JsonObject, "toggle_writes"))
+            computed[c.id] = ToggleWrites(c.id, values(e["set"] as? JsonObject, "toggle_writes"), values(e["on_when"] as? JsonObject, "toggle_writes"),
+                action(e["action"] as? JsonObject))
             bind(c, Binding.Computed)
         }
 

@@ -341,4 +341,30 @@ class P3bStylesPresetsTest {
         assertEquals(listOf("[A 1]@0", "a@0", "[B 1]@0", "[y 1]@1", "z@2", "b@0"), labels)
         assertEquals(7, NameTree.rows(listOf("b", "A|x", "a", "B|y|z"), emptySet(), allOpen = true).size)
     }
+
+    // ------------------------------------------------------------------ deliverable 6 (P2j section 6), the fixed-value actions
+
+    @Test fun framingImageAndConstantBorderAndLensLatestAlgorithmGoThroughModuleActions() = runBlocking<Unit> {
+        val c = controller()
+        val borders = InstanceKey("borders", 0)
+        val list = TestSetup.schema.modules.getValue("borders").computed.getValue(2) as app.dtandroid.schema.ComputedList
+        val entries = list.entries(c.module("borders").params)
+        val n0 = c.state.value.history.items.size
+        c.chooseComputed(borders, 2, entries.indexOfFirst { it.label == "image" })
+        assertNull(c.state.value.message)
+        assertEquals(0.0, (c.module("borders").params["aspect"] as JsonPrimitive).content.toDouble(), 0.0)
+        assertEquals("image", entries[list.current(c.module("borders").params)!!].label)
+        c.chooseComputed(borders, 2, entries.indexOfFirst { it.label == "constant border" })
+        assertEquals(-1.0, (c.module("borders").params["aspect"] as JsonPrimitive).content.toDouble(), 0.0)
+        assertEquals("one history item each", n0 + 2, c.state.value.history.items.size)
+        // lens: shown while md_version is the old one; switched on, the action writes the new algorithm and it hides
+        val lens = InstanceKey("lens", 0)
+        val ms = TestSetup.schema.modules.getValue("lens")
+        val visible = { app.dtandroid.schema.Rules.holds(ms.visibility.getValue(24), app.dtandroid.schema.ParamRuleInputs(ms, c.module("lens").params)) }
+        assertTrue(visible())
+        c.toggleComputed(lens, 24, true)
+        assertNull(c.state.value.message)
+        assertEquals("DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2", (c.module("lens").params["md_version"] as JsonPrimitive).content)
+        assertFalse(visible())
+    }
 }
