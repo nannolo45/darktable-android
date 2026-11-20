@@ -4,7 +4,8 @@
 # Bridge tests on three test images: T1 to T9 and X1 (brief S3), C1 to C7
 # (brief P1a, Engine API v1 section 4), C8, C9 (brief P1c), C10 to C16
 # (brief P1b part 1, engine-api.md section 5), C17 and later (P1b part 2,
-# section 6).
+# section 6), C25 (brief P3c: the picker actions against darktable's own
+# callbacks, tests/dtb_pickref).
 #
 #   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 C2 ...]
 #
@@ -395,6 +396,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     parity C22 masks_drawn; parity C22 masks_duplicate; parity C22 masks_shared; parity C22 masks_edited
   fi
   if want C24; then drv C24 maskshow "mask display overlay"; fi
+  # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
+  if want C25; then
+    if "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
+      pass C25 "$C" "picker actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C25.log" | cut -d' ' -f4-)"
+    else
+      fail C25 "$C" "$(grep '^FAIL' "$D/C25.log" | head -5 | cut -c1-300 | tr '\n' ';') see $D/C25.log"
+    fi
+  fi
 done
 
 # C15 once: the engine on its own thread, the process's CPU set changing under it

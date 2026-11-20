@@ -282,11 +282,11 @@ class P3cPickerTest {
         c.setParam(InstanceKey("flip", 0), "orientation", JsonPrimitive("ORIENTATION_ROTATE_CW_90_DEG"))
         val now = e.coordsTransform(CoordsDirection.TO_PROCESSED, orig.map { it!! }).points
         val want = PickSelection.fromCorners(now, area = true)!!.area!!
-        waitFor("selection mapped") { c.state.value.picker!!.selection!!.area!!.zip(want).all { (a, b) -> kotlin.math.abs(a - b) < 1e-9 } }
+        waitFor("selection mapped") { c.state.value.picker!!.selection!!.area!!.zip(want).all { (a, b) -> kotlin.math.abs(a - b) < 1e-6 } }
         assertTrue("the turn moved it", kotlin.math.abs(want[0] - 0.1) > 0.05 || kotlin.math.abs(want[1] - 0.2) > 0.05)
         // and it picks there
         c.pickerApply()
-        close(e.picks.last().second.area, want, 1e-9)
+        close(e.picks.last().second.area, want, 1e-6) // the finger's positions are floats
     }
 
     @Test fun theSelectionFollowsACropOfTheEdit() = runBlocking {
