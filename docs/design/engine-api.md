@@ -299,9 +299,12 @@ int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *op
   switched off (engine test).
 - The pipelines' caches are shared: a bypass render after a plain one re-runs only the modules from the bypassed one
   on, and the plain render after it reuses its own cache lines.
-- Kotlin: `renderSize(scale, options: RenderOptions = RenderOptions.NONE)`, `renderPreview(maxSize, options)`,
-  `renderRegion(x, y, w, h, scale, options)`; `RenderOptions(bypass: List<InstanceRef> = emptyList(), showMask: InstanceRef? = null)`,
-  `InstanceRef(op, priority)`.
+- Kotlin: overloads `renderSize(scale, options: RenderOptions)`, `renderPreview(maxSize, options)`,
+  `renderRegion(x, y, w, h, scale, options)` next to the plain ones (wrappers that override the plain calls keep
+  working); `RenderOptions(bypass: List<InstanceRef> = emptyList(), showMask: InstanceRef? = null)`,
+  `RenderOptions.bypass(op, priority)`, `RenderOptions.NONE`, `InstanceRef(op, priority)`.
+- The crop tool's uncropped picture is `render_size_ex(1, bypass crop)` + `render_preview_ex(…, bypass crop)`, and its
+  sharp region when zoomed in `render_region_ex(…, bypass crop)` (P3a limits 1 to 3).
 
 ### 6.2 Undo and redo keep the XMP's hashes (deliverable 3)
 
@@ -340,7 +343,15 @@ result:  { "pipe": s,
 `"hsl"`, `"jzczhz"`); the bridge keeps that table per module. `box` is the sampled rectangle in pixels of that buffer
 (desktop's `dt_color_picker_box`). The fourth value of each vector is what desktop's helper returns there. `ARG`: bad
 area (empty, outside 0..1), a module that is switched off (desktop's pickers only pick on modules that are on).
-Kotlin: `colorPick(op: String?, priority: Int, request: PickRequest): PickResult`.
+The module is forced to run once for the pick (its piece hash changed for that render, as for a bypass), on the
+preview pipe at scale 1 (desktop's preview pipe renders the whole downscaled picture at scale 1); with `"pipe":
+"full"` the full pipe renders the area's bounding box with a 64 px margin at scale 1. The plain renders before and
+after are unaffected. The box mapping and the statistics are desktop's own functions:
+`dt_color_picker_backtransform_box` (the area to a sample in the pipe's input), `dt_color_picker_box` (to the
+module's input and output buffers) and `dt_color_picker_helper`; they read the global develop object's preview pipe,
+which the bridge points at its own pipe for the call. Tiles of a tiled module are merged (mean weighted by pixels,
+min of mins, max of maxes). Kotlin: `colorPick(op: String?, priority: Int, request: PickRequest): PickResult`
+(`PickRequest.area(x0, y0, x1, y1)`, `PickRequest.point(x, y)`, `PickStats`).
 
 **Module actions that use a picked area** (`dtb_module_action`, desktop's picker buttons; each [M]). Arguments take
 `area` (or `point`) as in `dtb_color_pick`; the module's own picker runs on the preview pipe (the module must be on),
@@ -435,43 +446,69 @@ Kotlin: `blendGet(op, priority): Blend`, `blendSet(op, priority, values: Map<Str
 
 ### 6.7 Drawn masks (deliverable 7)
 
-Forms are darktable's `dt_masks_form_t` in the session (`dev->forms`); they are written to the XMP with the history
-(`masks_history`). JSON of one form (`dtb_masks`):
+At the pinned commit a module's mask is a **flexi mask** (upstream `dev-doc/masks_data_model.md`): a tree of groups.
+A group is a `DT_MASKS_GROUP` form whose first point is a *marker* holding the group's settings (operator, inversion,
+bypass, opacity, name); its other points are *members* (a shape or a nested group) with their own opacity, inversion
+and "disabled". A group folds its members in order with its operator: `maximum` (default), `screen`, `minimum`,
+`product`, `sum`, `difference`, `exclusion`. Classic masks of older edits are converted when an edit is loaded (by
+darktable). So the "combine mode" of the brief is the operator of the group a form is in, set with
+`dtb_mask_group_set`; inversion and opacity belong to the member. Forms are darktable's `dt_masks_form_t` in the
+session (`dev->forms`), written to the XMP with the history (`masks_history`).
+
+JSON of one form (`dtb_masks`):
 ```
-{ "id": n, "type": "circle" | "ellipse" | "gradient" | "path" | "brush" | "group" | other darktable types as named,
-  "name": s, "version": n,
-  "geometry": {...},              // per type, normalised original-image coordinates:
+{ "id": n, "type": "circle" | "ellipse" | "gradient" | "path" | "brush" | "group" | "parametric" | "raster"
+          | "object" | "clone" | "unknown",
+  "name": s, "version": n,       // darktable's masks version of the form (7)
+  "geometry": {...},             // normalised original-image coordinates (the pipe's input):
      circle:   { "center": [x, y], "radius": r, "border": b }
      ellipse:  { "center": [x, y], "radius": [a, b], "rotation": deg, "border": b, "proportional": bool }
-     gradient: { "anchor": [x, y], "rotation": deg, "compression": c, "steepness": s, "curvature": k, "state": s }
-     path:     { "points": [ { "corner": [x, y], "ctrl1": [x, y], "ctrl2": [x, y], "border": [b1, b2] } ] }
+     gradient: { "anchor": [x, y], "rotation": deg, "compression": c, "steepness": s, "curvature": k,
+                 "state": "linear" | "sigmoidal" }
+     path:     { "points": [ { "corner": [x, y], "ctrl1": [x, y], "ctrl2": [x, y], "border": [b1, b2] } ] }  (closed)
      brush:    { "points": [ { "corner", "ctrl1", "ctrl2", "border": [b1, b2], "density": d, "hardness": h } ] }
-     group:    { "members": [ { "id": n, "state": ["use", "show", "inverse", "union" | "intersection" |
-                                "difference" | "exclusion" | "sum"], "opacity": o } ] }
-  "used_by": [ { "op": s, "priority": n } ] }   // instances whose mask group contains it (or is it)
+     group:    { "flexi": bool,
+                 // flexi only: the marker's settings
+                 "operator": s, "invert": bool, "bypass": bool, "opacity": o, "group_name": s,
+                 "members": [ { "id": n, "inverse": bool, "opacity": o, "disabled": bool,
+                                "combine": "union" | ... }  // "combine" only in a classic (non-flexi) group
+                            ] }
+     other types: {}
+  "used_by": [ { "op": s, "priority": n, "root": bool } ] }   // instances whose mask holds it; root: it is the mask
 ```
+An instance's mask group is `blend_get(...).mask_id`.
+
 | C | meaning |
 |---|---|
-| `int dtb_masks(char **json)` | `[ form, ... ]` every form of the session, by id. |
-| `int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json)` [M] | New form (not yet used by any instance); `name` NULL = darktable's automatic name (`dt_masks_assign_unique_name`). Brush: `geometry` may instead be `{ "stroke": [ [x, y], ... ], "size": r?, "hardness": h?, "density": d? }`, a list of points as from a finger, turned into brush points as desktop's mouse input (`brush.c`: one point per sample, then `_brush_init_ctrl_points`), defaults from desktop's configuration (`plugins/darkroom/masks/brush/border`, `hardness`, `density`). → `{ "id": n }`. |
-| `int dtb_mask_update(int id, const char *geometry_json)` [M] | Replace the geometry (same type). |
+| `int dtb_masks(char **json)` | `[ form, ... ]`, every form of the session in darktable's order. |
+| `int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json)` [M] | A new form (`circle`, `ellipse`, `gradient`, `path`, `brush`) used by no instance; → `{ "id": n }`. `name` NULL or empty: darktable's automatic name (`dt_masks_assign_unique_name`). Geometry as above; missing sizes take desktop's remembered values (`plugins/darkroom/masks/<shape>/...`). A path needs 3 points, a brush 2; a point without `ctrl1`/`ctrl2` gets them as `path.c` / `brush.c` `_*_init_ctrl_points` computes them. A brush may instead be `{ "stroke": [ [x, y], ... ], "size"?, "hardness"?, "density"? }`: samples as from a finger, simplified and given control points exactly as desktop's brush tool does on button release (`brush.c`: Ramer-Douglas-Peucker with desktop's `brush_smoothing` epsilon, then `_brush_init_ctrl_points`; no pressure). Recorded as one history item of darktable's "mask manager", as desktop's mask manager does. |
+| `int dtb_mask_update(int id, const char *geometry_json)` [M] | New geometry, same rules (same type). |
 | `int dtb_mask_rename(int id, const char *name)` [M] | |
-| `int dtb_mask_delete(int id)` [M] | Removes the form, from every group too (`dt_masks_form_delete`). |
-| `int dtb_mask_attach(const char *op, int priority, int id, const char *options_json)` [M] | Add the form to the instance's mask group (creating the group and switching the instance's mask mode to drawn, as desktop's shape buttons do). `options`: `{ "combine": "union" \| "intersection" \| "difference" \| "exclusion" \| "sum", "inverse": bool, "opacity": 0..1 }` (defaults as desktop: union, not inverted, 1). A form may be attached to several instances (desktop's "add existing shape"). |
-| `int dtb_mask_detach(const char *op, int priority, int id)` [M] | Remove it from that instance's group (the form stays). |
-| `int dtb_mask_member_set(const char *op, int priority, int id, const char *options_json)` [M] | Change combine, inverse, opacity of an attached form. |
-| `int dtb_mask_group_create(const char *member_ids_json, char **json)` [M] | A group of existing forms (`[id, ...]`), → `{ "id" }`; groups can be attached like forms. |
-Errors: `NOT_FOUND` (no such form or instance), `ARG` (wrong type, bad geometry, a module without drawn masks:
-`IOP_FLAGS_NO_MASKS` or no blending). One history item per call (a masks history item for the instance, or for
-the forms alone, as desktop's `dt_dev_add_masks_history_item`). The S3 prototype `dtb_mask_add_circle` stays for its
-test (it equals `mask_create("circle")` + `mask_attach`).
-Kotlin: `masks(): List<MaskForm>`, `maskCreate(type, geometry: JsonObject, name: String? = null): Int`,
-`maskUpdate`, `maskRename`, `maskDelete`, `maskAttach(op, priority, id, MaskMember)`, `maskDetach`, `maskMemberSet`,
-`maskGroupCreate(ids): Int`.
+| `int dtb_mask_delete(int id)` [M] | Removes the form and its member points from every group. `ARG` for a form that is an instance's whole mask. |
+| `int dtb_mask_attach(const char *op, int priority, int id, const char *options_json)` [M] | The form (or a group) becomes a member of the instance's mask, as desktop's panel adds a new shape (`dt_masks_group_insert_point`: the instance's flexi group is created with its marker when it has none) and the mask is switched on as flexi (`mask_mode` ENABLED \| FLEXI, `_blendop_mask_enable`). `options`: `{ "inverse": bool, "opacity": 0..1, "disabled": bool }` (defaults: not inverted, opaque, enabled). A form may be in several instances' masks. `ARG`: a module without drawn masks (no blending, or `IOP_FLAGS_NO_MASKS`), already a member, a group into itself. |
+| `int dtb_mask_detach(const char *op, int priority, int id)` [M] | Removes the member from the instance's mask group (the form stays). |
+| `int dtb_mask_member_set(const char *op, int priority, int id, const char *options_json)` [M] | The member's `inverse`, `opacity`, `disabled`. |
+| `int dtb_mask_group_create(const char *member_ids_json, const char *name, char **json)` [M] | A flexi group of existing forms (`[id, ...]`, each an opaque member), → `{ "id" }`; attach it like a form. |
+| `int dtb_mask_group_set(int id, const char *options_json)` [M] | A flexi group's marker: `{ "operator", "invert", "bypass", "opacity": 0..1, "name" }`. |
+Errors: `NOT_FOUND` (form or instance), `ARG`, `TYPE`, `RANGE` (positions -1..2, sizes as desktop's limits). Each
+call is one history item: a masks history item (`dt_dev_add_masks_history_item_ext`) of the instance it concerns, of
+the first instance whose mask holds the form (update, rename, delete, group settings), or of darktable's mask manager
+for forms no instance uses. Undo and redo cover them. The S3 prototype `dtb_mask_add_circle` stays (it equals
+`mask_create("circle")` + `mask_attach`). Not built: retouch's and liquify's own shapes (not in this package), raster
+and parametric members (`masks` lists them, nothing creates them), moving a member inside a group.
+Kotlin: `masks(): List<MaskForm>`, `maskCreate(type, geometry: JsonObject, name: String? = null): Int`, `maskUpdate`,
+`maskRename`, `maskDelete`, `maskAttach(op, priority, id, MaskMember())`, `maskDetach`, `maskMemberSet`,
+`maskGroupCreate(ids, name): Int`, `maskGroupSet(id, settings: JsonObject)`; `MaskForm`, `MaskUser`, `MaskMember`.
 
 ### 6.8 Mask display (deliverable 8)
 
 `render_preview_ex` / `render_region_ex` with `"show_mask": {op, priority}`: the picture as desktop's darkroom shows
-it with that instance's "display mask" button on (`DT_DEV_PIXELPIPE_DISPLAY_MASK`: the image in grey with the mask in
-yellow, `iop/gamma.c` `_mask_display`, mix as desktop's `darkroom/ui/develop_mask_mix`). `ARG` when the instance's
-mask mode is off or uniform (desktop shows no mask then). No change to the edit.
+it with that instance's "display mask" button on (`DT_DEV_PIXELPIPE_DISPLAY_MASK`): the picture in grey and the mask
+in yellow (`iop/gamma.c` `_mask_display`, mix as desktop's `darkroom/ui/develop_mask_mix`). For that render the
+bridge gives blend.c what it asks for (the instance has the focus, the pipe is the develop object's full pipe) and
+runs the pipe with gamma; nothing of the edit changes, and the next plain render is the one from before. Two
+modules that the bridge's export-type pipe runs and desktop's darkroom pipe does not run that way drop the mask
+channel (colorout, and colorin's blue-mapping path): while a mask is shown the bridge carries the channel through
+every module after the shown one whose input and output windows coincide, as desktop's modules do with
+`dt_iop_alpha_copy`. `ARG` when the instance's mask mode is off or uniform (desktop shows no mask then), or the
+instance is off. The stand-in engine (`FakeEngine`) answers with its picture in grey (it draws no masks).
