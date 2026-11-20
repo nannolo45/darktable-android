@@ -648,8 +648,12 @@ class DarkroomController(
         val model = schema.modules[key.op]?.actionLists?.get(controlId) ?: throw EngineException(EngineError.STATE, "no list here")
         val entry = model.entries(_state.value.actionLists[key to controlId]).getOrNull(index) ?: throw EngineException(EngineError.STATE, "no such entry")
         val writes = model.paramWrites(entry)
-        if (writes != null) engine.paramsSet(key.op, key.priority, writes)
-        else engine.moduleAction(key.op, key.priority, model.action!!, model.args(entry))
+        if (writes != null) {
+            // only the fields that change (a built-in profile keeps the empty file name)
+            val m = _state.value.modules.firstOrNull { it.key == key }
+            val changed = writes.filter { (k, v) -> (m?.params?.paramAt(k) as? JsonPrimitive)?.content != v.content }
+            if (changed.isNotEmpty()) engine.paramsSet(key.op, key.priority, changed)
+        } else engine.moduleAction(key.op, key.priority, model.action!!, model.args(entry))
         engine.historySeal()
     }
 
