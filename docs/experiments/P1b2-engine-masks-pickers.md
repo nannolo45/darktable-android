@@ -104,3 +104,15 @@ and will be pushed when the running CI run has finished.
 - **Desktop XMPs with masks** (darktable-tests 0004-masks, 0081-mask-groups, 0090-mask-combine,
   0144-masks-combine-sum, all on mire1.cr2): listed (6/4/8/4 shapes, 1/4/4/1 groups), bridge render = darktable-cli of
   the desktop XMP, max 0, and = darktable-cli of the XMP the bridge writes from them, max 0 (workspace; C23).
+- 14:40 CI on 98565262 (items 1 to 6): **g0-app 44749591994 success** (Linux bridge tests 314 PASS lines, 0 FAIL;
+  C17 to C21 on three images; T8 passed there; T5 cr2 on-defringe within its bound on CI), both ABIs built;
+  **p2b-real-engine 44749592073 success** (emulator: OK, 63 tests, the new contract tests among them; P3a c1 "sync
+  during tool differences: none", c2 "XMP identical: true"); p2a-app 44749591773 success.
+- Workspace: T8 (cancel) cr2 is timing-marginal on the 2-core workspace: the third cancel lands 0.01 s before or
+  after the end of the render; main's bridge and this branch both pass 4 of 4 on an idle workspace, and this branch
+  failed 2 of 3 while other tests ran beside it. Not a change of behaviour; CI passes it.
+- **Color calibration** (`channelmixerrgb illuminant_from_area`, `spot` in correction mode) ported from
+  `_auto_set_illuminant`; C19: after `illuminant_from_area` the area's output of color calibration is neutral
+  (0.18416 0.18419 0.18430, spread 6e-4). Its "measure" mode is not built (it reads the white balance through the
+  interface, `_get_corrected_illuminant_xy`).
+- 14:42 masks, mask display, colour calibration pushed (CI on it next).
