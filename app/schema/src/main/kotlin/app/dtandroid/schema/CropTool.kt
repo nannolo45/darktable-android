@@ -374,7 +374,16 @@ object CropTool {
      */
     fun mirrored(orientation: Int): Boolean = orientation >= 0 && Integer.bitCount(orientation and 7) % 2 == 1
 
-    /** The size in pixels the frame gives on an input of [iwd] x [iht] (desktop's dimensions while dragging). */
-    fun outputSize(f: CropAspect.Frame, iwd: Int, iht: Int): Pair<Int, Int> =
-        Math.round((f.right - f.left) * iwd).toInt() to Math.round((f.bottom - f.top) * iht).toInt()
+    /**
+     * The cropped picture's size as desktop shows it while the frame is dragged (`gui_post_expose`): the frame's
+     * width and height in pixels of crop's input [iwd] x [iht], rounded down, less what an exact ratio rounds off.
+     */
+    fun shownSize(g: Clip, ratioD: Int, ratioN: Int, iwd: Int, iht: Int): Pair<Int, Int> {
+        val width = kotlin.math.floor(iwd * g.w).toInt()
+        val height = kotlin.math.floor(iht * g.h).toInt()
+        val (aw, ah, exact) = reduceAligners(if (width >= height) ratioD else ratioN, if (width >= height) ratioN else ratioD)
+        val dw = if (exact) width % aw else 0
+        val dh = if (exact) height % ah else 0
+        return (width - dw) to (height - dh)
+    }
 }

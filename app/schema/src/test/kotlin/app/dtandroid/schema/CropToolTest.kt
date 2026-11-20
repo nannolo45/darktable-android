@@ -136,6 +136,15 @@ class CropToolTest {
             listOf(0, 1, 2, 3, 4, 5, 6, 7, -1).map { CropTool.mirrored(it) })
     }
 
+    @Test fun shownSizeAsDesktopWhileDragging() {
+        // gui_post_expose: floor of the frame in pixels; an exact ratio (3:2) rounds to whole multiples
+        assertEquals(1950 to 1950, CropTool.shownSize(CropTool.Clip(0.4141862f, 0.04f, 0.4992323f, 0.7498078f), 1, 1, 3908, 2602))
+        assertEquals(3000 to 2000, CropTool.shownSize(CropTool.Clip(0.1f, 0.2f, 0.5f, 0.5f), 3, 2, 6000, 4000))
+        assertEquals(2997 to 1998, CropTool.shownSize(CropTool.Clip(0.1f, 0.2f, 0.49966f, 0.4996f), 3, 2, 6000, 4000))
+        // freehand: just rounded down
+        assertEquals(2997 to 1998, CropTool.shownSize(CropTool.Clip(0.1f, 0.2f, 0.49966f, 0.49962f), 0, 0, 6000, 4000))
+    }
+
     // ------------------------------------------------------------------ the app's hit test (touch)
 
     private val frame = CropTool.Clip(0.2f, 0.2f, 0.6f, 0.6f)

@@ -41,8 +41,11 @@ data class CropToolState(
         return CropTool.commit(clip, d, n, inW, inH)
     }
 
-    /** The cropped picture's size in pixels if the tool were left now. */
-    fun outputSize(): Pair<Int, Int> = CropTool.outputSize(committed(), inW, inH)
+    /** The cropped picture's size in pixels, as desktop shows it while dragging (`gui_post_expose`). */
+    fun outputSize(): Pair<Int, Int> {
+        val (d, n) = CropAspect.effective(ratioD, ratioN)
+        return CropTool.shownSize(clip, d, n, inW, inH)
+    }
 }
 
 /** Brief P3a: where the photo's view is in its window, in pixels (emulator tests touch the photo through it). */
