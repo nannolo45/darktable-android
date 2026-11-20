@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="app.dtandroid.darkroom.P3aCropToolTest" tests="18" skipped="0" failures="1" errors="0" timestamp="2026-11-20T11:49:13.057Z" hostname="runnervm8axu0" time="8.891">
+  <properties/>
+  <testcase name="readOnlyPhotoHasNoTool" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.125"/>
+  <testcase name="doneWritesTheFrameKilledWritesNothing" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.519"/>
+  <testcase name="aSyncWhileTheToolIsOpenWritesTheEditFromBeforeTheTool" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.277"/>
+  <testcase name="undoAndRedoWhileTheToolIsOpen" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.397"/>
+  <testcase name="historyNavigationLeavesTheToolFirst" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.262"/>
+  <testcase name="beforeWhileTheToolIsOpenChangesNothing" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.417"/>
+  <testcase name="straightenSetsTheRotationAsDesktop" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.626"/>
+  <testcase name="cropSwitchedOffStartsFromTheWholePictureWithoutABracket" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.988"/>
+  <testcase name="noChangeNoHistoryItem" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.787"/>
+  <testcase name="dragAndMoveThenLeaveWriteOneHistoryItemAndUndoBringsTheFrameBack" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.778"/>
+  <testcase name="aPinchThatStartsOnTheFrameGivesTheFrameBack" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.388"/>
+  <testcase name="marginSlidersAndTheAspectListWorkOnTheFrameInTheTool" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.253"/>
+  <testcase name="anUndoThatFailsStopsEveryWrite" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.51">
+    <failure message="java.lang.AssertionError: expected null, but was:&lt;CropToolState(key=InstanceKey(op=crop, priority=0), picture=app.dtandroid.darkroom.PhotoLayer@50b0bc4c, inW=3000, inH=2000, clip=Clip(x=0.0, y=0.0, w=1.0, h=1.0), ratioD=3, ratioN=2, touched=false, dragging=false, rotationLive=null, straighten=false, line=null)&gt;" type="java.lang.AssertionError">java.lang.AssertionError: expected null, but was:&lt;CropToolState(key=InstanceKey(op=crop, priority=0), picture=app.dtandroid.darkroom.PhotoLayer@50b0bc4c, inW=3000, inH=2000, clip=Clip(x=0.0, y=0.0, w=1.0, h=1.0), ratioD=3, ratioN=2, touched=false, dragging=false, rotationLive=null, straighten=false, line=null)&gt;
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotNull(Assert.java:756)
+	at org.junit.Assert.assertNull(Assert.java:738)
+	at org.junit.Assert.assertNull(Assert.java:748)
+	at app.dtandroid.darkroom.P3aCropToolTest$anUndoThatFailsStopsEveryWrite$1.invokeSuspend(P3aCropToolTest.kt:390)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source)
+	at app.dtandroid.darkroom.P3aCropToolTest.anUndoThatFailsStopsEveryWrite(P3aCropToolTest.kt:382)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.rules.ExternalResource$1.evaluate(ExternalResource.java:54)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.runTestClass(JUnitTestClassExecutor.java:112)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:58)
+	at org.gradle.api.internal.tasks.testing.junit.JUnitTestClassExecutor.execute(JUnitTestClassExecutor.java:40)
+	at org.gradle.api.internal.tasks.testing.junit.AbstractJUnitTestClassProcessor.processTestClass(AbstractJUnitTestClassProcessor.java:54)
+	at org.gradle.api.internal.tasks.testing.SuiteTestClassProcessor.processTestClass(SuiteTestClassProcessor.java:53)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:36)
+	at org.gradle.internal.dispatch.ReflectionDispatch.dispatch(ReflectionDispatch.java:24)
+	at org.gradle.internal.dispatch.ContextClassLoaderDispatch.dispatch(ContextClassLoaderDispatch.java:33)
+	at org.gradle.internal.dispatch.ProxyDispatchAdapter$DispatchingInvocationHandler.invoke(ProxyDispatchAdapter.java:92)
+	at jdk.proxy1/jdk.proxy1.$Proxy4.processTestClass(Unknown Source)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker$2.run(TestWorker.java:183)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.executeAndMaintainThreadName(TestWorker.java:132)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:103)
+	at org.gradle.api.internal.tasks.testing.worker.TestWorker.execute(TestWorker.java:63)
+	at org.gradle.process.internal.worker.child.ActionExecutionWorker.execute(ActionExecutionWorker.java:56)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:122)
+	at org.gradle.process.internal.worker.child.SystemApplicationClassLoaderWorker.call(SystemApplicationClassLoaderWorker.java:72)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.run(GradleWorkerMain.java:69)
+	at worker.org.gradle.process.internal.worker.GradleWorkerMain.main(GradleWorkerMain.java:74)
+</failure>
+  </testcase>
+  <testcase name="theToolOpensOnTheUncroppedPictureWithoutChangingTheEdit" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.27"/>
+  <testcase name="theBracketsRedoStepIsNeverOffered" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.389"/>
+  <testcase name="aSyncDuringTheBracketWaitsAndWritesTheEdit" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.796"/>
+  <testcase name="theRotationSliderTurnsThePictureThenWritesOneItem" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.614"/>
+  <testcase name="anotherModulesChangeWhileTheToolIsOpenWritesTheFrameFirst" classname="app.dtandroid.darkroom.P3aCropToolTest" time="0.493"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
