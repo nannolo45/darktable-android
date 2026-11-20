@@ -50,3 +50,12 @@ Workspace numbers are x86_64, 2 cores; CI numbers are GitHub runners (x86_64, 4 
   replaces the history with the style alone (18-23 dB from desktop's overwrite): not desktop's overwrite.
 - 10:58 Pushed 85f7e23 (Kotlin interface, JNI, FakeEngine, contract tests, timings page): CI g0-app 44723663988,
   p2b-real-engine 44723664038, p2a-app 44723663915.
+- 11:15 Reviewer: E1's darkroom change allowed under conditions (contract prefix, one helper, JVM test, f7/f8
+  updated). Done in 0c1fde1d. t1b failed on the new CPU error text: wording restored (test unchanged).
+- Sigmoid cause (about one hour, as the reviewer bounded it): only libsigmoid.so rebuilt with gcc and clang-18 on the
+  workspace; clang reproduces the emulator's numbers exactly (45.3 dB / 84.414 %, 64.6 dB / 0.024 %); gcc with
+  -fno-math-errno + -funsafe-math-optimizations (in -ffast-math) rewrites 4 powf calls of `_compute_curve` as expf
+  (`P1b-results/sigmoid-compilers.sh`, `.txt`).
+- Probe branch: deleting it from the workspace was refused by the permission check; it can be deleted.
+- 12:40 Final runs on 0c1fde1d: g0-app 44730585389 success (290 PASS), p2b-real-engine 44730585226 success (53/53),
+  p2a-app 44730585350 success. Report written.
