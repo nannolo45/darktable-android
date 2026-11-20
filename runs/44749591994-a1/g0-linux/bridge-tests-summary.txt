@@ -1,0 +1,438 @@
+== cr2: mire1.cr2 with exposure.xmp
+PASS T1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 cr2: modules and history JSON parse: 97 module instances, 9 history items
+PASS T2 cr2: history 9 end 9 -> 10 end 10, exposure 1.0000 -> 2.0000
+PASS T2 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: duplicate/change/off/on in session (new priority 1)
+PASS T3 cr2: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=1.0000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: 9 end 9; goto 8 differs_from_top max 68 mean 38.7563; back to top: max 0 mean 0.0000; history 9 end 9; compress vs top: max 0 mean 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO T5 cr2 base region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.017
+PASS T5 cr2/base/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: base region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 base region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.015
+PASS T5 cr2/base/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: base region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 base region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.016
+PASS T5 cr2/base/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: base region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 base at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+PASS T5 cr2/base/region0-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2/base/region1-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2/base/region2-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO T5 cr2 on-shadhi region 0: 0 at 1698,1045 max 2 mean 0.0779 deepest_diff_from_edge 255 render_s 0.071
+PASS T5 cr2/on-shadhi/region0: size 512x512 max 2 mean 0.07795 psnr 59.21 differing_values_pct 7.7947
+INFO T5 cr2 on-shadhi region 0 is a listed difference (t5_expected.txt): bounds max 2, mean 0.0781
+PASS T5 cr2: on-shadhi region 0 rendered again after the others: max 2 mean 0.0779
+INFO T5 cr2 on-shadhi region 1: 1 at 0,0 max 1 mean 0.0729 deepest_diff_from_edge 255 render_s 0.045
+PASS T5 cr2/on-shadhi/region1: size 512x512 max 1 mean 0.07291 psnr 59.50 differing_values_pct 7.2910
+INFO T5 cr2 on-shadhi region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0731
+PASS T5 cr2: on-shadhi region 1 rendered again after the others: max 1 mean 0.0729
+INFO T5 cr2 on-shadhi region 2: 2 at 3359,2067 max 1 mean 0.0256 deepest_diff_from_edge 255 render_s 0.041
+PASS T5 cr2/on-shadhi/region2: size 512x512 max 1 mean 0.02558 psnr 64.05 differing_values_pct 2.5580
+INFO T5 cr2 on-shadhi region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0257
+PASS T5 cr2: on-shadhi region 2 rendered again after the others: max 1 mean 0.0256
+INFO T5 cr2 on-shadhi at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0477;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0191;
+INFO T5 cr2 on-lowpass region 0: 0 at 1698,1045 max 1 mean 0.0018 deepest_diff_from_edge 236 render_s 0.026
+PASS T5 cr2/on-lowpass/region0: size 512x512 max 1 mean 0.00181 psnr 75.55 differing_values_pct 0.1812
+INFO T5 cr2 on-lowpass region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0020
+PASS T5 cr2: on-lowpass region 0 rendered again after the others: max 1 mean 0.0018
+INFO T5 cr2 on-lowpass region 1: 1 at 0,0 max 1 mean 0.0002 deepest_diff_from_edge 218 render_s 0.021
+PASS T5 cr2/on-lowpass/region1: size 512x512 max 1 mean 0.00024 psnr 84.37 differing_values_pct 0.0238
+INFO T5 cr2 on-lowpass region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0004
+PASS T5 cr2: on-lowpass region 1 rendered again after the others: max 1 mean 0.0002
+INFO T5 cr2 on-lowpass region 2: 2 at 3359,2067 max 1 mean 0.0002 deepest_diff_from_edge 214 render_s 0.029
+PASS T5 cr2/on-lowpass/region2: size 512x512 max 1 mean 0.00019 psnr 85.44 differing_values_pct 0.0186
+INFO T5 cr2 on-lowpass region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0003
+PASS T5 cr2: on-lowpass region 2 rendered again after the others: max 1 mean 0.0002
+INFO T5 cr2 on-lowpass at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0000;
+INFO T5 cr2 on-soften region 0: 0 at 1698,1045 max 1 mean 0.0003 deepest_diff_from_edge 208 render_s 0.043
+PASS T5 cr2/on-soften/region0: size 512x512 max 1 mean 0.00026 psnr 83.91 differing_values_pct 0.0264
+INFO T5 cr2 on-soften region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0004
+PASS T5 cr2: on-soften region 0 rendered again after the others: max 1 mean 0.0003
+INFO T5 cr2 on-soften region 1: 1 at 0,0 max 1 mean 0.0002 deepest_diff_from_edge 31 render_s 0.034
+PASS T5 cr2/on-soften/region1: size 512x512 max 1 mean 0.00017 psnr 85.88 differing_values_pct 0.0168
+INFO T5 cr2 on-soften region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0003
+PASS T5 cr2: on-soften region 1 rendered again after the others: max 1 mean 0.0002
+INFO T5 cr2 on-soften region 2: 2 at 3359,2067 max 1 mean 0.0001 deepest_diff_from_edge 224 render_s 0.030
+PASS T5 cr2/on-soften/region2: size 512x512 max 1 mean 0.00010 psnr 87.95 differing_values_pct 0.0104
+INFO T5 cr2 on-soften region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0002
+PASS T5 cr2: on-soften region 2 rendered again after the others: max 1 mean 0.0001
+INFO T5 cr2 on-soften at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0003;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0002;
+INFO T5 cr2 on-bloom region 0: 0 at 1698,1045 max 1 mean 0.0009 deepest_diff_from_edge 242 render_s 0.063
+PASS T5 cr2/on-bloom/region0: size 512x512 max 1 mean 0.00089 psnr 78.66 differing_values_pct 0.0885
+INFO T5 cr2 on-bloom region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0010
+PASS T5 cr2: on-bloom region 0 rendered again after the others: max 1 mean 0.0009
+INFO T5 cr2 on-bloom region 1: 1 at 0,0 max 1 mean 0.0002 deepest_diff_from_edge 109 render_s 0.041
+PASS T5 cr2/on-bloom/region1: size 512x512 max 1 mean 0.00019 psnr 85.41 differing_values_pct 0.0187
+INFO T5 cr2 on-bloom region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0003
+PASS T5 cr2: on-bloom region 1 rendered again after the others: max 1 mean 0.0002
+INFO T5 cr2 on-bloom region 2: 2 at 3359,2067 max 1 mean 0.0003 deepest_diff_from_edge 226 render_s 0.036
+PASS T5 cr2/on-bloom/region2: size 512x512 max 1 mean 0.00034 psnr 82.77 differing_values_pct 0.0343
+INFO T5 cr2 on-bloom region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0005
+PASS T5 cr2: on-bloom region 2 rendered again after the others: max 1 mean 0.0003
+INFO T5 cr2 on-bloom at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0003;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0001;
+INFO T5 cr2 on-denoiseprofile region 0: 0 at 1698,1045 max 1 mean 0.0259 deepest_diff_from_edge 255 render_s 0.193
+PASS T5 cr2/on-denoiseprofile/region0: size 512x512 max 1 mean 0.02589 psnr 64.00 differing_values_pct 2.5885
+INFO T5 cr2 on-denoiseprofile region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0260
+PASS T5 cr2: on-denoiseprofile region 0 rendered again after the others: max 1 mean 0.0259
+INFO T5 cr2 on-denoiseprofile region 1: 1 at 0,0 max 1 mean 0.0405 deepest_diff_from_edge 255 render_s 0.130
+PASS T5 cr2/on-denoiseprofile/region1: size 512x512 max 1 mean 0.04047 psnr 62.06 differing_values_pct 4.0474
+INFO T5 cr2 on-denoiseprofile region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0406
+PASS T5 cr2: on-denoiseprofile region 1 rendered again after the others: max 1 mean 0.0405
+INFO T5 cr2 on-denoiseprofile region 2: 2 at 3359,2067 max 1 mean 0.0396 deepest_diff_from_edge 253 render_s 0.133
+PASS T5 cr2/on-denoiseprofile/region2: size 512x512 max 1 mean 0.03958 psnr 62.16 differing_values_pct 3.9584
+INFO T5 cr2 on-denoiseprofile region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0398
+PASS T5 cr2: on-denoiseprofile region 2 rendered again after the others: max 1 mean 0.0396
+INFO T5 cr2 on-denoiseprofile at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0317;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0416;
+INFO T5 cr2 on-monochrome region 0: 0 at 1698,1045 max 1 mean 0.0097 deepest_diff_from_edge 252 render_s 0.033
+PASS T5 cr2/on-monochrome/region0: size 512x512 max 1 mean 0.00974 psnr 68.24 differing_values_pct 0.9744
+INFO T5 cr2 on-monochrome region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0099
+PASS T5 cr2: on-monochrome region 0 rendered again after the others: max 1 mean 0.0097
+INFO T5 cr2 on-monochrome region 1: 1 at 0,0 max 1 mean 0.0003 deepest_diff_from_edge 226 render_s 0.024
+PASS T5 cr2/on-monochrome/region1: size 512x512 max 1 mean 0.00028 psnr 83.66 differing_values_pct 0.0280
+INFO T5 cr2 on-monochrome region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0004
+PASS T5 cr2: on-monochrome region 1 rendered again after the others: max 1 mean 0.0003
+INFO T5 cr2 on-monochrome region 2: 2 at 3359,2067 max 1 mean 0.0001 deepest_diff_from_edge 190 render_s 0.030
+PASS T5 cr2/on-monochrome/region2: size 512x512 max 1 mean 0.00012 psnr 87.22 differing_values_pct 0.0123
+INFO T5 cr2 on-monochrome region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0003
+PASS T5 cr2: on-monochrome region 2 rendered again after the others: max 1 mean 0.0001
+INFO T5 cr2 on-monochrome at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0089;region at 0,0 vs full render at scale 0.5: max 1 mean 0.0003;
+INFO T5 cr2 on-bilat region 0: 0 at 1698,1045 max 9 mean 1.6133 deepest_diff_from_edge 255 render_s 0.124
+PASS T5 cr2/on-bilat/region0: size 512x512 max 9 mean 1.61334 psnr 42.82 differing_values_pct 88.9704
+INFO T5 cr2 on-bilat region 0 is a listed difference (t5_expected.txt): bounds max 9, mean 1.6135
+PASS T5 cr2: on-bilat region 0 rendered again after the others: max 9 mean 1.6133
+INFO T5 cr2 on-bilat region 1: 1 at 0,0 max 4 mean 1.0404 deepest_diff_from_edge 255 render_s 0.067
+PASS T5 cr2/on-bilat/region1: size 512x512 max 4 mean 1.04038 psnr 46.55 differing_values_pct 84.0754
+INFO T5 cr2 on-bilat region 1 is a listed difference (t5_expected.txt): bounds max 4, mean 1.0405
+PASS T5 cr2: on-bilat region 1 rendered again after the others: max 4 mean 1.0404
+INFO T5 cr2 on-bilat region 2: 2 at 3359,2067 max 5 mean 1.5360 deepest_diff_from_edge 255 render_s 0.061
+PASS T5 cr2/on-bilat/region2: size 512x512 max 5 mean 1.53604 psnr 43.75 differing_values_pct 97.7556
+INFO T5 cr2 on-bilat region 2 is a listed difference (t5_expected.txt): bounds max 5, mean 1.5362
+PASS T5 cr2: on-bilat region 2 rendered again after the others: max 5 mean 1.5360
+INFO T5 cr2 on-bilat at scale 0.5: region at 850,523 vs full render at scale 0.5: max 5 mean 1.6138;region at 0,0 vs full render at scale 0.5: max 4 mean 1.0336;
+INFO T5 cr2 on-bilateral region 0: 0 at 1698,1045 max 1 mean 0.0000 deepest_diff_from_edge 5 render_s 0.269
+PASS T5 cr2/on-bilateral/region0: size 512x512 max 1 mean 0.00000 psnr 107.09 differing_values_pct 0.0001
+INFO T5 cr2 on-bilateral region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0001
+PASS T5 cr2: on-bilateral region 0 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-bilateral region 1: 1 at 0,0 max 1 mean 0.0000 deepest_diff_from_edge 0 render_s 0.297
+PASS T5 cr2/on-bilateral/region1: size 512x512 max 1 mean 0.00000 psnr 102.32 differing_values_pct 0.0004
+INFO T5 cr2 on-bilateral region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0001
+PASS T5 cr2: on-bilateral region 1 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-bilateral region 2: 2 at 3359,2067 max 1 mean 0.0000 deepest_diff_from_edge 4 render_s 0.299
+PASS T5 cr2/on-bilateral/region2: size 512x512 max 1 mean 0.00001 psnr 101.07 differing_values_pct 0.0005
+INFO T5 cr2 on-bilateral region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0002
+PASS T5 cr2: on-bilateral region 2 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-bilateral at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-sharpen region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.023
+PASS T5 cr2/on-sharpen/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-sharpen region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-sharpen region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.018
+PASS T5 cr2/on-sharpen/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-sharpen region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-sharpen region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.026
+PASS T5 cr2/on-sharpen/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-sharpen region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-sharpen at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-diffuse region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.070
+PASS T5 cr2/on-diffuse/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-diffuse region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-diffuse region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.053
+PASS T5 cr2/on-diffuse/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-diffuse region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-diffuse region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.057
+PASS T5 cr2/on-diffuse/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-diffuse region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-diffuse at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-filmicrgb region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.051
+PASS T5 cr2/on-filmicrgb/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-filmicrgb region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-filmicrgb region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.038
+PASS T5 cr2/on-filmicrgb/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-filmicrgb region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-filmicrgb region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.041
+PASS T5 cr2/on-filmicrgb/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-filmicrgb region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-filmicrgb at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-atrous region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.111
+PASS T5 cr2/on-atrous/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-atrous region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-atrous region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.095
+PASS T5 cr2/on-atrous/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-atrous region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-atrous region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.113
+PASS T5 cr2/on-atrous/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-atrous region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-atrous at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-colorequal region 0: 0 at 1698,1045 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.101
+PASS T5 cr2/on-colorequal/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-colorequal region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-colorequal region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.077
+PASS T5 cr2/on-colorequal/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-colorequal region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-colorequal region 2: 2 at 3359,2067 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.088
+PASS T5 cr2/on-colorequal/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 cr2: on-colorequal region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 cr2 on-colorequal at scale 0.5: region at 850,523 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-nlmeans region 0: 0 at 1698,1045 max 1 mean 0.0000 deepest_diff_from_edge 194 render_s 0.217
+PASS T5 cr2/on-nlmeans/region0: size 512x512 max 1 mean 0.00001 psnr 98.06 differing_values_pct 0.0010
+INFO T5 cr2 on-nlmeans region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0002
+PASS T5 cr2: on-nlmeans region 0 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-nlmeans region 1: 1 at 0,0 max 1 mean 0.0000 deepest_diff_from_edge 101 render_s 0.188
+PASS T5 cr2/on-nlmeans/region1: size 512x512 max 1 mean 0.00001 psnr 100.10 differing_values_pct 0.0006
+INFO T5 cr2 on-nlmeans region 1 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0002
+PASS T5 cr2: on-nlmeans region 1 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-nlmeans region 2: 2 at 3359,2067 max 1 mean 0.0000 deepest_diff_from_edge 229 render_s 0.220
+PASS T5 cr2/on-nlmeans/region2: size 512x512 max 1 mean 0.00001 psnr 97.09 differing_values_pct 0.0013
+INFO T5 cr2 on-nlmeans region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0002
+PASS T5 cr2: on-nlmeans region 2 rendered again after the others: max 1 mean 0.0000
+INFO T5 cr2 on-nlmeans at scale 0.5: region at 850,523 vs full render at scale 0.5: max 1 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+INFO T5 cr2 on-defringe region 0: 0 at 1698,1045 max 81 mean 0.2187 deepest_diff_from_edge 236 render_s 0.030
+PASS T5 cr2/on-defringe/region0: size 512x512 max 81 mean 0.21871 psnr 43.36 differing_values_pct 4.9220
+INFO T5 cr2 on-defringe region 0 is a listed difference (t5_expected.txt): bounds max 81, mean 0.2194
+PASS T5 cr2: on-defringe region 0 rendered again after the others: max 81 mean 0.2187
+INFO T5 cr2 on-defringe region 1: 1 at 0,0 max 92 mean 0.6024 deepest_diff_from_edge 246 render_s 0.023
+PASS T5 cr2/on-defringe/region1: size 512x512 max 92 mean 0.60243 psnr 40.01 differing_values_pct 10.3161
+INFO T5 cr2 on-defringe region 1 is a listed difference (t5_expected.txt): bounds max 92, mean 0.6026
+PASS T5 cr2: on-defringe region 1 rendered again after the others: max 92 mean 0.6024
+INFO T5 cr2 on-defringe region 2: 2 at 3359,2067 max 92 mean 1.4551 deepest_diff_from_edge 255 render_s 0.034
+PASS T5 cr2/on-defringe/region2: size 512x512 max 92 mean 1.45511 psnr 35.51 differing_values_pct 21.7406
+INFO T5 cr2 on-defringe region 2 is a listed difference (t5_expected.txt): bounds max 92, mean 1.4553
+PASS T5 cr2: on-defringe region 2 rendered again after the others: max 92 mean 1.4551
+INFO T5 cr2 on-defringe at scale 0.5: region at 850,523 vs full render at scale 0.5: max 57 mean 0.2081;region at 0,0 vs full render at scale 0.5: max 65 mean 0.2525;
+INFO T5 cr2 on-globaltonemap region 0: 0 at 1698,1045 max 1 mean 0.2161 deepest_diff_from_edge 255 render_s 0.024
+PASS T5 cr2/on-globaltonemap/region0: size 512x512 max 1 mean 0.21606 psnr 54.78 differing_values_pct 21.6063
+INFO T5 cr2 on-globaltonemap region 0 is a listed difference (t5_expected.txt): bounds max 1, mean 0.2162
+PASS T5 cr2: on-globaltonemap region 0 rendered again after the others: max 1 mean 0.2161
+INFO T5 cr2 on-globaltonemap region 1: 1 at 0,0 max 70 mean 63.7600 deepest_diff_from_edge 255 render_s 0.019
+PASS T5 cr2/on-globaltonemap/region1: size 512x512 max 70 mean 63.76000 psnr 11.99 differing_values_pct 99.9966
+INFO T5 cr2 on-globaltonemap region 1 is a listed difference (t5_expected.txt): bounds max 70, mean 63.7601
+PASS T5 cr2: on-globaltonemap region 1 rendered again after the others: max 70 mean 63.7600
+INFO T5 cr2 on-globaltonemap region 2: 2 at 3359,2067 max 48 mean 30.9886 deepest_diff_from_edge 255 render_s 0.028
+PASS T5 cr2/on-globaltonemap/region2: size 512x512 max 48 mean 30.98857 psnr 18.00 differing_values_pct 99.7434
+INFO T5 cr2 on-globaltonemap region 2 is a listed difference (t5_expected.txt): bounds max 48, mean 30.9887
+PASS T5 cr2: on-globaltonemap region 2 rendered again after the others: max 48 mean 30.9886
+INFO T5 cr2 on-globaltonemap at scale 0.5: region at 850,523 vs full render at scale 0.5: max 3 mean 0.8037;region at 0,0 vs full render at scale 0.5: max 75 mean 68.7283;
+PASS T6 cr2: newer.xmp: exposure modversion 5 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule unknown_first.xmp: first entry rawprepare -> s3notamodule reported and refused (see T6.log)
+PASS T6 cr2: guarded files unchanged
+INFO T7 cr2 (x86_64, 4 cores): size 3908x2602 preview 1024x681;open_s 0.115;first_full_render_s 0.470;unchanged_full_render_s 0.027;late_change_full_render_s 0.143;early_change_full_render_s 0.577;late_change_region_1920x1080_s 0.166;preview_first_s 0.099;preview_late_change_s 0.008;preview_early_change_s 0.026;
+PASS T8 cr2: worst latency 0.153 s; after cancels: max 0 mean 0.0000
+PASS T9 cr2: local: inside 74.778, corners 0.000
+PASS T9 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: move/new/duplicate/delete in session: exposure.0 name='2' enabled=1 exposure=-0.4000;
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 cr2: fresh session lists the same instances after delete
+PASS X1 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 cr2 preview vs darktable-cli 1024 px export: size 1024x681 max 255 mean 6.42700 psnr 26.37 differing_values_pct 87.6863
+PASS C1 cr2: engine_info, image_info, modules JSON: image 3908x2602 raw 3944x2622 class bayer maker Canon model EOS 40D iso 1600 datetime 2007-09-11T13:53:33 rating 1;modules 97, without switch 9, in history 9, deprecated 16, one_instance 26; params: 3 struct, 77 array, 70 enum-like fields;modules() JSON 185204 bytes, 5.3 ms per call (x86_64);
+PASS C2 cr2: paths, types, ranges, params_set, grouping, reset: history after two rgbcurve changes 9 -> 10;grouping history 9 -> 10 -> 11 -> 12 -> 14 -> 15;exposure.0 before 1, after reset 0.7;exposure before 1, reset to defaults;exposure iop_order 1400, after move +1 1500, after -1 1400;
+PASS C2 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C2 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C3 cr2: undo/redo: states 12;undo of 'history_compress' (state 10, at the goto) modules equal history equal pixels max 0;undo of 'module_reset' (state 9) modules equal history equal pixels max 0;undo of 'instance_delete priority 0' (state 8) modules equal history equal pixels max 0;undo of 'instance_duplicate' (state 7) modules equal history equal pixels max 0;undo of 'instance_move' (state 6) modules equal history equal pixels max 0;undo of 'instance_rename' (state 5) modules equal history equal pixels max 0;undo of 'param_set new instance' (state 4) modules equal history equal pixels max 0;undo of 'instance_new' (state 3) modules equal history equal pixels max 0;undo of 'params_set' (state 2) modules equal history equal pixels max 0;undo of 'set_enabled vignette' (state 1) modules equal history equal pixels max 0;undo of 'param_set x2 (merged)' (state 0) modules equal history equal pixels max 0;redo of 'param_set x2 (merged)' (state 1) modules equal history equal pixels max 0;redo of 'set_enabled vignette' (state 2) modules equal history equal pixels max 0;redo of 'params_set' (state 3) modules equal history equal pixels max 0;redo of 'instance_new' (state 4) modules equal history equal pixels max 0;redo of 'param_set new instance' (state 5) modules equal history equal pixels max 0;redo of 'instance_rename' (state 6) modules equal history equal pixels max 0;redo of 'instance_move' (state 7) modules equal history equal pixels max 0;redo of 'instance_duplicate' (state 8) modules equal history equal pixels max 0;redo of 'instance_delete priority 0' (state 9) modules equal history equal pixels max 0;redo of 'module_reset' (state 10, at the goto) modules equal history equal pixels max 0;redo of 'history_compress' (state 11) modules equal history equal pixels max 0;undo depth after 60 changes: 70 steps;
+PASS C3 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C4 cr2: module actions: get_wb 5105.2 K tint 1.0507 preset as shot;after set_wb 4500/1.05: get_wb 4499.7 K tint 1.0500 preset user modified;white balance presets 8: 'as shot' 'camera reference' 'daylight' 'shade' 'cloudy' 'tungsten' 'fluorescent' 'flash';camera preset 'daylight' applied, get_wb reports 'daylight';lensfun cameras 948;lens params now: camera 'Canon EOS 40D' lens 'Canon EF 100mm f/2.8 Macro USM';lenses for 'Canon EOS 40D': 302;set_lens 'Sigma 4.5mm f/2.8 EX DC HSM circular fisheye': params lens 'Sigma 4.5mm f/2.8 EX DC HSM circular fisheye' scale 0.01002 crop 1.622;noise profiles 15: 'found ISO 1600' 'Canon EOS 40D iso 100' 'Canon EOS 40D iso 125' 'Canon EOS 40D iso 160' 'Canon EOS 40D iso 200' 'Canon EOS 40D iso 250' 'Can;set_profile 'Canon EOS 40D iso 100': a[0] 7.399e-06;noise profile index: 15 entries, index = position, 14 set by index, 0 repeated names (0 with different values), errors RANGE/TYPE/ARG as specified;
+PASS C4 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C5 cr2: set_threads, set_thread_cpus: threads max 4; probe render 1 thread 0.039 s, 4 threads 0.002 s (build workspace or CI runner, not a phone); 1 vs all max diff 7;threads pinned to CPU 0: 0 before, 4 after (engine thread + 3 OpenMP threads expected);after unpinning: 0 threads still on CPU 0 only;
+PASS C6 cr2: read-only refusal: read-only session: 20 of 20 mutating calls refused;read-only session: history_goto 0 and back to 9 allowed;
+PASS C9 cr2: a drag resynchronises one item; picture = fresh session: drag exposure.exposure (3 steps, 1 item): region vs fresh session max 0, preview max 0;sealed changes colorbalancergb.saturation_global (3 steps, 3 items): region vs fresh session max 0, preview max 0;sealed changes exposure.black (3 steps, 3 items): region vs fresh session max 0, preview max 0;drag colorbalancergb.vibrance (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag sigmoid.middle_grey_contrast (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.red (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.blue (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag colorin.type (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag demosaic.demosaicing_method (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag: 9 drags, worst difference to a fresh session 0;
+PASS C9 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C8 cr2: open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit: default edit: 11 history items, end 11;open(raw, NULL) after an edited session: modules equal, history equal, pixels max 0;open(raw, xmp) after an edited session: modules equal, history equal, pixels max 0;open(raw, NULL) after a session on another XMP: modules equal, history equal, pixels max 0;open(raw, xmp) after a session on another XMP: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar, after an edited session: modules equal, history equal, pixels max 0;open(copy, NULL) after its sidecar was removed: modules equal, history equal, pixels max 0;
+PASS C8 cr2/default-edit-vs-cli: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 cr2: xmp_write, export, metadata_reload: webp format plugin not built: ARG expected;export e_default.jpg (defaults) -> 0, 6060002 bytes;export e_q80_small.jpg {"format": "jpeg", "quality": 80, "max_width": 1000, "max_height": 1000} -> 0, 153705 bytes;export e_8.png {"format": "png", "bit_depth": 8} -> 0, 19073113 bytes;export e_16.png {"format": "png", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 2295401 bytes;export e_16.tif {"format": "tiff", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 2374932 bytes;export e_32.tif {"format": "tiff", "bit_depth": 32, "max_width": 400, "max_height": 400} -> 0, 1033202 bytes;export e.webp {"format": "webp", "quality": 90, "max_width": 800, "max_height": 800} -> -2, -1 bytes;export e_adobe.jpg {"profile": "adobergb", "max_width": 800, "max_height": 800} -> 0, 259977 bytes;export e_p3.jpg {"profile": "displayp3", "max_width": 800, "max_height": 800} -> 0, 274581 bytes;export e_srgb.jpg {"profile": "srgb", "max_width": 800, "max_height": 800, "high_quality": false} -> 0, 296071 bytes;export e_up.jpg {"max_width": 9000, "max_height": 9000, "upscale": true} -> 0, 20364375 bytes;export bad1.jpg {"format": "bmp"} -> -2, -1 bytes;export bad2.jpg {"format": "jpeg", "bit_depth": 16} -> -2, -1 bytes;export bad3.jpg {"quality": 0} -> -5, -1 bytes;export bad4.jpg {"colour": 1} -> -2, -1 bytes;export bad5.jpg {"profile": "prophoto"} -> -2, -1 bytes;export bad6.jpg {"upscale": 1} -> -4, -1 bytes;metadata_reload: rating 4, labels [0, 3];
+PASS C7 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C10 cr2: undecodable files refused at open; truncated RAW; non-raw opens: e1 junk: open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/cr2/junk.cr2: no loader could decode it (unsupported format, or a truncated or corru;e1 empty: open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/cr2/empty.cr2: darktable does not recognise it as a picture (import refused);e1 truncated 0.1% (15855 of 15855600 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/cr2/cut0001.cr2: read error (load status 7);e1 truncated 1.0% (158556 of 15855600 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/cr2/cut0010.cr2: no loader could decode it (uns;e1 truncated 10.0% (1585560 of 15855600 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/cr2/cut0100.cr2: no loader could decode it (u;e1 truncated 50.0% (7927800 of 15855600 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/cr2/cut0500.cr2: no loader could decode it (u;e1 truncated 90.0% (14270040 of 15855600 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/cr2/cut0900.cr2: no loader could decode it (;e1 truncated 99.0% (15697044 of 15855600 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/cr2/cut0990.cr2: no loader could decode it (;e1 truncated 99.9% (15839744 of 15855600 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/cr2/cut0999.cr2: no loader could decode it (;e1 truncated: 7 refused, 0 opened;e1 nonraw png: open OK in 0.28 s; image_info 3908 x 2602 (raw 3908 x 2602);e1 nonraw png: render_preview answered 0 (511 x 341);e1 nonraw png: render_region at 1/4 answered 0 (977 x 650);
+PASS C11 cr2: presets: list, apply, store, rename, delete, import, export: presets exposure without image: 2 presets, 2 built-in;preset apply '_builtin_magic lantern defaults': history 11 -> 12 items;preset store/overwrite/apply: exposure 0.5500;preset export: /home/runner/bridge-tests/cr2/p1b test.dtpreset;preset import: exposure/p1b test usable 1;preset import unknown module: preset 'p1b unknown' cannot be imported: unknown_operation (module nosuchmodule version 7, blend version 15);preset import newer version: preset 'p1b newer' cannot be imported: newer_module_version (module exposure version 99, blend version 15);
+PASS C11 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 cr2: presets kept in the configuration folder across processes
+PASS C12 cr2: styles: list, import, refuse, apply append/overwrite, create, delete: styles at start: 534 (darktable imports its shipped styles at start-up);styles import: 3 imported, 2 refused;style 'p1b public': 2 items;style apply unknown: style 'p1b unknown' cannot be applied: item 9 'nosuchmodule' unknown_operation (version 1, blend version 13); item 10 'nosuchmodule' unknow;style apply newer: style 'p1b newer' cannot be applied: item 9 'lowlight' newer_module_version (version 99, blend version 13); item 10 'exposure' newer_module_v;style append: history 12 -> 14 items;style overwrite: history 13 items (default edit 11);style created from all items: 11 items;
+PASS C12 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 cr2/bridge-append-vs-cli-style: size 3908x2602 max 2 mean 0.17746 psnr 55.64 differing_values_pct 17.7458
+INFO C12 cr2 bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): size 3908x2602 max 80 mean 24.06215 psnr 18.98 differing_values_pct 97.4813
+PASS C12 cr2: styles kept in the configuration folder across processes
+PASS C13 cr2: the default edit equals the bridge's reopened XMP of it: defedit bridge fresh vs bridge reopened XMP: max 0 mean 0.00000;
+PASS C13 cr2/default-edit-xmp-vs-cli: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C14 cr2: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 28 entries; current input DT_COLORSPACE_ENHANCED_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_STANDARD_MATRIX;denoiseprofile: 15 entries, current index 0;get_wb before: preset as shot, preset_index set;get_wb after 'daylight' tuning 0: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 288 of 302 lenses with min_aperture;
+PASS C14 cr2: size 4342x2891 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C16 cr2: per-module times of the last render: times preview: pipe preview, total 38.8 ms, 7 modules, sum 37.7 ms;times after exposure change: 3 modules, first exposure;times full at 1/2: total 367.2 ms, 7 modules;
+PASS C17 cr2: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 193402 bytes);exposure exposure 0 (on 1): size 2735x2211 bypass 2735x2211, preview 512x414 max 0, region 683x552 max 0; with it in: 2735x2211;crop session unchanged by bypass renders: yes (XMP 193402 bytes);crop crop 0 (on 1): size 3908x2602 bypass 3908x2602, preview 512x340 max 0, region 977x650 max 0; with it in: 2735x2211;
+PASS C18 cr2: undo and redo keep the XMP's history hashes: opened: auto (none) basic (none) current 7b03bac43179 timestamp -1;after two undos: auto (none) (opened (none)), timestamp 63930780667508857 (last change 63930780667508857, opened -1);redo back to the last state: XMP byte-equal yes; timestamps -1 63930780666506635 63930780667508857;
+PASS C19 cr2: colour pickers, histogram, picker actions: global picker: preview 1341x893, box 536,312..831,491, mean 0.5610 0.4123 0.3651, 8-bit mean differs by 0.414 levels;exposure picker: rgb in mean 0.13303 0.09629 0.08786, out mean 0.26607 0.19257 0.17572, scale 2.00000 (spread 0.00e+00), black 0.0000;point pick box 670,446..671,447;pick through crop: box 1004,669 (without crop 670,446), ratio 1.499 1.500 (expected 1.5);histogram 512x340, 174080 pixels, max 9390;temperature wb_from_area: raw picked 0.06384 0.09643 0.06291, coefficients 1.51048 1.00000 1.53283 (desktop's formula: max diff 1.19e-07);exposure spot: 1.0000 EV -> 0.9379 EV for lightness 50; measured afterwards 50.0000;rgblevels black picker: picked 0.18333, black 0.18333 (desktop's rule: 0.18333);rgbcurve set_nodes_from_area: 6 nodes (params 6), sorted 1, on the diagonal 1;history items: 9 before the actions, 15 after;
+PASS C20 cr2: coordinates between the original and the picture: coords as opened: original 3944x2622, picture 3908x2602, centre -> 0.4969,0.4969, round trip max 0.000 px;coords crop: picture 1954x1301 (without crop 3908x2602), relation off by 0.000 px;coords crop: original 3944x2622, picture 1954x1301, centre -> -0.0061,-0.0061, round trip max 0.000 px;coords orientation: picture 2602x3908 (without 3908x2602), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 3944x2622, picture 2536x3852, centre -> 0.5313,0.5234, round trip max 0.002 px;
+PASS C21 cr2: blending: get, set, validation, grouping: exposure blending as opened: supported 1, masks off, colorspace rgb_display (rgb_display), mode normal, opacity 100;blend_set uniform 60 %: history 9 -> 10, masks uniform, opacity 60;parametric: masks parametric, g_in active 1 invert 1 range 0.20..0.60, combine invert 1;colour space lab: mode normal, L_in active 0;
+PASS C21 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== raf: xtransIV.raf with lens-metadata-xtransIV-modversion-7.xmp
+PASS T1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 raf: modules and history JSON parse: 97 module instances, 12 history items
+PASS T2 raf: history 12 end 12 -> 13 end 13, exposure 0.7000 -> 1.7000
+PASS T2 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: duplicate/change/off/on in session (new priority 1)
+PASS T3 raf: fresh session lists the same exposure instances: exposure.0 name='' enabled=1 exposure=0.7000;exposure.1 name='1' enabled=1 exposure=-0.5000;
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: 12 end 12; goto 11 differs_from_top max 139 mean 16.8457; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO T5 raf base region 0: 0 at 2869,1828 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.251
+PASS T5 raf/base/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 raf: base region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 raf base region 1: 1 at 0,0 max 11 mean 0.0076 deepest_diff_from_edge 10 render_s 0.114
+PASS T5 raf/base/region1: size 512x512 max 11 mean 0.00756 psnr 66.54 differing_values_pct 0.5334
+INFO T5 raf base region 1 is a listed difference (t5_expected.txt): bounds max 11, mean 0.0077
+PASS T5 raf: base region 1 rendered again after the others: max 11 mean 0.0076
+INFO T5 raf base region 2: 2 at 5701,3633 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.107
+PASS T5 raf/base/region2: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 raf: base region 2 rendered again after the others: max 0 mean 0.0000
+INFO T5 raf base at scale 0.5: region at 1435,915 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 2 mean 0.0020;
+PASS T5 raf/base/region0-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 raf/base/region1-vs-cli: size 512x512 max 11 mean 0.00756 psnr 66.54 differing_values_pct 0.5334
+PASS T5 raf/base/region2-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T6 raf: newer.xmp: exposure modversion 6 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule unknown_first.xmp: first entry rawprepare -> s3notamodule reported and refused (see T6.log)
+PASS T6 raf: guarded files unchanged
+INFO T7 raf (x86_64, 4 cores): size 6250x4168 preview 1024x683;open_s 0.498;first_full_render_s 5.741;unchanged_full_render_s 0.158;late_change_full_render_s 6.015;early_change_full_render_s 6.110;late_change_region_1920x1080_s 0.736;preview_first_s 0.290;preview_late_change_s 0.024;preview_early_change_s 0.091;
+PASS T8 raf: worst latency 0.737 s; after cancels: max 0 mean 0.0000
+PASS T9 raf: local: inside 74.515, corners 0.000
+PASS T9 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: move/new/duplicate/delete in session: exposure.0 name='2' enabled=1 exposure=-0.4000;
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 raf: fresh session lists the same instances after delete
+PASS X1 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 raf preview vs darktable-cli 1024 px export: SHAPE_MISMATCH (683, 1024, 3) (682, 1024, 3)
+PASS C1 raf: engine_info, image_info, modules JSON: image 6250x4168 raw 6384x4182 class xtrans maker Fujifilm model X-T3 iso 250 datetime 2023-04-28T15:01:49 rating 1;modules 97, without switch 10, in history 12, deprecated 16, one_instance 26; params: 3 struct, 77 array, 70 enum-like fields;modules() JSON 185300 bytes, 5.2 ms per call (x86_64);
+PASS C2 raf: paths, types, ranges, params_set, grouping, reset: history after two rgbcurve changes 12 -> 13;grouping history 12 -> 13 -> 14 -> 15 -> 17 -> 18;exposure.0 before 0.7, after reset 0.7;exposure before 0.7, reset to defaults;exposure iop_order 2600, after move +1 2800, after -1 2700;
+PASS C2 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C2 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C3 raf: undo/redo: states 12;undo of 'history_compress' (state 10, at the goto) modules equal history equal pixels max 0;undo of 'module_reset' (state 9) modules equal history equal pixels max 0;undo of 'instance_delete priority 0' (state 8) modules equal history equal pixels max 0;undo of 'instance_duplicate' (state 7) modules equal history equal pixels max 0;undo of 'instance_move' (state 6) modules equal history equal pixels max 0;undo of 'instance_rename' (state 5) modules equal history equal pixels max 0;undo of 'param_set new instance' (state 4) modules equal history equal pixels max 0;undo of 'instance_new' (state 3) modules equal history equal pixels max 0;undo of 'params_set' (state 2) modules equal history equal pixels max 0;undo of 'set_enabled vignette' (state 1) modules equal history equal pixels max 0;undo of 'param_set x2 (merged)' (state 0) modules equal history equal pixels max 0;redo of 'param_set x2 (merged)' (state 1) modules equal history equal pixels max 0;redo of 'set_enabled vignette' (state 2) modules equal history equal pixels max 0;redo of 'params_set' (state 3) modules equal history equal pixels max 0;redo of 'instance_new' (state 4) modules equal history equal pixels max 0;redo of 'param_set new instance' (state 5) modules equal history equal pixels max 0;redo of 'instance_rename' (state 6) modules equal history equal pixels max 0;redo of 'instance_move' (state 7) modules equal history equal pixels max 0;redo of 'instance_duplicate' (state 8) modules equal history equal pixels max 0;redo of 'instance_delete priority 0' (state 9) modules equal history equal pixels max 0;redo of 'module_reset' (state 10, at the goto) modules equal history equal pixels max 0;redo of 'history_compress' (state 11) modules equal history equal pixels max 0;undo depth after 60 changes: 70 steps;
+PASS C3 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C4 raf: module actions: get_wb 6502.4 K tint 1.0000 preset camera reference;after set_wb 4500/1.05: get_wb 4499.7 K tint 1.0500 preset user modified;white balance presets 9: 'as shot' 'camera reference' 'daylight' 'cloudy' 'incandescent' 'day white fluorescent' 'daylight fluorescent' 'white fluorescent' 'und;camera preset 'daylight' applied, get_wb reports 'daylight';lensfun cameras 948;lens params now: camera 'X-T3' lens 'SIGMA 18-50mm F2.8 DC DN | Contemporary 021';lenses for 'X-T3': 90;set_lens 'Samyang 8mm f/2.8 UMC Fish-eye': params lens 'Samyang 8mm f/2.8 UMC Fish-eye' scale 0.76512 crop 1.534;noise profiles 23: 'found ISO 250' 'X-T3 iso 80' 'X-T3 iso 160' 'X-T3 iso 200' 'X-T3 iso 250' 'X-T3 iso 320' 'X-T3 iso 400' 'X-T3 iso 500' 'X-T3 iso 640' 'X-T3 ;set_profile 'X-T3 iso 80': a[0] 4.93152e-06;noise profile index: 23 entries, index = position, 22 set by index, 0 repeated names (0 with different values), errors RANGE/TYPE/ARG as specified;
+PASS C4 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C5 raf: set_threads, set_thread_cpus: threads max 4; probe render 1 thread 0.265 s, 4 threads 0.004 s (build workspace or CI runner, not a phone); 1 vs all max diff 4;threads pinned to CPU 0: 0 before, 4 after (engine thread + 3 OpenMP threads expected);after unpinning: 0 threads still on CPU 0 only;
+PASS C6 raf: read-only refusal: read-only session: 20 of 20 mutating calls refused;read-only session: history_goto 0 and back to 12 allowed;
+PASS C9 raf: a drag resynchronises one item; picture = fresh session: drag exposure.exposure (3 steps, 1 item): region vs fresh session max 0, preview max 0;sealed changes colorbalancergb.saturation_global (3 steps, 3 items): region vs fresh session max 0, preview max 0;sealed changes exposure.black (3 steps, 3 items): region vs fresh session max 0, preview max 0;drag colorbalancergb.vibrance (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag sigmoid.middle_grey_contrast (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.red (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.blue (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag colorin.type (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag: 8 drags, worst difference to a fresh session 0;
+PASS C9 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C8 raf: open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit: default edit: 11 history items, end 11;open(raw, NULL) after an edited session: modules equal, history equal, pixels max 0;open(raw, xmp) after an edited session: modules equal, history equal, pixels max 0;open(raw, NULL) after a session on another XMP: modules equal, history equal, pixels max 0;open(raw, xmp) after a session on another XMP: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar, after an edited session: modules equal, history equal, pixels max 0;open(copy, NULL) after its sidecar was removed: modules equal, history equal, pixels max 0;
+PASS C8 raf/default-edit-vs-cli: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 raf: xmp_write, export, metadata_reload: webp format plugin not built: ARG expected;export e_default.jpg (defaults) -> 0, 6626112 bytes;export e_q80_small.jpg {"format": "jpeg", "quality": 80, "max_width": 1000, "max_height": 1000} -> 0, 87840 bytes;export e_8.png {"format": "png", "bit_depth": 8} -> 0, 30002854 bytes;export e_16.png {"format": "png", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 2042409 bytes;export e_16.tif {"format": "tiff", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 2193344 bytes;export e_32.tif {"format": "tiff", "bit_depth": 32, "max_width": 400, "max_height": 400} -> 0, 939676 bytes;export e.webp {"format": "webp", "quality": 90, "max_width": 800, "max_height": 800} -> -2, -1 bytes;export e_adobe.jpg {"profile": "adobergb", "max_width": 800, "max_height": 800} -> 0, 129813 bytes;export e_p3.jpg {"profile": "displayp3", "max_width": 800, "max_height": 800} -> 0, 141691 bytes;export e_srgb.jpg {"profile": "srgb", "max_width": 800, "max_height": 800, "high_quality": false} -> 0, 141046 bytes;export e_up.jpg {"max_width": 9000, "max_height": 9000, "upscale": true} -> 0, 12684386 bytes;export bad1.jpg {"format": "bmp"} -> -2, -1 bytes;export bad2.jpg {"format": "jpeg", "bit_depth": 16} -> -2, -1 bytes;export bad3.jpg {"quality": 0} -> -5, -1 bytes;export bad4.jpg {"colour": 1} -> -2, -1 bytes;export bad5.jpg {"profile": "prophoto"} -> -2, -1 bytes;export bad6.jpg {"upscale": 1} -> -4, -1 bytes;metadata_reload: rating 4, labels [0, 3];
+PASS C7 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C10 raf: undecodable files refused at open; truncated RAW; non-raw opens: e1 junk: open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/raf/junk.raf: no loader could decode it (unsupported format, or a truncated or corru;e1 empty: open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/raf/empty.raf: darktable does not recognise it as a picture (import refused);e1 truncated 0.1% (30844 of 30844144 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/raf/cut0001.raf: no loader could decode it (unsu;e1 truncated 1.0% (308441 of 30844144 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/raf/cut0010.raf: no loader could decode it (uns;e1 truncated 10.0% (3084414 of 30844144 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/raf/cut0100.raf: no loader could decode it (u;e1 truncated 50.0% (15422072 of 30844144 bytes): open refused -6 in 0.41 s: cannot decode /home/runner/bridge-tests/raf/cut0500.raf: read error (load status 7);e1 truncated 90.0% (27759729 of 30844144 bytes): open refused -6 in 0.49 s: cannot decode /home/runner/bridge-tests/raf/cut0900.raf: read error (load status 7);e1 truncated 99.0% (30535702 of 30844144 bytes): open refused -6 in 0.51 s: cannot decode /home/runner/bridge-tests/raf/cut0990.raf: read error (load status 7);e1 truncated 99.9% (30813299 of 30844144 bytes): open refused -6 in 0.49 s: cannot decode /home/runner/bridge-tests/raf/cut0999.raf: read error (load status 7);e1 truncated: 7 refused, 0 opened;e1 nonraw png: open OK in 0.70 s; image_info 6250 x 4168 (raw 6250 x 4168);e1 nonraw png: render_preview answered 0 (512 x 341);e1 nonraw png: render_region at 1/4 answered 0 (1562 x 1042);
+PASS C11 raf: presets: list, apply, store, rename, delete, import, export: presets exposure without image: 2 presets, 2 built-in;preset apply '_builtin_magic lantern defaults': history 11 -> 12 items;preset store/overwrite/apply: exposure 0.5500;preset export: /home/runner/bridge-tests/raf/p1b test.dtpreset;preset import: exposure/p1b test usable 1;preset import unknown module: preset 'p1b unknown' cannot be imported: unknown_operation (module nosuchmodule version 7, blend version 15);preset import newer version: preset 'p1b newer' cannot be imported: newer_module_version (module exposure version 99, blend version 15);
+PASS C11 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 raf: presets kept in the configuration folder across processes
+PASS C12 raf: styles: list, import, refuse, apply append/overwrite, create, delete: styles at start: 534 (darktable imports its shipped styles at start-up);styles import: 3 imported, 2 refused;style 'p1b public': 2 items;style apply unknown: style 'p1b unknown' cannot be applied: item 9 'nosuchmodule' unknown_operation (version 1, blend version 13); item 10 'nosuchmodule' unknow;style apply newer: style 'p1b newer' cannot be applied: item 9 'lowlight' newer_module_version (version 99, blend version 13); item 10 'exposure' newer_module_v;style append: history 12 -> 14 items;style overwrite: history 13 items (default edit 11);style created from all items: 11 items;
+PASS C12 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 raf: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 raf/bridge-append-vs-cli-style: size 6240x4160 max 1 mean 0.18920 psnr 55.36 differing_values_pct 18.9195
+INFO C12 raf bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): size 6240x4160 max 36 mean 16.67864 psnr 22.92 differing_values_pct 99.5214
+PASS C12 raf: styles kept in the configuration folder across processes
+PASS C13 raf: the default edit equals the bridge's reopened XMP of it: defedit bridge fresh vs bridge reopened XMP: max 0 mean 0.00000;
+PASS C13 raf/default-edit-xmp-vs-cli: size 6240x4160 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C14 raf: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 27 entries; current input DT_COLORSPACE_STANDARD_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_SRGB;denoiseprofile: 23 entries, current index 0;get_wb before: preset camera reference, preset_index set;get_wb after 'daylight' tuning 0: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 83 of 90 lenses with min_aperture;
+PASS C14 raf: size 6944x4631 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C16 raf: per-module times of the last render: times preview: pipe preview, total 94.3 ms, 10 modules, sum 90.3 ms;times after exposure change: 5 modules, first exposure;times full at 1/2: total 2433.8 ms, 10 modules;
+PASS C17 raf: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 195174 bytes);exposure exposure 0 (on 1): size 4375x3542 bypass 4375x3542, preview 511x415 max 0, region 1093x885 max 0; with it in: 4375x3542;crop session unchanged by bypass renders: yes (XMP 195174 bytes);crop crop 0 (on 1): size 6250x4168 bypass 6250x4168, preview 512x341 max 0, region 1562x1042 max 0; with it in: 4375x3542;
+PASS C18 raf: undo and redo keep the XMP's history hashes: opened: auto 88b663c157e043c705498a260f7a5745 basic (none) current bf02f44608c0 timestamp (none);after two undos: auto 88b663c157e043c705498a260f7a5745 (opened 88b663c157e043c705498a260f7a5745), timestamp 63930781358911098 (last change 63930781358911098, op;redo back to the last state: XMP byte-equal yes; timestamps (none) 63930781357908488 63930781358911098;
+PASS C19 raf: colour pickers, histogram, picker actions: global picker: preview 1344x897, box 537,313..833,493, mean 0.4992 0.4852 0.4929, 8-bit mean differs by 0.001 levels;exposure picker: rgb in mean 0.14618 0.12686 0.11641, out mean 0.23776 0.20640 0.18942, scale 1.62386 (spread 7.56e-08), black -0.0002;point pick box 672,448..673,449;pick through crop: box 1008,672 (without crop 672,448), ratio 1.500 1.500 (expected 1.5);histogram 512x341, 174592 pixels, max 4298;temperature wb_from_area: raw picked 0.06992 0.12576 0.07856, coefficients 1.79857 1.00000 1.60087 (desktop's formula: max diff 1.19e-07);exposure spot: 0.7000 EV -> 0.5376 EV for lightness 50; measured afterwards 50.0000;rgblevels black picker: picked 0.17453, black 0.17453 (desktop's rule: 0.17453);rgbcurve set_nodes_from_area: 6 nodes (params 6), sorted 1, on the diagonal 1;history items: 12 before the actions, 18 after;
+PASS C20 raf: coordinates between the original and the picture: coords as opened: original 6384x4182, picture 6250x4168, centre -> 0.5104,0.4998, round trip max 0.512 px;coords crop: picture 3125x2084 (without crop 6250x4168), relation off by 0.000 px;coords crop: original 6384x4182, picture 3125x2084, centre -> 0.0207,-0.0005, round trip max 0.512 px;coords orientation: picture 4168x6250 (without 6250x4168), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 6384x4182, picture 4060x6162, centre -> 0.5297,0.5371, round trip max 0.512 px;
+PASS C21 raf: blending: get, set, validation, grouping: exposure blending as opened: supported 1, masks off, colorspace rgb_scene (rgb_scene), mode normal, opacity 100;blend_set uniform 60 %: history 12 -> 13, masks uniform, opacity 60;parametric: masks parametric, g_in active 1 invert 1 range 0.20..0.60, combine invert 1;colour space lab: mode normal, L_in active 0;
+PASS C21 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== arw: hlrecovery.arw with spektrafilm.xmp
+PASS T1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T1 arw: modules and history JSON parse: 98 module instances, 14 history items
+PASS T2 arw: history 14 end 14 -> 15 end 15, exposure 0.7000 -> 1.7000
+PASS T2 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: duplicate/change/off/on in session (new priority 2)
+PASS T3 arw: fresh session lists the same exposure instances: exposure.0 name='_builtin_scene-referred default' enabled=1 exposure=0.7000;exposure.1 name='after' enabled=1 exposure=0.5500;exposure.2 name='2' enabled=1 exposure=-0.5000;
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: 14 end 14; goto 13 differs_from_top max 40 mean 19.9579; back to top: max 0 mean 0.0000; history 12 end 12; compress vs top: max 0 mean 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO T5 arw base region 0: 0 at 2490,1580 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.572
+PASS T5 arw/base/region0: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: base region 0 rendered again after the others: max 0 mean 0.0000
+INFO T5 arw base region 1: 1 at 0,0 max 0 mean 0.0000 deepest_diff_from_edge -1 render_s 0.259
+PASS T5 arw/base/region1: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw: base region 1 rendered again after the others: max 0 mean 0.0000
+INFO T5 arw base region 2: 2 at 4943,3137 max 1 mean 0.0000 deepest_diff_from_edge 130 render_s 0.223
+PASS T5 arw/base/region2: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+INFO T5 arw base region 2 is a listed difference (t5_expected.txt): bounds max 1, mean 0.0001
+PASS T5 arw: base region 2 rendered again after the others: max 1 mean 0.0000
+INFO T5 arw base at scale 0.5: region at 1246,791 vs full render at scale 0.5: max 0 mean 0.0000;region at 0,0 vs full render at scale 0.5: max 0 mean 0.0000;
+PASS T5 arw/base/region0-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw/base/region1-vs-cli: size 512x512 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS T5 arw/base/region2-vs-cli: size 512x512 max 1 mean 0.00000 psnr 104.08 differing_values_pct 0.0003
+PASS T6 arw: newer.xmp: exposure modversion 7 -> 8 (engine has 7) unknown.xmp: exposure -> s3notamodule unknown_first.xmp: first entry rawprepare -> s3notamodule reported and refused (see T6.log)
+PASS T6 arw: guarded files unchanged
+INFO T7 arw (x86_64, 4 cores): size 5492x3672 preview 1024x684;open_s 0.081;first_full_render_s 2.056;unchanged_full_render_s 0.117;late_change_full_render_s 0.775;early_change_full_render_s 2.298;late_change_region_1920x1080_s 1.071;preview_first_s 0.146;preview_late_change_s 0.026;preview_early_change_s 0.063;
+PASS T8 arw: worst latency 0.361 s; after cancels: max 0 mean 0.0000
+PASS T9 arw: local: inside 76.291, corners 0.000
+PASS T9 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: move/new/duplicate/delete in session: exposure.0 name='after' enabled=1 exposure=0.5500;exposure.3 name='3' enabled=1 exposure=-0.4000;
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS X1 arw: fresh session lists the same instances after delete
+PASS X1 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+INFO X1 arw preview vs darktable-cli 1024 px export: size 1024x684 max 255 mean 2.85623 psnr 32.07 differing_values_pct 63.2792
+PASS C1 arw: engine_info, image_info, modules JSON: image 5492x3672 raw 5504x3672 class bayer maker Sony model DSC-RX100M3 iso 125 datetime 2018-09-08T16:23:32 rating 1;modules 98, without switch 9, in history 12, deprecated 16, one_instance 26; params: 3 struct, 77 array, 70 enum-like fields;modules() JSON 185982 bytes, 5.3 ms per call (x86_64);
+PASS C2 arw: paths, types, ranges, params_set, grouping, reset: history after two rgbcurve changes 14 -> 15;grouping history 14 -> 15 -> 16 -> 17 -> 19 -> 20;exposure.0 before 0.7, after reset 0.7;exposure before 0.7, reset to defaults;exposure iop_order 2600, after move +1 2800, after -1 2700;
+PASS C2 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C2 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C3 arw: undo/redo: states 12;undo of 'history_compress' (state 10, at the goto) modules equal history equal pixels max 0;undo of 'module_reset' (state 9) modules equal history equal pixels max 0;undo of 'instance_delete priority 0' (state 8) modules equal history equal pixels max 0;undo of 'instance_duplicate' (state 7) modules equal history equal pixels max 0;undo of 'instance_move' (state 6) modules equal history equal pixels max 0;undo of 'instance_rename' (state 5) modules equal history equal pixels max 0;undo of 'param_set new instance' (state 4) modules equal history equal pixels max 0;undo of 'instance_new' (state 3) modules equal history equal pixels max 0;undo of 'params_set' (state 2) modules equal history equal pixels max 0;undo of 'set_enabled vignette' (state 1) modules equal history equal pixels max 0;undo of 'param_set x2 (merged)' (state 0) modules equal history equal pixels max 0;redo of 'param_set x2 (merged)' (state 1) modules equal history equal pixels max 0;redo of 'set_enabled vignette' (state 2) modules equal history equal pixels max 0;redo of 'params_set' (state 3) modules equal history equal pixels max 0;redo of 'instance_new' (state 4) modules equal history equal pixels max 0;redo of 'param_set new instance' (state 5) modules equal history equal pixels max 0;redo of 'instance_rename' (state 6) modules equal history equal pixels max 0;redo of 'instance_move' (state 7) modules equal history equal pixels max 0;redo of 'instance_duplicate' (state 8) modules equal history equal pixels max 0;redo of 'instance_delete priority 0' (state 9) modules equal history equal pixels max 0;redo of 'module_reset' (state 10, at the goto) modules equal history equal pixels max 0;redo of 'history_compress' (state 11) modules equal history equal pixels max 0;undo depth after 60 changes: 70 steps;
+PASS C3 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C4 arw: module actions: get_wb 6010.4 K tint 1.0358 preset as shot;after set_wb 4500/1.05: get_wb 4499.7 K tint 1.0500 preset user modified;white balance presets 17: 'as shot' 'camera reference' 'daylight' 'shade' 'cloudy' 'tungsten' 'warm white fluorescent' 'cool white fluorescent' 'day white fluor;camera preset 'daylight' applied, get_wb reports 'daylight';lensfun cameras 948;lens params now: camera 'DSC-RX100M3' lens 'DSC-RX100 III & compatibles';lenses for 'DSC-RX100M3': 1;noise profiles 25: 'found ISO 125' 'DSC-RX100M3 iso 80' 'DSC-RX100M3 iso 100' 'DSC-RX100M3 iso 125' 'DSC-RX100M3 iso 160' 'DSC-RX100M3 iso 200' 'DSC-RX100M3 iso;set_profile 'DSC-RX100M3 iso 80': a[0] 2.09764e-05;noise profile name 'DSC-RX100M3 iso 1600' at index 14 and 15: a[0] 0.000239268 and 0.000236483 (different profiles); by name: 0.000239268;noise profile index: 25 entries, index = position, 24 set by index, 1 repeated names (1 with different values), errors RANGE/TYPE/ARG as specified;
+PASS C4 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C5 arw: set_threads, set_thread_cpus: threads max 4; probe render 1 thread 0.416 s, 4 threads 0.005 s (build workspace or CI runner, not a phone); 1 vs all max diff 9;threads pinned to CPU 0: 0 before, 4 after (engine thread + 3 OpenMP threads expected);after unpinning: 0 threads still on CPU 0 only;
+PASS C6 arw: read-only refusal: read-only session: 20 of 20 mutating calls refused;read-only session: history_goto 0 and back to 14 allowed;
+PASS C9 arw: a drag resynchronises one item; picture = fresh session: drag exposure.exposure (3 steps, 1 item): region vs fresh session max 0, preview max 0;sealed changes colorbalancergb.saturation_global (3 steps, 3 items): region vs fresh session max 0, preview max 0;sealed changes exposure.black (3 steps, 3 items): region vs fresh session max 0, preview max 0;drag colorbalancergb.vibrance (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag sigmoid.middle_grey_contrast (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.red (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag temperature.blue (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag colorin.type (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag demosaic.demosaicing_method (3 steps, 1 item): region vs fresh session max 0, preview max 0;drag: 9 drags, worst difference to a fresh session 0;
+PASS C9 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C8 arw: open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit: default edit: 11 history items, end 11;open(raw, NULL) after an edited session: modules equal, history equal, pixels max 0;open(raw, xmp) after an edited session: modules equal, history equal, pixels max 0;open(raw, NULL) after a session on another XMP: modules equal, history equal, pixels max 0;open(raw, xmp) after a session on another XMP: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar: modules equal, history equal, pixels max 0;open(copy, NULL) with a sidecar, after an edited session: modules equal, history equal, pixels max 0;open(copy, NULL) after its sidecar was removed: modules equal, history equal, pixels max 0;
+PASS C8 arw/default-edit-vs-cli: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 arw: xmp_write, export, metadata_reload: webp format plugin not built: ARG expected;export e_default.jpg (defaults) -> 0, 6869729 bytes;export e_q80_small.jpg {"format": "jpeg", "quality": 80, "max_width": 1000, "max_height": 1000} -> 0, 151087 bytes;export e_8.png {"format": "png", "bit_depth": 8} -> 0, 26792394 bytes;export e_16.png {"format": "png", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 1928299 bytes;export e_16.tif {"format": "tiff", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 1969148 bytes;export e_32.tif {"format": "tiff", "bit_depth": 32, "max_width": 400, "max_height": 400} -> 0, 976154 bytes;export e.webp {"format": "webp", "quality": 90, "max_width": 800, "max_height": 800} -> -2, -1 bytes;export e_adobe.jpg {"profile": "adobergb", "max_width": 800, "max_height": 800} -> 0, 218724 bytes;export e_p3.jpg {"profile": "displayp3", "max_width": 800, "max_height": 800} -> 0, 231729 bytes;export e_srgb.jpg {"profile": "srgb", "max_width": 800, "max_height": 800, "high_quality": false} -> 0, 239862 bytes;export e_up.jpg {"max_width": 9000, "max_height": 9000, "upscale": true} -> 0, 15455490 bytes;export bad1.jpg {"format": "bmp"} -> -2, -1 bytes;export bad2.jpg {"format": "jpeg", "bit_depth": 16} -> -2, -1 bytes;export bad3.jpg {"quality": 0} -> -5, -1 bytes;export bad4.jpg {"colour": 1} -> -2, -1 bytes;export bad5.jpg {"profile": "prophoto"} -> -2, -1 bytes;export bad6.jpg {"upscale": 1} -> -4, -1 bytes;metadata_reload: rating 4, labels [0, 3];
+PASS C7 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C7 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C10 arw: undecodable files refused at open; truncated RAW; non-raw opens: e1 junk: open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/arw/junk.arw: no loader could decode it (unsupported format, or a truncated or corru;e1 empty: open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/empty.arw: darktable does not recognise it as a picture (import refused);e1 truncated 0.1% (20908 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0001.arw: read error (load status 7);e1 truncated 1.0% (209085 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0010.arw: no loader could decode it (uns;e1 truncated 10.0% (2090854 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0100.arw: no loader could decode it (u;e1 truncated 50.0% (10454272 of 20908544 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/arw/cut0500.arw: no loader could decode it (;e1 truncated 90.0% (18817689 of 20908544 bytes): open refused -6 in 0.02 s: cannot decode /home/runner/bridge-tests/arw/cut0900.arw: no loader could decode it (;e1 truncated 99.0% (20699458 of 20908544 bytes): open refused -6 in 0.02 s: cannot decode /home/runner/bridge-tests/arw/cut0990.arw: no loader could decode it (;e1 truncated 99.9% (20887635 of 20908544 bytes): open refused -6 in 0.02 s: cannot decode /home/runner/bridge-tests/arw/cut0999.arw: no loader could decode it (;e1 truncated: 7 refused, 0 opened;e1 nonraw png: open OK in 0.48 s; image_info 5492 x 3672 (raw 5492 x 3672);e1 nonraw png: render_preview answered 0 (512 x 342);e1 nonraw png: render_region at 1/4 answered 0 (1373 x 918);
+PASS C11 arw: presets: list, apply, store, rename, delete, import, export: presets exposure without image: 2 presets, 2 built-in;preset apply '_builtin_magic lantern defaults': history 11 -> 12 items;preset store/overwrite/apply: exposure 0.5500;preset export: /home/runner/bridge-tests/arw/p1b test.dtpreset;preset import: exposure/p1b test usable 1;preset import unknown module: preset 'p1b unknown' cannot be imported: unknown_operation (module nosuchmodule version 7, blend version 15);preset import newer version: preset 'p1b newer' cannot be imported: newer_module_version (module exposure version 99, blend version 15);
+PASS C11 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C11 arw: presets kept in the configuration folder across processes
+PASS C12 arw: styles: list, import, refuse, apply append/overwrite, create, delete: styles at start: 534 (darktable imports its shipped styles at start-up);styles import: 3 imported, 2 refused;style 'p1b public': 2 items;style apply unknown: style 'p1b unknown' cannot be applied: item 9 'nosuchmodule' unknown_operation (version 1, blend version 13); item 10 'nosuchmodule' unknow;style apply newer: style 'p1b newer' cannot be applied: item 9 'lowlight' newer_module_version (version 99, blend version 13); item 10 'exposure' newer_module_v;style append: history 12 -> 14 items;style overwrite: history 13 items (default edit 11);style created from all items: 11 items;
+PASS C12 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C12 arw/bridge-append-vs-cli-style: size 5492x3672 max 1 mean 0.16968 psnr 55.83 differing_values_pct 16.9679
+INFO C12 arw bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): size 5492x3672 max 70 mean 18.83000 psnr 20.89 differing_values_pct 98.4551
+PASS C12 arw: styles kept in the configuration folder across processes
+PASS C13 arw: the default edit equals the bridge's reopened XMP of it: defedit bridge fresh vs bridge reopened XMP: max 0 mean 0.00000;
+PASS C13 arw/default-edit-xmp-vs-cli: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C14 arw: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 27 entries; current input DT_COLORSPACE_STANDARD_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_SRGB;denoiseprofile: 25 entries, current index 0;get_wb before: preset as shot, preset_index set;get_wb after 'daylight' tuning -6: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 1 of 1 lenses with min_aperture;
+PASS C14 arw: size 6102x4080 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C16 arw: per-module times of the last render: times preview: pipe preview, total 58.8 ms, 10 modules, sum 54.6 ms;times after exposure change: 6 modules, first exposure;times full at 1/2: total 1080.0 ms, 10 modules;
+PASS C17 arw: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 199205 bytes);exposure exposure 0 (on 1): size 3844x3121 bypass 3844x3121, preview 512x415 max 0, region 961x780 max 0; with it in: 3844x3121;crop session unchanged by bypass renders: yes (XMP 199205 bytes);crop crop 0 (on 1): size 5492x3672 bypass 5492x3672, preview 512x342 max 0, region 1373x918 max 0; with it in: 3844x3121;
+PASS C18 arw: undo and redo keep the XMP's history hashes: opened: auto 0d5674dbfd8b0b474ba8b2eab6c20e67 basic (none) current 1974b2954755 timestamp (none);after two undos: auto 0d5674dbfd8b0b474ba8b2eab6c20e67 (opened 0d5674dbfd8b0b474ba8b2eab6c20e67), timestamp 63930781810609412 (last change 63930781810609412, op;redo back to the last state: XMP byte-equal yes; timestamps (none) 63930781809606267 63930781810609412;
+PASS C19 arw: colour pickers, histogram, picker actions: global picker: preview 1346x900, box 538,315..834,495, mean 0.4489 0.4625 0.4677, 8-bit mean differs by 0.299 levels;exposure picker: rgb in mean 0.08734 0.09287 0.09438, out mean 0.14222 0.15121 0.15366, scale 1.62386 (spread 6.50e-08), black -0.0002;point pick box 673,450..674,451;pick through crop: box 1009,675 (without crop 673,450), ratio 1.499 1.500 (expected 1.5);histogram 512x342, 175104 pixels, max 42315;temperature wb_from_area: raw picked 0.03227 0.09291 0.05563, coefficients 2.87870 1.00000 1.67001 (desktop's formula: max diff 0.00e+00);exposure spot: 0.7000 EV -> 0.9839 EV for lightness 50; measured afterwards 50.0000;rgblevels black picker: picked 0.17958, black 0.17958 (desktop's rule: 0.17958);rgbcurve set_nodes_from_area: 6 nodes (params 6), sorted 1, on the diagonal 1;history items: 14 before the actions, 20 after;
+PASS C20 arw: coordinates between the original and the picture: coords as opened: original 5504x3672, picture 5492x3672, centre -> 0.5011,0.5000, round trip max 0.000 px;coords crop: picture 2746x1836 (without crop 5492x3672), relation off by 0.000 px;coords crop: original 5504x3672, picture 2746x1836, centre -> 0.0022,0.0000, round trip max 0.000 px;coords orientation: picture 3672x5492 (without 5492x3672), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 5504x3672, picture 3575x5414, centre -> 0.5285,0.5277, round trip max 0.052 px;
+PASS C21 arw: blending: get, set, validation, grouping: exposure blending as opened: supported 1, masks off, colorspace rgb_scene (rgb_scene), mode normal, opacity 100;blend_set uniform 60 %: history 14 -> 15, masks uniform, opacity 60;parametric: masks parametric, g_in active 1 invert 1 range 0.20..0.60, combine invert 1;colour space lab: mode normal, L_in active 0;
+PASS C21 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C21 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C15 all: cpus at start: 4 allowed, 4 configured, threads_max 4;cpus after narrowing: 1 allowed (first 0);cpus after widening and unpinning: engine thread on 4 CPUs;exit 0;
+INFO C15 started with CPU 0 only (Linux, libgomp): RESULT engine darktable 04477d3 api 1 threads 1/1 plugins 111/111
+PASS safety: RAW files unchanged
