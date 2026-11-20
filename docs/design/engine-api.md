@@ -263,3 +263,213 @@ reads it instead of darktable's log.
 `presetExport(op, name, dir): String`, `styles(): List<Style>`, `styleApply(name, mode: StyleMode? = null)`
 (`StyleMode.APPEND`, `OVERWRITE`), `stylesImport(paths, overwrite = false): StyleImport`, `styleDelete(name)`,
 `styleCreate(name, description, items: List<Int>? = null, overwrite = false)`, `renderTimes(): RenderTimes`.
+
+
+## 6. P1b part 2: exact calls (20 Nov 2026)
+
+Brief `docs/briefs/P1b2-engine-masks-pickers.md`. Same conventions as section 5: [M] = changes the edit (refused with
+`READ_ONLY` in a read-only session, one undo step unless said otherwise). Every call exists in C (`dtbridge.h`), in
+Kotlin (`DarktableEngine`, the JNI implementation and `FakeEngine`) and in the contract suite, once built; the state of
+each is in the running log and the report (`docs/experiments/P1b2-engine-masks-pickers*.md`).
+
+**Coordinates.** Unless a call says otherwise, positions on the picture are **normalised processed-image
+coordinates**: `[0,0]` is the top-left corner and `[1,1]` the bottom-right corner of the picture `render_preview`
+shows (the image after crop and every distortion, at any scale). *Original-image* coordinates are normalised to the
+pipeline's input (the full decoded image darktable's modules start from, the space darktable's drawn forms are
+stored in). `coords_transform` converts between the two.
+
+### 6.1 Render options (deliverables 1, 8)
+
+```
+int dtb_render_size_ex(float scale, const char *options_json, int *width, int *height);
+int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **rgba8_out, int *width, int *height);
+int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *options_json, uint8_t *rgba8_out);
+```
+`options_json` (NULL or `{}` = the plain call, which stays as it is):
+```
+{ "bypass": [ { "op": s, "priority": n }, ... ],   // instances left out of this render only
+  "show_mask": { "op": s, "priority": n } | null } // desktop's "show mask" overlay for this instance (6.8)
+```
+- **bypass**: the instances are processed as if switched off, **for this call only**: no history item, no undo
+  state, no change to `modules()`, `history()`, `undo_state()` or the XMP `xmp_write` produces; the next call without
+  the option renders the edit as before. An instance that is already off is accepted (no effect). `NOT_FOUND`: no such
+  instance; `ARG`: a module without an on/off switch (`can_switch` false: the pipe cannot run without it). Sizes and
+  regions are those of the picture without the instance: `render_size_ex(1, {"bypass":[crop]})` is crop's input size,
+  and `render_region_ex` regions are pixels of that picture. The picture equals the one rendered with the instance
+  switched off (engine test).
+- The pipelines' caches are shared: a bypass render after a plain one re-runs only the modules from the bypassed one
+  on, and the plain render after it reuses its own cache lines.
+- Kotlin: `renderSize(scale, options: RenderOptions = RenderOptions.NONE)`, `renderPreview(maxSize, options)`,
+  `renderRegion(x, y, w, h, scale, options)`; `RenderOptions(bypass: List<InstanceRef> = emptyList(), showMask: InstanceRef? = null)`,
+  `InstanceRef(op, priority)`.
+
+### 6.2 Undo and redo keep the XMP's hashes (deliverable 3)
+
+No signature change. `dtb_undo`/`dtb_redo` restore the whole-history state **and** the image's history hash row
+(`basic_hash`, `auto_hash`, `current_hash`, `main.history_hash`) as it was at that state. The change timestamp is
+**not moved** by undo or redo and not cleared: desktop's undo (`libs/history.c` `_pop_undo`) writes the history but
+does not call `dt_image_cache_set_change_timestamp` (only adding a history item does, `develop.c`
+`dt_dev_add_history_item`), so the XMP keeps the time of the last real change. Contract: after an undo back to a
+state, the XMP written equals the XMP written at that state byte for byte, except `darktable:change_timestamp`, which
+is the time of the latest change (equal too when nothing was changed in between, for example a redo after an undo).
+
+### 6.3 Colour pickers (deliverable 4)
+
+```
+int dtb_color_pick(const char *op, int priority, const char *request_json, char **json);
+```
+As desktop's module picker (`dt_iop_color_picker`, statistics by `common/color_picker.c`
+`dt_color_picker_helper` on the module's input and output buffers, before blending, `pixelpipe_hb.c`
+`_pixelpipe_picker`), on the **preview** pipe as desktop (the whole picture, from the downscaled input), or the full
+pipe on request. `op` NULL = the picture the pipe puts out (desktop's global colour picker, before the 8-bit
+conversion).
+```
+request: { "area": [x0, y0, x1, y1] } | { "point": [x, y] }  // normalised processed-image coordinates
+         + "denoise": bool          // default false; desktop's pickers with DT_COLOR_PICKER_DENOISE set it
+         + "pipe": "preview" | "full"   // default "preview"
+         + "bypass": [ {op, priority} ] // as 6.1
+result:  { "pipe": s,
+           "input":  { "colorspace": s, "mean": [4 numbers], "min": [4], "max": [4], "box": [x0, y0, x1, y1] } | null,
+           "output": { ... } | null }   // null: the area is outside that buffer (desktop: no sample)
+```
+`colorspace` is the space of the numbers: the module's picker space as desktop sets it (`dt_color_picker_new` /
+`_with_cst` in the module's `gui_init`: `"none"` = the buffer's own space, else `"raw"`, `"rgb"`, `"lab"`, `"lch"`,
+`"hsl"`, `"jzczhz"`); the bridge keeps that table per module. `box` is the sampled rectangle in pixels of that buffer
+(desktop's `dt_color_picker_box`). The fourth value of each vector is what desktop's helper returns there. `ARG`: bad
+area (empty, outside 0..1), a module that is switched off (desktop's pickers only pick on modules that are on).
+Kotlin: `colorPick(op: String?, priority: Int, request: PickRequest): PickResult`.
+
+**Module actions that use a picked area** (`dtb_module_action`, desktop's picker buttons; each [M] unless "read
+only"). Arguments take `area` (or `point`) as in `dtb_color_pick`; the module's own picker runs on the preview pipe,
+then the module's own `color_picker_apply` arithmetic is applied as desktop does it:
+| op | action | what desktop's button does |
+|---|---|---|
+| `temperature` | `wb_from_area {area}` | white balance coefficients from the area (green normalised, 0..8), mode "spot"; returns `get_wb` |
+| `channelmixerrgb` | `illuminant_from_area {area}` | CAT illuminant detected from the area (`_auto_set_illuminant`); returns the new illuminant fields |
+| `channelmixerrgb` | `spot {area, mode: "correction" \| "measure", target: {lightness, chroma, hue}?}` | area mapping: measure the area, or change the mixer so the area becomes the target |
+| `exposure` | `spot {area, mode: "correction" \| "measure", lightness?}` | spot exposure mapping (`_auto_set_exposure`): measure, or set exposure so the area's lightness becomes `lightness` (default desktop's 50 %) |
+| `rgblevels` | `pick {which: "black" \| "grey" \| "white" \| "auto", area}` | the black, grey or white point, or all three from an area (desktop's pickers and its "auto" area) |
+| `rgbcurve`, `tonecurve` | `pick {area}` (read only) | the picked mean / min / max in the curve's x coordinates, for the marks desktop draws on the curve |
+| `rgbcurve`, `tonecurve` | `set_nodes_from_area {area}` | desktop's ctrl-click picker: nodes at the area's min, mean and max |
+Each returns `{ "picked": {input/output as above}, ... the fields written }`. Which of these are built, and the
+comparison of each with desktop's own code for the same area, is in the report.
+
+### 6.4 Histogram (deliverable 4)
+
+```
+int dtb_histogram(const char *request_json, char **json);
+```
+`request: { "max_size": n (default 1024), "bypass": [...] }`. Desktop's histogram module (`libs/histogram.c`,
+waveform and vectorscope not included): computed on the preview pipe's output, RGB, in the histogram profile
+(the export profile here, as every render of the bridge), 256 bins per channel, values clipped to [0, 1].
+```
+{ "bins": 256, "channels": ["red", "green", "blue"], "counts": [[...256], [...], [...]], "max": n,
+  "pixels": n, "width": n, "height": n }
+```
+Desktop draws it in linear or logarithmic height (`plugins/darkroom/histogram/histogram`: "linear" draws
+`count / max`, "logarithmic" draws `log(1 + count) / log(1 + max)`): the app scales; the bridge returns counts.
+Kotlin: `histogram(maxSize = 1024, options = RenderOptions.NONE): Histogram`.
+
+### 6.5 Coordinates (deliverable 5)
+
+```
+int dtb_coords_transform(const char *request_json, char **json);
+```
+```
+request: { "direction": "to_processed" | "to_original",
+           "points": [ [x, y], ... ],          // normalised, see the section head
+           "bypass": [ {op, priority} ] }      // optional, as 6.1 (for example the crop tool's picture without crop)
+result:  { "points": [ [x, y], ... ],          // same order; null for a point a module cannot map
+           "original": { "width", "height" },  // the pipeline's input size (pixels of the full decoded image)
+           "processed": { "width", "height" } } // render_size(1) with the same bypass
+```
+Through every switched-on module that moves pixels (lens correction, rotate and perspective, crop, orientation,
+framing, liquify, ...), as `dt_dev_distort_transform_plus` / `dt_dev_distort_backtransform_plus` (develop.c) over the
+bridge's full pipe with `DT_DEV_TRANSFORM_DIR_ALL`. Points outside the picture are mapped too (they can lie outside
+0..1). Kotlin: `coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options = RenderOptions.NONE): CoordsResult`.
+
+### 6.6 Blending (deliverable 6)
+
+```
+int dtb_blend_get(const char *op, int priority, char **json);
+int dtb_blend_set(const char *op, int priority, const char *values_json);   // [M]
+```
+`blend_get` →
+```
+{ "supported": bool,                       // the module supports blending (desktop shows the blending section)
+  "masks": "off" | "uniform" | "drawn" | "parametric" | "drawn_parametric" | "raster" | "flexi",
+                                           // mask_mode as desktop's mode buttons set it: off = DISABLED,
+                                           // uniform = ENABLED, drawn = ENABLED|MASK, parametric = ENABLED|CONDITIONAL,
+                                           // drawn_parametric = ENABLED|MASK|CONDITIONAL, raster = ENABLED|RASTER,
+                                           // flexi = ENABLED|FLEXI (desktop's "drawn & parametric" since masks v7)
+  "mask_mode_flags": [ "enabled", "drawn", "parametric", "raster", "flexi" ],  // the raw flags, as named values
+  "colorspace": "default" | "raw" | "lab" | "rgb_display" | "rgb_scene",       // blend_cst; "default" = the module's
+  "mode": s,                               // blend mode: "normal", "average", "difference", "lighten", ... (enum names
+                                           // without DEVELOP_BLEND_, lower case); obsolete modes as stored
+  "reverse": bool,                         // DEVELOP_BLEND_REVERSE
+  "parameter": number,                     // blend fulcrum (EV), scene-referred modes
+  "opacity": number,                       // 0..100
+  "combine": { "invert": bool, "mode": "exclusive" | "inclusive" },   // mask_combine
+  "feathering_radius": number, "feathering_guide": "input_before_blur" | "output_before_blur"
+                                           | "input_after_blur" | "output_after_blur",
+  "blur_radius": number, "contrast": number, "brightness": number, "details": number,
+  "parametric": { "<channel>": { "active": bool, "invert": bool, "range": [a, b, c, d], "boost": number }, ... },
+                                           // channels of the blend colour space as desktop names them:
+                                           // lab: L_in, a_in, b_in, C_in, h_in and _out; rgb: g_in, R_in, G_in, B_in,
+                                           // Jz_in, Cz_in, hz_in (scene) or H_in, S_in, l_in (display), and _out
+  "raster": { "op": s, "priority": n, "invert": bool } | null,
+  "mask_id": n | null,                     // the group of drawn forms (6.7), null = none
+  "mask_lock": bool }
+```
+`blend_set(op, priority, {path: value, ...})`: the same names as paths (`opacity`, `masks`, `combine.invert`,
+`parametric.L_in.range`, ...); all values checked first, nothing changes if one is refused: `TYPE`, `RANGE` (desktop's
+slider limits: opacity 0..100, feathering 0..250, blur 0..100, contrast and brightness -1..1, details -1..1, the
+parametric range points 0..1 or the channel's own range and in order a <= b <= c <= d), `ARG` (a module without
+blending, a blend mode or colour space desktop does not offer for the module, a raster source that writes no raster
+mask). As on desktop, changing `colorspace` resets the parametric channels to the defaults of the new space
+(`dt_develop_blend_init_blendif`). History: one item per call, merged with following `blend_set` / `param_set` calls on
+the same instance until `history_seal` (as `param_set`), so a slider drag is one item.
+Kotlin: `blendGet(op, priority): Blend`, `blendSet(op, priority, values: Map<String, JsonElement>)`.
+
+### 6.7 Drawn masks (deliverable 7)
+
+Forms are darktable's `dt_masks_form_t` in the session (`dev->forms`); they are written to the XMP with the history
+(`masks_history`). JSON of one form (`dtb_masks`):
+```
+{ "id": n, "type": "circle" | "ellipse" | "gradient" | "path" | "brush" | "group" | other darktable types as named,
+  "name": s, "version": n,
+  "geometry": {...},              // per type, normalised original-image coordinates:
+     circle:   { "center": [x, y], "radius": r, "border": b }
+     ellipse:  { "center": [x, y], "radius": [a, b], "rotation": deg, "border": b, "proportional": bool }
+     gradient: { "anchor": [x, y], "rotation": deg, "compression": c, "steepness": s, "curvature": k, "state": s }
+     path:     { "points": [ { "corner": [x, y], "ctrl1": [x, y], "ctrl2": [x, y], "border": [b1, b2] } ] }
+     brush:    { "points": [ { "corner", "ctrl1", "ctrl2", "border": [b1, b2], "density": d, "hardness": h } ] }
+     group:    { "members": [ { "id": n, "state": ["use", "show", "inverse", "union" | "intersection" |
+                                "difference" | "exclusion" | "sum"], "opacity": o } ] }
+  "used_by": [ { "op": s, "priority": n } ] }   // instances whose mask group contains it (or is it)
+```
+| C | meaning |
+|---|---|
+| `int dtb_masks(char **json)` | `[ form, ... ]` every form of the session, by id. |
+| `int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json)` [M] | New form (not yet used by any instance); `name` NULL = darktable's automatic name (`dt_masks_assign_unique_name`). Brush: `geometry` may instead be `{ "stroke": [ [x, y], ... ], "size": r?, "hardness": h?, "density": d? }`, a list of points as from a finger, turned into brush points as desktop's mouse input (`brush.c`: one point per sample, then `_brush_init_ctrl_points`), defaults from desktop's configuration (`plugins/darkroom/masks/brush/border`, `hardness`, `density`). → `{ "id": n }`. |
+| `int dtb_mask_update(int id, const char *geometry_json)` [M] | Replace the geometry (same type). |
+| `int dtb_mask_rename(int id, const char *name)` [M] | |
+| `int dtb_mask_delete(int id)` [M] | Removes the form, from every group too (`dt_masks_form_delete`). |
+| `int dtb_mask_attach(const char *op, int priority, int id, const char *options_json)` [M] | Add the form to the instance's mask group (creating the group and switching the instance's mask mode to drawn, as desktop's shape buttons do). `options`: `{ "combine": "union" \| "intersection" \| "difference" \| "exclusion" \| "sum", "inverse": bool, "opacity": 0..1 }` (defaults as desktop: union, not inverted, 1). A form may be attached to several instances (desktop's "add existing shape"). |
+| `int dtb_mask_detach(const char *op, int priority, int id)` [M] | Remove it from that instance's group (the form stays). |
+| `int dtb_mask_member_set(const char *op, int priority, int id, const char *options_json)` [M] | Change combine, inverse, opacity of an attached form. |
+| `int dtb_mask_group_create(const char *member_ids_json, char **json)` [M] | A group of existing forms (`[id, ...]`), → `{ "id" }`; groups can be attached like forms. |
+Errors: `NOT_FOUND` (no such form or instance), `ARG` (wrong type, bad geometry, a module without drawn masks:
+`IOP_FLAGS_NO_MASKS` or no blending). One history item per call (a masks history item for the instance, or for
+the forms alone, as desktop's `dt_dev_add_masks_history_item`). The S3 prototype `dtb_mask_add_circle` stays for its
+test (it equals `mask_create("circle")` + `mask_attach`).
+Kotlin: `masks(): List<MaskForm>`, `maskCreate(type, geometry: JsonObject, name: String? = null): Int`,
+`maskUpdate`, `maskRename`, `maskDelete`, `maskAttach(op, priority, id, MaskMember)`, `maskDetach`, `maskMemberSet`,
+`maskGroupCreate(ids): Int`.
+
+### 6.8 Mask display (deliverable 8)
+
+`render_preview_ex` / `render_region_ex` with `"show_mask": {op, priority}`: the picture as desktop's darkroom shows
+it with that instance's "display mask" button on (`DT_DEV_PIXELPIPE_DISPLAY_MASK`: the image in grey with the mask in
+yellow, `iop/gamma.c` `_mask_display`, mix as desktop's `darkroom/ui/develop_mask_mix`). `ARG` when the instance's
+mask mode is off or uniform (desktop shows no mask then). No change to the edit.
