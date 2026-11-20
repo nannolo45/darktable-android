@@ -16,6 +16,15 @@ import app.dtandroid.engine.api.RenderTimes
 import app.dtandroid.engine.api.Style
 import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleMode
+import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.MaskForm
+import app.dtandroid.engine.api.MaskMember
+import app.dtandroid.engine.api.Blend
+import app.dtandroid.engine.api.PickResult
+import app.dtandroid.engine.api.Histogram
+import app.dtandroid.engine.api.CoordsDirection
+import app.dtandroid.engine.api.CoordsResult
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -269,24 +278,34 @@ class JniEngine private constructor() : DarktableEngine {
 
     // ------------------------------------------------------------------ 2.7 rendering
 
-    override suspend fun renderSize(scale: Double): RenderSize = onEngine {
+    override suspend fun renderSize(scale: Double): RenderSize = renderSize(scale, RenderOptions.NONE)
+
+    override suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize = onEngine {
         requireInit()
         val wh = IntArray(2)
-        check(NativeBridge.renderSize(scale.toFloat(), wh))
+        check(NativeBridge.renderSizeEx(scale.toFloat(), options.json(), wh))
         RenderSize(wh[0], wh[1])
     }
 
-    override suspend fun renderPreview(maxSize: Int): RenderedImage = onEngine {
+    private fun RenderOptions.json(): String? = if (isNone) null else toJson().toString()
+
+    override suspend fun renderPreview(maxSize: Int): RenderedImage = renderPreview(maxSize, RenderOptions.NONE)
+
+    override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         requireInit()
         val wh = IntArray(2)
         val st = IntArray(1)
         previewCalls.incrementAndGet()
-        val px = render { NativeBridge.renderPreview(maxSize, wh, st) }
+        val opts = options.json()
+        val px = render { NativeBridge.renderPreviewEx(maxSize, opts, wh, st) }
         check(st[0])
         RenderedImage(wh[0], wh[1], px ?: throw EngineException(EngineError.ENGINE, "no pixels"))
     }
 
-    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage = onEngine {
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage =
+        renderRegion(x, y, w, h, scale, RenderOptions.NONE)
+
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         requireInit()
         if (w <= 0 || h <= 0 || x < 0 || y < 0) throw EngineException(EngineError.ARG, "bad region $x,$y ${w}x$h")
         val buf = try {
@@ -298,7 +317,8 @@ class JniEngine private constructor() : DarktableEngine {
         }
         val copied = BooleanArray(1)
         regionCalls.incrementAndGet()
-        check(render { NativeBridge.renderRegionInto(x, y, w, h, scale.toFloat(), buf, copied) })
+        val opts = options.json()
+        check(render { NativeBridge.renderRegionIntoEx(x, y, w, h, scale.toFloat(), opts, buf, copied) })
         lastRegionCopied = copied[0]
         RenderedImage(w, h, buf)
     }
@@ -386,4 +406,68 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine { RenderTimes.fromJson(p1b(NativeBridge.RENDER_TIMES)) }
+
+    // ------------------------------------------------------------------ 6 (P1b part 2)
+
+    private fun p1b2(what: Int, s1: String? = null, s2: String? = null, s3: String? = null, n1: Int = 0, n2: Int = 0): JsonElement {
+        requireInit()
+        val st = IntArray(1)
+        return json(NativeBridge.p1b2(what, s1, s2, s3, n1, n2, st), st)
+    }
+
+    override suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult = onEngine {
+        PickResult.fromJson(render { p1b2(NativeBridge.COLOR_PICK, op, request.toJson().toString(), n1 = priority) })
+    }
+
+    override suspend fun histogram(maxSize: Int, options: RenderOptions): Histogram = onEngine {
+        val req = kotlinx.serialization.json.buildJsonObject {
+            put("max_size", JsonPrimitive(maxSize)); for ((k, v) in options.toJson()) put(k, v)
+        }
+        Histogram.fromJson(render { p1b2(NativeBridge.HISTOGRAM, s2 = req.toString()) })
+    }
+
+    override suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions): CoordsResult = onEngine {
+        CoordsResult.fromJson(p1b2(NativeBridge.COORDS, s2 = CoordsResult.request(direction, points, options).toString()))
+    }
+
+    override suspend fun blendGet(op: String, priority: Int): Blend = onEngine {
+        Blend.fromJson(p1b2(NativeBridge.BLEND_GET, op, n1 = priority))
+    }
+
+    override suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>) = onEngine {
+        p1b2(NativeBridge.BLEND_SET, op, JsonObject(values).toString(), n1 = priority); Unit
+    }
+
+    override suspend fun masks(): List<MaskForm> = onEngine { MaskForm.listFromJson(p1b2(NativeBridge.MASKS)) }
+
+    private fun idOf(e: JsonElement): Int =
+        ((e as? JsonObject)?.get("id") as? JsonPrimitive)?.content?.toIntOrNull() ?: throw EngineException(EngineError.ENGINE, "no id")
+
+    override suspend fun maskCreate(type: String, geometry: JsonObject, name: String?): Int = onEngine {
+        idOf(p1b2(NativeBridge.MASK_CREATE, type, geometry.toString(), name))
+    }
+
+    override suspend fun maskUpdate(id: Int, geometry: JsonObject) = onEngine { p1b2(NativeBridge.MASK_UPDATE, s2 = geometry.toString(), n2 = id); Unit }
+    override suspend fun maskRename(id: Int, name: String) = onEngine { p1b2(NativeBridge.MASK_RENAME, s3 = name, n2 = id); Unit }
+    override suspend fun maskDelete(id: Int) = onEngine { p1b2(NativeBridge.MASK_DELETE, n2 = id); Unit }
+
+    override suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        p1b2(NativeBridge.MASK_ATTACH, op, member.toJson().toString(), n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskDetach(op: String, priority: Int, id: Int) = onEngine {
+        p1b2(NativeBridge.MASK_DETACH, op, n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        p1b2(NativeBridge.MASK_MEMBER_SET, op, member.toJson().toString(), n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskGroupCreate(memberIds: List<Int>, name: String?): Int = onEngine {
+        idOf(p1b2(NativeBridge.MASK_GROUP_CREATE, s2 = kotlinx.serialization.json.JsonArray(memberIds.map { JsonPrimitive(it) }).toString(), s3 = name))
+    }
+
+    override suspend fun maskGroupSet(id: Int, settings: JsonObject) = onEngine {
+        p1b2(NativeBridge.MASK_GROUP_SET, s2 = settings.toString(), n2 = id); Unit
+    }
 }

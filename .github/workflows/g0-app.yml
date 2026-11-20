@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c') }}
 
       - name: Build darktable and the bridge for Linux
         id: build
@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c') }}
 
       - name: Fetch test images
         run: |
@@ -97,7 +97,9 @@ jobs:
             images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw \
             0001-exposure/exposure.xmp \
             0146-lens-metadata-xtransIV-modversion-7/lens-metadata-xtransIV-modversion-7.xmp \
-            0179-spektrafilm/spektrafilm.xmp
+            0179-spektrafilm/spektrafilm.xmp \
+            0004-masks/masks.xmp 0081-mask-groups/mask-groups.xmp 0090-mask-combine/mask-combine.xmp \
+            0144-masks-combine-sum/masks-combine-sum.xmp
           rm -rf /home/runner/dtt/.git-dtt
 
       - name: Reference export for the emulator test (darktable-cli, JPEG quality 95)

@@ -93,6 +93,28 @@ void dtb__pipes_reattach(void)
     }
 }
 
+/* P1b part 2: a piece's hash includes its mask's shapes, but
+ * dt_iop_commit_params() (develop/imageop.c) looks the mask group up in the
+ * global develop object (dt_masks_get_from_id(darktable.develop, ...) and
+ * dt_masks_group_hash, which walks darktable.develop->forms), not in the
+ * pipe's own. In the bridge that object is not the session's and has no
+ * forms, so a change of a shape's geometry left the hash, and the cached
+ * output of the modules using it, as they were (engine test C22 found it: a
+ * shape moved after it was attached rendered at its old place until the
+ * edit was opened again). While a pipe synchronises its pieces, the global
+ * develop object's form list is the session's; nothing else runs then. */
+static GList *_forms_swap_in(void)
+{
+  GList *saved = darktable.develop ? darktable.develop->forms : NULL;
+  if(darktable.develop) darktable.develop->forms = dtb_S.dev.forms;
+  return saved;
+}
+
+static void _forms_swap_out(GList *saved)
+{
+  if(darktable.develop) darktable.develop->forms = saved;
+}
+
 /* Set up a cached pipeline the way dt_imageio_export_with_flags() does for
  * an export: same pipe type, so every module takes its export code path,
  * and the same input. Unlike the export pipe, it gets the darkroom's cache
@@ -130,7 +152,9 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
                                p->buf.width, p->buf.height, p->buf.iscale);
     dt_ioppr_resync_modules_order(&dtb_S.dev);
     dt_dev_pixelpipe_create_nodes(&p->pipe, &dtb_S.dev);
+    GList *global_forms = _forms_swap_in();
     dt_dev_pixelpipe_synch_all(&p->pipe, &dtb_S.dev);
+    _forms_swap_out(global_forms);
     dt_dev_pixelpipe_get_dimensions(&p->pipe, &dtb_S.dev, p->pipe.iwidth, p->pipe.iheight,
                                     &p->pipe.processed_width, &p->pipe.processed_height);
     p->pipe.changed = DT_DEV_PIPE_UNCHANGED;
@@ -142,12 +166,162 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
     const dt_dev_pixelpipe_change_t what = p->pipe.changed;
     if(p->pipe.changed & DT_DEV_PIPE_REMOVE) dt_ioppr_resync_modules_order(&dtb_S.dev);
     // takes dev->history_mutex, rebuilds nodes on REMOVE, resynchs on SYNCH
+    GList *global_forms = _forms_swap_in();
     dt_dev_pixelpipe_change(&p->pipe, &dtb_S.dev);
+    _forms_swap_out(global_forms);
     dtb__tlog((what & DT_DEV_PIPE_REMOVE) ? "render.pipe_change_remove"
               : (what & DT_DEV_PIPE_SYNCH) ? "render.pipe_change_synch_all"
               : (what & DT_DEV_PIPE_TOP_CHANGED) ? "render.pipe_change_synch_top" : "render.pipe_change_other", t0);
   }
   return DTB_OK;
+}
+
+/* ------------------------------------------------------------------ */
+/* render options (P1b part 2, engine-api.md 6.1)                      */
+
+void dtb__render_opts_clear(dtb_render_opts_t *o)
+{
+  if(o->bypass) g_ptr_array_free(o->bypass, TRUE);
+  o->bypass = NULL;
+  o->show_mask = NULL;
+}
+
+static int _instance_ref(JsonNode *n, const char *what, dt_iop_module_t **out)
+{
+  JsonObject *r = n && JSON_NODE_HOLDS_OBJECT(n) ? json_node_get_object(n) : NULL;
+  if(!r || !json_object_has_member(r, "op") || !json_object_has_member(r, "priority"))
+    return dtb__err(DTB_E_ARG, "%s: expected {\"op\": s, \"priority\": n}", what);
+  JsonNode *op = json_object_get_member(r, "op"), *pr = json_object_get_member(r, "priority");
+  if(!JSON_NODE_HOLDS_VALUE(op) || json_node_get_value_type(op) != G_TYPE_STRING || !JSON_NODE_HOLDS_VALUE(pr)
+     || json_node_get_value_type(pr) != G_TYPE_INT64)
+    return dtb__err(DTB_E_TYPE, "%s: op must be a string and priority an integer", what);
+  const char *ops = json_node_get_string(op);
+  const int prio = (int)json_node_get_int(pr);
+  dt_iop_module_t *m = dtb__find(ops, prio);
+  if(!m) return dtb__err(DTB_E_NOT_FOUND, "%s: no instance %s %d", what, ops, prio);
+  *out = m;
+  return DTB_OK;
+}
+
+int dtb__render_opts_from(JsonObject *o, dtb_render_opts_t *out)
+{
+  memset(out, 0, sizeof(*out));
+  if(!o) return DTB_OK;
+  if(json_object_has_member(o, "bypass"))
+  {
+    JsonNode *n = json_object_get_member(o, "bypass");
+    if(!JSON_NODE_HOLDS_NULL(n))
+    {
+      if(!JSON_NODE_HOLDS_ARRAY(n)) return dtb__err(DTB_E_TYPE, "bypass must be an array");
+      JsonArray *a = json_node_get_array(n);
+      out->bypass = g_ptr_array_new();
+      for(guint i = 0; i < json_array_get_length(a); i++)
+      {
+        dt_iop_module_t *m = NULL;
+        const int r = _instance_ref(json_array_get_element(a, i), "bypass", &m);
+        if(r)
+        {
+          dtb__render_opts_clear(out);
+          return r;
+        }
+        // the pipe cannot run without the always-on modules (no switch on desktop)
+        if(m->hide_enable_button)
+        {
+          dtb__render_opts_clear(out);
+          return dtb__err(DTB_E_ARG, "%s cannot be left out: it has no on/off switch", m->op);
+        }
+        g_ptr_array_add(out->bypass, m);
+      }
+    }
+  }
+  if(json_object_has_member(o, "show_mask"))
+  {
+    JsonNode *n = json_object_get_member(o, "show_mask");
+    if(!JSON_NODE_HOLDS_NULL(n))
+    {
+      const int r = _instance_ref(n, "show_mask", &out->show_mask);
+      if(r)
+      {
+        dtb__render_opts_clear(out);
+        return r;
+      }
+    }
+  }
+  return DTB_OK;
+}
+
+int dtb__render_opts_parse(const char *json, dtb_render_opts_t *out)
+{
+  memset(out, 0, sizeof(*out));
+  if(!json || !*json) return DTB_OK;
+  JsonNode *root = dtb__json_parse(json);
+  if(!root) return DTB_E_ARG;
+  if(!JSON_NODE_HOLDS_OBJECT(root))
+  {
+    json_node_unref(root);
+    return dtb__err(DTB_E_ARG, "render options must be a JSON object");
+  }
+  const int r = dtb__render_opts_from(json_node_get_object(root), out);
+  json_node_unref(root);
+  return r;
+}
+
+gboolean dtb__render_opts_empty(const dtb_render_opts_t *o)
+{
+  return !o || ((!o->bypass || o->bypass->len == 0) && !o->show_mask);
+}
+
+/* Leave the bypassed instances out of the (synchronised) pipe for one
+ * render: their pieces are switched off, as dt_dev_pixelpipe_synch() does for
+ * a module that is off, and their hash is changed. The pipe cache's hash
+ * (pixelpipe_cache.c, _dev_pixelpipe_cache_basichash) includes a piece's hash
+ * whenever its module is on ("module->enabled || piece->enabled"), so without
+ * the changed hash the modules after it would find the cache lines of the
+ * render with the instance in. Nothing outside the pipe changes: the develop
+ * object, its history and the modules keep their state. dtb__bypass_end()
+ * puts the pieces and the processed size back. */
+void dtb__bypass_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_bypass_t *saved)
+{
+  memset(saved, 0, sizeof(*saved));
+  saved->pipe = p;
+  saved->processed_width = p->pipe.processed_width;
+  saved->processed_height = p->pipe.processed_height;
+  if(!o || !o->bypass || o->bypass->len == 0) return;
+  for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
+  {
+    dt_dev_pixelpipe_iop_t *piece = n->data;
+    gboolean hit = FALSE;
+    for(guint i = 0; i < o->bypass->len && !hit; i++) hit = piece->module == g_ptr_array_index(o->bypass, i);
+    if(!hit || !piece->enabled || saved->n >= DTB_BYPASS_MAX) continue;
+    saved->piece[saved->n] = piece;
+    saved->hash[saved->n] = piece->hash;
+    saved->n++;
+    piece->enabled = FALSE;
+    static const char tag[] = "dtbridge bypass";
+    piece->hash = dt_hash(piece->hash, tag, sizeof(tag));
+  }
+  if(saved->n)
+    dt_dev_pixelpipe_get_dimensions(&p->pipe, &dtb_S.dev, p->pipe.iwidth, p->pipe.iheight,
+                                    &p->pipe.processed_width, &p->pipe.processed_height);
+}
+
+void dtb__bypass_end(dtb_bypass_t *saved)
+{
+  if(!saved->pipe) return;
+  for(int i = 0; i < saved->n; i++)
+  {
+    saved->piece[i]->enabled = TRUE;
+    saved->piece[i]->hash = saved->hash[i];
+  }
+  // again over every piece: dt_dev_pixelpipe_get_dimensions() also sets
+  // each piece's buf_in / buf_out (the distort transforms read them), and
+  // some modules keep values of their modify_roi_out() in piece->data
+  if(saved->n)
+    dt_dev_pixelpipe_get_dimensions(&saved->pipe->pipe, &dtb_S.dev, saved->pipe->pipe.iwidth,
+                                    saved->pipe->pipe.iheight, &saved->pipe->pipe.processed_width,
+                                    &saved->pipe->pipe.processed_height);
+  saved->pipe = NULL;
+  saved->n = 0;
 }
 
 int dtb__full_pipe(void)
@@ -186,7 +360,10 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
 
   if(finalscale) finalscale->enabled = FALSE;
   const double t0 = dtb__t();
-  const gboolean early = dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
+  // desktop's mask overlay is drawn by gamma (maskdisplay.c)
+  const gboolean early = dtb__mask_display_active
+                           ? dt_dev_pixelpipe_process(&p->pipe, &dtb_S.dev, x, y, w, h, scale, DT_DEVICE_NONE)
+                           : dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
   dtb__tlog("render.process", t0);
   if(finalscale) finalscale->enabled = TRUE;
 
@@ -354,27 +531,51 @@ static void _region_window(dtb_pipe_t *p, const int x, const int y, const int w,
             (_mod(reg.x - full.x, period) || _mod(reg.y - full.y, period)) ? "DIFFERENT" : "same");
 }
 
-int dtb_render_size(float scale, int *width, int *height)
+int dtb__pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uint8_t *out)
+{
+  g_atomic_int_set(&g_cancel, 0);
+  return _pipe_run(p, x, y, w, h, scale, out);
+}
+
+int dtb__pipe_ready(const gboolean full, dtb_pipe_t **out)
+{
+  dtb_pipe_t *p = full ? &dtb_S.full : &dtb_S.preview;
+  const int r = _pipe_ensure(p, full ? DT_MIPMAP_FULL : DT_MIPMAP_F);
+  if(!r && out) *out = p;
+  return r;
+}
+
+int dtb_render_size_ex(float scale, const char *options_json, int *width, int *height)
 {
   NEED_SESSION();
   if(!(scale > 0.0f)) return dtb__err(DTB_E_ARG, "scale must be > 0");
-  const int r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
+  dtb_render_opts_t o;
+  int r = dtb__render_opts_parse(options_json, &o);
   if(r) return r;
+  r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
+  if(r)
+  {
+    dtb__render_opts_clear(&o);
+    return r;
+  }
+  dtb_bypass_t saved;
+  dtb__bypass_begin(&dtb_S.full, &o, &saved);
   // as dt_imageio_export_with_flags: floor(scale * processed size)
   if(width) *width = (int)floor(scale * dtb_S.full.pipe.processed_width);
   if(height) *height = (int)floor(scale * dtb_S.full.pipe.processed_height);
+  dtb__bypass_end(&saved);
+  dtb__render_opts_clear(&o);
   return DTB_OK;
 }
 
-int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out)
+int dtb_render_size(float scale, int *width, int *height)
 {
-  NEED_SESSION();
-  if(!rgba8_out || w <= 0 || h <= 0 || x < 0 || y < 0 || !(scale > 0.0f))
-    return dtb__err(DTB_E_ARG, "bad region");
-  // a cancel only concerns a render in flight: clear what is left over
-  g_atomic_int_set(&g_cancel, 0);
-  int r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
-  if(r) return r;
+  return dtb_render_size_ex(scale, NULL, width, height);
+}
+
+/* the region on a pipe with the options applied */
+static int _region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out)
+{
   const int pw = (int)floor(scale * dtb_S.full.pipe.processed_width);
   const int ph = (int)floor(scale * dtb_S.full.pipe.processed_height);
   if(x + w > pw || y + h > ph)
@@ -385,6 +586,7 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
   int x0, y0, x1, y1;
   _region_window(&dtb_S.full, x, y, w, h, scale, pw, ph, &x0, &y0, &x1, &y1);
   dtb__times_begin("full");
+  int r;
   if(x0 == x && y0 == y && x1 == x + w && y1 == y + h)
   {
     r = _pipe_run(&dtb_S.full, x, y, w, h, scale, rgba8_out);
@@ -394,7 +596,11 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
 
   const int ow = x1 - x0, oh = y1 - y0;
   uint8_t *tmp = g_try_malloc((size_t)4 * ow * oh);
-  if(!tmp) return dtb__err(DTB_E_ENGINE, "out of memory");
+  if(!tmp)
+  {
+    dtb__times_end();
+    return dtb__err(DTB_E_ENGINE, "out of memory");
+  }
   r = _pipe_run(&dtb_S.full, x0, y0, ow, oh, scale, tmp);
   if(!r)
     for(int row = 0; row < h; row++)
@@ -405,25 +611,81 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
   return r;
 }
 
-int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
+int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *options_json, uint8_t *rgba8_out)
+{
+  NEED_SESSION();
+  if(!rgba8_out || w <= 0 || h <= 0 || x < 0 || y < 0 || !(scale > 0.0f))
+    return dtb__err(DTB_E_ARG, "bad region");
+  dtb_render_opts_t o;
+  int r = dtb__render_opts_parse(options_json, &o);
+  if(r) return r;
+  // a cancel only concerns a render in flight: clear what is left over
+  g_atomic_int_set(&g_cancel, 0);
+  r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
+  if(!r)
+  {
+    dtb_bypass_t saved;
+    dtb_mask_display_t md;
+    r = dtb__mask_display_begin(&dtb_S.full, &o, &md);
+    if(!r)
+    {
+      dtb__bypass_begin(&dtb_S.full, &o, &saved);
+      r = _region(x, y, w, h, scale, rgba8_out);
+      dtb__bypass_end(&saved);
+      dtb__mask_display_end(&md);
+    }
+  }
+  dtb__render_opts_clear(&o);
+  return r;
+}
+
+int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out)
+{
+  return dtb_render_region_ex(x, y, w, h, scale, NULL, rgba8_out);
+}
+
+int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **out, int *width, int *height)
 {
   if(out) *out = NULL;
   NEED_SESSION();
   if(!out || max_size <= 0) return dtb__err(DTB_E_ARG, "bad arguments");
+  dtb_render_opts_t o;
+  int r = dtb__render_opts_parse(options_json, &o);
+  if(r) return r;
   g_atomic_int_set(&g_cancel, 0);
   const double t0 = dtb__t();
   // DT_MIPMAP_F is the downscaled float input the darkroom's preview pipe
   // runs on (dt_dev_process_image_job, develop.c)
-  int r = _pipe_ensure(&dtb_S.preview, DT_MIPMAP_F);
-  if(r) return r;
+  r = _pipe_ensure(&dtb_S.preview, DT_MIPMAP_F);
+  if(r)
+  {
+    dtb__render_opts_clear(&o);
+    return r;
+  }
+  dtb_mask_display_t md;
+  r = dtb__mask_display_begin(&dtb_S.preview, &o, &md);
+  if(r)
+  {
+    dtb__render_opts_clear(&o);
+    return r;
+  }
+  dtb_bypass_t saved;
+  dtb__bypass_begin(&dtb_S.preview, &o, &saved);
   const int pw = dtb_S.preview.pipe.processed_width, ph = dtb_S.preview.pipe.processed_height;
   const float scale = fminf(1.0f, (float)max_size / (float)MAX(pw, ph));
   const int w = (int)floor(scale * pw), h = (int)floor(scale * ph);
-  uint8_t *buf = g_try_malloc((size_t)4 * w * h);
-  if(!buf) return dtb__err(DTB_E_ENGINE, "out of memory");
-  dtb__times_begin("preview");
-  r = _pipe_run(&dtb_S.preview, 0, 0, w, h, scale, buf);
-  dtb__times_end();
+  uint8_t *buf = g_try_malloc((size_t)4 * MAX(1, w) * MAX(1, h));
+  if(!buf)
+    r = dtb__err(DTB_E_ENGINE, "out of memory");
+  else
+  {
+    dtb__times_begin("preview");
+    r = _pipe_run(&dtb_S.preview, 0, 0, w, h, scale, buf);
+    dtb__times_end();
+  }
+  dtb__bypass_end(&saved);
+  dtb__mask_display_end(&md);
+  dtb__render_opts_clear(&o);
   if(r)
   {
     g_free(buf);
@@ -434,6 +696,11 @@ int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
   if(height) *height = h;
   dtb__tlog("render.preview_total", t0);
   return DTB_OK;
+}
+
+int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
+{
+  return dtb_render_preview_ex(max_size, NULL, out, width, height);
 }
 
 void dtb_render_cancel(void)

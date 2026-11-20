@@ -34,6 +34,11 @@ typedef struct dtb_undo_entry_t
   int snap_id;      // id in memory.snapshot_*
   int n_items;      // history items in the snapshot
   int history_end;  // history_end of that state
+  // the image's history hash row at that state (main.history_hash: basic,
+  // auto, current), restored with it (P1b part 2, engine-api.md 6.2)
+  guint8 *hash[3];
+  int hash_len[3];
+  gboolean changed_tag;  // "darktable|changed" attached at that state
 } dtb_undo_entry_t;
 
 /* one entry of the history as the XMP gave it, for read-only sessions whose
@@ -135,6 +140,74 @@ void dtb__history_add(dt_iop_module_t *m, gboolean enable);
 void dtb__history_add_params(dt_iop_module_t *m, gboolean enable);
 void dtb__undo_clear(void);
 
+/* render.c: render options (engine-api.md 6.1) */
+typedef struct dtb_render_opts_t
+{
+  GPtrArray *bypass;            // dt_iop_module_t *, left out for one call; NULL = none
+  dt_iop_module_t *show_mask;   // "show mask" overlay of this instance; NULL = none
+} dtb_render_opts_t;
+#define DTB_BYPASS_MAX 16
+typedef struct dtb_bypass_t
+{
+  dtb_pipe_t *pipe;
+  int n;
+  dt_dev_pixelpipe_iop_t *piece[DTB_BYPASS_MAX];
+  dt_hash_t hash[DTB_BYPASS_MAX];
+  int processed_width, processed_height;
+} dtb_bypass_t;
+/* parse {"bypass": [...], "show_mask": {...}}; NULL or "" = none */
+int dtb__render_opts_parse(const char *json, dtb_render_opts_t *out);
+/* the same members of an object other calls take (pickers, coordinates) */
+int dtb__render_opts_from(JsonObject *o, dtb_render_opts_t *out);
+void dtb__render_opts_clear(dtb_render_opts_t *o);
+gboolean dtb__render_opts_empty(const dtb_render_opts_t *o);
+/* on a synchronised pipe: leave the bypassed pieces out until _end */
+void dtb__bypass_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_bypass_t *saved);
+void dtb__bypass_end(dtb_bypass_t *saved);
+/* masks display (engine-api.md 6.8): set up the pipe for one render */
+typedef struct dtb_mask_display_t
+{
+  gboolean active;
+  dtb_pipe_t *pipe;
+  dt_iop_module_t *module;
+  void *saved[8];
+  int saved_int[8];
+  void *piece;     // dt_dev_pixelpipe_iop_t * of the module
+  dt_hash_t hash;  // its hash before the render
+} dtb_mask_display_t;
+int dtb__mask_display_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_mask_display_t *md);
+void dtb__mask_display_end(dtb_mask_display_t *md);
+/* TRUE while a mask display render runs: the pipe runs with gamma */
+extern gboolean dtb__mask_display_active;
+/* times.c calls it after every process_plain: the mask channel kept */
+void dtb__mask_display_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const i, void *const o,
+                            const dt_iop_roi_t *const roi_in, const dt_iop_roi_t *const roi_out);
+/* run a ready pipe like an export (render.c _pipe_run): float output in
+ * pipe.backbuf, 8-bit copy in out (w*h*4) */
+int dtb__pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uint8_t *out);
+
+/* pickers.c (6.3): the statistics of one pick; [0] input, [1] output */
+typedef struct dtb_pick_result_t
+{
+  gboolean have[2];
+  int cst[2];  // dt_iop_colorspace_type_t of the numbers
+  float mean[2][4], min[2][4], max[2][4];
+  int box[2][4];
+} dtb_pick_result_t;
+/* pick on module m: area normalised in the picture (x0, y0, x1, y1) */
+int dtb__pick(dt_iop_module_t *m, const float area[4], gboolean denoise, gboolean full,
+              const dtb_render_opts_t *o, dtb_pick_result_t *res);
+/* "area": [x0, y0, x1, y1] or "point": [x, y] of a request or action arguments */
+int dtb__read_area(JsonObject *o, float area[4]);
+/* {"input": ..., "output": ...} */
+void dtb__pick_json(JsonBuilder *b, const dtb_pick_result_t *res);
+/* times.c calls it after every process_plain */
+void dtb__pick_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const i, void *const o,
+                    const dt_iop_roi_t *const roi_in, const dt_iop_roi_t *const roi_out);
+
+/* make sure a pipe exists and is synchronised: full (DT_MIPMAP_FULL) or preview (DT_MIPMAP_F) */
+int dtb__pipe_ready(gboolean full, dtb_pipe_t **out);
+
 /* render.c */
 void dtb__pipes_dirty(dt_dev_pixelpipe_change_t what);
 void dtb__pipes_free(void);
@@ -174,6 +247,12 @@ void dtb__times_reset(void);
 
 /* actions2.c: 1 = no such action there */
 int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+
+/* masks.c: desktop's dt_masks_iop_use_same_as on the session's forms (no history) */
+gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src);
+
+/* actions3.c: module actions that pick (P1b part 2); 1 = no such action there */
+int dtb__module_action3(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 
 /* actions.c */
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);

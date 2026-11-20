@@ -3,10 +3,11 @@
  * dtbridge.h: the only interface between the app and the darktable engine.
  *
  * Engine API v1, sections 1 and 2 ("Core") of docs/design/engine-api.md,
- * which is the source of truth for meaning and JSON shapes. Section 3
- * ("Extended": blending, masks, coordinates, presets, analysis) is a later
- * work package; dtb_mask_add_circle() below is the prototype from S3, kept
- * for its test until then.
+ * which is the source of truth for meaning and JSON shapes; section 5
+ * (presets, styles, P1b part 1) and section 6 (render options, pickers,
+ * histogram, coordinates, blending, masks, P1b part 2) are at the end of
+ * this file. dtb_mask_add_circle() below is the prototype from S3, kept for
+ * its test.
  *
  * Nothing above this header may include darktable's own headers, and this
  * header exposes no darktable type.
@@ -216,6 +217,13 @@ int dtb_module_reset(const char *op, int priority);
  *   lut3d:          set_file {path} [M]
  *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
  *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
+ *   P1b part 2 (engine-api.md 6.3), each picks an "area" or "point" first:
+ *   temperature:     wb_from_area {area} [M];
+ *   exposure:        spot {area, mode: "correction"|"measure", lightness?} [M];
+ *   rgblevels:       pick {which: "black"|"grey"|"white", area, channel?} [M];
+ *   rgbcurve:        set_nodes_from_area {area, channel?, offset?} [M];
+ *   channelmixerrgb: illuminant_from_area {area, use_mixing?} [M],
+ *                    spot {area, mode: "correction", target?, use_mixing?} [M]
  *   denoiseprofile: list_profiles -> [ {index, name, auto, iso, current} ], index = position
  *                   in desktop's profile list, 0 = the automatic entry;
  *                   set_profile {index} or {name} [M] (a name selects the first
@@ -269,7 +277,9 @@ int dtb_history_compress(void);
 int dtb_history_seal(void);
 /* [M] Step back to the whole-history state recorded before the last sealed
  * change, or forward again. At least 50 steps are kept. DTB_E_STATE when
- * there is nothing to undo or redo. */
+ * there is nothing to undo or redo. The image's history hashes and its
+ * "darktable|changed" tag come back with the state; the change timestamp is
+ * not moved, as on desktop (P1b part 2, engine-api.md 6.2). */
 int dtb_undo(void);
 int dtb_redo(void);
 /* { "can_undo": bool, "can_redo": bool } */
@@ -307,6 +317,22 @@ int dtb_render_preview(int max_size, uint8_t **rgba8_out, int *width, int *heigh
  * Known exceptions, with bounds: engine/tests/t5_expected.txt. Do not
  * stitch a view from several regions. */
 int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_out);
+
+/* P1b part 2 (engine-api.md 6.1): the same three calls with options for
+ * this call only. options_json NULL or "{}" = the plain call:
+ * { "bypass": [ { "op": s, "priority": n }, ... ],
+ *     the instances are processed as if switched off, for this call only: no
+ *     history item, no undo state, no change to modules(), history() or the
+ *     XMP; sizes and regions are those of the picture without them.
+ *     DTB_E_NOT_FOUND: no such instance; DTB_E_ARG: a module without an on/off
+ *     switch.
+ *   "show_mask": { "op": s, "priority": n } | null }
+ *     desktop's "show mask" overlay of that instance (6.8). */
+int dtb_render_size_ex(float scale, const char *options_json, int *width, int *height);
+int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **rgba8_out, int *width,
+                          int *height);
+int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *options_json,
+                         uint8_t *rgba8_out);
 
 /* Ask the render running on the engine thread to stop. Safe from any
  * thread. The running render returns DTB_E_CANCELLED; the pipeline stops
@@ -402,6 +428,91 @@ int dtb_style_create(const char *name, const char *description, const char *item
  *   "modules": [ { "op", "priority", "instance_name", "ms", "cpu_ms", "tiles" } ] }
  * The modules that ran in the last render, in pipeline order. */
 int dtb_render_times(char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 6.3, 6.4 colour pickers and histogram (P1b part 2; engine-api.md)       */
+
+/* Desktop's module picker on instance (op, priority), or with op NULL the
+ * picture the pipe puts out (desktop's global picker). request_json:
+ * { "area": [x0, y0, x1, y1] } or { "point": [x, y] } in normalised
+ * coordinates of the picture, plus "denoise": bool, "pipe": "preview"
+ * (default) | "full", "bypass": [...] (as the render options) ->
+ * { "pipe", "input": { "colorspace", "mean": [4], "min": [4], "max": [4],
+ *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null }.
+ * DTB_E_ARG: bad area, or the instance is switched off. */
+int dtb_color_pick(const char *op, int priority, const char *request_json, char **json);
+
+/* Histogram of the preview pipe's picture: request_json { "max_size": n
+ * (default 1024), "bypass": [...] } -> { "bins": 256, "channels": ["red",
+ * "green", "blue"], "counts": [[256], [256], [256]], "max", "pixels",
+ * "width", "height" }. */
+int dtb_histogram(const char *request_json, char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 6.5 coordinates (P1b part 2)                                            */
+
+/* Points between the original image (the pipe's input, the space drawn
+ * forms are stored in) and the processed picture, both normalised:
+ * request_json { "direction": "to_processed" | "to_original",
+ * "points": [ [x, y], ... ], "bypass": [...] } -> { "points": [ [x, y] |
+ * null, ... ], "original": { "width", "height" }, "processed": { "width",
+ * "height" } }. Through every switched-on module that moves pixels
+ * (dt_dev_distort_transform_plus / _backtransform_plus, all directions). */
+int dtb_coords_transform(const char *request_json, char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 6.6 blending (P1b part 2)                                               */
+
+/* The instance's blend settings by name (engine-api.md 6.6): { "supported",
+ * "masks", "mask_mode_flags", "colorspace", "effective_colorspace", "mode",
+ * "reverse", "parameter", "opacity", "combine": { "invert", "mode" },
+ * "feathering_radius", "feathering_guide", "blur_radius", "contrast",
+ * "brightness", "details", "parametric": { "<channel>": { "active",
+ * "invert", "range": [a, b, c, d], "boost" } }, "raster", "mask_id",
+ * "mask_lock" }. */
+int dtb_blend_get(const char *op, int priority, char **json);
+/* [M] Set blend settings: { "<path>": value, ... } with the names of
+ * blend_get ("combine.invert", "parametric.L_in.range", ...). Checked first,
+ * nothing changes if one is refused (TYPE, RANGE, ARG, NOT_FOUND). Merged
+ * into one history item with following blend_set / param_set calls on the
+ * same instance until dtb_history_seal(), as param_set. */
+int dtb_blend_set(const char *op, int priority, const char *values_json);
+
+/* ---------------------------------------------------------------------- */
+/* 6.7 drawn masks (P1b part 2; engine-api.md 6.7 has the JSON)            */
+
+/* Every form of the session: [ { "id", "type", "name", "version",
+ * "geometry": {...}, "used_by": [ { "op", "priority", "root" } ] } ].
+ * Coordinates are normalised to the original image (the pipe's input). */
+int dtb_masks(char **json);
+/* [M] A new form (circle, ellipse, gradient, path, brush) used by no
+ * instance yet; name NULL = darktable's automatic name -> { "id" }. A brush
+ * may be given as a "stroke" of points, turned into brush points as
+ * desktop's brush tool does. */
+int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json);
+/* [M] New geometry for a form (same type). */
+int dtb_mask_update(int id, const char *geometry_json);
+/* [M] */
+int dtb_mask_rename(int id, const char *name);
+/* [M] Delete a form and remove it from every group. DTB_E_ARG for a form
+ * that is an instance's whole mask. */
+int dtb_mask_delete(int id);
+/* [M] Add a form (or group) to an instance's mask, as desktop's panel adds
+ * a shape: the instance's flexi group is created if needed and its mask
+ * switched on. options_json: { "inverse": bool, "opacity": 0..1,
+ * "disabled": bool } or NULL. A form may be in several instances' masks. */
+int dtb_mask_attach(const char *op, int priority, int id, const char *options_json);
+/* [M] Remove a form from an instance's mask (the form stays). */
+int dtb_mask_detach(const char *op, int priority, int id);
+/* [M] Change inverse, opacity, disabled of a form in an instance's mask. */
+int dtb_mask_member_set(const char *op, int priority, int id, const char *options_json);
+/* [M] A flexi group of existing forms ([id, ...]) -> { "id" }. */
+int dtb_mask_group_create(const char *member_ids_json, const char *name, char **json);
+/* [M] A flexi group's own settings: { "operator": "maximum" | "screen" |
+ * "minimum" | "product" | "sum" | "difference" | "exclusion", "invert",
+ * "bypass", "opacity": 0..1, "name" }. An instance's mask is such a group
+ * (blend_get "mask_id"). */
+int dtb_mask_group_set(int id, const char *options_json);
 
 #ifdef __cplusplus
 }

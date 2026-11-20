@@ -90,6 +90,17 @@ void dtb__history_add_params(dt_iop_module_t *m, const gboolean enable)
 /* ------------------------------------------------------------------ */
 /* undo states                                                        */
 
+static gboolean _changed_tag_attached(void)
+{
+  gboolean found = FALSE;
+  GList *attached = NULL;
+  dt_tag_get_attached(dtb_S.imgid, &attached, FALSE);
+  for(GList *t = attached; t && !found; t = g_list_next(t))
+    found = !strcmp(((const dt_tag_t *)t->data)->tag, "darktable|changed");
+  dt_tag_free_result(&attached);
+  return found;
+}
+
 static dtb_undo_entry_t *_snapshot_take(void)
 {
   // the library must hold the session's history first
@@ -100,6 +111,17 @@ static dtb_undo_entry_t *_snapshot_take(void)
   e->history_end = dtb_S.dev.history_end;
   // every item, also those above history_end (after a history_goto)
   dt_history_snapshot_create(dtb_S.imgid, e->snap_id, e->n_items);
+  // the hash row as it is in this state: dt_history_snapshot_restore()
+  // rewrites only the current hash (6.2)
+  dt_history_hash_values_t h;
+  dt_history_hash_read(dtb_S.imgid, &h);
+  e->hash[0] = h.basic;
+  e->hash_len[0] = h.basic_len;
+  e->hash[1] = h.auto_apply;
+  e->hash_len[1] = h.auto_apply_len;
+  e->hash[2] = h.current;
+  e->hash_len[2] = h.current_len;
+  e->changed_tag = _changed_tag_attached();
   return e;
 }
 
@@ -107,16 +129,38 @@ static void _snapshot_free(gpointer p)
 {
   dtb_undo_entry_t *e = p;
   if(dtb_inited) dt_history_snapshot_clear(dtb_S.imgid, e->snap_id);
+  for(int k = 0; k < 3; k++) g_free(e->hash[k]);
   g_free(e);
+}
+
+static gint64 _change_timestamp(void)
+{
+  const dt_image_t *img = dt_image_cache_get(dtb_S.imgid, 'r');
+  const gint64 t = img ? img->change_timestamp : 0;
+  if(img) dt_image_cache_read_release(img);
+  return t;
+}
+
+static void _change_timestamp_set(const gint64 t)
+{
+  dt_image_t *img = dt_image_cache_get(dtb_S.imgid, 'w');
+  if(!img) return;
+  img->change_timestamp = t;
+  dt_image_cache_write_release(img, DT_IMAGE_CACHE_RELAXED);
 }
 
 static void _snapshot_restore(const dtb_undo_entry_t *e)
 {
   // dt_history_snapshot_restore() empties the image's history with
   // dt_history_delete_on_image_ext(), which also detaches the
-  // "darktable|style|..." and "darktable|changed" tags and clears the change
-  // timestamp. Those belong to the session, not to the history state: keep
-  // the style tags, and mark the image changed as any edit does
+  // "darktable|style|..." and "darktable|changed" tags, clears the change
+  // timestamp and deletes the history hash row; then it writes back the
+  // current hash only. Desktop's undo (libs/history.c, _pop_undo) touches
+  // none of them: the tags and the change timestamp belong to the session
+  // (the time of the last real change, dt_dev_add_history_item), the hash
+  // row to the state (6.2). So: style tags and timestamp kept; hashes and
+  // the "changed" tag of the state.
+  const gint64 stamp = _change_timestamp();
   GList *keep = NULL;
   GList *attached = NULL;
   dt_tag_get_attached(dtb_S.imgid, &attached, FALSE);
@@ -134,10 +178,26 @@ static void _snapshot_restore(const dtb_undo_entry_t *e)
   for(GList *t = keep; t; t = g_list_next(t))
     dt_tag_attach(GPOINTER_TO_UINT(t->data), dtb_S.imgid, FALSE, FALSE);
   g_list_free(keep);
-  guint tagid = 0;
-  dt_tag_new("darktable|changed", &tagid);
-  dt_tag_attach(tagid, dtb_S.imgid, FALSE, FALSE);
-  dt_image_cache_set_change_timestamp(dtb_S.imgid);
+  // "darktable|changed" as it was at that state, so that the XMP written
+  // after an undo equals the one written at that state (6.2; desktop keeps
+  // the tag once set: a deliberate difference, said in engine-api.md)
+  if(e->changed_tag)
+  {
+    guint tagid = 0;
+    dt_tag_new("darktable|changed", &tagid);
+    dt_tag_attach(tagid, dtb_S.imgid, FALSE, FALSE);
+  }
+  _change_timestamp_set(stamp);
+  // dt_history_hash_write() frees what it is given: copies
+  dt_history_hash_values_t h = {
+    e->hash[0] ? dtb__memdup(e->hash[0], e->hash_len[0]) : NULL, e->hash_len[0],
+    e->hash[1] ? dtb__memdup(e->hash[1], e->hash_len[1]) : NULL, e->hash_len[1],
+    e->hash[2] ? dtb__memdup(e->hash[2], e->hash_len[2]) : NULL, e->hash_len[2] };
+  if(h.basic || h.auto_apply || h.current)
+  {
+    // the row as it was, absent members absent (INSERT OR REPLACE)
+    dt_history_hash_write(dtb_S.imgid, &h);
+  }
 
   dtb__reload_dev();
 }

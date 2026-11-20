@@ -86,11 +86,10 @@ class P3aScenarioTest {
     }
 
     /**
-     * The XMP's edit: without its time stamps (the bridge marks the image changed on every change, the bracket's
-     * too) and without the history's basic and auto hashes. Those two are lost by every undo of the bridge
-     * (engine/src/history.c `_snapshot_restore` → upstream `dt_history_snapshot_restore`, which deletes the image's
-     * history_hash row and writes back the current hash only), the bracket's undo included: reported in the P3a
-     * report, recorded by [differences]. The history, its end, the parameters and the current hash are compared.
+     * The XMP's edit: without its time stamps and without the history's basic and auto hashes (P3a: the bridge's
+     * undo lost those two, and the crop tool's bracket used an undo). Brief P1b part 2: the tool's picture is a
+     * render that leaves crop out and the bridge's undo keeps the hashes, so c1 and c2 now also require the XMP
+     * to be byte-equal; [edit] stays for the message that says what differs.
      */
     private fun edit(xmp: String) = xmp
         .replace(Regex("""\s+[A-Za-z]+:[A-Za-z_]*(?:timestamp|Date)="[^"]*""""), "")
@@ -157,7 +156,7 @@ class P3aScenarioTest {
         val t0 = c.state.value.cropTool!!
         TestFiles.record(res, "c1_tool", "uncropped ${t0.inW}x${t0.inH}, cropped ${cropped0.width}x${cropped0.height}, frame ${t0.clip}")
         assertTrue("the tool shows the uncropped picture", t0.inW.toLong() * t0.inH > cropped0.width.toLong() * cropped0.height + 1000)
-        assertEquals("the bracket left the history as it was", h0, c.state.value.history)
+        assertEquals("opening the tool left the history as it was", h0, c.state.value.history)
         assertEquals(p0, params(c))
         // a corner, then the whole frame, by touch
         val g0 = t0.clip
@@ -177,6 +176,8 @@ class P3aScenarioTest {
         val xmpDuring = File(item.xmpPath).readText()
         TestFiles.record(res, "c1_sync_during_tool_differences", differences(xmp0, xmpDuring).ifEmpty { "none" })
         assertEquals(edit(xmp0), edit(xmpDuring))
+        // brief P1b part 2: nothing of the tool reaches the engine, so the XMP is byte-equal
+        assertEquals("XMP during the tool byte-equal (P1b part 2)", xmp0, xmpDuring)
         val shown = c.state.value.cropTool!!.outputSize()
         // crop's panel closed: the frame applied, one history item, the picture as large as the tool said
         c.toggleExpanded(crop)
@@ -248,6 +249,8 @@ class P3aScenarioTest {
         val same = xmp0 == xmp1
         TestFiles.record(res, "c2_xmp_identical", "$same${if (same) "" else " (differing attributes: ${differences(xmp0, xmp1)})"}")
         assertEquals(edit(xmp0), edit(xmp1))
+        // brief P1b part 2 (P3a's limit 1): opening and closing the tool without a change leaves the XMP byte-equal
+        assertTrue("XMP byte-equal after the tool opened and closed (P1b part 2): ${differences(xmp0, xmp1)}", same)
         TestFiles.record(res, "c2", "passed")
     }
 }

@@ -15,6 +15,18 @@ import app.dtandroid.engine.api.ImageClass
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.ParamPath
+import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.MaskForm
+import app.dtandroid.engine.api.MaskMember
+import app.dtandroid.engine.api.MaskUser
+import app.dtandroid.engine.api.Blend
+import app.dtandroid.engine.api.PickResult
+import app.dtandroid.engine.api.PickStats
+import app.dtandroid.engine.api.Histogram
+import app.dtandroid.engine.api.CoordsDirection
+import app.dtandroid.engine.api.CoordsResult
+import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -46,6 +58,10 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
 import java.util.concurrent.Executors
@@ -53,6 +69,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -135,9 +152,14 @@ class FakeEngine(
     private data class Item(
         val op: String, val priority: Int, val instanceName: String, val enabled: Boolean, val params: JsonObject,
         val unknown: Boolean = false,
+        /** P1b part 2: the blend settings (engine-api.md 6.6 JSON), null = the module's defaults */
+        val blend: JsonObject? = null,
     )
 
-    private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int)
+    /** P1b part 2: a drawn form, kept as data (the stand-in does not render masks) */
+    private data class FakeForm(val id: Int, val type: String, val name: String, val geometry: JsonObject)
+
+    private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int, val forms: List<FakeForm> = emptyList())
 
     private class Session(
         val rawPath: String,
@@ -152,6 +174,9 @@ class FakeEngine(
     ) {
         val undo = ArrayDeque<Snapshot>()
         val redo = ArrayDeque<Snapshot>()
+        /** P1b part 2: the drawn forms (engine-api.md 6.7) */
+        var forms: List<FakeForm> = emptyList()
+        var nextFormId = 1000
         /** instance whose param_set calls currently merge into the last history item */
         var openGroup: Pair<String, Int>? = null
     }
@@ -184,7 +209,7 @@ class FakeEngine(
             ?: fail(EngineError.NOT_FOUND, "no instance $op/$priority")
 
     /** enabled and params of every instance after the first [end] history items */
-    private data class Live(val enabled: Boolean, val params: JsonObject, val inHistory: Boolean)
+    private data class Live(val enabled: Boolean, val params: JsonObject, val inHistory: Boolean, val blend: JsonObject? = null)
 
     private fun Session.live(upTo: Int = end): Map<Pair<String, Int>, Live> {
         val m = LinkedHashMap<Pair<String, Int>, Live>()
@@ -194,7 +219,7 @@ class FakeEngine(
         }
         for (it in items.take(upTo)) {
             val k = it.op to it.priority
-            if (k in m) m[k] = Live(it.enabled || !catalog[it.op]!!.canSwitch, it.params, true)
+            if (k in m) m[k] = Live(it.enabled || !catalog[it.op]!!.canSwitch, it.params, true, it.blend)
         }
         // P2b: as the bridge, "in_history" means the instance has an item anywhere in the history list,
         // also above the current end
@@ -205,9 +230,9 @@ class FakeEngine(
         return m
     }
 
-    private fun Session.snapshot() = Snapshot(insts, items, end)
+    private fun Session.snapshot() = Snapshot(insts, items, end, forms)
 
-    private fun Session.restore(s: Snapshot) { insts = s.insts; items = s.items; end = s.end; openGroup = null }
+    private fun Session.restore(s: Snapshot) { insts = s.insts; items = s.items; end = s.end; forms = s.forms; openGroup = null }
 
     /** Start a new history group: seal, record the undo state, discard history above `end`. */
     private fun Session.beginChange(truncate: Boolean = true) {
@@ -218,9 +243,10 @@ class FakeEngine(
         if (truncate && end < items.size) items = items.take(end)
     }
 
-    private fun Session.addItem(op: String, priority: Int, enabled: Boolean, params: JsonObject) {
+    private fun Session.addItem(op: String, priority: Int, enabled: Boolean, params: JsonObject,
+                                blend: JsonObject? = live()[op to priority]?.blend) {
         val name = inst(op, priority).instanceName
-        items = items + Item(op, priority, name, enabled, params)
+        items = items + Item(op, priority, name, enabled, params, blend = blend)
         end = items.size
     }
 
@@ -525,6 +551,9 @@ class FakeEngine(
         def(op)
         s.inst(op, priority)
         when (op to action) {
+            "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area",
+            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot" ->
+                fakePickAction(s, op, priority, action, args)
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
                 val (t, tint) = FakeWhiteBalance.fromCoefficients(p)
@@ -737,41 +766,84 @@ class FakeEngine(
         return catalog["flip"]?.fields?.get("orientation")?.enumValue(name)?.takeIf { it >= 0 } ?: 0
     }
 
-    override suspend fun renderSize(scale: Double): RenderSize = onEngine {
+    private fun orientation(s: Session, bypass: Set<Pair<String, Int>>): Int = if (("flip" to 0) in bypass) 0 else orientation(s)
+
+    /**
+     * 6.1: the instances a render leaves out, checked as the bridge checks them: NOT_FOUND for no such instance,
+     * ARG for a module without an on/off switch.
+     */
+    private fun Session.bypassOf(options: RenderOptions): Set<Pair<String, Int>> {
+        if (options.showMask != null) {
+            // 6.8: refused as the bridge refuses it; the stand-in then draws the picture in grey without the
+            // yellow mask (it renders no masks)
+            val m = options.showMask
+            inst(m.op, m.priority)
+            val masks = (live()[m.op to m.priority]?.blend?.get("masks") as? JsonPrimitive)?.content ?: "off"
+            if (masks == "off" || masks == "uniform") fail(EngineError.ARG, "${m.op} ${m.priority} has no mask to show (mask mode off or uniform)")
+        }
+        return options.bypass.map { b ->
+            inst(b.op, b.priority)
+            if (!def(b.op).canSwitch) fail(EngineError.ARG, "${b.op} cannot be left out: it has no on/off switch")
+            b.op to b.priority
+        }.toSet()
+    }
+
+    override suspend fun renderSize(scale: Double): RenderSize = renderSize(scale, RenderOptions.NONE)
+
+    override suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
-        val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s), scale)
+        val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s, bypass), scale)
         RenderSize.fromJson(RenderSize(w, h).toJson())
     }
 
-    override suspend fun renderPreview(maxSize: Int): RenderedImage = onEngine {
+    override suspend fun renderPreview(maxSize: Int): RenderedImage = renderPreview(maxSize, RenderOptions.NONE)
+
+    override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (maxSize < 16) fail(EngineError.ARG, "max_size $maxSize")
         val r = FakeRenderer(s.variant)
-        val o = orientation(s)
+        val o = orientation(s, bypass)
         val (fw, fh) = r.processedSize(o, 1.0)
         val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
         val (w, h) = r.processedSize(o, scale)
-        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview")
+        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass).let { if (options.showMask != null) grey(it) else it }
     }
 
-    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage = onEngine {
+    /** the stand-in's "show mask": the picture in grey (no mask drawn) */
+    private fun grey(img: RenderedImage): RenderedImage {
+        val px = img.rgba.copyOf()
+        for (i in 0 until img.width * img.height) {
+            val y = (0.3 * (px[4 * i].toInt() and 0xff) + 0.59 * (px[4 * i + 1].toInt() and 0xff) + 0.11 * (px[4 * i + 2].toInt() and 0xff)).roundToInt().toByte()
+            px[4 * i] = y; px[4 * i + 1] = y; px[4 * i + 2] = y
+        }
+        return RenderedImage(img.width, img.height, px)
+    }
+
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage =
+        renderRegion(x, y, w, h, scale, RenderOptions.NONE)
+
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
         val r = FakeRenderer(s.variant)
-        val o = orientation(s)
+        val o = orientation(s, bypass)
         val (fw, fh) = r.processedSize(o, scale)
         if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
             fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
         if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
-        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full")
+        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass).let { if (options.showMask != null) grey(it) else it }
     }
 
-    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null): RenderedImage {
+    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null,
+                               bypass: Set<Pair<String, Int>> = emptySet()): RenderedImage {
         val flag = AtomicBoolean(false)
         runningRender.set(flag)
         try {
-            val live = s.live()
+            val live = s.live().mapValues { (k, l) -> if (k in bypass) l.copy(enabled = false) else l }
             val stages = s.insts.mapNotNull { i ->
                 val l = live[i.op to i.priority]!!
                 if (l.enabled) r.stageFor(i.op, l.params) else null
@@ -1082,6 +1154,516 @@ class FakeEngine(
             val it = s.items[i]
             FStyleItem(i, it.op, it.priority, it.instanceName, it.enabled, catalog[it.op]!!.version, FAKE_BLEND_VERSION, it.params)
         })
+    }
+
+    // ------------------------------------------------------------ 6 (P1b part 2): pickers, histogram, coordinates
+    //
+    // The stand-in engine picks on its own picture (the preview it renders, 0..1 from the 8-bit values): a module's
+    // "input" is the picture with that module left out, its "output" the picture with it in, both "rgb". The
+    // global picker gives the picture's statistics. Coordinates: its only geometry is the orientation (flip).
+
+    private fun area(req: PickRequest): DoubleArray {
+        val a = req.area ?: req.point?.let { listOf(it[0], it[1], it[0], it[1]) }
+            ?: fail(EngineError.ARG, "expected \"area\": [x0, y0, x1, y1] or \"point\": [x, y]")
+        if (req.area != null && req.area.size != 4 || req.point != null && req.point.size != 2) fail(EngineError.ARG, "bad area or point")
+        if (a.any { !it.isFinite() || it < 0.0 || it > 1.0 }) fail(EngineError.ARG, "area and point are normalised coordinates of the picture (0..1)")
+        if (a[2] < a[0] || a[3] < a[1]) fail(EngineError.ARG, "area: x0 <= x1 and y0 <= y1")
+        return a.toDoubleArray()
+    }
+
+    private suspend fun fakeStats(s: Session, a: DoubleArray, bypass: Set<Pair<String, Int>>): PickStats {
+        val r = FakeRenderer(s.variant)
+        val o = orientation(s, bypass)
+        val (fw, fh) = r.processedSize(o, 1.0)
+        val scale = min(1.0, 512.0 / max(fw, fh))
+        val (w, h) = r.processedSize(o, scale)
+        val img = render(s, r, 0, 0, w, h, scale, o, 0, null, bypass)
+        val x0 = (a[0] * w).toInt().coerceIn(0, w - 1)
+        val y0 = (a[1] * h).toInt().coerceIn(0, h - 1)
+        val x1 = max(x0 + 1, (a[2] * w).toInt()).coerceIn(1, w)
+        val y1 = max(y0 + 1, (a[3] * h).toInt()).coerceIn(1, h)
+        val sum = DoubleArray(4)
+        val mn = DoubleArray(4) { Double.MAX_VALUE }
+        val mx = DoubleArray(4) { -Double.MAX_VALUE }
+        for (y in y0 until y1) for (x in x0 until x1) for (c in 0..2) {
+            val v = (img.rgba[4 * (y * w + x) + c].toInt() and 0xff) / 255.0
+            sum[c] += v; mn[c] = min(mn[c], v); mx[c] = max(mx[c], v)
+        }
+        val n = ((x1 - x0) * (y1 - y0)).toDouble()
+        sum[3] = 0.0; mn[3] = 0.0; mx[3] = 0.0
+        return PickStats("rgb", sum.map { it / n }.toMutableList<Double?>().also { it[3] = 0.0 }, mn.toList(), mx.toList(), listOf(x0, y0, x1, y1))
+    }
+
+    override suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult = onEngine {
+        val s = requireSession()
+        if (op != null) { def(op); s.inst(op, priority) }
+        val a = area(request)
+        val bypass = s.bypassOf(request.options)
+        val pipe = if (request.fullPipe) "full" else "preview"
+        if (op == null) return@onEngine PickResult(pipe, null, fakeStats(s, a, bypass))
+        val on = s.live()[op to priority]!!.enabled && (op to priority) !in bypass
+        if (!on) fail(EngineError.ARG, "$op $priority is switched off (or left out): desktop's pickers only pick on modules that are on")
+        PickResult(pipe, fakeStats(s, a, bypass + (op to priority)), fakeStats(s, a, bypass))
+    }
+
+    override suspend fun histogram(maxSize: Int, options: RenderOptions): Histogram = onEngine {
+        val s = requireSession()
+        val bypass = s.bypassOf(options)
+        if (maxSize < 16) fail(EngineError.ARG, "max_size must be >= 16")
+        val r = FakeRenderer(s.variant)
+        val o = orientation(s, bypass)
+        val (fw, fh) = r.processedSize(o, 1.0)
+        val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
+        val (w, h) = r.processedSize(o, scale)
+        val img = render(s, r, 0, 0, w, h, scale, o, 0, null, bypass)
+        val counts = List(3) { LongArray(256) }
+        for (i in 0 until w * h) for (c in 0..2) counts[c][img.rgba[4 * i + c].toInt() and 0xff]++
+        Histogram(256, listOf("red", "green", "blue"), counts.map { it.toList() }, counts.maxOf { it.max() }, (w * h).toLong(), w, h)
+    }
+
+    override suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions): CoordsResult = onEngine {
+        val s = requireSession()
+        val bypass = s.bypassOf(options)
+        val o = orientation(s, bypass)
+        val r = FakeRenderer(s.variant)
+        val (iw, ih) = r.processedSize(0, 1.0)
+        val (pw, ph) = r.processedSize(o, 1.0)
+        // darktable's orientation bits (common/image.h): 1 flip y, 2 flip x, 4 swap x and y, applied as flip.c does
+        fun fwd(p: Pair<Double, Double>): Pair<Double, Double> {
+            var (x, y) = p
+            if (o and 2 != 0) x = 1.0 - x
+            if (o and 1 != 0) y = 1.0 - y
+            return if (o and 4 != 0) y to x else x to y
+        }
+        fun back(p: Pair<Double, Double>): Pair<Double, Double> {
+            var (x, y) = if (o and 4 != 0) p.second to p.first else p
+            if (o and 2 != 0) x = 1.0 - x
+            if (o and 1 != 0) y = 1.0 - y
+            return x to y
+        }
+        val out = points.map { if (direction == CoordsDirection.TO_PROCESSED) fwd(it) else back(it) }
+        CoordsResult(out, iw, ih, pw, ph)
+    }
+
+    /** The stand-in's module actions that pick (6.3), on its own picker (see [colorPick]). */
+    private suspend fun fakePickAction(s: Session, op: String, priority: Int, action: String, args: JsonObject): JsonElement {
+        requireWritable()
+        fun arr(k: String) = (args[k] as? JsonArray)?.map { (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "$k takes numbers") }
+        val req = PickRequest(area = arr("area"), point = arr("point"))
+        val a = area(req)
+        if (!s.live()[op to priority]!!.enabled) fail(EngineError.ARG, "$op $priority is switched off")
+        val input = fakeStats(s, a, setOf(op to priority))
+        val picked = PickResult("preview", input, fakeStats(s, a, emptySet())).toJson()
+        val m = input.mean.map { it ?: 0.0 }
+        fun lum(v: List<Double?>) = 0.2126 * (v[0] ?: 0.0) + 0.7152 * (v[1] ?: 0.0) + 0.0722 * (v[2] ?: 0.0)
+        fun lab(y: Double) = if (y > 216.0 / 24389.0) 116.0 * Math.cbrt(y) - 16.0 else y * 24389.0 / 27.0
+        fun yOf(l: Double) = if (l > 8.0) ((l + 16.0) / 116.0).pow(3) else l * 27.0 / 24389.0
+        val cur = s.live()[op to priority]!!.params
+        return when (op to action) {
+            "temperature" to "wb_from_area" -> {
+                val gnormal = if (m[1] > 0.001) 1.0 / m[1] else 1.0
+                val c = (0..3).map { k -> ((if (m[k] > 0.001) 1.0 / m[k] else 1.0) / gnormal).coerceIn(0.0, 8.0) }.toMutableList()
+                c[1] = 1.0
+                val vals = linkedMapOf<String, JsonPrimitive>("red" to JsonPrimitive(c[0]), "green" to JsonPrimitive(c[1]), "blue" to JsonPrimitive(c[2]))
+                if (cur.containsKey("preset")) vals["preset"] = JsonPrimitive(1)
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("coefficients", JsonArray(listOf(c[0], c[1], c[2], 1.0).map { JsonPrimitive(it) })) }
+            }
+            "exposure" to "spot" -> {
+                val mode = (args["mode"] as? JsonPrimitive)?.content ?: "correction"
+                if (mode != "correction" && mode != "measure") fail(EngineError.ARG, "mode is \"correction\" or \"measure\"")
+                val target = (args["lightness"] as? JsonPrimitive)?.doubleOrNull ?: 50.0
+                if (target !in 0.0..100.0) fail(EngineError.RANGE, "lightness 0..100")
+                val y = lum(input.mean)
+                val ev = (cur["exposure"] as? JsonPrimitive)?.doubleOrNull ?: 0.0
+                buildJsonObject {
+                    put("picked", picked)
+                    put("input_lightness", lab(y))
+                    if (mode == "measure") put("lightness", lab(y * 2.0.pow(ev)))
+                    else {
+                        put("lightness", target)
+                        if (y > 1e-5) {
+                            val e = ln(yOf(target) / y) / ln(2.0)
+                            s.setParams(op, priority, mapOf("exposure" to JsonPrimitive(e)), merge = false)
+                            put("exposure", e)
+                        }
+                    }
+                }
+            }
+            "rgblevels" to "pick" -> {
+                val which = (args["which"] as? JsonPrimitive)?.content
+                if (which !in listOf("black", "grey", "white")) fail(EngineError.ARG, "which is \"black\", \"grey\" or \"white\"")
+                val ch = (args["channel"] as? JsonPrimitive)?.intOrNull ?: 0
+                if (ch !in 0..2) fail(EngineError.ARG, "channel 0..2")
+                val lv = (0..2).map { k -> (cur.paramAt("levels[$ch][$k]") as JsonPrimitive).double }.toMutableList()
+                val v = m[0]
+                when (which) {
+                    "black" -> lv[0] = if (v > lv[1]) lv[1] - 1.1920929E-7 else v
+                    "grey" -> if (!(v < lv[0] || v > lv[2])) lv[1] = v
+                    else -> lv[2] = if (v < lv[1]) lv[1] + 1.1920929E-7 else v
+                }
+                s.setParams(op, priority, (0..2).associate { "levels[$ch][$it]" to JsonPrimitive(lv[it]) }, merge = false)
+                buildJsonObject { put("picked", picked); put("levels", JsonArray(lv.map { JsonPrimitive(it) })); put("changed", true) }
+            }
+            "rgbcurve" to "set_nodes_from_area" -> {
+                val ch = (args["channel"] as? JsonPrimitive)?.intOrNull ?: 0
+                if (ch !in 0..2) fail(EngineError.ARG, "channel 0..2")
+                val d = def(op).defaultParams
+                val n0 = (d.paramAt("curve_num_nodes[$ch]") as JsonPrimitive).int
+                val nodes = (0 until n0).map { k -> (d.paramAt("curve_nodes[$ch][$k].x") as JsonPrimitive).double to (d.paramAt("curve_nodes[$ch][$k].y") as JsonPrimitive).double }.toMutableList()
+                for (v in listOf(lum(input.min), lum(input.mean), lum(input.max))) {
+                    val x = v.coerceIn(0.0, 1.0)
+                    val at = nodes.indexOfFirst { it.first > x }.let { if (it < 0) nodes.size else it }
+                    nodes.add(at, x to x)
+                }
+                if (nodes.size == 5) nodes.add(2, (nodes[1].first + (nodes[3].first - nodes[1].first) / 2) to (nodes[1].second + (nodes[3].second - nodes[1].second) / 2))
+                val vals = linkedMapOf<String, JsonPrimitive>("curve_num_nodes[$ch]" to JsonPrimitive(nodes.size))
+                nodes.forEachIndexed { k, (x, y) -> vals["curve_nodes[$ch][$k].x"] = JsonPrimitive(x); vals["curve_nodes[$ch][$k].y"] = JsonPrimitive(y) }
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("nodes", JsonArray(nodes.map { JsonArray(listOf(JsonPrimitive(it.first), JsonPrimitive(it.second))) })) }
+            }
+            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot" -> {
+                if (action == "spot" && ((args["mode"] as? JsonPrimitive)?.content ?: "correction") != "correction")
+                    fail(EngineError.ARG, "mode: only \"correction\" is built")
+                // the stand-in: the illuminant's chromaticity is the picked colour's (its picture is not adapted)
+                val sum = max(1e-6, m[0] + m[1] + m[2])
+                val x = m[0] / sum; val y = m[1] / sum
+                val vals = linkedMapOf<String, JsonPrimitive>("x" to JsonPrimitive(x), "y" to JsonPrimitive(y))
+                if (cur.containsKey("illuminant")) vals["illuminant"] = JsonPrimitive("DT_ILLUMINANT_CUSTOM")
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("x", x); put("y", y); put("illuminant", "DT_ILLUMINANT_CUSTOM") }
+            }
+            else -> fail(EngineError.NOT_FOUND, "$op has no action '$action'")
+        }
+    }
+
+    // ------------------------------------------------------------ 6.6 blending (as data; the stand-in does not blend)
+
+    private val sceneChannels = listOf("g_in", "R_in", "G_in", "B_in", "Jz_in", "Cz_in", "hz_in", "g_out", "R_out", "G_out", "B_out", "Jz_out", "Cz_out", "hz_out")
+    private val displayChannels = listOf("g_in", "R_in", "G_in", "B_in", "H_in", "S_in", "l_in", "g_out", "R_out", "G_out", "B_out", "H_out", "S_out", "l_out")
+    private val labChannels = listOf("L_in", "a_in", "b_in", "C_in", "h_in", "L_out", "a_out", "b_out", "C_out", "h_out")
+
+    private fun channelsOf(cs: String) = when (cs) { "lab" -> labChannels; "rgb_display" -> displayChannels; "rgb_scene" -> sceneChannels; else -> emptyList() }
+
+    private fun parametricDefaults(cs: String) = JsonObject(channelsOf(cs).associateWith { ch ->
+        buildJsonObject {
+            put("active", false); put("invert", false)
+            put("range", JsonArray(listOf(0.0, 0.0, 1.0, 1.0).map { JsonPrimitive(it) }))
+            put("boost", if (cs == "rgb_scene" && (ch.startsWith("Jz") || ch.startsWith("Cz"))) -6.64385619 else 0.0)
+        }
+    })
+
+    /** desktop's defaults (develop/blend.c _default_blendop_params); the stand-in blends in "rgb_scene" */
+    private fun defaultBlend(supported: Boolean): JsonObject = buildJsonObject {
+        put("supported", supported)
+        if (!supported) return@buildJsonObject
+        put("masks", "off"); put("mask_mode_flags", JsonArray(emptyList()))
+        put("colorspace", "default"); put("effective_colorspace", "rgb_scene")
+        put("mode", "normal"); put("reverse", false); put("parameter", 0.0); put("opacity", 100.0)
+        put("combine", buildJsonObject { put("invert", false); put("mode", "exclusive") })
+        put("feathering_radius", 0.0); put("feathering_guide", "input_after_blur"); put("blur_radius", 0.0)
+        put("contrast", 0.0); put("brightness", 0.0); put("details", 0.0)
+        put("parametric", parametricDefaults("rgb_scene"))
+        put("raster", JsonNull); put("mask_id", JsonNull); put("mask_lock", false)
+    }
+
+    override suspend fun blendGet(op: String, priority: Int): Blend = onEngine {
+        val s = requireSession()
+        val d = def(op)
+        s.inst(op, priority)
+        Blend(s.live()[op to priority]?.blend ?: defaultBlend(d.supportsBlending))
+    }
+
+    private val maskModes = mapOf("off" to listOf<String>(), "uniform" to listOf("enabled"), "drawn" to listOf("enabled", "drawn"),
+        "parametric" to listOf("enabled", "parametric"), "drawn_parametric" to listOf("enabled", "drawn", "parametric"),
+        "raster" to listOf("enabled", "raster"), "flexi" to listOf("enabled", "flexi"))
+    private val displayModes = listOf("normal", "average", "difference", "normal_bounded", "lighten", "addition", "screen", "darken",
+        "subtract", "multiply", "overlay", "softlight", "hardlight", "vividlight", "linearlight", "pinlight")
+    private fun modesOf(cs: String) = when (cs) {
+        "lab" -> displayModes + listOf("lab_lightness", "lab_a", "lab_b", "lab_color", "hue", "color", "coloradjustment", "lightness", "chromaticity")
+        "rgb_display" -> displayModes + listOf("rgb_red", "rgb_green", "rgb_blue", "hsv_value", "hsv_color", "hue", "color", "coloradjustment", "lightness", "chromaticity")
+        else -> listOf("normal", "average", "difference", "multiply", "divide", "addition", "subtract", "geometric_mean", "harmonic_mean",
+            "rgb_red", "rgb_green", "rgb_blue", "lightness", "chromaticity")
+    }
+
+    override suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        s.inst(op, priority)
+        if (!d.supportsBlending) fail(EngineError.ARG, "$op has no blending")
+        if (values.isEmpty()) fail(EngineError.ARG, "blend_set takes an object {path: value, ...}")
+        val b = (s.live()[op to priority]?.blend ?: defaultBlend(true)).toMutableMap()
+        fun str(k: String, v: JsonElement) = (v as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.TYPE, "$k takes a name")
+        fun bool(k: String, v: JsonElement) = (v as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: fail(EngineError.TYPE, "$k takes true or false")
+        fun num(k: String, v: JsonElement, lo: Double, hi: Double): Double {
+            val x = (v as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: fail(EngineError.TYPE, "$k takes a number")
+            if (x < lo || x > hi) fail(EngineError.RANGE, "$k: $x outside $lo..$hi")
+            return x
+        }
+        fun cs() = (b["effective_colorspace"] as JsonPrimitive).content
+        val ordered = values.entries.sortedBy { if (it.key == "colorspace") 0 else 1 }
+        for ((k, v) in ordered) {
+            when {
+                k == "masks" -> { val m = str(k, v); val f = maskModes[m] ?: fail(EngineError.ARG, "masks: unknown mode '$m'")
+                    if (m == "raster") fail(EngineError.ARG, "masks: raster needs a raster mask source")
+                    b["masks"] = JsonPrimitive(m); b["mask_mode_flags"] = JsonArray(f.map { JsonPrimitive(it) }) }
+                k == "colorspace" -> { val c = str(k, v)
+                    if (c !in listOf("default", "lab", "rgb_display", "rgb_scene")) fail(EngineError.ARG, "colorspace '$c' is not offered for $op")
+                    val eff = if (c == "default") "rgb_scene" else c
+                    if (eff != cs()) { b["parametric"] = parametricDefaults(eff); b["mode"] = JsonPrimitive("normal"); b["reverse"] = JsonPrimitive(false); b["parameter"] = JsonPrimitive(0.0) }
+                    b["colorspace"] = JsonPrimitive(c); b["effective_colorspace"] = JsonPrimitive(eff) }
+                k == "mode" -> { val m = str(k, v); if (m !in modesOf(cs())) fail(EngineError.ARG, "mode '$m' is not offered in this blend colour space"); b["mode"] = JsonPrimitive(m) }
+                k == "reverse" -> b["reverse"] = JsonPrimitive(bool(k, v))
+                k == "opacity" -> b[k] = JsonPrimitive(num(k, v, 0.0, 100.0))
+                k == "parameter" -> b[k] = JsonPrimitive(num(k, v, -18.0, 18.0))
+                k == "feathering_radius" -> b[k] = JsonPrimitive(num(k, v, 0.0, 250.0))
+                k == "blur_radius" -> b[k] = JsonPrimitive(num(k, v, 0.0, 100.0))
+                k == "contrast" || k == "brightness" || k == "details" -> b[k] = JsonPrimitive(num(k, v, -1.0, 1.0))
+                k == "feathering_guide" -> { val g = str(k, v)
+                    if (g !in listOf("input_before_blur", "output_before_blur", "input_after_blur", "output_after_blur")) fail(EngineError.ARG, "feathering_guide: unknown '$g'")
+                    b[k] = JsonPrimitive(g) }
+                k == "combine.invert" -> b["combine"] = JsonObject((b["combine"] as JsonObject) + ("invert" to JsonPrimitive(bool(k, v))))
+                k == "combine.mode" -> { val m = str(k, v); if (m != "inclusive" && m != "exclusive") fail(EngineError.ARG, "combine.mode: inclusive or exclusive")
+                    b["combine"] = JsonObject((b["combine"] as JsonObject) + ("mode" to JsonPrimitive(m))) }
+                k == "mask_lock" -> b[k] = JsonPrimitive(bool(k, v))
+                k.startsWith("parametric.") -> {
+                    val parts = k.removePrefix("parametric.").split(".", limit = 2)
+                    val chans = (b["parametric"] as JsonObject).toMutableMap()
+                    val ch = chans[parts[0]] as? JsonObject
+                    if (ch == null || parts.size < 2) fail(EngineError.NOT_FOUND, "no parametric channel in '$k'")
+                    val c = ch.toMutableMap()
+                    when (parts[1]) {
+                        "active", "invert" -> c[parts[1]] = JsonPrimitive(bool(k, v))
+                        "boost" -> { val lo = (ch["boost"] as JsonPrimitive).double.coerceAtMost(0.0); c["boost"] = JsonPrimitive(num(k, v, lo, lo + 18.0)) }
+                        "range" -> { val a = (v as? JsonArray)?.takeIf { it.size == 4 } ?: fail(EngineError.TYPE, "$k takes [a, b, c, d]")
+                            val r = a.map { num(k, it, 0.0, 1.0) }
+                            if (!(r[0] <= r[1] && r[1] <= r[2] && r[2] <= r[3])) fail(EngineError.RANGE, "$k: the points must be in order")
+                            c["range"] = JsonArray(r.map { JsonPrimitive(it) })
+                            if (r != listOf(0.0, 0.0, 1.0, 1.0)) c["active"] = JsonPrimitive(true) }
+                        else -> fail(EngineError.NOT_FOUND, "no field '${parts[1]}' of a parametric channel")
+                    }
+                    chans[parts[0]] = JsonObject(c)
+                    b["parametric"] = JsonObject(chans)
+                }
+                else -> fail(EngineError.NOT_FOUND, "no blend setting '$k'")
+            }
+        }
+        val blend = JsonObject(b)
+        val key = op to priority
+        val cur = s.live()[key]!!
+        val canMerge = s.openGroup == key && s.end == s.items.size && s.items.lastOrNull()?.let { it.op == op && it.priority == priority } == true
+        if (canMerge) s.items = s.items.dropLast(1) + s.items.last().copy(enabled = true, blend = blend)
+        else { s.beginChange(); s.addItem(op, priority, true, cur.params, blend); s.openGroup = key }
+    }
+
+    // ------------------------------------------------------------ 6.7 drawn masks (as data; nothing is rendered)
+    //
+    // The stand-in keeps forms, groups and the instances' masks as data, with undo, and checks arguments as the
+    // bridge does; it draws no mask on its picture, keeps a brush stroke's samples as its points (the bridge
+    // simplifies them as desktop's brush tool does) and records no history item for a form no instance uses
+    // (the bridge records one for darktable's mask manager). Its XMP does not carry masks.
+
+    private fun Session.form(id: Int) = forms.firstOrNull { it.id == id }
+
+    private fun Session.rootOf(op: String, priority: Int): Int? =
+        ((live()[op to priority]?.blend?.get("mask_id")) as? JsonPrimitive)?.intOrNull
+
+    private fun Session.treeHas(root: Int?, id: Int, depth: Int = 0): Boolean {
+        if (root == null || depth > 8) return false
+        if (root == id) return true
+        val g = form(root) ?: return false
+        val members = (g.geometry["members"] as? JsonArray)?.map { (it as JsonObject)["id"]!!.jsonPrimitive.int } ?: return false
+        return members.any { it == id || treeHas(it, id, depth + 1) }
+    }
+
+    private fun pos(g: JsonObject, k: String, need: Boolean): JsonArray? {
+        val v = g[k] ?: if (need) fail(EngineError.ARG, "geometry: \"$k\" missing") else return null
+        val a = v as? JsonArray ?: fail(EngineError.TYPE, "geometry: \"$k\" takes [x, y]")
+        if (a.size != 2) fail(EngineError.TYPE, "geometry: \"$k\" takes [x, y]")
+        a.forEach { val x = (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "geometry: \"$k\" takes numbers")
+            if (x < -1.0 || x > 2.0) fail(EngineError.RANGE, "geometry: \"$k\" outside -1..2") }
+        return a
+    }
+
+    private fun num(g: JsonObject, k: String, lo: Double, hi: Double) {
+        val v = g[k] ?: return
+        val x = (v as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: fail(EngineError.TYPE, "geometry: \"$k\" takes a number")
+        if (x < lo || x > hi) fail(EngineError.RANGE, "geometry: \"$k\" $x outside $lo..$hi")
+    }
+
+    /** checked as the bridge checks it; returns the geometry the form keeps */
+    private fun checkGeometry(type: String, g: JsonObject): JsonObject {
+        when (type) {
+            "circle" -> { pos(g, "center", true); num(g, "radius", 0.0005, 1.0); num(g, "border", 0.0005, 1.0) }
+            "ellipse" -> { pos(g, "center", true); num(g, "rotation", -360.0, 360.0); num(g, "border", 0.001, 1.0) }
+            "gradient" -> { pos(g, "anchor", true); num(g, "rotation", -360.0, 360.0); num(g, "compression", 0.001, 1.0); num(g, "steepness", 0.0, 1.0) }
+            "path", "brush" -> {
+                val stroke = g["stroke"] as? JsonArray
+                if (type == "brush" && stroke != null) {
+                    if (stroke.isEmpty()) fail(EngineError.ARG, "geometry: \"stroke\" takes [[x, y], ...]")
+                    return buildJsonObject { put("points", JsonArray(stroke.map { buildJsonObject { put("corner", it) } })) }
+                }
+                val pts = g["points"] as? JsonArray
+                val need = if (type == "brush") 2 else 3
+                if (pts == null || pts.size < need) fail(EngineError.ARG, "geometry: \"points\" takes at least $need points")
+                pts.forEach { p -> pos(p as? JsonObject ?: fail(EngineError.TYPE, "geometry: a point is not an object"), "corner", true) }
+            }
+            else -> fail(EngineError.ARG, "type is circle, ellipse, gradient, path or brush")
+        }
+        return g
+    }
+
+    override suspend fun masks(): List<MaskForm> = onEngine {
+        val s = requireSession()
+        s.forms.map { f ->
+            val users = s.insts.filter { s.treeHas(s.rootOf(it.op, it.priority), f.id) }
+                .map { MaskUser(it.op, it.priority, s.rootOf(it.op, it.priority) == f.id) }
+            MaskForm(f.id, f.type, f.name, 7, f.geometry, users)
+        }
+    }
+
+    override suspend fun maskCreate(type: String, geometry: JsonObject, name: String?): Int = onEngine {
+        val s = requireWritable()
+        val g = checkGeometry(type, geometry)
+        s.beginChange(truncate = false)
+        val id = s.nextFormId++
+        val n = name?.takeIf { it.isNotEmpty() } ?: "$type #${s.forms.count { it.type == type } + 1}"
+        s.forms = s.forms + FakeForm(id, type, n, g)
+        id
+    }
+
+    /** a history item for the first instance whose mask holds [id], as the bridge records one */
+    private fun Session.recordFor(id: Int) {
+        val user = insts.firstOrNull { treeHas(rootOf(it.op, it.priority), id) } ?: return
+        val cur = live()[user.op to user.priority]!!
+        addItem(user.op, user.priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskUpdate(id: Int, geometry: JsonObject) = onEngine {
+        val s = requireWritable()
+        val f = s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (f.type == "group") fail(EngineError.ARG, "form $id is a group")
+        val g = checkGeometry(f.type, geometry)
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(geometry = g) else it }
+        s.recordFor(id)
+    }
+
+    override suspend fun maskRename(id: Int, name: String) = onEngine {
+        val s = requireWritable()
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (name.isEmpty()) fail(EngineError.ARG, "empty name")
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(name = name) else it }
+        s.recordFor(id)
+    }
+
+    private fun withoutMember(g: JsonObject, id: Int): JsonObject =
+        JsonObject(g + ("members" to JsonArray((g["members"] as JsonArray).filter { (it as JsonObject)["id"]!!.jsonPrimitive.int != id })))
+
+    override suspend fun maskDelete(id: Int) = onEngine {
+        val s = requireWritable()
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        s.insts.firstOrNull { s.rootOf(it.op, it.priority) == id }?.let { fail(EngineError.ARG, "form $id is the mask of ${it.op} ${it.priority}: switch its mask off first") }
+        s.beginChange()
+        s.recordFor(id)
+        s.forms = s.forms.filter { it.id != id }.map { if (it.type == "group") it.copy(geometry = withoutMember(it.geometry, id)) else it }
+    }
+
+    private fun Session.maskInstance(op: String, priority: Int): Live {
+        val d = def(op)
+        inst(op, priority)
+        if (!d.supportsBlending) fail(EngineError.ARG, "$op has no drawn masks")
+        return live()[op to priority]!!
+    }
+
+    private fun memberJson(id: Int, m: MaskMember, base: JsonObject? = null): JsonObject {
+        m.opacity?.let { if (it < 0.0 || it > 1.0) fail(EngineError.RANGE, "opacity $it outside 0..1") }
+        return buildJsonObject {
+            put("id", id)
+            put("inverse", m.inverse ?: (base?.get("inverse") as? JsonPrimitive)?.booleanOrNull ?: false)
+            put("opacity", m.opacity ?: (base?.get("opacity") as? JsonPrimitive)?.doubleOrNull ?: 1.0)
+            put("disabled", m.disabled ?: (base?.get("disabled") as? JsonPrimitive)?.booleanOrNull ?: false)
+        }
+    }
+
+    override suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        val root = s.rootOf(op, priority)
+        if (root == id || (root != null && (s.form(root)!!.geometry["members"] as JsonArray).any { (it as JsonObject)["id"]!!.jsonPrimitive.int == id }))
+            fail(EngineError.ARG, "form $id is already in $op's mask")
+        val m = memberJson(id, member)
+        s.beginChange()
+        var blend = (cur.blend ?: defaultBlend(true)).toMutableMap()
+        val rid = root ?: s.nextFormId++.also { gid ->
+            s.forms = s.forms + FakeForm(gid, "group", "group `$op'", buildJsonObject {
+                put("flexi", true); put("operator", "maximum"); put("invert", false); put("bypass", false); put("opacity", 1.0)
+                put("group_name", ""); put("members", JsonArray(emptyList()))
+            })
+            blend["mask_id"] = JsonPrimitive(gid)
+        }
+        blend["masks"] = JsonPrimitive("flexi"); blend["mask_mode_flags"] = JsonArray(listOf("enabled", "flexi").map { JsonPrimitive(it) })
+        s.forms = s.forms.map { if (it.id == rid) it.copy(geometry = JsonObject(it.geometry + ("members" to JsonArray((it.geometry["members"] as JsonArray) + m)))) else it }
+        s.addItem(op, priority, true, cur.params, JsonObject(blend))
+    }
+
+    override suspend fun maskDetach(op: String, priority: Int, id: Int) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        val root = s.rootOf(op, priority)
+        val g = root?.let { s.form(it) }
+        if (g == null || (g.geometry["members"] as JsonArray).none { (it as JsonObject)["id"]!!.jsonPrimitive.int == id })
+            fail(EngineError.NOT_FOUND, "form $id is not a member of $op $priority's mask")
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == root) it.copy(geometry = withoutMember(it.geometry, id)) else it }
+        s.addItem(op, priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        val root = s.rootOf(op, priority)
+        val g = root?.let { s.form(it) }
+        val old = (g?.geometry?.get("members") as? JsonArray)?.map { it as JsonObject }?.firstOrNull { it["id"]!!.jsonPrimitive.int == id }
+            ?: fail(EngineError.NOT_FOUND, "form $id is not a member of $op $priority's mask")
+        val m = memberJson(id, member, old)
+        s.beginChange()
+        s.forms = s.forms.map { f -> if (f.id == root) f.copy(geometry = JsonObject(f.geometry + ("members" to JsonArray((f.geometry["members"] as JsonArray).map { e -> if ((e as JsonObject)["id"]!!.jsonPrimitive.int == id) m else e })))) else f }
+        s.addItem(op, priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskGroupCreate(memberIds: List<Int>, name: String?): Int = onEngine {
+        val s = requireWritable()
+        memberIds.forEach { s.form(it) ?: fail(EngineError.NOT_FOUND, "no form $it") }
+        s.beginChange(truncate = false)
+        val id = s.nextFormId++
+        s.forms = s.forms + FakeForm(id, "group", name?.takeIf { it.isNotEmpty() } ?: "group #${s.forms.count { it.type == "group" } + 1}", buildJsonObject {
+            put("flexi", true); put("operator", "maximum"); put("invert", false); put("bypass", false); put("opacity", 1.0); put("group_name", "")
+            put("members", JsonArray(memberIds.map { memberJson(it, MaskMember()) }))
+        })
+        id
+    }
+
+    override suspend fun maskGroupSet(id: Int, settings: JsonObject) = onEngine {
+        val s = requireWritable()
+        val g = s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (g.type != "group") fail(EngineError.ARG, "form $id is not a flexi group")
+        if (settings.isEmpty()) fail(EngineError.ARG, "no settings")
+        val geo = g.geometry.toMutableMap()
+        for ((k, v) in settings) when (k) {
+            "operator" -> { val o = (v as? JsonPrimitive)?.content
+                if (o !in listOf("maximum", "screen", "minimum", "product", "sum", "difference", "exclusion")) fail(EngineError.ARG, "operator: maximum, screen, minimum, product, sum, difference or exclusion")
+                geo["operator"] = JsonPrimitive(o) }
+            "invert", "bypass" -> geo[k] = JsonPrimitive((v as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: fail(EngineError.TYPE, "$k takes true or false"))
+            "opacity" -> { val x = (v as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "opacity takes a number"); if (x < 0 || x > 1) fail(EngineError.RANGE, "opacity 0..1"); geo[k] = JsonPrimitive(x) }
+            "name" -> geo["group_name"] = JsonPrimitive((v as? JsonPrimitive)?.content ?: fail(EngineError.ARG, "name"))
+            else -> fail(EngineError.NOT_FOUND, "no group setting '$k'")
+        }
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(geometry = JsonObject(geo)) else it }
+        s.recordFor(id)
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine {

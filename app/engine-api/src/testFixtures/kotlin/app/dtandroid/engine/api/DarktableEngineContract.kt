@@ -693,4 +693,288 @@ abstract class DarktableEngineContract {
         val wb = engine.moduleAction("temperature", 0, "get_wb") as JsonObject
         assertTrue(wb.containsKey("tuning") && wb.containsKey("preset_index"))
     }
+
+    // ----------------------------------------------------------------- 6 (P1b part 2)
+
+    @Test
+    fun aBypassRenderLeavesTheEditAlone() = runBlocking<Unit> {
+        openSample()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.5))
+        engine.historySeal()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(1.0))
+        engine.historySeal()
+        engine.undo()
+        val modules0 = engine.modules()
+        val history0 = engine.history()
+        val undo0 = engine.undoState()
+        assertTrue(undo0.canRedo)
+        val xmpA = File(tmp.root, "bypass-a.xmp")
+        engine.xmpWrite(xmpA.path)
+        val plain = engine.renderPreview(256)
+        val off = RenderOptions.bypass("exposure", 0)
+        val bypassed = engine.renderPreview(256, off)
+        val size = engine.renderSize(0.25, off)
+        val region = engine.renderRegion(0, 0, size.w, size.h, 0.25, off)
+        assertEquals(modules0, engine.modules())
+        assertEquals(history0, engine.history())
+        assertEquals(undo0, engine.undoState())
+        val xmpB = File(tmp.root, "bypass-b.xmp")
+        engine.xmpWrite(xmpB.path)
+        assertTrue("the XMP is byte-equal after bypass renders", xmpA.readBytes().contentEquals(xmpB.readBytes()))
+        assertTrue("the next plain render is the one from before", plain.rgba.contentEquals(engine.renderPreview(256).rgba))
+        // the picture equals the one with the instance switched off
+        engine.setEnabled("exposure", 0, false)
+        val switchedOff = engine.renderPreview(256)
+        val switchedOffRegion = engine.renderRegion(0, 0, size.w, size.h, 0.25)
+        engine.undo()
+        assertTrue("bypass preview = switched off", bypassed.rgba.contentEquals(switchedOff.rgba))
+        assertTrue("bypass region = switched off", region.rgba.contentEquals(switchedOffRegion.rgba))
+        assertNotEquals(meanOf(plain), meanOf(bypassed), 1e-9)
+        // the redo step from before is still there (the switch-off and its undo replaced it: a fresh one)
+        expect(EngineError.NOT_FOUND) { engine.renderPreview(256, RenderOptions.bypass("nosuchmodule", 0)) }
+        expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.bypass("colorin", 0)) }
+        assertEquals(engine.renderSize(0.25), engine.renderSize(0.25, RenderOptions.NONE))
+    }
+
+    @Test
+    fun aRedoStepSurvivesBypassRenders() = runBlocking<Unit> {
+        openSample()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.7))
+        engine.historySeal()
+        engine.undo()
+        engine.renderPreview(256, RenderOptions.bypass("exposure", 0))
+        assertTrue(engine.undoState().canRedo)
+        engine.redo()
+        assertEquals(0.7, exposureValue(), 1e-6)
+    }
+
+    @Test
+    fun anUndoBackGivesTheXmpOfThatState() = runBlocking<Unit> {
+        openSample()
+        val a = File(tmp.root, "undo-a.xmp")
+        engine.xmpWrite(a.path)
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.6))
+        engine.historySeal()
+        val b = File(tmp.root, "undo-b.xmp")
+        engine.xmpWrite(b.path)
+        engine.undo()
+        val c = File(tmp.root, "undo-c.xmp")
+        engine.xmpWrite(c.path)
+        fun edit(f: File) = f.readText().replace(Regex("""\s*darktable:change_timestamp="[^"]*""""), "")
+        assertEquals("after an undo the XMP is the one of that state, apart from the change timestamp", edit(a), edit(c))
+        engine.redo()
+        val d = File(tmp.root, "undo-d.xmp")
+        engine.xmpWrite(d.path)
+        assertTrue("redo back to the last state: byte-equal", b.readBytes().contentEquals(d.readBytes()))
+    }
+
+    @Test
+    fun colorPickersAndHistogram() = runBlocking<Unit> {
+        openSample()
+        val history0 = engine.history()
+        val area = PickRequest.area(0.4, 0.35, 0.62, 0.55)
+        val global = engine.colorPick(null, 0, area)
+        val out = global.output!!
+        assertEquals("preview", global.pipe)
+        assertTrue("$out", out.mean.take(3).all { it != null && it in 0.0..1.0 })
+        assertTrue(out.min[0]!! <= out.mean[0]!! && out.mean[0]!! <= out.max[0]!!)
+        val e = engine.colorPick("exposure", 0, area)
+        assertTrue("exposure picks its input and output: $e", e.input != null && e.output != null)
+        assertEquals("rgb", e.input!!.colorspace)
+        val p = engine.colorPick("exposure", 0, PickRequest.point(0.5, 0.5).copy(denoise = true))
+        assertTrue(p.input != null)
+        expect(EngineError.NOT_FOUND) { engine.colorPick("nosuchmodule", 0, area) }
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, PickRequest(area = listOf(0.5, 0.5, 0.2, 0.2))) }
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, PickRequest()) }
+        engine.setEnabled("exposure", 0, false)
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, area) }
+        engine.undo()
+        val h = engine.histogram(512)
+        assertEquals(256, h.bins)
+        assertEquals(3, h.counts.size)
+        for (c in h.counts) assertEquals(h.pixels, c.sum())
+        assertEquals(h.counts.maxOf { it.max() }, h.max)
+        assertTrue(h.width <= 512 && h.height <= 512)
+        // pickers and histograms change nothing in the edit
+        assertEquals(history0, engine.history())
+    }
+
+    @Test
+    fun moduleActionsThatPick() = runBlocking<Unit> {
+        openSample()
+        val area = buildJsonObject { put("area", kotlinx.serialization.json.JsonArray(listOf(0.4, 0.35, 0.62, 0.55).map { JsonPrimitive(it) })) }
+        val n0 = engine.history().items.size
+        val wb = engine.moduleAction("temperature", 0, "wb_from_area", area) as JsonObject
+        val c = (wb["coefficients"] as kotlinx.serialization.json.JsonArray).map { (it as JsonPrimitive).doubleOrNull!! }
+        assertEquals(1.0, c[1], 0.0)
+        assertEquals(c[0], (instance("temperature").params.paramAt("red") as JsonPrimitive).doubleOrNull!!, 1e-6)
+        // exposure: correct the area to 50 %, then measuring it gives 50 % back
+        engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("correction"), "lightness" to JsonPrimitive(50.0))))
+        val m = engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("measure")))) as JsonObject
+        assertEquals(50.0, (m["lightness"] as JsonPrimitive).doubleOrNull!!, 0.05)
+        expect(EngineError.ARG) { engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("sideways")))) }
+        // rgblevels' black picker
+        engine.setEnabled("rgblevels", 0, true)
+        val lv = engine.moduleAction("rgblevels", 0, "pick", JsonObject(area + mapOf("which" to JsonPrimitive("black")))) as JsonObject
+        val black = ((lv["levels"] as kotlinx.serialization.json.JsonArray)[0] as JsonPrimitive).doubleOrNull!!
+        assertEquals(black, (instance("rgblevels").params.paramAt("levels[0][0]") as JsonPrimitive).doubleOrNull!!, 1e-6)
+        // rgbcurve: nodes from the area
+        engine.setEnabled("rgbcurve", 0, true)
+        val rc = engine.moduleAction("rgbcurve", 0, "set_nodes_from_area", area) as JsonObject
+        val nodes = rc["nodes"] as kotlinx.serialization.json.JsonArray
+        assertTrue("${nodes.size} nodes", nodes.size == 5 || nodes.size == 6)
+        assertEquals(nodes.size, (instance("rgbcurve").params.paramAt("curve_num_nodes[0]") as JsonPrimitive).content.toInt())
+        // one history item per action that changed the edit (and one per switch)
+        assertEquals(n0 + 6, engine.history().items.size)
+    }
+
+    @Test
+    fun coordinatesBetweenOriginalAndPicture() = runBlocking<Unit> {
+        openSample()
+        val pts = listOf(0.2 to 0.3, 0.5 to 0.5, 0.8 to 0.7)
+        val f = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts)
+        assertTrue(f.originalWidth > 0 && f.processedWidth > 0)
+        val b = engine.coordsTransform(CoordsDirection.TO_ORIGINAL, f.points.map { it!! })
+        for ((p, q) in pts.zip(b.points)) {
+            assertEquals(p.first, q!!.first, 1.0 / f.originalWidth)
+            assertEquals(p.second, q.second, 1.0 / f.originalHeight)
+        }
+        // turned clockwise: (x, y) of the picture = (1 - y, x) of the picture without the orientation
+        engine.paramSet("flip", 0, "orientation", ParamValue.enum("ORIENTATION_ROTATE_CW_90_DEG"))
+        engine.historySeal()
+        val t = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts)
+        val n = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts, RenderOptions.bypass("flip", 0))
+        assertEquals(t.processedWidth, n.processedHeight)
+        for ((a, c) in t.points.zip(n.points)) {
+            assertEquals(1.0 - c!!.second, a!!.first, 1.5 / t.processedWidth)
+            assertEquals(c.first, a.second, 1.5 / t.processedHeight)
+        }
+    }
+
+    @Test
+    fun blendingGetSetValidateAndGroup() = runBlocking<Unit> {
+        openSample()
+        val b0 = engine.blendGet("exposure", 0)
+        assertTrue(b0.supported)
+        assertEquals("off", b0.masks)
+        assertEquals("normal", b0.mode)
+        assertEquals(100.0, b0.opacity!!, 0.0)
+        val cs = b0.effectiveColorspace!!
+        assertTrue(cs, cs == "rgb_scene" || cs == "rgb_display")
+        val h0 = engine.history()
+        val m0 = engine.modules()
+        expect(EngineError.RANGE) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(150.0))) }
+        expect(EngineError.ARG) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(50.0), "mode" to JsonPrimitive("lab_a"))) }
+        expect(EngineError.NOT_FOUND) { engine.blendSet("exposure", 0, mapOf("nosuch" to JsonPrimitive(1))) }
+        expect(EngineError.TYPE) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive("x"))) }
+        expect(EngineError.RANGE) {
+            engine.blendSet("exposure", 0, mapOf("parametric.g_in.range" to kotlinx.serialization.json.JsonArray(listOf(0.5, 0.2, 0.6, 0.9).map { JsonPrimitive(it) })))
+        }
+        assertEquals(h0, engine.history())
+        assertEquals(m0, engine.modules())
+        // a slider drag on opacity: one history item until sealed, merged with a parameter change of the instance
+        engine.blendSet("exposure", 0, mapOf("masks" to JsonPrimitive("uniform"), "opacity" to JsonPrimitive(50.0)))
+        engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(60.0)))
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.9))
+        engine.historySeal()
+        assertEquals(h0.items.size + 1, engine.history().items.size)
+        val b1 = engine.blendGet("exposure", 0)
+        assertEquals("uniform", b1.masks)
+        assertEquals(60.0, b1.opacity!!, 1e-6)
+        engine.blendSet("exposure", 0, mapOf("masks" to JsonPrimitive("parametric"),
+            "parametric.g_in.range" to kotlinx.serialization.json.JsonArray(listOf(0.0, 0.2, 0.6, 0.9).map { JsonPrimitive(it) }),
+            "combine.invert" to JsonPrimitive(true)))
+        engine.historySeal()
+        val g = engine.blendGet("exposure", 0).parametric.getValue("g_in")
+        assertTrue(g.active)
+        assertEquals(listOf(0.0, 0.2, 0.6, 0.9), g.range.map { Math.round(it * 1000) / 1000.0 })
+        assertTrue(engine.blendGet("exposure", 0).combineInvert)
+        // a colour space change resets the channels and the mode, as desktop's
+        engine.blendSet("exposure", 0, mapOf("mode" to JsonPrimitive("multiply")))
+        engine.historySeal()
+        engine.blendSet("exposure", 0, mapOf("colorspace" to JsonPrimitive("lab")))
+        engine.historySeal()
+        val lab = engine.blendGet("exposure", 0)
+        assertEquals("normal", lab.mode)
+        assertTrue(lab.parametric.containsKey("L_in"))
+        engine.undo()
+        assertEquals("multiply", engine.blendGet("exposure", 0).mode)
+        expect(EngineError.NOT_FOUND) { engine.blendGet("nosuchmodule", 0) }
+    }
+
+    private fun geo(json: String) = kotlinx.serialization.json.Json.parseToJsonElement(json) as JsonObject
+
+    @Test
+    fun drawnMasksCreateAttachShareEditDelete() = runBlocking<Unit> {
+        openSample()
+        val n0 = engine.masks().size
+        val c = engine.maskCreate("circle", geo("""{"center":[0.3,0.35],"radius":0.12,"border":0.05}"""))
+        val e = engine.maskCreate("ellipse", geo("""{"center":[0.7,0.3],"radius":[0.15,0.08],"rotation":30}"""))
+        val g = engine.maskCreate("gradient", geo("""{"anchor":[0.5,0.8],"rotation":10}"""))
+        val p = engine.maskCreate("path", geo("""{"points":[{"corner":[0.1,0.6]},{"corner":[0.3,0.55]},{"corner":[0.35,0.9]}]}"""))
+        val b = engine.maskCreate("brush", geo("""{"stroke":[[0.55,0.55],[0.6,0.57],[0.65,0.6],[0.7,0.62]]}"""), name = "a stroke")
+        val all = engine.masks()
+        assertEquals(n0 + 5, all.size)
+        assertEquals(setOf("circle", "ellipse", "gradient", "path", "brush"), all.filter { it.id in setOf(c, e, g, p, b) }.map { it.type }.toSet())
+        assertEquals("a stroke", all.first { it.id == b }.name)
+        assertTrue(all.first { it.id == c }.usedBy.isEmpty())
+        val h0 = engine.history().items.size
+        for (id in listOf(c, e, g, p, b)) engine.maskAttach("exposure", 0, id)
+        assertEquals("one history item per attach", h0 + 5, engine.history().items.size)
+        val blend = engine.blendGet("exposure", 0)
+        assertEquals("flexi", blend.masks)
+        val root = blend.maskId!!
+        assertEquals(listOf(c, e, g, p, b), engine.masks().first { it.id == root }.members)
+        // one form in two instances' masks
+        val np = engine.instanceNew("exposure", 0)
+        engine.maskAttach("exposure", np, c, MaskMember(inverse = true))
+        assertEquals(2, engine.masks().first { it.id == c }.usedBy.size)
+        engine.maskMemberSet("exposure", 0, e, MaskMember(opacity = 0.6))
+        engine.maskGroupSet(root, buildJsonObject { put("operator", "screen") })
+        assertEquals("screen", (engine.masks().first { it.id == root }.geometry["operator"] as JsonPrimitive).content)
+        // edit, rename, detach, delete, and the refusals
+        engine.maskUpdate(c, geo("""{"center":[0.4,0.4],"radius":0.2}"""))
+        engine.maskRename(c, "renamed")
+        assertEquals("renamed", engine.masks().first { it.id == c }.name)
+        engine.maskDetach("exposure", 0, g)
+        engine.maskDelete(g)
+        assertFalse(engine.masks().any { it.id == g })
+        expect(EngineError.ARG) { engine.maskDelete(root) }
+        expect(EngineError.ARG) { engine.maskAttach("exposure", 0, c) }
+        expect(EngineError.NOT_FOUND) { engine.maskAttach("exposure", 0, 424242) }
+        expect(EngineError.ARG) { engine.maskUpdate(c, geo("""{"radius":0.2}""")) }
+        expect(EngineError.RANGE) { engine.maskUpdate(c, geo("""{"center":[0.4,0.4],"radius":5}""")) }
+        expect(EngineError.ARG) { engine.maskCreate("triangle", geo("{}")) }
+        expect(EngineError.RANGE) { engine.maskMemberSet("exposure", 0, c, MaskMember(opacity = 3.0)) }
+        expect(EngineError.ARG) { engine.maskGroupSet(root, buildJsonObject { put("operator", "mean") }) }
+        // a group of forms
+        val grp = engine.maskGroupCreate(listOf(c, e))
+        assertEquals(listOf(c, e), engine.masks().first { it.id == grp }.members)
+        // undo takes the last change back
+        engine.undo()
+        assertFalse(engine.masks().any { it.id == grp })
+    }
+
+    @Test
+    fun maskDisplayRender() = runBlocking<Unit> {
+        openSample()
+        val show = RenderOptions(showMask = InstanceRef("exposure", 0))
+        expect(EngineError.ARG) { engine.renderPreview(256, show) }
+        val c = engine.maskCreate("circle", geo("""{"center":[0.3,0.35],"radius":0.1,"border":0.02}"""))
+        engine.maskAttach("exposure", 0, c)
+        val plain = engine.renderPreview(256)
+        val h0 = engine.history()
+        val shown = engine.renderPreview(256, show)
+        assertEquals(plain.width, shown.width)
+        assertFalse(plain.rgba.contentEquals(shown.rgba))
+        // far from the circle the overlay is grey
+        val x = (0.85 * shown.width).toInt(); val y = (0.85 * shown.height).toInt()
+        val i = 4 * (y * shown.width + x)
+        val r = shown.rgba[i].toInt() and 0xff; val g = shown.rgba[i + 1].toInt() and 0xff; val b = shown.rgba[i + 2].toInt() and 0xff
+        assertTrue("grey outside the mask: $r $g $b", kotlin.math.abs(r - g) <= 3 && kotlin.math.abs(g - b) <= 3)
+        val s = engine.renderSize(0.25)
+        engine.renderRegion(0, 0, s.w, s.h, 0.25, show)
+        assertEquals(h0, engine.history())
+        assertTrue(plain.rgba.contentEquals(engine.renderPreview(256).rgba))
+    }
 }

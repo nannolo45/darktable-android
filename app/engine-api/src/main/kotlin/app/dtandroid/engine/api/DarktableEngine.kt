@@ -165,4 +165,60 @@ interface DarktableEngine {
 
     /** Per-module times of the last render. */
     suspend fun renderTimes(): RenderTimes
+
+    // 6 (P1b part 2): docs/design/engine-api.md section 6.
+
+    /** [renderSize] with [options] for this call only (6.1): with a bypass, the size of the picture without the instance. */
+    suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize
+
+    /** [renderPreview] with [options] for this call only (6.1). */
+    suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage
+
+    /** [renderRegion] with [options] for this call only (6.1); the region is in the picture the options give. */
+    suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage
+
+    /**
+     * 6.3: desktop's module picker on ([op], [priority]): statistics of the area on the module's input and output;
+     * [op] null = the picture the pipe puts out (desktop's global picker). ARG for a switched-off module or a bad area.
+     */
+    suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult
+
+    /** 6.4: desktop's RGB histogram of the preview pipe's picture, at most [maxSize] on the longer side. */
+    suspend fun histogram(maxSize: Int = 1024, options: RenderOptions = RenderOptions.NONE): Histogram
+
+    /** 6.5: normalised points between the original image and the picture, through every module that moves pixels. */
+    suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions = RenderOptions.NONE): CoordsResult
+
+    /** 6.6: the blend settings of an instance by name. */
+    suspend fun blendGet(op: String, priority: Int): Blend
+
+    /**
+     * 6.6: set blend settings by path (`opacity`, `masks`, `colorspace`, `mode`, `combine.invert`,
+     * `parametric.<channel>.range`, ...), checked as desktop's panel constrains them; nothing changes if one is
+     * refused. Merges with following blendSet / paramSet calls on the instance until [historySeal].
+     */
+    suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>)
+
+    /** 6.7: every form of the session. */
+    suspend fun masks(): List<MaskForm>
+
+    /** 6.7: a new form (circle, ellipse, gradient, path, brush) used by no instance yet; returns its id. */
+    suspend fun maskCreate(type: String, geometry: JsonObject, name: String? = null): Int
+
+    suspend fun maskUpdate(id: Int, geometry: JsonObject)
+    suspend fun maskRename(id: Int, name: String)
+
+    /** Removes the form from every group; ARG for a form that is an instance's whole mask. */
+    suspend fun maskDelete(id: Int)
+
+    /** Add a form to an instance's mask (its flexi group, created if needed; the mask switched on). */
+    suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember = MaskMember())
+    suspend fun maskDetach(op: String, priority: Int, id: Int)
+    suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember)
+
+    /** A flexi group of existing forms; returns its id. */
+    suspend fun maskGroupCreate(memberIds: List<Int>, name: String? = null): Int
+
+    /** A flexi group's settings: operator, invert, bypass, opacity, name (engine-api.md 6.7). */
+    suspend fun maskGroupSet(id: Int, settings: JsonObject)
 }

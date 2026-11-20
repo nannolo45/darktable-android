@@ -293,7 +293,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 }
             }
             val r = region
-            if (!s.before && r != null && tool == null) {
+            // brief P1b part 2: with the crop tool open, its own sharp region (not while the picture turns)
+            if (!s.before && r != null && (tool != null) == s.regionOfCropTool && turn == 0f) {
                 val sc = r.layer.scale
                 drawImage(
                     r.bitmap,

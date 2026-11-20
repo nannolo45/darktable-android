@@ -134,4 +134,33 @@ object NativeBridge {
     const val STYLE_CREATE = 11
     const val RENDER_TIMES = 12
     @JvmStatic external fun p1b(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
+
+    // P1b part 2 (engine-api.md section 6): renders with options (JSON, null = none)
+    @JvmStatic external fun renderSizeEx(scale: Float, options: String?, wh: IntArray): Int
+    @JvmStatic external fun renderPreviewEx(maxSize: Int, options: String?, wh: IntArray, status: IntArray): ByteArray?
+    @JvmStatic external fun renderRegionIntoEx(x: Int, y: Int, w: Int, h: Int, scale: Float, options: String?, out: ByteArray, copied: BooleanArray): Int
+
+    // P1b part 2: one entry point for the JSON calls, [what] selects the call. Arguments:
+    // COLOR_PICK (s1 op or null, n1 priority, s2 request); HISTOGRAM (s2 request); COORDS (s2 request);
+    // BLEND_GET (s1 op, n1 priority); BLEND_SET (s1 op, n1 priority, s2 values); MASKS;
+    // MASK_CREATE (s1 type, s2 geometry, s3 name or null); MASK_UPDATE (n2 id, s2 geometry); MASK_RENAME (n2 id, s3 name);
+    // MASK_DELETE (n2 id); MASK_ATTACH (s1 op, n1 priority, n2 id, s2 options); MASK_DETACH (s1 op, n1 priority, n2 id);
+    // MASK_MEMBER_SET (s1 op, n1 priority, n2 id, s2 options); MASK_GROUP_CREATE (s2 ids, s3 name); MASK_GROUP_SET (n2 id, s2 settings).
+    // Returns the JSON ("{}" for calls without one) or null with status[0] = the code.
+    const val COLOR_PICK = 0
+    const val HISTOGRAM = 1
+    const val COORDS = 2
+    const val BLEND_GET = 3
+    const val BLEND_SET = 4
+    const val MASKS = 5
+    const val MASK_CREATE = 6
+    const val MASK_UPDATE = 7
+    const val MASK_RENAME = 8
+    const val MASK_DELETE = 9
+    const val MASK_ATTACH = 10
+    const val MASK_DETACH = 11
+    const val MASK_MEMBER_SET = 12
+    const val MASK_GROUP_CREATE = 13
+    const val MASK_GROUP_SET = 14
+    @JvmStatic external fun p1b2(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
 }

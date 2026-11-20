@@ -38,6 +38,7 @@
  *   actions2 <raw> <xmp> <outdir>  C14: module actions added by P1b
  *   cpus                           C15: CPUs checked against the process's set now (P1b)
  *   times <raw> <xmp> <outdir>     C16: per-module times of the last render (P1b)
+ *   bypass, undohash, ...          C17 and later: P1b part 2, see dtb_test_p1b2.c
  * Results are "RESULT key value" lines; exit code 0 = the checks the driver
  * can do on its own passed. Pixel comparisons with darktable-cli are done by
  * run_tests.sh.
@@ -3188,6 +3189,8 @@ static int cmd_cpus(const char *workdir)
   return g_fail;
 }
 
+#include "dtb_test_p1b2.c"
+
 int main(int argc, char **argv)
 {
   if(argc < 3)
@@ -3234,6 +3237,7 @@ int main(int argc, char **argv)
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
       { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
+      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

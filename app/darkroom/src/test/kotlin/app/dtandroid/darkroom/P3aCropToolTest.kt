@@ -6,6 +6,8 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EnginePaths
 import app.dtandroid.engine.api.History
+import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.fake.FakeEngine
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.Control
@@ -34,8 +36,12 @@ import java.io.File
  * Brief P3a deliverables 1 to 3 on the stand-in engine: the tool opens with crop's panel, the frame is dragged
  * and moved without touching the edit, leaving writes one history item (none without a change), and none of the
  * cases of deliverable 3 lets a temporary state reach the XMP or the history: a sync's writeIfOpen while the tool
- * is open and while its bracket runs, "done", the app killed with the tool open (nothing written), "before",
- * history navigation, undo and redo, the read-only case, and an undo that fails.
+ * is open and while its uncropped picture renders, "done", the app killed with the tool open (nothing written),
+ * "before", history navigation, undo and redo, the read-only case, and a render that fails.
+ * Brief P1b part 2 deliverable 2: the uncropped picture is a render that leaves crop out (`bypass`), so the
+ * engine's edit, undo and redo steps and the XMP are never touched by opening the tool; the tests that pinned
+ * P3a's switch-off, render and undo bracket (its redo step hidden, a failed undo stopping every write) now pin
+ * that, and the sharp region when zoomed in is rendered while the tool is open.
  * (The stand-in engine does not crop its picture; the emulator test checks the picture on the real engine.)
  */
 class P3aCropToolTest {
@@ -44,19 +50,33 @@ class P3aCropToolTest {
     private val crop = InstanceKey("crop", 0)
     private val spec by lazy { TestSetup.schema.modules.getValue("crop").aspect!! }
 
-    /** The stand-in engine, with hooks to watch and break the bracket. */
+    /** The stand-in engine, with hooks to watch the renders that leave crop out, and to break them. */
     private class Hooked(val e: DarktableEngine) : DarktableEngine by e {
-        val switchedOff = CompletableDeferred<Unit>()
-        @Volatile var failUndo = false
+        val bypassStarted = CompletableDeferred<Unit>()
+        @Volatile var failBypass = false
         @Volatile var undos = 0
+        @Volatile var switches = 0
+        val bypassPreviews = java.util.concurrent.atomic.AtomicInteger(0)
+        val bypassRegions = java.util.concurrent.atomic.AtomicInteger(0)
         override suspend fun setEnabled(op: String, priority: Int, enabled: Boolean) {
+            switches++
             e.setEnabled(op, priority, enabled)
-            if (op == "crop" && !enabled) switchedOff.complete(Unit)
         }
         override suspend fun undo() {
             undos++
-            if (failUndo) throw EngineException(EngineError.ENGINE, "undo broken for the test")
             e.undo()
+        }
+        override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage {
+            if (options.bypass.isNotEmpty()) {
+                bypassPreviews.incrementAndGet()
+                bypassStarted.complete(Unit)
+                if (failBypass) throw EngineException(EngineError.ENGINE, "render broken for the test")
+            }
+            return e.renderPreview(maxSize, options)
+        }
+        override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage {
+            if (options.bypass.isNotEmpty()) bypassRegions.incrementAndGet()
+            return e.renderRegion(x, y, w, h, scale, options)
         }
     }
 
@@ -139,15 +159,15 @@ class P3aCropToolTest {
         assertEquals(p[0], t.clip.x.toDouble(), 1e-6)
         assertEquals(p[2], t.clip.right.toDouble(), 1e-6)
         assertEquals(c.state.value.info!!.width, t.inW) // the stand-in's picture is not cropped
-        // the edit, the history and the undo steps are as before; the bracket's switch-off was undone
+        // the edit, the history and the undo steps are as before: crop was left out of one render, nothing else
         assertEquals(h0, c.state.value.history)
         assertEquals(h0, e.history())
         assertEquals(m0, c.state.value.modules)
-        assertEquals(1, e.undos)
-        assertEquals(undo0.canUndo, e.undoState().canUndo)
-        // the bracket's state is on the engine's redo queue, and is not offered
-        assertTrue(e.undoState().canRedo)
-        assertFalse(c.state.value.undo.canRedo)
+        assertEquals("no switch-off, no undo (P1b part 2)", 0, e.undos)
+        assertEquals(0, e.switches)
+        assertEquals(1, e.bypassPreviews.get())
+        assertEquals(undo0, e.undoState())
+        assertEquals(undo0, c.state.value.undo)
     }
 
     @Test fun dragAndMoveThenLeaveWriteOneHistoryItemAndUndoBringsTheFrameBack() = runBlocking {
@@ -193,6 +213,19 @@ class P3aCropToolTest {
         openTool(c)
         closeTool(c)
         assertEquals(h0, c.state.value.history)
+    }
+
+    @Test fun openingAndClosingTheToolWithoutAChangeLeavesTheXmpByteEqual() = runBlocking {
+        // P3a's limit 1 (P1b part 2 deliverable 2): before, the bracket's switch-off and undo changed the XMP's
+        // metadata; now nothing in the engine changes
+        val (c, e) = controller()
+        cropped(c)
+        val xmp0 = c.xmp().readBytes()
+        openTool(c)
+        closeTool(c)
+        c.save()
+        assertTrue("XMP byte-equal", xmp0.contentEquals(c.xmp().readBytes()))
+        assertEquals(0, e.undos)
     }
 
     @Test fun cropSwitchedOffStartsFromTheWholePictureWithoutABracket() = runBlocking {
@@ -253,18 +286,19 @@ class P3aCropToolTest {
     }
 
     @Test fun aSyncDuringTheBracketWaitsAndWritesTheEdit() = runBlocking {
-        // a slow preview, so the sync's write arrives while crop is switched off for the uncropped picture
+        // a slow preview, so the sync's write arrives while the uncropped picture renders (P3a: while crop was
+        // switched off for it; P1b part 2: crop is only left out of that render)
         val (c, e) = controller(FakeEngine.Timing(previewFixedMs = 400, regionFixedMs = 100, msPerMegapixel = 0))
         cropped(c)
         val xmp0 = c.xmp().readBytes()
         c.toggleExpanded(crop)
         val tool = async(Dispatchers.Default) { c.syncCropTool() }
-        withTimeout(10_000) { e.switchedOff.await() }
+        withTimeout(10_000) { e.bypassStarted.await() }
         c.saveIfOpen(c.state.value.current!!.rawPath)
         tool.await()
         waitFor("tool open") { c.state.value.cropTool?.picture != null }
-        assertTrue("written after the bracket, with crop on", xmp0.contentEquals(c.xmp().readBytes()))
-        assertEquals(1, e.undos)
+        assertTrue("written with crop on", xmp0.contentEquals(c.xmp().readBytes()))
+        assertEquals(0, e.undos)
     }
 
     @Test fun doneWritesTheFrameKilledWritesNothing() = runBlocking {
@@ -344,26 +378,22 @@ class P3aCropToolTest {
     }
 
     @Test fun theBracketsRedoStepIsNeverOffered() = runBlocking {
+        // P3a's limit 2, P1b part 2 deliverable 2: the user's redo steps survive opening the tool (P3a's bracket
+        // emptied the redo queue and hid its own step; now the tool's render touches neither)
         val (c, e) = controller()
         cropped(c)
-        val m0 = c.state.value.modules
-        openTool(c)
-        assertTrue(e.undoState().canRedo)
-        assertFalse(c.state.value.undo.canRedo)
-        c.redo()
-        assertEquals("redo refused: crop stays on", m0, c.state.value.modules)
-        // an undo by the user puts a real step above it: that one can be redone, and only that one
+        c.setSlider(InstanceKey("exposure", 0), Binding.Param("exposure"), 0.7, false)
+        val m1 = c.state.value.modules
         c.undo()
         assertTrue(c.state.value.undo.canRedo)
+        openTool(c)
+        assertTrue("redo still offered with the tool open", c.state.value.undo.canRedo)
+        assertTrue(e.undoState().canRedo)
+        closeTool(c)
+        assertTrue("and after it", c.state.value.undo.canRedo)
         c.redo()
-        assertEquals(m0, c.state.value.modules)
+        assertEquals(m1, c.state.value.modules)
         assertFalse(c.state.value.undo.canRedo)
-        // a guard unit check: the bottom entry stays guarded through undo and redo
-        val g = RedoGuard()
-        g.bracketed(); assertFalse(g.mayRedo())
-        g.undone(); g.undone(); assertTrue(g.mayRedo())
-        g.redone(); assertTrue(g.mayRedo()); g.redone(); assertFalse(g.mayRedo())
-        g.engineRedoEmpty(); assertTrue(g.mayRedo())
     }
 
     @Test fun readOnlyPhotoHasNoTool() = runBlocking {
@@ -380,30 +410,49 @@ class P3aCropToolTest {
     }
 
     @Test fun anUndoThatFailsStopsEveryWrite() = runBlocking {
+        // P1b part 2: there is no undo in opening the tool any more; a render of the uncropped picture that fails
+        // leaves the tool closed and the edit as it was, and writes go on as before
         val (c, e) = controller()
         cropped(c)
         val xmp0 = c.xmp().readBytes()
-        e.failUndo = true
+        val h0 = c.state.value.history
+        e.failBypass = true
         c.toggleExpanded(crop)
         c.syncCropTool()
-        waitFor("message") { c.state.value.message?.contains(DarkroomController.CROP_NOT_WRITTEN) == true }
-        // asked again (toggleExpanded launched one, this is a second): the tool does not open on that state
-        c.syncCropTool()
-        assertNull(c.cropWanted(c.state.value))
+        waitFor("message") { c.state.value.message?.contains("render broken for the test") == true }
         assertNull(c.state.value.cropTool)
-        // the engine holds crop switched off now: nothing may write it
+        assertEquals(h0, c.state.value.history)
+        assertEquals(0, e.undos)
         c.saveIfOpen(c.state.value.current!!.rawPath)
         c.save()
         assertTrue(xmp0.contentEquals(c.xmp().readBytes()))
         val out = File(tmp.root, "copy.xmp")
-        try { c.writeXmp(out.path) } catch (ex: EngineException) { assertTrue(ex.message!!.contains(DarkroomController.CROP_NOT_WRITTEN)) }
-        assertFalse(out.exists())
-        val r = runCatching { c.withPhotoSession(c.state.value.current!!.rawPath, c.state.value.current!!.xmpPath) { "rendered" } }
-        assertTrue("no session for LightPhotoLibrary: $r", r.isFailure)
-        // the photo opened again (from its XMP, which still holds the edit from before): all works again
-        e.failUndo = false
-        c.openPhoto(0, saveCurrent = false)
-        assertNotNull(c.cropWanted(c.state.value) ?: run { c.toggleExpanded(crop); c.cropWanted(c.state.value) })
+        c.writeXmp(out.path)
+        assertTrue(out.isFile)
+        val r = c.withPhotoSession(c.state.value.current!!.rawPath, c.state.value.current!!.xmpPath) { "rendered" }
+        assertEquals("rendered", r)
+        // the render works again: the tool opens
+        e.failBypass = false
+        c.syncCropTool()
+        waitFor("tool open") { c.state.value.cropTool?.picture != null }
+    }
+
+    @Test fun zoomedInTheToolShowsItsSharpRegion() = runBlocking {
+        // P3a's limit 3 (P1b part 2 deliverable 2): zoomed in with the tool open, the region of the uncropped picture
+        val (c, e) = controller()
+        cropped(c)
+        openTool(c)
+        val t = c.state.value.cropTool!!
+        assertEquals(RenderOptions.bypass("crop", 0), t.options)
+        c.setViewport(Viewport(400, 300, 3f, 0.4f, 0.6f))
+        waitFor("region") { c.state.value.region != null }
+        assertTrue(c.state.value.regionOfCropTool)
+        assertTrue(e.bypassRegions.get() >= 1)
+        assertEquals(c.state.value.history, e.history())
+        // the tool closed: the photo's own picture again, the tool's region is not shown
+        c.setViewport(Viewport(400, 300))
+        closeTool(c)
+        assertEquals(0, e.undos)
     }
 
     @Test fun anotherModulesChangeWhileTheToolIsOpenWritesTheFrameFirst() = runBlocking {
@@ -433,7 +482,7 @@ class P3aCropToolTest {
         openTool(c)
         dragCorner(c)
         val n0 = c.state.value.history.items.size
-        val undos = e.undos
+        val renders = e.bypassPreviews.get()
         assertNotNull(c.rotationSlider())
         // the finger moves: only the screen changes
         c.cropRotationDrag(0.5); c.cropRotationDrag(1.0); c.cropRotationDrag(1.5)
@@ -450,7 +499,9 @@ class P3aCropToolTest {
         assertTrue(c.state.value.modules.first { it.op == "ashift" }.enabled)
         waitFor("tool again") { c.state.value.cropTool?.picture != null }
         assertNull(c.state.value.cropTool!!.rotationLive)
-        assertEquals("the uncropped picture rendered again", undos + 1, e.undos)
+        // P1b part 2: rendered again with crop left out (P3a counted the bracket's undo here)
+        assertEquals("the uncropped picture rendered again", renders + 1, e.bypassPreviews.get())
+        assertEquals(0, e.undos)
     }
 
     @Test fun straightenSetsTheRotationAsDesktop() = runBlocking {

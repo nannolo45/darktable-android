@@ -758,3 +758,115 @@ Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, j
   if(r == DTB_OK && !s) s = strdup("{}");  // dtb_free is g_free, which is free() (GLib >= 2.46)
   return _json_status(env, r, s, status);
 }
+
+/* ---------------------------------------------------------------------- */
+/* P1b part 2 (engine-api.md section 6): renders with options (6.1).       */
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderSizeEx(JNIEnv *env, jclass cls, jfloat scale, jstring options,
+                                                    jintArray wh)
+{
+  jstr_t o = _str(env, options);
+  int w = 0, h = 0;
+  const int r = dtb_render_size_ex(scale, o.s, &w, &h);
+  _str_free(&o);
+  const jint v[2] = { w, h };
+  (*env)->SetIntArrayRegion(env, wh, 0, 2, v);
+  return r;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderPreviewEx(JNIEnv *env, jclass cls, jint max_size, jstring options,
+                                                       jintArray wh, jintArray status)
+{
+  jstr_t o = _str(env, options);
+  uint8_t *buf = NULL;
+  int w = 0, h = 0;
+  const int r = dtb_render_preview_ex(max_size, o.s, &buf, &w, &h);
+  _str_free(&o);
+  const jint st = r;
+  (*env)->SetIntArrayRegion(env, status, 0, 1, &st);
+  if(r || !buf)
+  {
+    dtb_free(buf);
+    return NULL;
+  }
+  const jint v[2] = { w, h };
+  (*env)->SetIntArrayRegion(env, wh, 0, 2, v);
+  const jsize n = (jsize)((size_t)w * h * 4);
+  jbyteArray a = (*env)->NewByteArray(env, n);
+  if(a) (*env)->SetByteArrayRegion(env, a, 0, n, (const jbyte *)buf);
+  dtb_free(buf);
+  return a;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderRegionIntoEx(JNIEnv *env, jclass cls, jint x, jint y, jint w, jint h,
+                                                          jfloat scale, jstring options, jbyteArray out,
+                                                          jbooleanArray copied)
+{
+  if(!out || w <= 0 || h <= 0) return DTB_E_ARG;
+  if((*env)->GetArrayLength(env, out) != (jsize)((size_t)w * h * 4)) return DTB_E_ARG;
+  jstr_t o = _str(env, options);
+  jboolean is_copy = JNI_FALSE;
+  jbyte *buf = (*env)->GetByteArrayElements(env, out, &is_copy);
+  if(!buf)
+  {
+    _str_free(&o);
+    return DTB_E_ENGINE;
+  }
+  const int r = dtb_render_region_ex(x, y, w, h, scale, o.s, (uint8_t *)buf);
+  _str_free(&o);
+  (*env)->ReleaseByteArrayElements(env, out, buf, r == DTB_OK ? 0 : JNI_ABORT);
+  if(copied) (*env)->SetBooleanArrayRegion(env, copied, 0, 1, &is_copy);
+  return r;
+}
+
+/* P1b part 2: one entry point for the JSON calls, as p1b above; what selects
+ * the call, s1..s3 and n1, n2 are its arguments as listed in NativeBridge.kt */
+#define DTJ2_COLOR_PICK 0
+#define DTJ2_HISTOGRAM 1
+#define DTJ2_COORDS 2
+#define DTJ2_BLEND_GET 3
+#define DTJ2_BLEND_SET 4
+#define DTJ2_MASKS 5
+#define DTJ2_MASK_CREATE 6
+#define DTJ2_MASK_UPDATE 7
+#define DTJ2_MASK_RENAME 8
+#define DTJ2_MASK_DELETE 9
+#define DTJ2_MASK_ATTACH 10
+#define DTJ2_MASK_DETACH 11
+#define DTJ2_MASK_MEMBER_SET 12
+#define DTJ2_MASK_GROUP_CREATE 13
+#define DTJ2_MASK_GROUP_SET 14
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
+                                            jstring js3, jint n1, jint n2, jintArray status)
+{
+  jstr_t a = _str(env, js1), b = _str(env, js2), c = _str(env, js3);
+  char *s = NULL;
+  int r = DTB_E_ARG;
+  switch(what)
+  {
+    case DTJ2_COLOR_PICK: r = dtb_color_pick(a.s, n1, b.s, &s); break;
+    case DTJ2_HISTOGRAM: r = dtb_histogram(b.s, &s); break;
+    case DTJ2_COORDS: r = dtb_coords_transform(b.s, &s); break;
+    case DTJ2_BLEND_GET: r = dtb_blend_get(a.s, n1, &s); break;
+    case DTJ2_BLEND_SET: r = dtb_blend_set(a.s, n1, b.s); break;
+    case DTJ2_MASKS: r = dtb_masks(&s); break;
+    case DTJ2_MASK_CREATE: r = dtb_mask_create(a.s, b.s, c.s, &s); break;
+    case DTJ2_MASK_UPDATE: r = dtb_mask_update(n2, b.s); break;
+    case DTJ2_MASK_RENAME: r = dtb_mask_rename(n2, c.s); break;
+    case DTJ2_MASK_DELETE: r = dtb_mask_delete(n2); break;
+    case DTJ2_MASK_ATTACH: r = dtb_mask_attach(a.s, n1, n2, b.s); break;
+    case DTJ2_MASK_DETACH: r = dtb_mask_detach(a.s, n1, n2); break;
+    case DTJ2_MASK_MEMBER_SET: r = dtb_mask_member_set(a.s, n1, n2, b.s); break;
+    case DTJ2_MASK_GROUP_CREATE: r = dtb_mask_group_create(b.s, c.s, &s); break;
+    case DTJ2_MASK_GROUP_SET: r = dtb_mask_group_set(n2, b.s); break;
+    default: break;
+  }
+  _str_free(&a); _str_free(&b); _str_free(&c);
+  if(r == DTB_OK && !s) s = strdup("{}");
+  return _json_status(env, r, s, status);
+}
