@@ -326,6 +326,69 @@ int dtb_xmp_write(const char *xmp_path);
  * A format whose library is not built: DTB_E_ARG with a message. */
 int dtb_export(const char *path, const char *options_json);
 
+
+/* ---------------------------------------------------------------------- */
+/* 5.2 presets (P1b; docs/design/engine-api.md section 5.2 has the JSON)   */
+/* Presets live in darktable's database in configdir (data.db), as on
+ * desktop. Calls that only change that database are not [M]. */
+
+/* Every stored preset of module `op`, all versions, in desktop's menu
+ * order: [ { "name", "description", "builtin", "op_version", "usable",
+ * "enabled", "autoapply", "filter", "match": { "model", "maker", "lens",
+ * "iso": [min, max|null], "exposure": [..], "aperture": [..],
+ * "focal_length": [..], "format": [ "raw"|"ldr"|"hdr"|"matrix"|"monochrome"
+ * |"color" ] }, "matches", "fits", "active" } ]. "matches", "fits" and
+ * "active" refer to the open image and instance (op, priority); null when
+ * no image is open. Unknown op: DTB_E_NOT_FOUND. */
+int dtb_presets_list(const char *op, int priority, char **json);
+/* [M] Apply a preset to an instance as desktop does: one history item. */
+int dtb_preset_apply(const char *op, int priority, const char *name);
+/* Store the instance's parameters, switch and blending as a user preset
+ * (needs an open image). An existing user preset of that name: DTB_E_ARG
+ * unless overwrite != 0. Built-in names: DTB_E_ARG. */
+int dtb_preset_store(const char *op, int priority, const char *name, const char *description, int overwrite);
+/* User presets only (DTB_E_ARG for built-in ones); every version of the name. */
+int dtb_preset_rename(const char *op, const char *name, const char *new_name);
+int dtb_preset_delete(const char *op, const char *name);
+/* Import one .dtpreset file -> { "op", "name", "op_version", "usable" }.
+ * Refused (DTB_E_ARG, nothing stored) for an unknown module, a newer module
+ * or blend version, a built-in name, or an existing user preset of that
+ * name unless overwrite != 0. DTB_E_IO: not a readable preset file. */
+int dtb_preset_import(const char *path, int overwrite, char **json);
+/* Write <dir>/<name>.dtpreset as desktop does -> { "path" }. */
+int dtb_preset_export(const char *op, const char *name, const char *dir, char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 5.3 styles (P1b)                                                        */
+
+/* [ { "name", "description", "has_module_order", "usable",
+ *     "items": [ { "num", "op", "priority", "instance_name", "enabled",
+ *                  "module_version", "blend_version", "problem": null |
+ *                  "unknown_operation" | "newer_module_version"
+ *                  | "newer_blend_version" } ] } ] by name. */
+int dtb_styles_list(char **json);
+/* [M] Apply a style to the open image. mode "append", "overwrite", or NULL
+ * = desktop's preference. One undo step. A style with an item the engine
+ * cannot use is refused with DTB_E_ARG and nothing changes. */
+int dtb_style_apply(const char *name, const char *mode);
+/* Import .dtstyle files: paths_json is a JSON array of paths ->
+ * { "imported": [ { "path", "name", "usable" } ],
+ *   "refused": [ { "path", "reason": "io" | "not_a_style" | "exists" } ] }. */
+int dtb_styles_import(const char *paths_json, int overwrite, char **json);
+int dtb_style_delete(const char *name);
+/* Create a style from the open image's history: items_json NULL = every
+ * item below the history end, else a JSON array of history nums. Does not
+ * change the edit. */
+int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite);
+
+/* ---------------------------------------------------------------------- */
+/* 5.6 per-module times of the last render (P1b, E2)                       */
+
+/* { "pipe": "full" | "preview" | null, "total_ms",
+ *   "modules": [ { "op", "priority", "instance_name", "ms", "cpu_ms", "tiles" } ] }
+ * The modules that ran in the last render, in pipeline order. */
+int dtb_render_times(char **json);
+
 #ifdef __cplusplus
 }
 #endif

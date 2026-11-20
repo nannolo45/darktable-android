@@ -15,6 +15,7 @@
 
 #include "dtb_internal.h"
 
+#include "common/styles.h"
 #include "control/conf.h"
 #include "imageio/imageio_common.h"
 #include "imageio/imageio_module.h"
@@ -24,6 +25,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* common/styles.c; not declared in common/styles.h */
+void dt_import_default_styles(const char *folder);
 
 dtb_session_t dtb_S;
 gboolean dtb_inited = FALSE;
@@ -145,6 +149,19 @@ int dtb_init(const dtb_paths_t *p, int threads)
   g_have_init_cpus = sched_getaffinity(0, sizeof(g_init_cpus), &g_init_cpus) == 0;
   if(!g_thread_cpus) g_thread_cpus = g_array_new(FALSE, FALSE, sizeof(int));
   g_array_set_size(g_thread_cpus, 0);
+  // dt_init imports darktable's shipped styles (share/darktable/styles) from
+  // the folder it finds next to its executable (dt_loc_get_sharedir), which
+  // in the app's process is not darktable's; the bridge imports them from
+  // the data folder it was given, as desktop and darktable-cli do on start
+  // (dt_import_default_styles: styles whose name exists are left alone)
+  {
+    const double t0 = dtb__t();
+    gchar *styledir = g_build_filename(p->datadir, "styles", NULL);
+    if(g_file_test(styledir, G_FILE_TEST_IS_DIR)) dt_import_default_styles(styledir);
+    g_free(styledir);
+    dtb__tlog("init.default_styles", t0);
+  }
+  dtb__times_install();
   dtb_inited = TRUE;
   return DTB_OK;
 }

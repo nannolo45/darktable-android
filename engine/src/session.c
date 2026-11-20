@@ -194,6 +194,55 @@ static void _rows_match(GArray *pre, const int pre_end)
   }
 }
 
+/* E1 (P1b): a file without a decodable picture is refused at open. The
+ * full-size mipmap is what every render and image_info load; asking for it
+ * here runs darktable's loaders (dt_imageio_open) once. When they fail,
+ * dt_mipmap_cache_get leaves a NULL or empty full buffer and records the
+ * loader's status in the image; the downscaled (DT_MIPMAP_F) buffer of such
+ * an image is one of darktable's small static placeholder pictures
+ * (_dead_image_f, _unsupp_image_f, _error_image_f in common/mipmap_cache.c),
+ * which the preview pipe would then process as if it were the sensor data:
+ * the P2f hang. */
+static const char *_load_reason(const dt_imageio_retval_t r)
+{
+  switch(r)
+  {
+    case DT_IMAGEIO_FILE_NOT_FOUND: return "file not found";
+    case DT_IMAGEIO_LOAD_FAILED: return "the loader failed (corrupt or unsupported file)";
+    case DT_IMAGEIO_UNSUPPORTED_FORMAT: return "no loader could decode it (unsupported format, or a truncated or corrupt file)";
+    case DT_IMAGEIO_UNSUPPORTED_CAMERA: return "unsupported camera";
+    case DT_IMAGEIO_UNSUPPORTED_FEATURE: return "unsupported feature (for example the compression)";
+    case DT_IMAGEIO_FILE_CORRUPTED: return "file is corrupt or truncated";
+    case DT_IMAGEIO_IOERROR: return "read error";
+    case DT_IMAGEIO_CACHE_FULL: return "out of memory for the image";
+    case DT_IMAGEIO_UNRECOGNIZED: return "no decoder recognises this file";
+    default: return "unknown loader status";
+  }
+}
+
+static int _check_decodable(const dt_imgid_t imgid, const char *raw_path)
+{
+  dt_mipmap_buffer_t buf;
+  dt_mipmap_cache_get(&buf, imgid, DT_MIPMAP_FULL, DT_MIPMAP_BLOCKING, 'r');
+  const gboolean ok = buf.buf && buf.width > 0 && buf.height > 0;
+  const int w = buf.width, h = buf.height;
+  dt_imageio_retval_t status = buf.loader_status;
+  dt_mipmap_cache_release(&buf);
+  if(ok) return DTB_OK;
+  const dt_image_t *img = dt_image_cache_get(imgid, 'r');
+  if(img)
+  {
+    if(img->load_status != DT_IMAGEIO_OK) status = img->load_status;
+    dt_image_cache_read_release(img);
+  }
+  // nothing of this file may stay in the memory caches: a later open of a
+  // repaired file of the same name must load it again
+  dt_mipmap_cache_remove(imgid);
+  if(status == DT_IMAGEIO_OK)
+    return dtb__err(DTB_E_IO, "cannot decode %s: the loader returned a picture of %d x %d pixels", raw_path, w, h);
+  return dtb__err(DTB_E_IO, "cannot decode %s: %s (load status %d)", raw_path, _load_reason(status), (int)status);
+}
+
 int dtb_open(const char *raw_path, const char *xmp_path)
 {
   NEED_INIT();
@@ -237,8 +286,18 @@ int dtb_open(const char *raw_path, const char *xmp_path)
     imgid = dt_image_import(filmid, raw_path, TRUE, FALSE);
   if(!dt_is_valid_imgid(imgid))
   {
+    // dt_image_import refuses files it cannot identify as a picture (an
+    // empty file, for example): a file problem, not an engine one (E1)
     g_free(sidecar);
-    return dtb__err(DTB_E_ENGINE, "cannot import %s", raw_path);
+    return dtb__err(DTB_E_IO, "cannot import %s: darktable does not recognise it as a picture", raw_path);
+  }
+  {
+    const int r = _check_decodable(imgid, raw_path);
+    if(r)
+    {
+      g_free(sidecar);
+      return r;
+    }
   }
 
   // as darktable-cli: read the XMP into the library, replacing the history
@@ -279,6 +338,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
   _rows_match(pre, pre_end);
   _rows_free(pre);
   dtb_S.merge_module = NULL;
+  dtb__times_reset();
   dtb_S.open = TRUE;
   if(read_only) dtb__err(DTB_OK, "opened read-only: XMP failed the version guard");
   return DTB_OK;
