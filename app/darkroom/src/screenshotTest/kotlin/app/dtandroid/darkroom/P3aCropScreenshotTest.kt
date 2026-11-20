@@ -67,6 +67,35 @@ abstract class P3aCropScreens : ScreenshotBase() {
         capture("$name-p3a-01-crop-tool")
     }
 
+    /** Deliverable 4: the rotation row under the photo, the picture turned while the slider moves, a line drawn by touch. */
+    protected fun rotationAndStraighten(name: String) {
+        val c = showTool()
+        c.cropRotationDrag(3.0)
+        settle(c)
+        capture("$name-p3a-03-rotation-dragged")
+        c.cropRotationDrag(0.0)
+        c.cropStraighten(true)
+        settle(c)
+        // a line by touch along the picture's horizon, a little falling to the right; captured before the lift
+        val from = onPhoto(c, 0.1f, 0.6f)
+        val to = onPhoto(c, 0.9f, 0.63f)
+        compose.onNodeWithContentDescription("photo").performTouchInput {
+            down(from)
+            for (i in 1..8) moveTo(from + (to - from) * (i / 8f))
+        }
+        compose.waitForIdle()
+        assertNotNull("the line is drawn", c.state.value.cropTool!!.line)
+        capture("$name-p3a-04-straighten-line")
+        compose.onNodeWithContentDescription("photo").performTouchInput { up() }
+        compose.waitForIdle()
+        // the rotation is written by the controller's coroutine (engine thread): wait for it
+        val end = System.currentTimeMillis() + 10_000
+        while (c.rotationValue(c.state.value) > -0.5 && System.currentTimeMillis() < end) Thread.sleep(10)
+        assertTrue("rotation set by the line: ${c.rotationValue(c.state.value)}", c.rotationValue(c.state.value) < -0.5)
+        settle(c)
+        capture("$name-p3a-05-straightened")
+    }
+
     protected fun touchResizesAndMoves(name: String) {
         val c = showTool()
         val g0 = c.state.value.cropTool!!.clip
@@ -109,6 +138,7 @@ class PhoneCropScreenshots : P3aCropScreens() {
 
     @Test fun cropTool() = toolShows("phone")
     @Test fun cropToolByTouch() = touchResizesAndMoves("phone")
+    @Test fun rotation() = rotationAndStraighten("phone")
 }
 
 @Config(sdk = [35], qualifiers = "w1280dp-h800dp-land-hdpi")
@@ -118,4 +148,5 @@ class TabletCropScreenshots : P3aCropScreens() {
 
     @Test fun cropTool() = toolShows("tablet")
     @Test fun cropToolByTouch() = touchResizesAndMoves("tablet")
+    @Test fun rotation() = rotationAndStraighten("tablet")
 }

@@ -107,6 +107,35 @@ class CropToolTest {
         assertEquals(CropTool.MIN_CROP_SIZE, CropTool.Clip.fromParams(0.5f, 0.5f, 0.5f, 0.9f).w, 0f)
     }
 
+    @Test fun straightenEqualsDesktop() {
+        val all = cases("straighten")
+        assertTrue("reference lines: ${all.size}", all.size >= 150)
+        var nonZero = 0
+        for (c in all) {
+            val f = c.floats("from")
+            val t = c.floats("to")
+            val wd = c.getValue("wd").jsonPrimitive.double.toFloat()
+            val ht = c.getValue("ht").jsonPrimitive.double.toFloat()
+            val want = c.getValue("angle").jsonPrimitive.double.toFloat()
+            val got = CropTool.straighten(t[0], t[1], f[0], f[1], wd, ht, 1f)
+            // a line at exactly 45° from both axes (the 135° case) is a tie: the last bit of atan2 decides whether
+            // it is levelled to the horizontal (-45°) or to the vertical (+45°); C's atan2f and the JVM's atan2 may
+            // round it differently. Only that exact tie may differ, and only in its sign.
+            if (abs(abs(want) - 45f) < 1e-3f) assertEquals("tie at 45° for line to $t", 45f, abs(got), 1e-3f)
+            else assertEquals("line to $t", want, got, 1e-4f)
+            if (want != 0f) nonZero++
+        }
+        assertTrue("most lines are long enough: $nonZero", nonZero > 90)
+        // a line falling 2° to the right is levelled by -2° (rotation + angle), whatever the direction drawn
+        val a = CropTool.straighten(0.9f, 0.5f + (0.4f * 1000f * Math.tan(Math.toRadians(2.0)).toFloat()) / 667f, 0.5f, 0.5f, 1000f, 667f, 1f)
+        val b = CropTool.straighten(0.5f, 0.5f, 0.9f, 0.5f + (0.4f * 1000f * Math.tan(Math.toRadians(2.0)).toFloat()) / 667f, 1000f, 667f, 1f)
+        assertEquals(-2f, a, 1e-3f); assertEquals(a, b, 1e-6f)
+        // mirrored orientation reverses it; turns do not count as mirrors
+        assertEquals(2f, CropTool.straighten(0.9f, 0.5f + (0.4f * 1000f * Math.tan(Math.toRadians(2.0)).toFloat()) / 667f, 0.5f, 0.5f, 1000f, 667f, 1f, mirrored = true), 1e-3f)
+        assertEquals(listOf(false, true, true, false, true, false, false, true, false),
+            listOf(0, 1, 2, 3, 4, 5, 6, 7, -1).map { CropTool.mirrored(it) })
+    }
+
     // ------------------------------------------------------------------ the app's hit test (touch)
 
     private val frame = CropTool.Clip(0.2f, 0.2f, 0.6f, 0.6f)

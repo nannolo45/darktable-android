@@ -328,6 +328,52 @@ object CropTool {
     fun changed(a: CropAspect.Frame, b: CropAspect.Frame, eps: Double = 1e-6): Boolean =
         abs(a.left - b.left) > eps || abs(a.top - b.top) > eps || abs(a.right - b.right) > eps || abs(a.bottom - b.bottom) > eps
 
+    // ------------------------------------------------------------------ brief P3a deliverable 4: straighten
+
+    private const val M_PI_F = 3.14159265358979323846f
+    private const val M_PI_2F = 1.57079632679489661923f
+    private const val M_PI_4F = 0.78539816339744830962f
+
+    /**
+     * src/iop/ashift.c `_calculate_straightening`: the angle (degrees) that a line drawn from [bzx], [bzy] to [pzx],
+     * [pzy] (fractions of the picture shown [wd] x [ht] pixels large at [zoomScale]) adds to rotate and perspective's
+     * `rotation` (desktop: the rotation slider, whose factor is -1, is set to its value minus this angle, so the
+     * parameter becomes `rotation + angle`). The line is levelled to the nearer axis: horizontal within 45°, else
+     * vertical. Lines shorter than [minLength] pixels (desktop: 25 px) give 0.
+     *
+     * Desktop takes the line back through the modules after rotate and perspective
+     * (`dt_dev_distort_backtransform_plus`); with crop off (the crop tool's picture) that is orientation (flip)
+     * only. A turn by 90°, 180° or 270° does not change the result (the deviation from the nearer axis keeps its
+     * sign); a mirrored orientation reverses it: [mirrored].
+     */
+    fun straighten(pzx: Float, pzy: Float, bzx: Float, bzy: Float, wd: Float, ht: Float, zoomScale: Float,
+                   minLength: Float = 25f, mirrored: Boolean = false): Float {
+        var dx = (pzx - bzx) * wd
+        var dy = (pzy - bzy) * ht
+        if (Math.sqrt((dx * dx + dy * dy).toDouble()) * zoomScale < minLength) return 0.0f
+        // pts = { 0, 0, dx, dy } back-transformed; dx = pts[0] - pts[2], dy = pts[1] - pts[3]
+        val bx = 0f - dx
+        val by = if (mirrored) -(0f - dy) else 0f - dy
+        dx = bx
+        dy = by
+        if (dx < 0) { dx = -dx; dy = -dy }
+        val angle = kotlin.math.atan2(dy, dx)
+        if (!(angle >= -M_PI_2F && angle <= M_PI_2F)) return 0.0f
+        var close = angle
+        close = if (close > M_PI_4F) M_PI_2F - close else if (close < -M_PI_4F) -M_PI_2F - close else -close
+        var a = close / M_PI_F * 180f
+        if (a < -180f) a += 360f
+        if (a > 180f) a -= 360f
+        return a
+    }
+
+    /**
+     * Whether darktable's orientation value (flip's `orientation`, `dt_image_orientation_t`: FLIP_Y 1, FLIP_X 2,
+     * SWAP_XY 4) mirrors the picture: an odd number of reflections. "autodetect" (-1, from the file's Exif) counts
+     * as not mirrored: cameras write turns, not mirrors.
+     */
+    fun mirrored(orientation: Int): Boolean = orientation >= 0 && Integer.bitCount(orientation and 7) % 2 == 1
+
     /** The size in pixels the frame gives on an input of [iwd] x [iht] (desktop's dimensions while dragging). */
     fun outputSize(f: CropAspect.Frame, iwd: Int, iht: Int): Pair<Int, Int> =
         Math.round((f.right - f.left) * iwd).toInt() to Math.round((f.bottom - f.top) * iht).toInt()

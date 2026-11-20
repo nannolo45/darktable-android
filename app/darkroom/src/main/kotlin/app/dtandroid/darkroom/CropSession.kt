@@ -23,8 +23,17 @@ data class CropToolState(
     val ratioN: Int,
     /** the frame or the ratio was changed by the user since the tool opened */
     val touched: Boolean = false,
-    /** a finger is on the frame (the screen shows the output size while it is) */
+    /** a finger is on the frame */
     val dragging: Boolean = false,
+    /**
+     * Brief P3a deliverable 4: the rotation slider's value while a finger moves it (rotate and perspective's
+     * `rotation`, degrees); the picture is shown turned by the difference until the engine's picture arrives.
+     */
+    val rotationLive: Double? = null,
+    /** "straighten" is on: a one-finger drag on the photo draws the line instead of moving the frame */
+    val straighten: Boolean = false,
+    /** the straightening line being drawn: x0, y0, x1, y1 as fractions of the picture */
+    val line: List<Float>? = null,
 ) {
     /** The parameters the frame would be written as now (desktop's `_commit_box`). */
     fun committed(): CropAspect.Frame {

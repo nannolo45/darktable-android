@@ -14,7 +14,10 @@ whose pipes have no distortion after crop (clip_max = 0..1, `_set_max_clip` retu
 - "drag":   `button_pressed` then a series of `mouse_moved` with the first button down, as a mouse drag on
             desktop: the grab desktop picked, and the frame after every move;
 - "commit": the ratio block of `_commit_box`: the frame in pixels rounded to whole multiples of the ratio
-            and clamped, as written to the parameters when the module loses the focus.
+            and clamped, as written to the parameters when the module loses the focus;
+- "straighten": src/iop/ashift.c's `_calculate_straightening` (the angle a line drawn on the image adds to the
+            rotation), with no module after rotate and perspective changing the line (the back transform is the
+            identity), for lines in every direction, short ones included.
 
 Nothing of upstream is changed; the source dir is only read. The JVM tests compare app/schema CropTool
 against these numbers.
@@ -228,9 +231,30 @@ int main(void)
            P.cx, P.cy, P.cw, P.ch);
     first = 0;
   }
+  STRAIGHTEN_CASES
   printf("\n]\n}\n");
   return 0;
 }
+"""
+
+
+STRAIGHTEN = r"""
+  printf("\n],\n\"straighten\": [\n");
+  first = 1;
+  {
+    /* lines from (0.5, 0.5) on a picture shown 1000 x 667 pixels at zoom 1 */
+    const float wd = 1000.0f, ht = 667.0f;
+    for(int deg = -180; deg < 180; deg += 7)
+      for(int len = 0; len < 3; len++)
+      {
+        const float l = len == 0 ? 10.0f : len == 1 ? 60.0f : 400.0f;
+        const float a = deg * 3.14159265358979323846f / 180.0f;
+        const float pzx = 0.5f + l * cosf(a) / wd, pzy = 0.5f + l * sinf(a) / ht;
+        const float r = _calculate_straightening(&SELF, pzx, pzy, 0.5f, 0.5f, wd, ht, 1.0f);
+        printf("%s{\"from\": [0.5, 0.5], \"to\": [%.9g, %.9g], \"wd\": %g, \"ht\": %g, \"angle\": %.9g}", first ? "" : ",\n", pzx, pzy, wd, ht, r);
+        first = 0;
+      }
+  }
 """
 
 
@@ -261,7 +285,17 @@ def main():
     b = cb.find("if(enforce_history")
     if a < 0 or b < 0:
         sys.exit("_commit_box's ratio block not found")
-    code.append(DRIVER.replace("COMMIT_BLOCK", cb[a:b]))
+    # ashift.c's straightening and the math.h helpers it uses
+    ashift = open(os.path.join(src, "src/iop/ashift.c"), encoding="utf-8").read()
+    for name in ("M_PI_F", "M_PI_2f", "M_PI_4f"):
+        d = re.search(r"^#define %s .*$" % name, mh, flags=re.M)
+        if not d:
+            sys.exit("%s not found in src/common/math.h" % name)
+        code.append(d.group(0) + "\n")
+    code.append(block(mh, r"^static inline float rad2degf\(", "rad2degf"))
+    code.append("#define dt_dev_distort_backtransform_plus(dev, pipe, order, dir, pts, n) (TRUE)\n")
+    code.append(func(ashift, "_calculate_straightening"))
+    code.append(DRIVER.replace("COMMIT_BLOCK", cb[a:b]).replace("STRAIGHTEN_CASES", STRAIGHTEN))
     with tempfile.TemporaryDirectory() as tmp:
         c = os.path.join(tmp, "crop_ref.c")
         exe = os.path.join(tmp, "crop_ref")

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
@@ -180,10 +181,17 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             val top = size.height / 2f - cy * ih * ds
                             return ((p.x - left) / (iw * ds)) to ((p.y - top) / (ih * ds))
                         }
+                        // brief P3a deliverable 4: "straighten" on: one finger draws the line
+                        var line = false
+                        val lineFrom = picturePoint(down.position)
+                        if (currentTool?.straighten == true) {
+                            down.consume()
+                            line = true
+                        }
                         // brief P3a: a touch on a handle or inside the frame belongs to the frame
                         var frame = false
                         var frameMoved = 0f
-                        if (currentTool != null) {
+                        if (currentTool != null && !line) {
                             val ds = currentFit * zoom
                             val (px, py) = picturePoint(down.position)
                             val grab = controller.cropHit(px, py, touch.toPx() / (iw * ds), touch.toPx() / (ih * ds))
@@ -197,6 +205,21 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             val ev = awaitPointerEvent()
                             upTime = ev.changes.maxOf { it.uptimeMillis }
                             val pressed = ev.changes.count { it.pressed }
+                            if (line) {
+                                if (pressed >= 2) {
+                                    // two fingers: pinch and pan, no line
+                                    controller.cropStraighten(true)
+                                    line = false
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed) {
+                                        val (px, py) = picturePoint(ch.position)
+                                        controller.cropLine(lineFrom.first, lineFrom.second, px, py)
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
                             if (frame) {
                                 if (pressed >= 2 && frameMoved < slop) {
                                     // a second finger before the frame moved: a pinch, the frame goes back
@@ -230,6 +253,14 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             }
                         } while (ev.changes.any { it.pressed })
                         if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
+                        if (line) {
+                            val ds = currentFit * zoom
+                            val w = iw * ds
+                            val h = ih * ds
+                            val minLength = touch.toPx()
+                            controller.launch { cropLineEnd(w, h, minLength) }
+                            return@awaitEachGesture
+                        }
                         val dt = upTime - down.uptimeMillis
                         if (twoFingerUndo && maxPointers == 2 && moved < slop && abs(zoomed - 1f) < TAP_ZOOM_TOLERANCE && dt < TWO_FINGER_TAP_MS) {
                             controller.launch { undo() }
@@ -244,13 +275,18 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             val imgH = ih * ds
             drawRect(c.photoBackground, Offset(left, top), Size(imgW, imgH))
             val base = (if (tool != null) toolPicture else if (s.before) before else preview)?.bitmap ?: placeholder
+            // brief P3a deliverable 4: while the rotation slider moves, the picture turns by the change (a positive
+            // change of rotate and perspective's rotation turns the picture clockwise; see ashift.c's straightening)
+            val turn = tool?.rotationLive?.let { (it - controller.rotationValue(s)).toFloat() } ?: 0f
             if (base != null) {
-                drawImage(
-                    base,
-                    dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
-                    dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()),
-                    filterQuality = FilterQuality.Medium,
-                )
+                rotate(turn, Offset(left + imgW / 2, top + imgH / 2)) {
+                    drawImage(
+                        base,
+                        dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
+                        dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()),
+                        filterQuality = FilterQuality.Medium,
+                    )
+                }
             }
             val r = region
             if (!s.before && r != null && tool == null) {
@@ -263,6 +299,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 )
             }
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
+            tool?.line?.let { l -> drawStraightenLine(left + l[0] * imgW, top + l[1] * imgH, left + l[2] * imgW, top + l[3] * imgH, cropLook) }
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
         val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
@@ -327,6 +364,51 @@ fun DrawScope.drawCropFrame(g: CropTool.Clip, left: Float, top: Float, w: Float,
 }
 
 private const val THIRDS = 3
+
+/** Brief P3a deliverable 4: the straightening line being drawn, from ([x0], [y0]) to ([x1], [y1]) on the screen. */
+fun DrawScope.drawStraightenLine(x0: Float, y0: Float, x1: Float, y1: Float, look: CropLook) {
+    val dx = x1 - x0
+    val dy = y1 - y0
+    val length = kotlin.math.sqrt(dx * dx + dy * dy)
+    val angle = Math.toDegrees(kotlin.math.atan2(dy, dx).toDouble()).toFloat()
+    val t = look.handleLine.toPx()
+    // a thin bar turned along the line (the screen rules keep lines to rectangles)
+    rotate(angle, Offset(x0, y0)) {
+        drawRect(look.handleFill, Offset(x0, y0 - t), Size(length, t * 2))
+        drawRect(look.frame, Offset(x0, y0 - t / 2), Size(length, t))
+    }
+}
+
+/**
+ * Brief P3a deliverable 4: under the photo while the crop tool is open: rotate and perspective's rotation as
+ * darktable's slider (drag, double tap on the bar or the name resets, long press for exact entry), and
+ * "straighten": then a line drawn on the photo along a horizon or a wall sets the rotation as desktop's
+ * right-button drag does.
+ */
+@Composable
+fun CropRotationRow(controller: DarkroomController, s: DarkroomState, modifier: Modifier = Modifier) {
+    val t = s.cropTool ?: return
+    val sl = controller.rotationSlider() ?: return
+    val key = controller.rotationKey(s) ?: return
+    val value = t.rotationLive ?: controller.rotationValue(s)
+    androidx.compose.foundation.layout.Row(modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            SliderControl(
+                label = sl.label ?: "rotation",
+                slider = sl,
+                value = value,
+                enabled = !s.readOnly,
+                onDrag = { controller.cropRotationDrag(it) },
+                onDragEnd = { controller.cropRotationDragEnd() },
+                onReset = { controller.launch { cropRotate(sl.default) } },
+                onExact = { controller.setOverlay(app.dtandroid.darkroom.Overlay.NumberEntry(key, sl.id)) },
+            )
+        }
+        DtTextButton("straighten", { controller.cropStraighten(!t.straighten) }, selected = t.straighten, compact = true,
+            modifier = Modifier.padding(start = DtTheme.space.m)
+                .semantics { contentDescription = "straighten: draw a line along a horizon or a wall" })
+    }
+}
 
 /**
  * Brief P2f: a quiet line over the bottom of the photo saying what is happening ("opening…",

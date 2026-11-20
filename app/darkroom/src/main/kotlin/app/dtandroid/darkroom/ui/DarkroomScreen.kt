@@ -84,6 +84,8 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
         PhoneTopBar(controller, s, onBack, onDone, menu)
         PhotoView(controller, s, DtTheme.space.m, twoFingerUndo = true, Modifier.fillMaxWidth().height(DtTheme.sizes.photoPhoneHeight))
         InfoLine(s)
+        // brief P3a deliverable 4: rotation and straighten while the crop tool is open
+        CropRotationRow(controller, s)
         LastEditLine(s)
         if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripPhone, DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight, centered = false)
         Notices(s)
@@ -223,6 +225,7 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Notices(s)
                 PhotoView(controller, s, DtTheme.space.xxl, twoFingerUndo = false, Modifier.weight(1f).fillMaxWidth())
+                CropRotationRow(controller, s) // brief P3a deliverable 4
                 if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripTablet, DtTheme.sizes.thumbTabletWidth, DtTheme.sizes.thumbTabletHeight, centered = true)
             }
             VerticalDivider(Modifier.fillMaxHeight())

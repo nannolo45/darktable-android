@@ -416,6 +416,59 @@ class P3aCropToolTest {
         waitFor("tool again") { c.state.value.cropTool?.picture != null && !c.state.value.cropTool!!.touched }
     }
 
+    // ------------------------------------------------------------------ deliverable 4: rotation and straighten
+
+    private fun DarkroomController.rotation() = rotationValue(state.value)
+
+    @Test fun theRotationSliderTurnsThePictureThenWritesOneItem() = runBlocking {
+        val (c, e) = controller()
+        cropped(c)
+        openTool(c)
+        dragCorner(c)
+        val n0 = c.state.value.history.items.size
+        val undos = e.undos
+        assertNotNull(c.rotationSlider())
+        // the finger moves: only the screen changes
+        c.cropRotationDrag(0.5); c.cropRotationDrag(1.0); c.cropRotationDrag(1.5)
+        assertEquals(1.5, c.state.value.cropTool!!.rotationLive!!, 0.0)
+        assertEquals(0.0, c.rotation(), 0.0)
+        assertEquals(n0, c.state.value.history.items.size)
+        // the finger lifts: the frame first, then the rotation, one item each; the tool opens again on a new picture
+        c.cropRotate(1.5)
+        val h = c.state.value.history
+        assertEquals(n0 + 2, h.items.size)
+        assertEquals("crop", h.items[n0].op)
+        assertEquals("ashift", h.items[n0 + 1].op)
+        assertEquals(1.5, c.rotation(), 1e-6)
+        assertTrue(c.state.value.modules.first { it.op == "ashift" }.enabled)
+        waitFor("tool again") { c.state.value.cropTool?.picture != null }
+        assertNull(c.state.value.cropTool!!.rotationLive)
+        assertEquals("the uncropped picture rendered again", undos + 1, e.undos)
+    }
+
+    @Test fun straightenSetsTheRotationAsDesktop() = runBlocking {
+        val (c, _) = controller()
+        openTool(c)
+        val r0 = c.rotation()
+        c.cropStraighten(true)
+        assertTrue(c.state.value.cropTool!!.straighten)
+        // a horizon falling 2° to the right, drawn on a picture shown 1000 x 667 pixels
+        val wd = 1000f
+        val ht = 667f
+        val dy = (0.6f * wd * Math.tan(Math.toRadians(2.0)).toFloat()) / ht
+        c.cropLine(0.2f, 0.5f, 0.8f, 0.5f + dy)
+        val a = c.cropLineEnd(wd, ht, 44f)
+        assertEquals(-2f, a, 1e-3f)
+        assertEquals(r0 - 2.0, c.rotation(), 1e-3)
+        assertFalse(c.state.value.cropTool?.straighten ?: false)
+        // a line shorter than a touch target is a tap: nothing changes
+        openTool(c)
+        c.cropStraighten(true)
+        c.cropLine(0.5f, 0.5f, 0.51f, 0.5f)
+        assertEquals(0f, c.cropLineEnd(wd, ht, 44f), 0f)
+        assertEquals(r0 - 2.0, c.rotation(), 1e-3)
+    }
+
     @Test fun aPinchThatStartsOnTheFrameGivesTheFrameBack() = runBlocking {
         val (c, _) = controller()
         openTool(c)

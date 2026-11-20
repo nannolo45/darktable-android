@@ -1084,6 +1084,78 @@ class DarkroomController(
         _state.update { s -> s.copy(cropTool = s.cropTool?.copy(dragging = false)) }
     }
 
+    // ------------------------------------------------------------------ brief P3a deliverable 4: rotation in the tool
+
+    /** Rotate and perspective's rotation slider from the control schema (desktop: factor -1, soft range ±10°). */
+    fun rotationSlider(): Control.Slider? = schema.modules[ASHIFT_OP]?.allControls()?.filterIsInstance<Control.Slider>()
+        ?.firstOrNull { (it.binding as? Binding.Param)?.path == ROTATION_PARAM }
+
+    /** The instance the tool's rotation changes: rotate and perspective's first instance. */
+    fun rotationKey(s: DarkroomState): InstanceKey? =
+        (s.modules.firstOrNull { it.op == ASHIFT_OP && it.priority == 0 } ?: s.modules.firstOrNull { it.op == ASHIFT_OP })?.key
+
+    /** Its rotation parameter now (degrees). */
+    fun rotationValue(s: DarkroomState): Double {
+        val k = rotationKey(s) ?: return 0.0
+        val m = s.modules.firstOrNull { it.key == k } ?: return 0.0
+        return num(m.params, ROTATION_PARAM) ?: 0.0
+    }
+
+    /** The rotation slider moves: the value shows, the picture turns on the screen; the engine waits for the lift. */
+    fun cropRotationDrag(value: Double) {
+        _state.update { s -> s.copy(cropTool = s.cropTool?.copy(rotationLive = value)) }
+    }
+
+    /** The finger lifts from the rotation slider: the rotation is written (one history item). */
+    fun cropRotationDragEnd() {
+        val v = _state.value.cropTool?.rotationLive ?: return
+        launch { cropRotate(v) }
+    }
+
+    /**
+     * Rotate and perspective's rotation set to [value] while the crop tool is open: as any other change, the frame
+     * is written first, then the rotation (switching the module on, as on desktop), then the tool opens again on
+     * the new uncropped picture.
+     */
+    suspend fun cropRotate(value: Double) {
+        val key = rotationKey(_state.value)
+        val sl = rotationSlider()
+        try {
+            if (key == null || sl == null) { _state.update { it.copy(message = "rotate and perspective is not in this photo's pipe") }; return }
+            setSliderNow(key, sl.binding, value.coerceIn(sl.hardMin, sl.hardMax), false, sl.id)
+        } finally {
+            _state.update { s -> s.copy(cropTool = s.cropTool?.copy(rotationLive = null, straighten = false, line = null)) }
+        }
+    }
+
+    /** "straighten" on or off: a one-finger drag on the photo then draws a line along a horizon or a wall. */
+    fun cropStraighten(on: Boolean) = _state.update { s -> s.copy(cropTool = s.cropTool?.copy(straighten = on, line = null)) }
+
+    /** The straightening line from [x0], [y0] to [x1], [y1] (fractions of the picture), while it is drawn. */
+    fun cropLine(x0: Float, y0: Float, x1: Float, y1: Float) =
+        _state.update { s -> s.copy(cropTool = s.cropTool?.copy(line = listOf(x0, y0, x1, y1))) }
+
+    /**
+     * The line is drawn (the picture shown [wd] x [ht] pixels large; lines shorter than [minLength] pixels count
+     * as a tap): the rotation changes by desktop's `_calculate_straightening` (ashift.c) angle, as desktop's
+     * right-button drag does. Returns that angle (0: nothing changed).
+     */
+    suspend fun cropLineEnd(wd: Float, ht: Float, minLength: Float): Float {
+        val t = _state.value.cropTool ?: return 0f
+        val l = t.line
+        if (l == null) { cropStraighten(false); return 0f }
+        val flip = _state.value.modules.firstOrNull { it.op == FLIP_OP && it.enabled }
+        val orientation = flip?.let { m ->
+            val name = (m.params[ORIENTATION_PARAM] as? JsonPrimitive)?.content
+            schema.modules[FLIP_OP]?.params?.get(ORIENTATION_PARAM)?.enumValues?.get(name) ?: name?.toIntOrNull()
+        } ?: 0
+        val a = CropTool.straighten(l[2], l[3], l[0], l[1], wd, ht, 1f, minLength, CropTool.mirrored(orientation))
+        if (a == 0f) { cropStraighten(false); return 0f }
+        Timeline.mark("darkroom: crop tool: straighten by $a°")
+        cropRotate(rotationValue(_state.value) + a)
+        return a
+    }
+
     /** param_set switches a module on (engine-api.md 2.4); show that during a drag without re-reading modules(). */
     private fun markOn(key: InstanceKey) = _state.update { s ->
         if (s.modules.none { it.key == key && !it.enabled }) s
@@ -1750,6 +1822,12 @@ class DarkroomController(
         /** Brief P3a: crop's operation name, and the modules after it that change the geometry (the tool waits for them). */
         const val CROP_OP = "crop"
         val GEOMETRY_AFTER_CROP = setOf("borders")
+
+        /** Brief P3a deliverable 4: rotate and perspective, its rotation; orientation (flip) for the straightening line. */
+        const val ASHIFT_OP = "ashift"
+        const val ROTATION_PARAM = "rotation"
+        const val FLIP_OP = "flip"
+        const val ORIENTATION_PARAM = "orientation"
 
         /** Brief P3a: what the darkroom says when the crop tool's bracket could not restore the edit (never expected). */
         const val CROP_NOT_WRITTEN = "the edit is not written: the crop tool could not restore it after showing the uncropped picture; close and open the photo again"

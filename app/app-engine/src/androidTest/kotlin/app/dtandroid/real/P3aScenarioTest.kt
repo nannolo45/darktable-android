@@ -186,6 +186,34 @@ class P3aScenarioTest {
         TestFiles.record(res, "c1", "passed")
     }
 
+    /**
+     * c3 (deliverable 4): "straighten" and a line drawn by touch along a line falling to the right: rotate and
+     * perspective's rotation changes by ashift.c's `_calculate_straightening` angle for the line the app received,
+     * one history item; the tool opens again on the turned picture (bracket clean: history unchanged by it).
+     */
+    @Test
+    fun c3_straightenByTouch() = runBlocking<Unit> {
+        val (c, _) = open("c3")
+        squareCrop(c)
+        openTool(c)
+        val r0 = c.rotationValue(c.state.value)
+        val n0 = c.state.value.history.items.size
+        c.cropStraighten(true)
+        Thread.sleep(300)
+        swipe(onScreen(c, 0.15f, 0.5f), onScreen(c, 0.85f, 0.55f), steps = 16)
+        waitFor("rotation written") { c.state.value.history.items.size == n0 + 1 }
+        waitFor("tool again") { c.state.value.cropTool?.picture != null }
+        val r1 = c.rotationValue(c.state.value)
+        val t = c.state.value.cropTool!!
+        // the angle desktop's function gives for that line on the uncropped picture (before the turn)
+        val want = app.dtandroid.schema.CropTool.straighten(0.85f, 0.55f, 0.15f, 0.5f, 1000f, 1000f * t.inH / t.inW, 1f)
+        TestFiles.record(res, "c3", "rotation $r0 -> $r1 (line angle ${"%.3f".format(java.util.Locale.ROOT, want)}), history $n0 -> ${c.state.value.history.items.size}, last ${c.state.value.history.items.last().op}")
+        assertEquals("ashift", c.state.value.history.items.last().op)
+        assertEquals(r0 + want, r1, 0.15)
+        assertTrue("turned to level a line falling to the right", r1 < r0)
+        TestFiles.record(res, "c3_passed", "true")
+    }
+
     @Test
     fun c2_noChangeLeavesTheEditAsItWas() = runBlocking<Unit> {
         val (c, item) = open("c2")

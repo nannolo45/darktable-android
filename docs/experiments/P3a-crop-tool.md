@@ -70,7 +70,7 @@ background work such as LightPhotoLibrary's preview); `writeIfOpen` during a syn
 If any of these turn out unacceptable, the clean fix is the bridge call the brief describes (a render option
 that bypasses one instance); it would replace step 2 only.
 
-## 20 Nov 2026, ~11:40 UTC — first full implementation pushed
+## 20 Nov 2026, 10:49 UTC — first full implementation pushed (ab3cb29)
 
 - `app/schema` `CropTool`: crop.c's `_aspect_apply`, `_gui_get_grab`, `button_pressed` + `mouse_moved` (drag),
   `_commit_box` (ratio rounding), in float where crop.c uses float. `tools/p3a-crop-reference.py` copies those
@@ -86,3 +86,17 @@ that bypasses one instance); it would replace step 2 only.
 - Tests: `P3aCropToolTest` (darkroom JVM, stand-in engine), `P3aCropScreenshotTest` (phone and tablet, with
   Compose touch input), `P3aScenarioTest` (emulator, touches injected through UiAutomation, XMP and export for
   the darktable-cli comparison in the p2b compare job).
+
+## 20 Nov 2026, 11:05 UTC — first CI results; deliverable 4 prepared
+
+- Run p2a-app 44722431691 on ab3cb29: green, 230 JVM tests (16 P3aCropToolTest, 8 CropToolTest, 4 crop
+  screenshots with Compose touch input). The screenshots showed the size note over the photo hiding the bottom
+  handles: moved to the line under the photo (phone) and the top bar (tablet), as mockup B3-Crop has it (5cb08fe).
+- Run p2b-real-engine 44722431616: the emulator test did not compile (an extension not imported); fixed in 5cb08fe,
+  run 44723479124 in progress.
+- Deliverable 4 prepared locally (not pushed while the emulator run is going): rotate and perspective's rotation as
+  a slider under the photo while the tool is open (the picture turns on screen while the finger moves; the rotation
+  is written at the lift, one history item, then the uncropped picture is rendered again), "straighten" (a line
+  drawn on the photo; angle by ashift.c `_calculate_straightening`, ported and checked against 156 reference values
+  from the verbatim function). Sign: desktop sets the slider (factor -1) to `slider - angle`, so the parameter
+  becomes `rotation + angle`; a horizon falling 2° to the right gives -2°.
