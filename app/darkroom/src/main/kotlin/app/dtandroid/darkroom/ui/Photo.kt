@@ -265,14 +265,15 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
-        // brief P3a: with the crop tool open, the size the cropped picture will have
-        val note = s.working ?: tool?.let { cropNote(it) }
-            ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
+        val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
         note?.let { WorkingNote(it, if (s.working != null) s.workingProgress else null, Modifier.align(Alignment.BottomStart)) }
     }
 }
 
-/** Brief P3a: what the crop tool says under the photo: the cropped picture's size, as desktop shows while dragging. */
+/**
+ * Brief P3a: what the crop tool says in the line under the photo (phone) or in the top bar (tablet), as the mockup
+ * has it: the cropped picture's size, as desktop shows while dragging. Not over the photo: it would hide the handles.
+ */
 fun cropNote(t: CropToolState): String {
     val (w, h) = t.outputSize()
     return "crop · $w × $h"
@@ -366,7 +367,9 @@ fun cameraName(e: Exif) = listOf(e.maker, e.model).filter { it.isNotBlank() }.jo
 @Composable
 fun InfoLine(s: DarkroomState) {
     Box(Modifier.fillMaxWidth().height(DtTheme.sizes.infoLine), contentAlignment = Alignment.Center) {
-        DtText(s.info?.exif?.let { exifLine(it) } ?: "", DtTheme.type.small, DtTheme.colors.textMuted)
+        // brief P3a: with the crop tool open, the size the cropped picture will have
+        val text = s.cropTool?.let { cropNote(it) } ?: s.info?.exif?.let { exifLine(it) } ?: ""
+        DtText(text, DtTheme.type.small, if (s.cropTool != null) DtTheme.colors.text else DtTheme.colors.textMuted)
     }
 }
 

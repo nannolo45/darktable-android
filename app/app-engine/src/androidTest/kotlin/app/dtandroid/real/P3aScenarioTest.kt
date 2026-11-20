@@ -81,7 +81,7 @@ class P3aScenarioTest {
         c.save()
     }
 
-    private fun params(c: DarkroomController) = c.state.value.modules.first { it.key == crop }.params.let { p ->
+    private fun params(c: DarkroomController) = c.state.value.modules.first { it.op == crop.op && it.priority == crop.priority }.params.let { p ->
         listOf("cx", "cy", "cw", "ch").map { (p[it] as JsonPrimitive).content.toDouble() }
     }
 
