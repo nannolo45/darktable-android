@@ -118,6 +118,21 @@ internal object P3cOverrides {
             val label = e.str("label") ?: c.tooltip?.lineSequence()?.firstOrNull() ?: c.label ?: ""
             pickers[c.id] = PickerSpec(c.id, label, "point" in kinds, "area" in kinds, e.bool("denoise") ?: false, action, slider)
         }
-        return m.copy(pickerSettings = settings, pickers = pickers)
+        // ------------------------------------------------------------ deliverable 5: lists the engine gives per photo
+        val lists = LinkedHashMap(m.actionLists)
+        (o["action_list"] as? JsonArray)?.forEach { ee ->
+            val e = ee.jsonObject
+            val c = target(e, "action_list") as? Control.ComboBox ?: throw SchemaException("$file: action_list: node is not a list")
+            if (c.binding !is Binding.None) throw SchemaException("$file: action_list: node ${c.id} is already bound")
+            fun map(k: String) = (e[k] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap()
+            val params = map("params")
+            params.keys.forEach { p -> if (p !in m.params && p.substringBefore('[') !in m.fieldNames) throw SchemaException("$file: ${m.op} has no parameter $p") }
+            val action = e.str("action")
+            if ((action == null) == params.isEmpty()) throw SchemaException("$file: action_list ${c.id}: params or action, one of them")
+            lists[c.id] = ActionList(c.id, e.str("list") ?: throw SchemaException("$file: action_list without list"), map("filter"),
+                e.str("label") ?: "name", e.str("current") ?: "current", params, action, map("action_args"))
+            m = m.copy(controls = Overrides.replace(m.controls, c.id) { (it as Control.ComboBox).copy(binding = Binding.ActionList) })
+        }
+        return m.copy(pickerSettings = settings, pickers = pickers, actionLists = lists)
     }
 }

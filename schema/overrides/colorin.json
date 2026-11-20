@@ -1,6 +1,6 @@
 {
   "op": "colorin",
-  "reason": "brief P2j. the working profile list is darktable's built-in profiles in work_pos order plus installed ICC files; an entry writes type_work and filename_work (_workicc_changed, src/iop/colorin.c). The phone has no ICC folder, so the list is the built-in profiles. The input profile list begins with the image's own profiles (embedded, standard and enhanced matrix), which only the engine knows: it waits for a bridge call.",
+  "reason": "brief P2j. the working profile list is darktable's built-in profiles in work_pos order plus installed ICC files; an entry writes type_work and filename_work (_workicc_changed, src/iop/colorin.c). The phone has no ICC folder, so the list is the built-in profiles. The input profile list begins with the image's own profiles (embedded, standard and enhanced matrix), which only the engine knows: it waits for a bridge call. Brief P3c deliverable 5: the input profile list shows the profiles the engine lists for this photo (module action list_profiles, entries of kind \"input\", the current one marked) and writes the chosen entry's type and filename.",
   "value_list": [
     {
       "node": 1,
@@ -90,12 +90,18 @@
       ]
     }
   ],
-  "note": [
+  "action_list": [
     {
       "node": 0,
       "expect_label": "input profile",
-      "text": "needs the engine to list this photo's profiles (a later package)",
-      "class": "c"
+      "list": "list_profiles",
+      "filter": {
+        "kind": "input"
+      },
+      "params": {
+        "type": "type",
+        "filename": "filename"
+      }
     }
   ]
 }

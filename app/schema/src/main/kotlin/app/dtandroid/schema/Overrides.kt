@@ -63,6 +63,9 @@ internal object Overrides {
                 set = b.str("set") ?: throw SchemaException("$file: bind_action without set"),
                 field = b.str("field") ?: throw SchemaException("$file: bind_action without field"),
                 fields = (b["fields"] as? JsonArray)?.map { it.jsonPrimitive.content } ?: emptyList(),
+                argsFrom = (b["args_from"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap(),
+                needs = b.str("needs"),
+                round = (b["round"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true",
             )
             controls = replace(controls, node) { (it as Control.Slider).copy(binding = binding) }
         }

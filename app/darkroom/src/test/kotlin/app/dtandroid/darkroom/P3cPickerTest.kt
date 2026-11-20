@@ -389,4 +389,44 @@ class P3cPickerTest {
         waitFor("read again") { e.picks.size > picks }
         assertTrue(e.picks.last().first == null)
     }
+
+    // ------------------------------------------------------------------ deliverable 5
+
+    @Test fun theInputProfileListComesFromTheEngineAndWritesTheChosenProfile() = runBlocking {
+        val (c, e) = controller()
+        val colorin = InstanceKey("colorin", 0)
+        val model = TestSetup.schema.modules.getValue("colorin").actionLists.getValue(0)
+        waitFor("list read") { c.state.value.actionLists[colorin to 0] != null }
+        val entries = model.entries(c.state.value.actionLists[colorin to 0])
+        // the stand-in lists four input and three working profiles: the list shows the input ones
+        assertEquals(4, entries.size)
+        val p0 = (c.state.value.modules.first { it.key == colorin }.params["type"] as JsonPrimitive).content
+        assertEquals(p0, entries[model.currentIndex(entries)]["type"]!!.jsonPrimitive.content)
+        val n0 = c.state.value.history.items.size
+        val pick = entries.indexOfFirst { it["type"]!!.jsonPrimitive.content != p0 }
+        c.chooseActionList(colorin, 0, pick)
+        assertEquals(n0 + 1, c.state.value.history.items.size)
+        val p1 = (c.state.value.modules.first { it.key == colorin }.params["type"] as JsonPrimitive).content
+        assertEquals(entries[pick]["type"]!!.jsonPrimitive.content, p1)
+        // read again for the new parameters: the chosen entry is the current one
+        val again = model.entries(c.state.value.actionLists[colorin to 0])
+        assertEquals(pick, model.currentIndex(again))
+        assertTrue(e.changes().none { it.first == "colorin" })
+    }
+
+    @Test fun denoiseProfilesAndFineTuningFollowTheEngine() = runBlocking {
+        val (c, e) = controller()
+        val denoise = InstanceKey("denoiseprofile", 0)
+        waitFor("list read") { c.state.value.actionLists[denoise to 0] != null }
+        // the stand-in has no noise profiles: the list is empty (shown greyed out)
+        assertTrue(TestSetup.schema.modules.getValue("denoiseprofile").actionLists.getValue(0).entries(c.state.value.actionLists[denoise to 0]).isEmpty())
+        // white balance's fine tuning: null in the stand-in (no camera preset), so the slider is not usable
+        val finetune = TestSetup.schema.modules.getValue("temperature").control(10) as app.dtandroid.schema.Control.Slider
+        val b = finetune.binding as Binding.Action
+        assertEquals("apply_preset", b.set)
+        assertEquals(mapOf("name" to "preset"), b.argsFrom)
+        assertEquals("tuning", b.needs)
+        assertTrue(c.state.value.actionValues[wb]!!["tuning"] is kotlinx.serialization.json.JsonNull)
+        assertTrue(e.changes().isEmpty())
+    }
 }

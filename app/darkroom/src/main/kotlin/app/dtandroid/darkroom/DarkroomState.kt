@@ -152,6 +152,8 @@ data class DarkroomState(
      * configuration: for the app's run, every photo; a key not here has its default.
      */
     val pickerSettings: Map<String, JsonPrimitive> = emptyMap(),
+    /** Brief P3c deliverable 5: the answers of the list actions of action lists (input profiles, ...), by instance and control */
+    val actionLists: Map<Pair<InstanceKey, Int>, kotlinx.serialization.json.JsonElement> = emptyMap(),
     /** Brief P3c: the page chosen in a module's tabs, by instance and tabs control (a picker reads its channel there) */
     val tabs: Map<Pair<InstanceKey, Int>, Int> = emptyMap(),
 ) {

@@ -1,6 +1,6 @@
 {
   "op": "temperature",
-  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4). Brief P2j: the settings list and its finetune are not built yet (see the P2j report). Brief P3c: the \"from image area\" picker button sets the coefficients from the picked area (module action wb_from_area, engine-api.md 6.3; temperature.c color_picker_apply).",
+  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4). Brief P2j: the settings list and its finetune are not built yet (see the P2j report). Brief P3c: the \"from image area\" picker button sets the coefficients from the picked area (module action wb_from_area, engine-api.md 6.3; temperature.c color_picker_apply). Brief P3c deliverable 5: finetune is read from get_wb's tuning (null when the white balance is not a camera preset: then the slider is greyed out) and written through apply_preset {name: the matched preset, tuning}, whole steps as desktop's slider.",
   "bind_action": [
     {
       "node": 12,
@@ -23,6 +23,21 @@
         "temperature",
         "tint"
       ]
+    },
+    {
+      "node": 10,
+      "expect_label": "finetune",
+      "get": "get_wb",
+      "set": "apply_preset",
+      "field": "tuning",
+      "fields": [
+        "tuning"
+      ],
+      "args_from": {
+        "name": "preset"
+      },
+      "needs": "tuning",
+      "round": true
     }
   ],
   "note": [
@@ -31,12 +46,6 @@
       "expect_label": "settings",
       "text": "not available yet on the phone",
       "class": "b"
-    },
-    {
-      "node": 10,
-      "expect_label": "finetune",
-      "text": "needs the engine to report the tuning (a later package)",
-      "class": "c"
     }
   ],
   "picker": [

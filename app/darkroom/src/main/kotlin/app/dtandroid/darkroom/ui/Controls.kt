@@ -167,7 +167,11 @@ fun UnavailableControl(label: String, reason: String?) {
 @Composable
 private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val value = ctx.controller.sliderValue(ctx.state, ctx.key, c, ctx.live) ?: c.default
-    val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None
+    // brief P3c deliverable 5: a value the engine gives only in some states (white balance's fine tuning)
+    val present = (c.binding as? Binding.Action)?.needs?.let { n ->
+        ctx.state.actionValues[ctx.key]?.get(n).let { it != null && it !is kotlinx.serialization.json.JsonNull }
+    } ?: true
+    val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && present
     // brief P3c: a slider with desktop's picker quad gets the picker button at its right, as on desktop
     if (c.id in ctx.module.pickerMarks && label == null) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -325,6 +329,17 @@ private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boo
         val text = cur?.let { computed.entries(p).getOrNull(it)?.label } ?: computed.fallbackText(p) ?: ""
         val enabled = sensitive && !ctx.readOnly && computed.enabled(p)
         ListControl(label ?: c.label ?: "", text, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
+        return
+    }
+    // brief P3c deliverable 5: a list the engine gives for this photo (input profiles, denoise profiles)
+    if (c.binding == Binding.ActionList) {
+        val model = ctx.module.actionLists[c.id]
+        val entries = model?.entries(ctx.state.actionLists[ctx.key to c.id]) ?: emptyList()
+        val cur = model?.currentIndex(entries) ?: -1
+        val text = entries.getOrNull(cur)?.let { model?.label(it) } ?: ""
+        ListControl(label ?: c.label ?: "", text, sensitive && !ctx.readOnly && entries.isNotEmpty()) {
+            ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id))
+        }
         return
     }
     // brief P3c: a picker setting shows the app's own value

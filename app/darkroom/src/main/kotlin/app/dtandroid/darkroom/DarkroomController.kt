@@ -521,6 +521,9 @@ class DarkroomController(
 
     // ------------------------------------------------------------------ state from the engine
 
+    /** Brief P3c deliverable 5: the last answer of each action list, with the photo and parameters it was read for. */
+    private val listCache = HashMap<Pair<InstanceKey, Int>, Pair<String, kotlinx.serialization.json.JsonElement>>()
+
     private suspend fun refreshLocked() {
         val modules = engine.modules()
         val history = engine.history()
@@ -533,11 +536,23 @@ class DarkroomController(
                 runCatching { engine.moduleAction(m.op, m.priority, g) as? JsonObject }.getOrNull()?.let { actions[m.key] = it }
             }
         }
+        // brief P3c deliverable 5: the lists the engine gives per photo, read again when their instance changed
+        val lists = HashMap<Pair<InstanceKey, Int>, kotlinx.serialization.json.JsonElement>()
+        for (m in modules) {
+            val ms = schema.modules[m.op] ?: continue
+            for ((id, l) in ms.actionLists) {
+                val stamp = "${_state.value.index} ${m.enabled} ${m.params}"
+                val cached = listCache[m.key to id]
+                val answer = if (cached != null && cached.first == stamp) cached.second
+                    else runCatching { engine.moduleAction(m.op, m.priority, l.list) }.getOrNull()?.also { listCache[m.key to id] = stamp to it }
+                if (answer != null) lists[m.key to id] = answer
+            }
+        }
         val info = engine.imageInfo()
         livePatched.clear()
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
-            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded)
+            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists)
         }
     }
 
@@ -625,6 +640,19 @@ class DarkroomController(
         }
     }
 
+    /**
+     * Brief P3c deliverable 5: an entry of a list the engine gives per photo chosen: its parameters (input colour
+     * profile's type and filename) or its module action (denoise's set_profile), one history step.
+     */
+    suspend fun chooseActionList(key: InstanceKey, controlId: Int, index: Int) = change {
+        val model = schema.modules[key.op]?.actionLists?.get(controlId) ?: throw EngineException(EngineError.STATE, "no list here")
+        val entry = model.entries(_state.value.actionLists[key to controlId]).getOrNull(index) ?: throw EngineException(EngineError.STATE, "no such entry")
+        val writes = model.paramWrites(entry)
+        if (writes != null) engine.paramsSet(key.op, key.priority, writes)
+        else engine.moduleAction(key.op, key.priority, model.action!!, model.args(entry))
+        engine.historySeal()
+    }
+
     /** A computed switch set: the parameters its callback writes, one history step. */
     suspend fun toggleComputed(key: InstanceKey, controlId: Int, on: Boolean) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedToggle ?: throw EngineException(EngineError.STATE, "no switch here")
@@ -661,12 +689,15 @@ class DarkroomController(
             }
             is Binding.Action -> {
                 val cur = _state.value.actionValues[key] ?: (engine.moduleAction(key.op, key.priority, binding.get) as? JsonObject) ?: JsonObject(emptyMap())
-                val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap()
-                args[binding.field] = JsonPrimitive(value)
+                val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap<String, kotlinx.serialization.json.JsonElement>()
+                // brief P3c: arguments taken from other fields of the answer (white balance's preset name for its fine tuning)
+                for ((arg, field) in binding.argsFrom) cur[field]?.let { args[arg] = it }
+                args[binding.field] = if (binding.round) JsonPrimitive(Math.round(value)) else JsonPrimitive(value)
                 engine.moduleAction(key.op, key.priority, binding.set, JsonObject(args))
             }
             Binding.None -> throw EngineException(EngineError.ARG, "this control has no parameter")
             is Binding.Setting -> throw EngineException(EngineError.ARG, "a picker setting is not written to the engine")
+            Binding.ActionList -> throw EngineException(EngineError.ARG, "the list is chosen from its entries")
         }
     }
 
@@ -2106,7 +2137,7 @@ class DarkroomController(
             }
             is Binding.Action -> (s.actionValues[key]?.get(b.field) as? JsonPrimitive)?.doubleOrNull
             Binding.Computed -> computedValue(s, key, c.id)
-            Binding.None, Binding.Aspect -> c.default
+            Binding.None, Binding.Aspect, Binding.ActionList -> c.default
             is Binding.Setting -> settingValue(s, key.op, b.key)?.settingNumber() ?: c.default
         }
     }
