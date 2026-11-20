@@ -126,3 +126,11 @@ that bypasses one instance); it would replace step 2 only.
   angle (desktop's function on the line asked for) is -2.83°; one history item (ashift).
 - The two failures: my normalizer removed one whitespace character before a dropped attribute instead of all
   of it. Fixed in a4efb01.
+
+## 20 Nov 2026, 11:45 UTC — green on a4efb01; size line fixed in 6c84627
+
+- a4efb01: p2a-app 44727630437 green (235 JVM tests); p2b-real-engine 44727630504 green: emulator 50/50, compare
+  green (P3a crop XMP: darktable-cli 1950x1950 = app export = picture shown; PSNR 43.81 dB).
+- The tool's size line said 1951x1951 for a 1950x1950 picture (Math.round); desktop's `gui_post_expose` floors.
+  6c84627 uses desktop's formula (`CropTool.shownSize`). Runs 44730200524 / 44730200543 on it.
+- Report written: `docs/experiments/P3a-crop-tool-REPORT.md`.

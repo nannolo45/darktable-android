@@ -1,8 +1,10 @@
 # P3a: crop on the photo — report (pull request description)
 
 Branch `p3a-crop-tool` from `main` at 5b43bc8. Brief: `docs/briefs/P3a-crop-on-the-photo.md`. Running log:
-`docs/experiments/P3a-crop-tool.md`. Last code commit **a4efb01**; runs on it: p2a-app **RUN_P2A**, p2b-real-engine
-**RUN_P2B**; APK release tag **dt-android-a4efb01bc35a** (interface preview: app-preview-a4efb01bc35a).
+`docs/experiments/P3a-crop-tool.md`. Last code commit **6c84627**; runs on it: p2a-app **44730200524**, p2b-real-engine
+**44730200543**; APK release tag **dt-android-6c846275d4d8** (interface preview: app-preview-6c846275d4d8).
+The previous code commit a4efb01 was green in both workflows too (p2a-app 44727630437, p2b-real-engine 44727630504);
+6c84627 changes only how the tool's size line rounds (floor, as desktop shows it).
 
 No change under `engine/` or `upstream/`, none under `app/engine-api` or `app/engine-jni`, no new dependency.
 No existing test was changed, weakened, skipped or deleted.
@@ -129,11 +131,37 @@ gradle --no-daemon :darkroom:testDebugUnitTest      # needs the Android SDK (CI:
 
 ## 5. Results with numbers
 
-RESULTS
+Workspace measurements are x86_64 (2 cores); emulator numbers are the x86_64 API 33 emulator in CI, not a phone.
+
+- **Arithmetic against crop.c and ashift.c** (`CropToolTest`, local and CI): 1815 `_aspect_apply` cases (3 input
+  shapes × 11 ratios × 5 frames × 11 grabs), 162 drags × 4 moves (3 shapes × 6 ratios × 9 grabs: 4 corners,
+  4 sides, move), 165 `_commit_box` roundings, 156 straightening lines: all equal within 2e-6 (frames) and 1e-4°
+  (angles); one exact 45° tie differs in sign only (see item 4).
+- **JVM tests, p2a-app** (run 44727630437 on a4efb01): 235 tests, 0 failures (new: 9 CropToolTest,
+  18 P3aCropToolTest, 6 crop screenshot tests).
+- **Emulator, p2b-real-engine** (run 44727630504 on a4efb01): 50 of 50 tests (`p3a-results.txt` in ci-logs
+  `runs/44727630504-a1/p2b-emulator/p2b-test/`):
+  - c1: test RAW 3908×2602 uncropped, square crop 2602×2602; corner dragged by injected touches: frame width
+    0.666 → 0.499, height 1.000 → 0.750 (square kept); frame moved: x 0.334 → 0.414, y 0.000 → 0.040; history
+    and parameters unchanged while the tool was open; writeIfOpen during the tool: edit identical (differences:
+    `change_timestamp`, `history_auto_hash` dropped); panel closed: history 12 → 13 items; picture 1950×1950
+    (the tool showed 1951×1951 then: fixed in 6c84627, desktop's floor); app export 1950×1950.
+  - c2: tool opened and closed without a change: history equal; XMP differs only in `change_timestamp` and
+    `history_auto_hash` (limit 1).
+  - c3: straighten by touch: rotation 0 → −2.72° for a line of −2.83° (desktop's function on the line asked
+    for; the difference is the injected touch points), one history item (rotate and perspective).
+- **darktable-cli** (compare job, same run): c1's XMP rendered by darktable-cli: 1950×1950, the size of the app's
+  export and of the picture the app showed; app export vs darktable-cli: PSNR 43.81 dB (max 17, mean 1.13),
+  accepted bound 40 dB as for the other comparisons. The other comparisons unchanged (G0 75.73 dB, app-written
+  edit 74.44 dB, P2f crop ratio 0.6667, P2j 44.34 / 46.99 / 46.11 dB).
+- **Screenshots** (release app-preview-6c846275d4d8, `*-p3a-*.png`): the tool on phone and tablet, after drags by
+  touch, during a rotation drag, a straightening line, after straightening. Looked at: frame, dimming, grid,
+  corner squares and side bars as in mockup B3-Crop; the size line under the photo (phone) and in the top bar
+  (tablet).
 
 ## 6. Owner instructions
 
-Install `dt-android-arm64-v8a.apk` from the release **dt-android-a4efb01bc35a** (it installs over the earlier
+Install `dt-android-arm64-v8a.apk` from the release **dt-android-6c846275d4d8** (it installs over the earlier
 build). Then, on a photo:
 
 1. Open crop's panel (tap "crop" in the module list). The photo shows the whole picture with the frame; outside it
