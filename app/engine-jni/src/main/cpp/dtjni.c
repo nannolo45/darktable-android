@@ -710,3 +710,51 @@ Java_app_dtandroid_engine_NativeBridge_historySealCode(JNIEnv *env, jclass cls)
 {
   return dtb_history_seal();
 }
+
+/* ---------------------------------------------------------------------- */
+/* P1b part 1 (engine-api.md section 5): presets, styles, render times.    */
+/* One entry point: what selects the call; s1..s3 and n1, n2 are its       */
+/* arguments as listed in NativeBridge.kt. Returns the call's JSON, "{}"   */
+/* for calls without a result, NULL on failure (status[0] = the code).     */
+#define DTJ_PRESETS_LIST 0
+#define DTJ_PRESET_APPLY 1
+#define DTJ_PRESET_STORE 2
+#define DTJ_PRESET_RENAME 3
+#define DTJ_PRESET_DELETE 4
+#define DTJ_PRESET_IMPORT 5
+#define DTJ_PRESET_EXPORT 6
+#define DTJ_STYLES_LIST 7
+#define DTJ_STYLE_APPLY 8
+#define DTJ_STYLES_IMPORT 9
+#define DTJ_STYLE_DELETE 10
+#define DTJ_STYLE_CREATE 11
+#define DTJ_RENDER_TIMES 12
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
+                                           jstring js3, jint n1, jint n2, jintArray status)
+{
+  jstr_t a = _str(env, js1), b = _str(env, js2), c = _str(env, js3);
+  char *s = NULL;
+  int r = DTB_E_ARG;
+  switch(what)
+  {
+    case DTJ_PRESETS_LIST: r = dtb_presets_list(a.s, n1, &s); break;
+    case DTJ_PRESET_APPLY: r = dtb_preset_apply(a.s, n1, b.s); break;
+    case DTJ_PRESET_STORE: r = dtb_preset_store(a.s, n1, b.s, c.s, n2); break;
+    case DTJ_PRESET_RENAME: r = dtb_preset_rename(a.s, b.s, c.s); break;
+    case DTJ_PRESET_DELETE: r = dtb_preset_delete(a.s, b.s); break;
+    case DTJ_PRESET_IMPORT: r = dtb_preset_import(a.s, n2, &s); break;
+    case DTJ_PRESET_EXPORT: r = dtb_preset_export(a.s, b.s, c.s, &s); break;
+    case DTJ_STYLES_LIST: r = dtb_styles_list(&s); break;
+    case DTJ_STYLE_APPLY: r = dtb_style_apply(a.s, b.s); break;
+    case DTJ_STYLES_IMPORT: r = dtb_styles_import(a.s, n2, &s); break;
+    case DTJ_STYLE_DELETE: r = dtb_style_delete(a.s); break;
+    case DTJ_STYLE_CREATE: r = dtb_style_create(a.s, b.s, c.s, n2); break;
+    case DTJ_RENDER_TIMES: r = dtb_render_times(&s); break;
+    default: break;
+  }
+  _str_free(&a); _str_free(&b); _str_free(&c);
+  if(r == DTB_OK && !s) s = strdup("{}");  // dtb_free is g_free, which is free() (GLib >= 2.46)
+  return _json_status(env, r, s, status);
+}

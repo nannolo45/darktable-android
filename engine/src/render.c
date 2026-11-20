@@ -12,6 +12,7 @@
 #include "dtb_internal.h"
 
 #include "common/colorspaces.h"
+#include "common/image_cache.h"
 #include "common/iop_order.h"
 #include "develop/tiling.h"
 
@@ -103,10 +104,18 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
   {
     p->size = size;
     dt_mipmap_cache_get(&p->buf, dtb_S.imgid, size, DT_MIPMAP_BLOCKING, 'r');
-    if(!p->buf.buf || !p->buf.width || !p->buf.height)
+    // E1 (P1b): never start a pipe on an empty input, nor on the static
+    // placeholder picture darktable hands out as the downscaled buffer of an
+    // image whose loader failed (common/mipmap_cache.c, _dead_image_f and
+    // its siblings): dtb_open refuses such files, this is the second line
+    const dt_image_t *img = dt_image_cache_get(dtb_S.imgid, 'r');
+    const dt_imageio_retval_t status = img ? img->load_status : DT_IMAGEIO_FILE_NOT_FOUND;
+    if(img) dt_image_cache_read_release(img);
+    if(!p->buf.buf || !p->buf.width || !p->buf.height || status != DT_IMAGEIO_OK)
     {
       dt_mipmap_cache_release(&p->buf);
-      return dtb__err(DTB_E_ENGINE, "image could not be loaded (mipmap %d)", size);
+      return dtb__err(DTB_E_ENGINE, "image could not be loaded (mipmap %d, %d x %d, load status %d)", size,
+                      p->buf.width, p->buf.height, (int)status);
     }
     if(!dt_dev_pixelpipe_init(&p->pipe))
     {
@@ -375,8 +384,13 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
   // CFA phase
   int x0, y0, x1, y1;
   _region_window(&dtb_S.full, x, y, w, h, scale, pw, ph, &x0, &y0, &x1, &y1);
+  dtb__times_begin("full");
   if(x0 == x && y0 == y && x1 == x + w && y1 == y + h)
-    return _pipe_run(&dtb_S.full, x, y, w, h, scale, rgba8_out);
+  {
+    r = _pipe_run(&dtb_S.full, x, y, w, h, scale, rgba8_out);
+    dtb__times_end();
+    return r;
+  }
 
   const int ow = x1 - x0, oh = y1 - y0;
   uint8_t *tmp = g_try_malloc((size_t)4 * ow * oh);
@@ -387,6 +401,7 @@ int dtb_render_region(int x, int y, int w, int h, float scale, uint8_t *rgba8_ou
       memcpy(rgba8_out + (size_t)4 * w * row,
              tmp + 4 * ((size_t)(y - y0 + row) * ow + (x - x0)), (size_t)4 * w);
   g_free(tmp);
+  dtb__times_end();
   return r;
 }
 
@@ -406,7 +421,9 @@ int dtb_render_preview(int max_size, uint8_t **out, int *width, int *height)
   const int w = (int)floor(scale * pw), h = (int)floor(scale * ph);
   uint8_t *buf = g_try_malloc((size_t)4 * w * h);
   if(!buf) return dtb__err(DTB_E_ENGINE, "out of memory");
+  dtb__times_begin("preview");
   r = _pipe_run(&dtb_S.preview, 0, 0, w, h, scale, buf);
+  dtb__times_end();
   if(r)
   {
     g_free(buf);

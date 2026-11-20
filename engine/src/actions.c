@@ -409,8 +409,52 @@ static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *
       for(guint i = 0; i < cams->len && !name; i++)
         if(g_array_index(cams, _wb_cam_preset_t, i).pos == mode)
           name = g_array_index(cams, _wb_cam_preset_t, i).name;
+    // the camera preset and its fine tuning, as gui_update() finds them
+    // (_match_camera_preset in iop/temperature.c): the saved preset first,
+    // then every camera preset; exact tunings, then interpolated ones
+    int cam_index = -1, tuning = 0;
+    for(int pass = 0; pass < 2 && cam_index < 0; pass++)
+      for(int interpolate = 0; interpolate < 2 && cam_index < 0; interpolate++)
+        for(guint i = 0; i < cams->len && cam_index < 0; i++)
+        {
+          const _wb_cam_preset_t *cp = &g_array_index(cams, _wb_cam_preset_t, i);
+          if(pass == 0 && cp->pos != *w.preset) continue;
+          if(*w.preset != WB_UNKNOWN && *w.preset < WB_NUM_STD_PRESETS) continue;
+          for(int k = cp->min_ft_pos + (interpolate ? 1 : 0); k <= cp->max_ft_pos && cam_index < 0; k++)
+          {
+            if(!interpolate)
+            {
+              if(dt_dev_equal_chroma(coeffs, dt_wb_preset(k)->channels))
+              {
+                cam_index = i;
+                tuning = dt_wb_preset(k)->tuning;
+              }
+              continue;
+            }
+            for(int tune = dt_wb_preset(k - 1)->tuning + 1; tune < dt_wb_preset(k)->tuning && cam_index < 0; tune++)
+            {
+              dt_wb_data ip = { .tuning = tune };
+              dt_wb_preset_interpolate(dt_wb_preset(k - 1), dt_wb_preset(k), &ip);
+              if(dt_dev_equal_chroma(coeffs, ip.channels))
+              {
+                cam_index = i;
+                tuning = tune;
+              }
+            }
+          }
+        }
+    if(cam_index >= 0 && !name) name = g_array_index(cams, _wb_cam_preset_t, cam_index).name;
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
+    json_builder_set_member_name(b, "tuning");
+    if(cam_index >= 0) json_builder_add_int_value(b, tuning);
+    else json_builder_add_null_value(b);
+    json_builder_set_member_name(b, "preset_index");
+    // position in list_presets: "as shot", "camera reference", then the camera's
+    if(cam_index >= 0) json_builder_add_int_value(b, 2 + cam_index);
+    else if(mode == WB_AS_SHOT) json_builder_add_int_value(b, 0);
+    else if(mode == WB_D65) json_builder_add_int_value(b, 1);
+    else json_builder_add_null_value(b);
     json_builder_set_member_name(b, "temperature");
     json_builder_add_double_value(b, T);
     json_builder_set_member_name(b, "tint");
@@ -749,6 +793,15 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
         json_builder_add_double_value(b, lenses[i]->MinFocal);
         json_builder_set_member_name(b, "max_focal");
         json_builder_add_double_value(b, lenses[i]->MaxFocal);
+        // Lensfun's f-numbers: MinAperture the widest opening, MaxAperture
+        // the smallest (0 when unknown); _lens_set() builds the aperture
+        // list from MinAperture on
+        json_builder_set_member_name(b, "min_aperture");
+        if(lenses[i]->MinAperture > 0) json_builder_add_double_value(b, lenses[i]->MinAperture);
+        else json_builder_add_null_value(b);
+        json_builder_set_member_name(b, "max_aperture");
+        if(lenses[i]->MaxAperture > 0) json_builder_add_double_value(b, lenses[i]->MaxAperture);
+        else json_builder_add_null_value(b);
         json_builder_end_object(b);
       }
       json_builder_end_array(b);
@@ -968,7 +1021,26 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
     // automatic entry); upstream's list can hold two profiles of one name
     // (data/noiseprofiles.json), which only the position tells apart
     int index = 0;
+    // "current": gui_update() (iop/denoiseprofile.c) selects the first
+    // listed profile whose a and b equal the parameters'; the automatic
+    // entry is the one whose a[0] is -1 (reload_defaults)
+    int current = -1;
+    {
+      dtb_field_ref_t ra, rb;
+      if(!dtb__field_resolve(m, m->params, "a", &ra) && !dtb__field_resolve(m, m->params, "b", &rb))
+      {
+        int k = 1;
+        for(GList *it = profiles; it && current < 0; it = g_list_next(it), k++)
+        {
+          const dt_noiseprofile_t *p = it->data;
+          if(!memcmp(p->a, ra.p, sizeof(float) * 3) && !memcmp(p->b, rb.p, sizeof(float) * 3)) current = k;
+        }
+        if(current < 0 && ((const float *)ra.p)[0] == -1.0f) current = 0;
+      }
+    }
     json_builder_begin_object(b);
+    json_builder_set_member_name(b, "current");
+    json_builder_add_boolean_value(b, current == index);
     json_builder_set_member_name(b, "index");
     json_builder_add_int_value(b, index++);
     json_builder_set_member_name(b, "name");
@@ -982,6 +1054,8 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
     {
       const dt_noiseprofile_t *p = it->data;
       json_builder_begin_object(b);
+      json_builder_set_member_name(b, "current");
+      json_builder_add_boolean_value(b, current == index);
       json_builder_set_member_name(b, "index");
       json_builder_add_int_value(b, index++);
       json_builder_set_member_name(b, "name");
@@ -1075,6 +1149,8 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
 
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result)
 {
+  const int r2 = dtb__module_action2(m, action, args, result);
+  if(r2 != 1) return r2;
   if(dt_iop_module_is(m, "temperature")) return _act_temperature(m, action, args, result);
   if(dt_iop_module_is(m, "lens")) return _act_lens(m, action, args, result);
   if(dt_iop_module_is(m, "lut3d")) return _act_lut3d(m, action, args, result);

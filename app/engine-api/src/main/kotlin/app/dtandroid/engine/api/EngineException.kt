@@ -19,6 +19,17 @@ enum class EngineError(val code: Int) {
 }
 
 /** Every failing engine call throws this (engine-api.md section 1). */
-class EngineException(val error: EngineError, message: String) : Exception("${error.name}: $message") {
+class EngineException(val error: EngineError, val detail: String) : Exception("${error.name}: $detail") {
     val code: Int get() = error.code
+
+    /**
+     * engine-api.md 5.1 (P1b, E1): `open` refused a file that holds no picture darktable can decode (junk, empty,
+     * truncated, unsupported). Not true for the other IO answers (a missing file, an unreadable XMP).
+     */
+    val isUndecodableFile: Boolean get() = error == EngineError.IO && detail.startsWith(UNDECODABLE_PREFIX)
+
+    companion object {
+        /** the start of the bridge's message for an undecodable file (engine-api.md 5.1) */
+        const val UNDECODABLE_PREFIX = "cannot decode "
+    }
 }

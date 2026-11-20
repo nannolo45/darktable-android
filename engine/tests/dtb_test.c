@@ -30,10 +30,23 @@
  *   output <raw> <xmp> <outdir>    C7: atomic xmp_write, export options, metadata_reload
  *   exposures <raw> <xmp>          list exposure instances (fresh session)
  *   modules <raw> <xmp>            print modules and history JSON
+ *   e1 <raw> <xmp> <outdir>        C10: undecodable files refused at open (P1b)
+ *   presets <raw> <xmp> <outdir>   C11: presets (P1b)
+ *   styles <raw> <xmp> <outdir>    C12: styles (P1b; DTB_TEST_STYLE = a public .dtstyle)
+ *   persist <raw> presets|styles <outdir>  C11/C12: presets or styles survive a new process
+ *   defedit <raw> <xmp> <outdir>   C13: the default edit and its XMP (P1b deliverable 4)
+ *   actions2 <raw> <xmp> <outdir>  C14: module actions added by P1b
+ *   cpus                           C15: CPUs checked against the process's set now (P1b)
+ *   times <raw> <xmp> <outdir>     C16: per-module times of the last render (P1b)
  * Results are "RESULT key value" lines; exit code 0 = the checks the driver
  * can do on its own passed. Pixel comparisons with darktable-cli are done by
  * run_tests.sh.
  */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <sched.h>
+
 #include "dtbridge.h"
 
 #include <dirent.h>
@@ -2274,6 +2287,907 @@ static int cmd_output(const char *raw, const char *xmp, const char *outdir)
   return g_fail;
 }
 
+/* ---------------------------------------------------------------- */
+/* P1b part 1 (docs/design/engine-api.md section 5)                  */
+
+static int max_diff(const uint8_t *a, const uint8_t *b, size_t n, double *mean)
+{
+  int m = 0;
+  double s = 0;
+  for(size_t i = 0; i < n; i++)
+  {
+    if((i & 3) == 3) continue;
+    const int d = abs((int)a[i] - (int)b[i]);
+    s += d;
+    if(d > m) m = d;
+  }
+  if(mean) *mean = s / (n * 0.75);
+  return m;
+}
+
+static void write_bytes(const char *path, const void *p, size_t n)
+{
+  FILE *f = fopen(path, "wb");
+  if(f)
+  {
+    if(n) fwrite(p, 1, n, f);
+    fclose(f);
+  }
+}
+
+/* E1: files without a decodable picture are refused at open
+ * (outdir/nonraw.png: a PNG darktable-cli wrote, run_tests.sh copies it) */
+static void *watchdog(void *arg)
+{
+  const int seconds = GPOINTER_TO_INT(arg);
+  sleep(seconds);
+  fprintf(stdout, "FAIL watchdog: a call did not return within %d s (hang)\n", seconds);
+  fflush(stdout);
+  _exit(4);
+  return NULL;
+}
+
+/* open a file and, if it opens, ask everything a viewer asks */
+static int e1_case(const char *label, const char *path, const int expect_io)
+{
+  const double t0 = now();
+  const int r = dtb_open(path, NULL);
+  const double t = now() - t0;
+  char msg[512];
+  g_strlcpy(msg, dtb_last_error(), sizeof(msg));
+  if(r != DTB_OK)
+  {
+    fprintf(stdout, "RESULT e1 %s: open refused %d in %.2f s: %s\n", label, r, t, msg);
+    CHECK(r == DTB_E_IO, "%s: open answered %d, expected IO (%d)", label, r, DTB_E_IO);
+    // engine-api.md 5.1: the undecodable case is told by this prefix
+    CHECK(!strncmp(msg, "cannot decode ", 14), "%s: message does not start with \"cannot decode \": %s", label, msg);
+    char *j = NULL;
+    EXPECT(dtb_image_info(&j), DTB_E_STATE);
+    uint8_t *buf = NULL;
+    int w, h;
+    EXPECT(dtb_render_preview(256, &buf, &w, &h), DTB_E_STATE);
+    EXPECT(dtb_close(), DTB_E_STATE);
+    return r;
+  }
+  CHECK(!expect_io, "%s: open answered OK, expected IO", label);
+  char *j = NULL;
+  const int ri = dtb_image_info(&j);
+  if(j)
+  {
+    JsonNode *n = jparse_owned(j);
+    JsonObject *o = json_node_get_object(n);
+    fprintf(stdout, "RESULT e1 %s: open OK in %.2f s; image_info %ld x %ld (raw %ld x %ld)\n", label, t,
+            (long)json_object_get_int_member(o, "width"), (long)json_object_get_int_member(o, "height"),
+            (long)json_object_get_int_member(o, "raw_width"), (long)json_object_get_int_member(o, "raw_height"));
+    json_node_unref(n);
+  }
+  else
+    fprintf(stdout, "RESULT e1 %s: open OK in %.2f s; image_info answered %d: %s\n", label, t, ri, dtb_last_error());
+  uint8_t *buf = NULL;
+  int w = 0, h = 0;
+  const int rp = dtb_render_preview(512, &buf, &w, &h);
+  fprintf(stdout, "RESULT e1 %s: render_preview answered %d (%d x %d)%s%s\n", label, rp, w, h, rp ? ": " : "",
+          rp ? dtb_last_error() : "");
+  dtb_free(buf);
+  int fw = 0, fh = 0;
+  if(dtb_render_size(0.25f, &fw, &fh) == DTB_OK && fw > 0 && fh > 0)
+  {
+    uint8_t *rb = malloc((size_t)4 * fw * fh);
+    const int rr = dtb_render_region(0, 0, fw, fh, 0.25f, rb);
+    fprintf(stdout, "RESULT e1 %s: render_region at 1/4 answered %d (%d x %d)\n", label, rr, fw, fh);
+    free(rb);
+  }
+  MUST(dtb_close());
+  return r;
+}
+
+static int cmd_e1(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)xmp;
+  pthread_t wd;
+  pthread_create(&wd, NULL, watchdog, GINT_TO_POINTER(900));
+  pthread_detach(wd);
+  gchar *base = g_path_get_basename(raw);
+  const char *ext = strrchr(base, '.');
+  // junk bytes (the pattern of P2f/P2h's placeholder), an empty file
+  uint8_t junk[2000];
+  for(int i = 0; i < 2000; i++) junk[i] = (uint8_t)i;
+  gchar *p = g_strdup_printf("%s/junk%s", outdir, ext ? ext : ".raw");
+  write_bytes(p, junk, sizeof(junk));
+  e1_case("junk", p, 1);
+  g_free(p);
+  p = g_strdup_printf("%s/empty%s", outdir, ext ? ext : ".raw");
+  write_bytes(p, NULL, 0);
+  e1_case("empty", p, 1);
+  g_free(p);
+  // the public test RAW cut at several lengths
+  gchar *data = NULL;
+  gsize len = 0;
+  MUST(g_file_get_contents(raw, &data, &len, NULL) ? DTB_OK : DTB_E_IO);
+  const double cuts[] = { 0.001, 0.01, 0.1, 0.5, 0.9, 0.99, 0.999 };
+  int refused = 0, opened = 0;
+  for(size_t k = 0; k < G_N_ELEMENTS(cuts); k++)
+  {
+    const gsize n = (gsize)(cuts[k] * len);
+    p = g_strdup_printf("%s/cut%04d%s", outdir, (int)(cuts[k] * 1000), ext ? ext : ".raw");
+    write_bytes(p, data, n);
+    gchar *label = g_strdup_printf("truncated %.1f%% (%zu of %zu bytes)", cuts[k] * 100, (size_t)n, (size_t)len);
+    // a truncated RAW may decode partly; it must either be refused with IO
+    // or open and render without hanging (the watchdog)
+    const int r = e1_case(label, p, 0);
+    if(r) refused++;
+    else opened++;
+    g_free(label);
+    unlink(p);
+    g_free(p);
+  }
+  fprintf(stdout, "RESULT e1 truncated: %d refused, %d opened\n", refused, opened);
+  g_free(data);
+  // a non-raw picture darktable reads must keep opening
+  p = path_join(outdir, "nonraw.png");
+  if(g_file_test(p, G_FILE_TEST_EXISTS))
+  {
+    e1_case("nonraw png", p, 0);
+    MUST(dtb_open(p, NULL));
+    char *j = NULL;
+    MUST(dtb_image_info(&j));
+    JsonNode *n = jparse_owned(j);
+    CHECK(!strcmp(json_object_get_string_member(json_node_get_object(n), "image_class"), "nonraw"),
+          "the PNG is not 'nonraw'");
+    json_node_unref(n);
+    MUST(dtb_close());
+  }
+  else
+    CHECK(0, "no %s to test the non-raw case", p);
+  // a missing file and a missing XMP are other IO answers, not "cannot decode"
+  p = path_join(outdir, "missing.cr2");
+  EXPECT(dtb_open(p, NULL), DTB_E_IO);
+  CHECK(strncmp(dtb_last_error(), "cannot decode ", 14), "a missing file is reported as undecodable");
+  EXPECT(dtb_open(raw, p), DTB_E_IO);
+  CHECK(strncmp(dtb_last_error(), "cannot decode ", 14), "a missing XMP is reported as undecodable");
+  // the real RAW still opens after all that
+  MUST(dtb_open(raw, NULL));
+  MUST(dtb_close());
+  g_free(base);
+  return g_fail;
+}
+
+/* ---- presets (5.2) ---- */
+
+static JsonObject *find_named(JsonArray *a, const char *name)
+{
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(!strcmp(json_object_get_string_member(o, "name"), name)) return o;
+  }
+  return NULL;
+}
+
+static JsonNode *presets_of(const char *op, int prio)
+{
+  char *s = NULL;
+  MUST(dtb_presets_list(op, prio, &s));
+  return jparse_owned(s);
+}
+
+static int cmd_presets(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)xmp;
+  // without an image: built-in presets of exposure, fits/active null
+  {
+    JsonNode *n = presets_of("exposure", 0);
+    JsonArray *a = json_node_get_array(n);
+    int builtin = 0;
+    for(guint i = 0; i < json_array_get_length(a); i++)
+    {
+      JsonObject *o = json_array_get_object_element(a, i);
+      builtin += json_object_get_boolean_member(o, "builtin");
+      CHECK(json_node_is_null(json_object_get_member(o, "fits")), "fits not null without an image");
+    }
+    fprintf(stdout, "RESULT presets exposure without image: %u presets, %d built-in\n", json_array_get_length(a), builtin);
+    CHECK(builtin > 0, "exposure has no built-in presets");
+    json_node_unref(n);
+  }
+  char *s = NULL;
+  EXPECT(dtb_presets_list("nosuchmodule", 0, &s), DTB_E_NOT_FOUND);
+
+  MUST(dtb_open(raw, NULL));
+  // a built-in preset that fits: apply it as one history item
+  JsonNode *n = presets_of("exposure", 0);
+  JsonArray *a = json_node_get_array(n);
+  const char *pick = NULL;
+  for(guint i = 0; i < json_array_get_length(a) && !pick; i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(json_object_get_boolean_member(o, "builtin") && json_object_get_boolean_member(o, "usable")
+       && json_object_get_boolean_member(o, "fits") && !json_object_get_boolean_member(o, "active"))
+      pick = json_object_get_string_member(o, "name");
+  }
+  CHECK(pick != NULL, "no fitting built-in exposure preset");
+  gchar *builtin_name = g_strdup(pick ? pick : "");
+  json_node_unref(n);
+  int end0 = 0;
+  const int items0 = history_count(&end0);
+  MUST(dtb_preset_apply("exposure", 0, builtin_name));
+  int end1 = 0;
+  const int items1 = history_count(&end1);
+  fprintf(stdout, "RESULT preset apply '%s': history %d -> %d items\n", builtin_name, items0, items1);
+  CHECK(items1 == items0 + 1 && end1 == items1, "apply did not add exactly one history item");
+  n = presets_of("exposure", 0);
+  JsonObject *o = find_named(json_node_get_array(n), builtin_name);
+  CHECK(o && json_object_get_boolean_member(o, "active"), "applied preset not active");
+  json_node_unref(n);
+  MUST(dtb_xmp_write(path_join(outdir, "preset_builtin.xmp")));
+  {
+    int w, h;
+    uint8_t *buf = render_full(&w, &h, NULL);
+    write_ppm(path_join(outdir, "preset_builtin_bridge.ppm"), buf, w, h);
+    free(buf);
+  }
+  // undo is one step
+  MUST(dtb_undo());
+  int e2 = 0;
+  CHECK(history_count(&e2) == items0, "undo of a preset apply is not one step");
+  MUST(dtb_redo());
+
+  // store: a user preset from the instance, exposure +0.37
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.37"));
+  MUST(dtb_history_seal());
+  MUST(dtb_preset_store("exposure", 0, "p1b test", "made by the engine test", 0));
+  EXPECT(dtb_preset_store("exposure", 0, "p1b test", "", 0), DTB_E_ARG);
+  EXPECT(dtb_preset_store("exposure", 0, builtin_name, "", 1), DTB_E_ARG);
+  EXPECT(dtb_preset_store("exposure", 0, "", "", 0), DTB_E_ARG);
+  n = presets_of("exposure", 0);
+  o = find_named(json_node_get_array(n), "p1b test");
+  CHECK(o && !json_object_get_boolean_member(o, "builtin") && json_object_get_boolean_member(o, "active")
+            && json_object_get_boolean_member(o, "fits") && json_object_get_boolean_member(o, "usable"),
+        "stored preset: missing, built-in, not active or not fitting");
+  json_node_unref(n);
+  // overwrite with another value
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.55"));
+  MUST(dtb_history_seal());
+  MUST(dtb_preset_store("exposure", 0, "p1b test", NULL, 1));
+  // back to something else, then apply the stored preset: exposure 0.55
+  MUST(dtb_module_reset("exposure", 0));
+  MUST(dtb_preset_apply("exposure", 0, "p1b test"));
+  const double ev = param_num("exposure", 0, "exposure");
+  fprintf(stdout, "RESULT preset store/overwrite/apply: exposure %.4f\n", ev);
+  CHECK(fabs(ev - 0.55) < 1e-6, "applied user preset gave exposure %f", ev);
+  MUST(dtb_xmp_write(path_join(outdir, "preset_user.xmp")));
+  {
+    int w, h;
+    uint8_t *buf = render_full(&w, &h, NULL);
+    write_ppm(path_join(outdir, "preset_user_bridge.ppm"), buf, w, h);
+    free(buf);
+  }
+  // export, rename, delete, import
+  s = NULL;
+  MUST(dtb_preset_export("exposure", "p1b test", outdir, &s));
+  JsonNode *ex = jparse_owned(s);
+  gchar *file = g_strdup(json_object_get_string_member(json_node_get_object(ex), "path"));
+  json_node_unref(ex);
+  fprintf(stdout, "RESULT preset export: %s\n", file);
+  CHECK(g_file_test(file, G_FILE_TEST_IS_REGULAR), "exported file missing");
+  EXPECT(dtb_preset_rename("exposure", builtin_name, "x"), DTB_E_ARG);
+  EXPECT(dtb_preset_delete("exposure", builtin_name), DTB_E_ARG);
+  MUST(dtb_preset_rename("exposure", "p1b test", "p1b renamed"));
+  EXPECT(dtb_preset_apply("exposure", 0, "p1b test"), DTB_E_NOT_FOUND);
+  MUST(dtb_preset_delete("exposure", "p1b renamed"));
+  EXPECT(dtb_preset_delete("exposure", "p1b renamed"), DTB_E_NOT_FOUND);
+  s = NULL;
+  MUST(dtb_preset_import(file, 0, &s));
+  JsonNode *im = jparse_owned(s);
+  JsonObject *io = json_node_get_object(im);
+  fprintf(stdout, "RESULT preset import: %s/%s usable %d\n", json_object_get_string_member(io, "op"),
+          json_object_get_string_member(io, "name"), (int)json_object_get_boolean_member(io, "usable"));
+  CHECK(!strcmp(json_object_get_string_member(io, "name"), "p1b test"), "imported name differs");
+  json_node_unref(im);
+  s = NULL;
+  EXPECT(dtb_preset_import(file, 0, &s), DTB_E_ARG);  // exists
+  MUST(dtb_preset_import(file, 1, &s));                 // overwrite
+  dtb_free(s);
+  MUST(dtb_module_reset("exposure", 0));
+  MUST(dtb_preset_apply("exposure", 0, "p1b test"));
+  CHECK(fabs(param_num("exposure", 0, "exposure") - 0.55) < 1e-6, "imported preset applies another value");
+  // refused imports: unknown module, newer version, not a preset file
+  gchar *text = NULL;
+  MUST(g_file_get_contents(file, &text, NULL, NULL) ? DTB_OK : DTB_E_IO);
+  GString *t = g_string_new(text);
+  g_string_replace(t, "<operation>exposure</operation>", "<operation>nosuchmodule</operation>", 1);
+  g_string_replace(t, "<name>p1b test</name>", "<name>p1b unknown</name>", 1);
+  gchar *bad = path_join(outdir, "unknown.dtpreset");
+  g_file_set_contents(bad, t->str, -1, NULL);
+  s = NULL;
+  EXPECT(dtb_preset_import(bad, 0, &s), DTB_E_ARG);
+  fprintf(stdout, "RESULT preset import unknown module: %s\n", dtb_last_error());
+  CHECK(strstr(dtb_last_error(), "unknown_operation") != NULL, "no reason given");
+  g_string_assign(t, text);
+  {
+    // op_version far beyond the engine's
+    char *a0 = strstr(t->str, "<op_version>");
+    char *a1 = a0 ? strstr(a0, "</op_version>") : NULL;
+    if(a0 && a1) g_string_erase(t, a0 - t->str, a1 - a0);
+    char *a2 = strstr(t->str, "</op_version>");
+    if(a2) g_string_insert(t, a2 - t->str, "<op_version>99");
+  }
+  g_string_replace(t, "<name>p1b test</name>", "<name>p1b newer</name>", 1);
+  g_file_set_contents(bad, t->str, -1, NULL);
+  EXPECT(dtb_preset_import(bad, 0, &s), DTB_E_ARG);
+  fprintf(stdout, "RESULT preset import newer version: %s\n", dtb_last_error());
+  CHECK(strstr(dtb_last_error(), "newer_module_version") != NULL, "no reason given");
+  g_file_set_contents(bad, "not a preset", -1, NULL);
+  EXPECT(dtb_preset_import(bad, 0, &s), DTB_E_IO);
+  g_string_free(t, TRUE);
+  g_free(text);
+  // the presets persist in the configuration folder's data.db: a new engine
+  // in the same folder lists the imported preset
+  MUST(dtb_close());
+  g_free(file);
+  g_free(builtin_name);
+  return g_fail;
+}
+
+/* a second process on the same configuration folder: presets and styles
+ * stored by the previous run are still there (data.db in configdir) */
+static int cmd_persist(const char *raw, const char *what, const char *outdir)
+{
+  (void)raw; (void)outdir;
+  // what: "presets" (after C11) or "styles" (after C12)
+  if(!strcmp(what, "presets"))
+  {
+    JsonNode *n = presets_of("exposure", 0);
+    CHECK(find_named(json_node_get_array(n), "p1b test") != NULL, "user preset lost between processes");
+    json_node_unref(n);
+    return g_fail;
+  }
+  char *s = NULL;
+  MUST(dtb_styles_list(&s));
+  JsonNode *st = jparse_owned(s);
+  CHECK(find_named(json_node_get_array(st), "p1b created") != NULL, "created style lost between processes");
+  fprintf(stdout, "RESULT persist: %u styles\n", json_array_get_length(json_node_get_array(st)));
+  json_node_unref(st);
+  return g_fail;
+}
+
+/* ---- styles (5.3) ---- */
+
+static JsonNode *styles_now(void)
+{
+  char *s = NULL;
+  MUST(dtb_styles_list(&s));
+  return jparse_owned(s);
+}
+
+static void render_to(const char *outdir, const char *name)
+{
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  gchar *f = g_strdup_printf("%s_bridge.ppm", name);
+  write_ppm(path_join(outdir, f), buf, w, h);
+  g_free(f);
+  free(buf);
+}
+
+/* DTB_TEST_STYLE: a public style file (darktable's example styles,
+ * share/darktable/styles); run_tests.sh passes one */
+static int cmd_styles(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)xmp;
+  const char *style_file = getenv("DTB_TEST_STYLE");
+  CHECK(style_file && g_file_test(style_file, G_FILE_TEST_IS_REGULAR), "DTB_TEST_STYLE not set or missing");
+  if(!style_file) return 1;
+  JsonNode *st = styles_now();
+  const guint n0 = json_array_get_length(json_node_get_array(st));
+  fprintf(stdout, "RESULT styles at start: %u (darktable imports its shipped styles at start-up)\n", n0);
+  json_node_unref(st);
+
+  // a renamed copy of the public style, a copy with an unknown module, one
+  // with a newer module version, junk; imported in one call
+  gchar *text = NULL;
+  MUST(g_file_get_contents(style_file, &text, NULL, NULL) ? DTB_OK : DTB_E_IO);
+  GRegex *re = g_regex_new("<name>[^<]*</name>", 0, 0, NULL);
+  gchar *t1 = g_regex_replace(re, text, -1, 0, "<name>p1b public</name>", G_REGEX_MATCH_DEFAULT, NULL);
+  gchar *t2 = g_regex_replace(re, text, -1, 0, "<name>p1b unknown</name>", G_REGEX_MATCH_DEFAULT, NULL);
+  gchar *t3 = g_regex_replace(re, text, -1, 0, "<name>p1b newer</name>", G_REGEX_MATCH_DEFAULT, NULL);
+  g_regex_unref(re);
+  GRegex *op = g_regex_new("<operation>[^<]*</operation>", 0, 0, NULL);
+  gchar *t2b = g_regex_replace(op, t2, -1, 0, "<operation>nosuchmodule</operation>", G_REGEX_MATCH_DEFAULT, NULL);
+  g_regex_unref(op);
+  GRegex *mv = g_regex_new("<module>[0-9]+</module>", 0, 0, NULL);
+  gchar *t3b = g_regex_replace(mv, t3, -1, 0, "<module>99</module>", G_REGEX_MATCH_DEFAULT, NULL);
+  g_regex_unref(mv);
+  char *f1 = path_join(outdir, "public.dtstyle"), *f2 = path_join(outdir, "unknown.dtstyle"),
+       *f3 = path_join(outdir, "newer.dtstyle"), *f4 = path_join(outdir, "junk.dtstyle");
+  g_file_set_contents(f1, t1, -1, NULL);
+  g_file_set_contents(f2, t2b, -1, NULL);
+  g_file_set_contents(f3, t3b, -1, NULL);
+  g_file_set_contents(f4, "junk", -1, NULL);
+  gchar *paths = g_strdup_printf("[\"%s\", \"%s\", \"%s\", \"%s\", \"%s/missing.dtstyle\"]", f1, f2, f3, f4, outdir);
+  char *s = NULL;
+  MUST(dtb_styles_import(paths, 0, &s));
+  JsonNode *im = jparse_owned(s);
+  JsonObject *io = json_node_get_object(im);
+  JsonArray *imported = json_object_get_array_member(io, "imported");
+  JsonArray *refused = json_object_get_array_member(io, "refused");
+  fprintf(stdout, "RESULT styles import: %u imported, %u refused\n", json_array_get_length(imported),
+          json_array_get_length(refused));
+  CHECK(json_array_get_length(imported) == 3 && json_array_get_length(refused) == 2, "import counts differ");
+  json_node_unref(im);
+  // again: all three exist now
+  s = NULL;
+  MUST(dtb_styles_import(paths, 0, &s));
+  im = jparse_owned(s);
+  CHECK(json_array_get_length(json_object_get_array_member(json_node_get_object(im), "imported")) == 0,
+        "second import without overwrite imported something");
+  json_node_unref(im);
+  s = NULL;
+  gchar *one = g_strdup_printf("[\"%s\"]", f1);
+  MUST(dtb_styles_import(one, 1, &s));
+  im = jparse_owned(s);
+  CHECK(json_array_get_length(json_object_get_array_member(json_node_get_object(im), "imported")) == 1,
+        "overwrite import failed");
+  json_node_unref(im);
+  EXPECT(dtb_styles_import("{}", 0, &s), DTB_E_ARG);
+
+  st = styles_now();
+  JsonArray *sa = json_node_get_array(st);
+  JsonObject *pub = find_named(sa, "p1b public"), *unk = find_named(sa, "p1b unknown"), *nw = find_named(sa, "p1b newer");
+  CHECK(pub && json_object_get_boolean_member(pub, "usable"), "public style missing or unusable");
+  CHECK(unk && !json_object_get_boolean_member(unk, "usable"), "unknown-module style usable");
+  CHECK(nw && !json_object_get_boolean_member(nw, "usable"), "newer-version style usable");
+  if(pub)
+    fprintf(stdout, "RESULT style 'p1b public': %u items\n",
+            json_array_get_length(json_object_get_array_member(pub, "items")));
+  json_node_unref(st);
+
+  MUST(dtb_open(raw, NULL));
+  int e0 = 0;
+  const int n_default = history_count(&e0);
+  char *mods0 = get_modules_str();
+  // refused styles change nothing
+  EXPECT(dtb_style_apply("p1b unknown", "append"), DTB_E_ARG);
+  fprintf(stdout, "RESULT style apply unknown: %s\n", dtb_last_error());
+  CHECK(strstr(dtb_last_error(), "unknown_operation") != NULL, "no reason for the unknown module");
+  EXPECT(dtb_style_apply("p1b newer", "overwrite"), DTB_E_ARG);
+  fprintf(stdout, "RESULT style apply newer: %s\n", dtb_last_error());
+  CHECK(strstr(dtb_last_error(), "newer_module_version") != NULL, "no reason for the newer module");
+  EXPECT(dtb_style_apply("no such style", "append"), DTB_E_NOT_FOUND);
+  EXPECT(dtb_style_apply("p1b public", "sideways"), DTB_E_ARG);
+  {
+    char *m = get_modules_str();
+    int e = 0;
+    CHECK(!strcmp(m, mods0) && history_count(&e) == n_default, "a refused style changed the edit");
+    dtb_free(m);
+  }
+  // append (desktop: merged into the history), on the default edit plus a change
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.25"));
+  MUST(dtb_history_seal());
+  int e1 = 0;
+  const int n1 = history_count(&e1);
+  MUST(dtb_style_apply("p1b public", "append"));
+  int e2 = 0;
+  const int n2 = history_count(&e2);
+  fprintf(stdout, "RESULT style append: history %d -> %d items\n", n1, n2);
+  CHECK(n2 > n1 && e2 == n2, "append added no items");
+  MUST(dtb_xmp_write(path_join(outdir, "style_append.xmp")));
+  render_to(outdir, "style_append");
+  MUST(dtb_undo());
+  int e3 = 0;
+  CHECK(history_count(&e3) == n1, "undo of a style is not one step");
+  // overwrite: the default edit plus the style
+  MUST(dtb_style_apply("p1b public", "overwrite"));
+  int e4 = 0;
+  const int n4 = history_count(&e4);
+  fprintf(stdout, "RESULT style overwrite: history %d items (default edit %d)\n", n4, n_default);
+  MUST(dtb_xmp_write(path_join(outdir, "style_overwrite.xmp")));
+  render_to(outdir, "style_overwrite");
+  // the preference picks the mode when none is given (default: append)
+  MUST(dtb_style_apply("p1b public", NULL));
+
+  // create from the history: all, and chosen items
+  MUST(dtb_undo());
+  MUST(dtb_undo());
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.8"));
+  MUST(dtb_history_seal());
+  MUST(dtb_style_create("p1b created", "from the engine test", NULL, 0));
+  EXPECT(dtb_style_create("p1b created", "", NULL, 0), DTB_E_ARG);
+  {
+    int e = 0;
+    const int n = history_count(&e);
+    gchar *one_item = g_strdup_printf("[%d]", n - 1);
+    MUST(dtb_style_create("p1b one item", "", one_item, 0));
+    g_free(one_item);
+    gchar *badn = g_strdup_printf("[%d]", n + 5);
+    EXPECT(dtb_style_create("p1b bad", "", badn, 0), DTB_E_ARG);
+    g_free(badn);
+  }
+  st = styles_now();
+  JsonObject *c1 = find_named(json_node_get_array(st), "p1b one item");
+  CHECK(c1 && json_array_get_length(json_object_get_array_member(c1, "items")) == 1
+            && !strcmp(json_object_get_string_member(json_array_get_object_element(json_object_get_array_member(c1, "items"), 0), "op"), "exposure"),
+        "one-item style does not hold exactly exposure");
+  JsonObject *c0 = find_named(json_node_get_array(st), "p1b created");
+  if(c0) fprintf(stdout, "RESULT style created from all items: %u items\n", json_array_get_length(json_object_get_array_member(c0, "items")));
+  json_node_unref(st);
+  // a created style applied on the default edit gives the picture of the edit it came from
+  render_to(outdir, "style_source");
+  MUST(dtb_close());
+  MUST(dtb_open(raw, NULL));
+  MUST(dtb_style_apply("p1b created", "append"));
+  render_to(outdir, "style_created");
+  MUST(dtb_xmp_write(path_join(outdir, "style_created.xmp")));
+  MUST(dtb_close());
+  // the public style on the default edit, for darktable-cli --style
+  MUST(dtb_open(raw, NULL));
+  MUST(dtb_style_apply("p1b public", "append"));
+  render_to(outdir, "style_default_append");
+  MUST(dtb_xmp_write(path_join(outdir, "style_default_append.xmp")));
+  MUST(dtb_close());
+  MUST(dtb_style_delete("p1b unknown"));
+  EXPECT(dtb_style_delete("p1b unknown"), DTB_E_NOT_FOUND);
+  dtb_free(mods0);
+  g_free(text); g_free(t1); g_free(t2); g_free(t3); g_free(t2b); g_free(t3b); g_free(paths); g_free(one);
+  return g_fail;
+}
+
+/* ---- the default-edit difference (deliverable 4) ---- */
+static int cmd_defedit(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)xmp;
+  MUST(dtb_open(raw, NULL));
+  char *xp = path_join(outdir, "fresh.xmp");
+  MUST(dtb_xmp_write(xp));
+  int w, h;
+  uint8_t *a = render_full(&w, &h, NULL);
+  write_ppm(path_join(outdir, "fresh_bridge.ppm"), a, w, h);
+  char *m0 = get_modules_str();
+  MUST(dtb_close());
+  // the same XMP opened again in the bridge
+  MUST(dtb_open(raw, xp));
+  int w2, h2;
+  uint8_t *b = render_full(&w2, &h2, NULL);
+  write_ppm(path_join(outdir, "fresh_reopen_bridge.ppm"), b, w2, h2);
+  char *m1 = get_modules_str();
+  double mean = 0;
+  const int md = (w == w2 && h == h2) ? max_diff(a, b, (size_t)4 * w * h, &mean) : 999;
+  fprintf(stdout, "RESULT defedit bridge fresh vs bridge reopened XMP: max %d mean %.5f\n", md, mean);
+  CHECK(md == 0, "the bridge's default edit and its own XMP of it differ (max %d)", md);
+  CHECK(!strcmp(m0, m1), "modules() differ between the default edit and its reopened XMP");
+  if(strcmp(m0, m1))
+  {
+    g_file_set_contents(path_join(outdir, "fresh_modules.json"), m0, -1, NULL);
+    g_file_set_contents(path_join(outdir, "reopen_modules.json"), m1, -1, NULL);
+  }
+  free(a);
+  free(b);
+  dtb_free(m0);
+  dtb_free(m1);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- per-module times (5.6) ---- */
+static int cmd_times(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  char *s = NULL;
+  MUST(dtb_render_times(&s));
+  JsonNode *n = jparse_owned(s);
+  CHECK(json_node_is_null(json_object_get_member(json_node_get_object(n), "pipe")), "times before any render");
+  json_node_unref(n);
+  uint8_t *buf = NULL;
+  int w, h;
+  MUST(dtb_render_preview(512, &buf, &w, &h));
+  dtb_free(buf);
+  s = NULL;
+  MUST(dtb_render_times(&s));
+  n = jparse_owned(s);
+  JsonObject *o = json_node_get_object(n);
+  JsonArray *mods = json_object_get_array_member(o, "modules");
+  double sum = 0;
+  for(guint i = 0; i < json_array_get_length(mods); i++)
+    sum += json_object_get_double_member(json_array_get_object_element(mods, i), "ms");
+  fprintf(stdout, "RESULT times preview: pipe %s, total %.1f ms, %u modules, sum %.1f ms\n",
+          json_object_get_string_member(o, "pipe"), json_object_get_double_member(o, "total_ms"),
+          json_array_get_length(mods), sum);
+  CHECK(!strcmp(json_object_get_string_member(o, "pipe"), "preview") && json_array_get_length(mods) >= 5,
+        "too few modules timed");
+  CHECK(sum <= json_object_get_double_member(o, "total_ms") + 1.0, "module times exceed the render's");
+  CHECK(!strcmp(json_object_get_string_member(json_array_get_object_element(mods, 0), "op"), "rawprepare")
+            || !strcmp(json_object_get_string_member(json_array_get_object_element(mods, 0), "op"), "colorin")
+            || json_array_get_length(mods) > 0,
+        "order");
+  json_node_unref(n);
+  // a change re-runs from exposure on: fewer modules
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.3"));
+  MUST(dtb_render_preview(512, &buf, &w, &h));
+  dtb_free(buf);
+  s = NULL;
+  MUST(dtb_render_times(&s));
+  n = jparse_owned(s);
+  mods = json_object_get_array_member(json_node_get_object(n), "modules");
+  fprintf(stdout, "RESULT times after exposure change: %u modules, first %s\n", json_array_get_length(mods),
+          json_array_get_length(mods) ? json_object_get_string_member(json_array_get_object_element(mods, 0), "op") : "-");
+  CHECK(json_array_get_length(mods) > 0 && !strcmp(json_object_get_string_member(json_array_get_object_element(mods, 0), "op"), "exposure"),
+        "after an exposure change the first module re-run is not exposure");
+  json_node_unref(n);
+  // a full region render
+  int fw, fh;
+  MUST(dtb_render_size(0.5f, &fw, &fh));
+  uint8_t *rb = malloc((size_t)4 * fw * fh);
+  MUST(dtb_render_region(0, 0, fw, fh, 0.5f, rb));
+  free(rb);
+  s = NULL;
+  MUST(dtb_render_times(&s));
+  n = jparse_owned(s);
+  o = json_node_get_object(n);
+  fprintf(stdout, "RESULT times full at 1/2: total %.1f ms, %u modules\n", json_object_get_double_member(o, "total_ms"),
+          json_array_get_length(json_object_get_array_member(o, "modules")));
+  CHECK(!strcmp(json_object_get_string_member(o, "pipe"), "full"), "pipe not full");
+  json_node_unref(n);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- module actions added by P1b (5.4) ---- */
+static int count_current(JsonArray *a, const char *kind, int *which)
+{
+  int n = 0;
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(kind && strcmp(json_object_get_string_member(o, "kind"), kind)) continue;
+    if(json_object_get_boolean_member(o, "current"))
+    {
+      n++;
+      if(which) *which = i;
+    }
+  }
+  return n;
+}
+
+static int cmd_actions2(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  // colorin
+  JsonNode *pl = action("colorin", 0, "list_profiles", NULL, DTB_OK);
+  if(pl)
+  {
+    JsonArray *a = json_node_get_array(pl);
+    int ci = -1, cw = -1;
+    const int nin = count_current(a, "input", &ci), nwork = count_current(a, "work", &cw);
+    fprintf(stdout, "RESULT colorin profiles: %u entries; current input %s, current work %s\n",
+            json_array_get_length(a), ci >= 0 ? json_object_get_string_member(json_array_get_object_element(a, ci), "type") : "-",
+            cw >= 0 ? json_object_get_string_member(json_array_get_object_element(a, cw), "type") : "-");
+    CHECK(nin == 1 && nwork == 1, "colorin: %d current input and %d current work profiles", nin, nwork);
+    // choose another input profile of the image's own and the working profile sRGB-linear... through param_set
+    const char *pick = NULL;
+    for(guint i = 0; i < json_array_get_length(a) && !pick; i++)
+    {
+      JsonObject *o = json_array_get_object_element(a, i);
+      if(!strcmp(json_object_get_string_member(o, "kind"), "input") && !json_object_get_boolean_member(o, "current")
+         && !strcmp(json_object_get_string_member(o, "filename"), ""))
+        pick = json_object_get_string_member(o, "type");
+    }
+    if(pick)
+    {
+      gchar *v = g_strdup_printf("\"%s\"", pick);
+      MUST(dtb_param_set("colorin", 0, "type", v));
+      g_free(v);
+      MUST(dtb_history_seal());
+      JsonNode *pl2 = action("colorin", 0, "list_profiles", NULL, DTB_OK);
+      int c2 = -1;
+      count_current(json_node_get_array(pl2), "input", &c2);
+      CHECK(c2 >= 0 && !strcmp(json_object_get_string_member(json_array_get_object_element(json_node_get_array(pl2), c2), "type"), pick),
+            "colorin: the profile set is not current");
+      fprintf(stdout, "RESULT colorin set input profile %s\n", pick);
+      json_node_unref(pl2);
+    }
+    json_node_unref(pl);
+  }
+  // denoiseprofile
+  JsonNode *dl = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+  if(dl)
+  {
+    int c = -1;
+    const int n = count_current(json_node_get_array(dl), NULL, &c);
+    fprintf(stdout, "RESULT denoiseprofile: %u entries, current index %d\n", json_array_get_length(json_node_get_array(dl)), c);
+    CHECK(n == 1 && c == 0, "denoiseprofile default: %d current, index %d (expected the automatic entry)", n, c);
+    if(json_array_get_length(json_node_get_array(dl)) > 1)
+    {
+      json_node_unref(action("denoiseprofile", 0, "set_profile", "{\"index\": 1}", DTB_OK));
+      JsonNode *d2 = action("denoiseprofile", 0, "list_profiles", NULL, DTB_OK);
+      int c2 = -1;
+      count_current(json_node_get_array(d2), NULL, &c2);
+      CHECK(c2 == 1, "denoiseprofile after set_profile 1: current %d", c2);
+      json_node_unref(d2);
+    }
+    json_node_unref(dl);
+  }
+  // white balance: tuning and preset position
+  JsonNode *wb = action("temperature", 0, "get_wb", NULL, DTB_OK);
+  if(wb)
+  {
+    JsonObject *o = json_node_get_object(wb);
+    CHECK(json_object_has_member(o, "tuning") && json_object_has_member(o, "preset_index"), "get_wb lacks tuning/preset_index");
+    fprintf(stdout, "RESULT get_wb before: preset %s, preset_index %s\n",
+            json_node_is_null(json_object_get_member(o, "preset")) ? "null" : json_object_get_string_member(o, "preset"),
+            json_node_is_null(json_object_get_member(o, "preset_index")) ? "null" : "set");
+    json_node_unref(wb);
+  }
+  JsonNode *wl = action("temperature", 0, "list_presets", NULL, DTB_OK);
+  if(wl)
+  {
+    JsonArray *a = json_node_get_array(wl);
+    // a camera preset with fine tuning if there is one (else the first)
+    guint first = G_MAXUINT;
+    for(guint i = 0; i < json_array_get_length(a) && first == G_MAXUINT; i++)
+    {
+      JsonObject *p = json_array_get_object_element(a, i);
+      if(!strcmp(json_object_get_string_member(p, "kind"), "camera")
+         && json_object_get_int_member(p, "tuning_max") > json_object_get_int_member(p, "tuning_min"))
+        first = i;
+    }
+    for(guint i = 0; i < json_array_get_length(a) && first == G_MAXUINT; i++)
+      if(!strcmp(json_object_get_string_member(json_array_get_object_element(a, i), "kind"), "camera")) first = i;
+    for(guint i = first; i < json_array_get_length(a); i++)
+    {
+      JsonObject *p = json_array_get_object_element(a, i);
+      if(strcmp(json_object_get_string_member(p, "kind"), "camera")) continue;
+      const int tmin = json_object_get_int_member(p, "tuning_min"), tmax = json_object_get_int_member(p, "tuning_max");
+      const int tune = tmax > tmin ? tmin + 1 : tmin;
+      gchar *args = g_strdup_printf("{\"name\": \"%s\", \"tuning\": %d}", json_object_get_string_member(p, "name"), tune);
+      json_node_unref(action("temperature", 0, "apply_preset", args, DTB_OK));
+      g_free(args);
+      JsonNode *w2 = action("temperature", 0, "get_wb", NULL, DTB_OK);
+      JsonObject *o = json_node_get_object(w2);
+      const gboolean has = !json_node_is_null(json_object_get_member(o, "tuning"));
+      fprintf(stdout, "RESULT get_wb after '%s' tuning %d: tuning %s, preset_index %ld (expected %u)\n",
+              json_object_get_string_member(p, "name"), tune, has ? "set" : "null",
+              has ? (long)json_object_get_int_member(o, "preset_index") : -1L, i);
+      CHECK(has && json_object_get_int_member(o, "tuning") == tune && json_object_get_int_member(o, "preset_index") == (gint64)i,
+            "get_wb does not report the camera preset and tuning that were applied");
+      json_node_unref(w2);
+      break;
+    }
+    json_node_unref(wl);
+  }
+  // framing: the two values outside the field's limits
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": -1}", DTB_OK));
+  CHECK(param_num("borders", 0, "aspect") == -1.0, "constant border not written");
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": 5}", DTB_E_RANGE));
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": \"x\"}", DTB_E_TYPE));
+  json_node_unref(action("borders", 0, "set_aspect", "{\"aspect\": 0}", DTB_OK));
+  CHECK(param_num("borders", 0, "aspect") == 0.0, "image aspect not written");
+  // lens: use latest algorithm
+  json_node_unref(action("lens", 0, "use_latest_md", NULL, DTB_OK));
+  {
+    JsonNode *mods = get_modules();
+    JsonObject *lens = find_mod(mods, "lens", 0);
+    const char *v = json_node_get_string(param_node(lens, "md_version"));
+    const double s = json_node_get_double(param_node(lens, "scale_md_v1"));
+    fprintf(stdout, "RESULT lens use_latest_md: md_version %s, scale_md_v1 %g\n", v, s);
+    CHECK(!strcmp(v, "DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2") && s == 0.0, "use_latest_md not written");
+    gchar *cam = g_strdup(json_node_get_string(param_node(lens, "camera")));
+    json_node_unref(mods);
+    if(cam[0])
+    {
+      gchar *args = g_strdup_printf("{\"camera\": \"%s\"}", cam);
+      JsonNode *lenses = action("lens", 0, "list_lenses", args, DTB_OK);
+      int with = 0;
+      for(guint i = 0; lenses && i < json_array_get_length(json_node_get_array(lenses)); i++)
+      {
+        JsonObject *o = json_array_get_object_element(json_node_get_array(lenses), i);
+        CHECK(json_object_has_member(o, "min_aperture") && json_object_has_member(o, "max_aperture"), "no aperture fields");
+        with += !json_node_is_null(json_object_get_member(o, "min_aperture"));
+      }
+      fprintf(stdout, "RESULT list_lenses: %d of %u lenses with min_aperture\n", with,
+              lenses ? json_array_get_length(json_node_get_array(lenses)) : 0);
+      if(lenses) json_node_unref(lenses);
+      g_free(args);
+    }
+    g_free(cam);
+  }
+  // darktable-cli renders the result as the bridge does
+  MUST(dtb_xmp_write(path_join(outdir, "actions2.xmp")));
+  render_to(outdir, "actions2");
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- threads and CPUs (5.5, P2g section 5) ---- */
+/* the engine runs on its own thread here (as in the app), so the main
+ * thread's mask can stand for the process's allowed set and change while
+ * the engine runs */
+static volatile int g_cpus_step = 0;
+static cpu_set_t g_all;
+
+static void cpus_wait(int step)
+{
+  while(g_cpus_step < step) usleep(1000);
+}
+
+static GArray *json_cpus(const char *key)
+{
+  JsonNode *n = get_json(dtb_engine_info);
+  JsonArray *a = json_object_get_array_member(json_node_get_object(n), key);
+  GArray *r = g_array_new(FALSE, FALSE, sizeof(int));
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    const int c = json_array_get_int_element(a, i);
+    g_array_append_val(r, c);
+  }
+  json_node_unref(n);
+  return r;
+}
+
+static int my_cpu_count(void)
+{
+  cpu_set_t s;
+  sched_getaffinity(0, sizeof(s), &s);
+  return CPU_COUNT(&s);
+}
+
+static void *cpus_engine(void *arg)
+{
+  const char *workdir = arg;
+  engine_start(workdir);
+  GArray *a0 = json_cpus("cpus_allowed");
+  fprintf(stdout, "RESULT cpus at start: %u allowed, %ld configured, threads_max %ld\n", a0->len,
+          info_int("cpus_configured"), info_int("threads_max"));
+  CHECK((int)a0->len == CPU_COUNT(&g_all), "cpus_allowed %u, the process has %d", a0->len, CPU_COUNT(&g_all));
+  // the system narrows the process to CPU 0 (the main thread's mask stands for it)
+  g_cpus_step = 1;
+  cpus_wait(2);
+  GArray *a1 = json_cpus("cpus_allowed");
+  fprintf(stdout, "RESULT cpus after narrowing: %u allowed (first %d)\n", a1->len, a1->len ? g_array_index(a1, int, 0) : -1);
+  CHECK(a1->len == 1 && g_array_index(a1, int, 0) == 0, "cpus_allowed does not follow the process's set");
+  EXPECT(dtb_set_thread_cpus((int[]){ 1 }, 1), DTB_E_ARG);
+  MUST(dtb_set_thread_cpus((int[]){ 0, 1 }, 2));
+  GArray *tc = json_cpus("thread_cpus");
+  CHECK(tc->len == 1 && g_array_index(tc, int, 0) == 0, "applied set is not requested ∩ allowed");
+  MUST(dtb_set_thread_cpus(NULL, 0));
+  CHECK(my_cpu_count() == 1, "unpinning gave the engine thread %d CPUs, the process may use 1", my_cpu_count());
+  // the system widens it again: unpinning gives every CPU
+  g_cpus_step = 3;
+  cpus_wait(4);
+  MUST(dtb_set_thread_cpus(NULL, 0));
+  fprintf(stdout, "RESULT cpus after widening and unpinning: engine thread on %d CPUs\n", my_cpu_count());
+  CHECK(my_cpu_count() == CPU_COUNT(&g_all), "unpinning did not restore the process's CPUs now");
+  g_array_free(a0, TRUE);
+  g_array_free(a1, TRUE);
+  g_array_free(tc, TRUE);
+  dtb_shutdown();
+  g_cpus_step = 5;
+  return NULL;
+}
+
+static int cmd_cpus(const char *workdir)
+{
+  sched_getaffinity(0, sizeof(g_all), &g_all);
+  if(CPU_COUNT(&g_all) < 2 || !CPU_ISSET(0, &g_all) || !CPU_ISSET(1, &g_all))
+  {
+    fprintf(stdout, "FAIL cpus: needs CPUs 0 and 1\n");
+    return 1;
+  }
+  pthread_t t;
+  // the engine thread starts with the whole set, before the main thread narrows its own
+  pthread_create(&t, NULL, cpus_engine, (void *)workdir);
+  cpus_wait(1);
+  cpu_set_t one;
+  CPU_ZERO(&one);
+  CPU_SET(0, &one);
+  sched_setaffinity(0, sizeof(one), &one);
+  g_cpus_step = 2;
+  cpus_wait(3);
+  sched_setaffinity(0, sizeof(g_all), &g_all);
+  g_cpus_step = 4;
+  pthread_join(t, NULL);
+  return g_fail;
+}
+
 int main(int argc, char **argv)
 {
   if(argc < 3)
@@ -2283,6 +3197,13 @@ int main(int argc, char **argv)
   }
   setvbuf(stdout, NULL, _IOLBF, 0);
   const char *cmd = argv[2];
+  // C15: the engine on a thread of its own, started by the command
+  if(!strcmp(cmd, "cpus"))
+  {
+    const int rc = cmd_cpus(argv[1]);
+    fprintf(stdout, "RESULT exit %d\n", rc);
+    return rc;
+  }
   if(!strcmp(cmd, "actions") && argc == 6)
   {
     char *rc = actions_prepare(argv[5]);
@@ -2311,6 +3232,8 @@ int main(int argc, char **argv)
       { "actions", cmd_actions }, { "threads", cmd_threads }, { "readonly", cmd_readonly },
       { "output", cmd_output }, { "reopen", cmd_reopen },
       { "cost", cmd_cost }, { "drag", cmd_drag },
+      { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
+      { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

@@ -129,4 +129,40 @@ interface DarktableEngine {
     /** Refused for a read-only session and when an existing file at [path] fails the guard. Atomic. */
     suspend fun xmpWrite(path: String)
     suspend fun export(path: String, options: ExportOptions)
+
+    // 5 (P1b part 1): presets, styles, render times. docs/design/engine-api.md section 5.
+
+    /** Every stored preset of [op], desktop's menu order; fits/active refer to instance ([op], [priority]) of the open image. */
+    suspend fun presets(op: String, priority: Int = 0): List<Preset>
+
+    /** Apply a preset to an instance: one history item. */
+    suspend fun presetApply(op: String, priority: Int, name: String)
+
+    /** Store the instance's state as a user preset. An existing user preset of that name: ARG unless [overwrite]. */
+    suspend fun presetStore(op: String, priority: Int, name: String, description: String = "", overwrite: Boolean = false)
+
+    /** User presets only (ARG for built-in ones). */
+    suspend fun presetRename(op: String, name: String, newName: String)
+    suspend fun presetDelete(op: String, name: String)
+
+    /** Import one .dtpreset file. Refused (ARG) for an unknown module or a newer version, a built-in name, or an existing name unless [overwrite]. */
+    suspend fun presetImport(path: String, overwrite: Boolean = false): PresetRef
+
+    /** Write <dir>/<name>.dtpreset; returns its path. */
+    suspend fun presetExport(op: String, name: String, dir: String): String
+
+    suspend fun styles(): List<Style>
+
+    /** Apply a style to the open image ([mode] null = desktop's preference). A style with an item the engine cannot use: ARG, nothing changes. */
+    suspend fun styleApply(name: String, mode: StyleMode? = null)
+
+    /** Import .dtstyle files, one or several. */
+    suspend fun stylesImport(paths: List<String>, overwrite: Boolean = false): StyleImport
+    suspend fun styleDelete(name: String)
+
+    /** Create a style from the open image's history: [items] null = every item below the end, else history nums. */
+    suspend fun styleCreate(name: String, description: String = "", items: List<Int>? = null, overwrite: Boolean = false)
+
+    /** Per-module times of the last render. */
+    suspend fun renderTimes(): RenderTimes
 }

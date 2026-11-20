@@ -4,7 +4,8 @@ package app.dtandroid.engine
 import java.util.Locale
 
 /**
- * Brief P2f deliverable 4: the time each module took in a render, read from darktable's own "-d perf"
+ * Brief P2f deliverable 4: the time each module took in a render. Since P1b the timings page takes the
+ * entries from the engine (DarktableEngine.renderTimes); [parse] still reads darktable's own "-d perf"
  * lines (`dt_show_times_f` in src/common/darktable.c, called per module by src/develop/pixelpipe_hb.c):
  *
  *     12.3456 [dev_pixelpipe] took 0.123 secs (0.456 CPU) [export] processed `exposure' on CPU, blended on CPU
@@ -36,7 +37,7 @@ object ModuleTimes {
 
     /** "module ms" pairs, slowest first, at most [top] (the rest summed in one line). */
     fun table(entries: List<Entry>, top: Int = 12): String {
-        if (entries.isEmpty()) return "no per-module times (darktable printed none: \"-d perf\" off, or nothing re-ran)"
+        if (entries.isEmpty()) return "no per-module times (nothing re-ran, or the engine gave none)"
         val sorted = entries.sortedByDescending { it.wallMs }
         val total = entries.sumOf { it.wallMs }
         val parts = sorted.take(top).map { String.format(Locale.ROOT, "%s %.1f", it.module, it.wallMs) }.toMutableList()

@@ -6,7 +6,6 @@ import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.engine.FastCores
 import app.dtandroid.engine.JniEngine
 import app.dtandroid.engine.ModuleTimes
-import app.dtandroid.engine.NativeBridge
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
@@ -54,19 +53,15 @@ class Timings(
 
     private fun median(v: List<Long>) = v.sorted()[v.size / 2]
 
-    // brief P2f: darktable's per-module times of one render, from its "-d perf" lines in the captured log
-    private fun logMark(): Long = LongArray(1).also { NativeBridge.logSince(Long.MAX_VALUE, it) }[0]
-
-    private fun modulesSince(mark: Long): List<ModuleTimes.Entry> {
-        // the log is read by a thread of its own: give it a moment to take the last lines
-        Thread.sleep(LOG_SETTLE_MS)
-        return ModuleTimes.parse(NativeBridge.logSince(mark, LongArray(1)) ?: "")
-    }
-
-    private inline fun <T> perModule(label: String, block: () -> T): T {
-        val m = logMark()
+    // brief P1b (E2): the per-module times of one render, from the engine (dtb_render_times), no longer
+    // from darktable's "-d perf" lines in the captured log
+    private suspend inline fun <T> perModule(label: String, block: () -> T): T {
         val r = block()
-        put("per module, $label (ms, slowest first)", ModuleTimes.table(modulesSince(m)))
+        val t = runCatching { engine.renderTimes() }.getOrNull()
+        val entries = t?.modules?.map {
+            ModuleTimes.Entry(if (it.priority > 0) "${it.op} ${it.instanceName.ifEmpty { it.priority.toString() }}" else it.op, it.ms, it.cpuMs)
+        } ?: emptyList()
+        put("per module, $label (ms, slowest first)", ModuleTimes.table(entries))
         return r
     }
 
@@ -230,7 +225,6 @@ class Timings(
 
     companion object {
         const val PREVIEW = 1024
-        private const val LOG_SETTLE_MS = 80L
         val DRAG_SIZES = listOf(256, 384, 512, 640, 768, 1024)
     }
 }

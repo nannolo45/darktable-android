@@ -162,6 +162,19 @@ float *dtb__param_float(dt_iop_module_t *m, const char *path);
 int *dtb__param_int(dt_iop_module_t *m, const char *path);
 char *dtb__param_chars(dt_iop_module_t *m, const char *path, size_t *size);
 
+/* presets.c */
+dt_iop_module_so_t *dtb__iop_so(const char *op);
+const char *dtb__item_problem(const char *op, int module_version, int blend_version);
+
+/* times.c (E2) */
+void dtb__times_install(void);
+void dtb__times_begin(const char *pipe);
+void dtb__times_end(void);
+void dtb__times_reset(void);
+
+/* actions2.c: 1 = no such action there */
+int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+
 /* actions.c */
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 

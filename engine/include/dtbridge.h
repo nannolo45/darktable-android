@@ -89,6 +89,8 @@ void dtb_shutdown(void);
 /* { "darktable_version": s, "api_version": 1, "threads": n,
  *   "threads_max": n,                 the count at dtb_init, the upper limit
  *   "thread_cpus": [ cpu, ... ],      the CPUs set by dtb_set_thread_cpus, [] = not pinned
+ *   "cpus_allowed": [ cpu, ... ],     the CPUs the process may use now (P1b)
+ *   "cpus_configured": n,             the CPUs the device has (P1b)
  *   "plugins": { "files": n, "loaded": n, "missing": [ "<kind>/<name>", ... ],
  *                "moduledir": s,
  *                "iop" | "format" | "storage": { "files", "loaded", "not_loaded": [ name ] },
@@ -105,10 +107,13 @@ int dtb_set_threads(int n);
 
 /* Pin the engine's threads to the given CPUs: the engine thread itself and
  * every OpenMP worker thread, each with sched_setaffinity() on its own
- * thread id, so that threads created later inherit the set. n == 0 removes
- * the pinning (back to the CPUs the process had at dtb_init). The caller
- * chooses the CPUs (on phones: the fast cores); the bridge only applies the
- * list. DTB_E_ARG for an id that is not an allowed CPU of the process. */
+ * thread id, so that threads created later inherit the set. The CPUs are
+ * checked against what the process may use at the time of the call (its
+ * cpuset and its main thread's mask, P1b): the set applied is requested ∩
+ * allowed, DTB_E_ARG only when that is empty; engine_info "thread_cpus"
+ * lists what was applied. n == 0 removes the pinning: back to every CPU the
+ * process may use now. The caller chooses the CPUs (on phones: the fast
+ * cores); the bridge only applies the list. */
 int dtb_set_thread_cpus(const int *cpu_ids, int n);
 
 /* ---------------------------------------------------------------------- */
@@ -126,14 +131,18 @@ int dtb_xmp_check(const char *xmp_path, char **json);
 /* ---------------------------------------------------------------------- */
 /* 2.3 session                                                             */
 
-/* Import raw_path into the private library and load xmp_path (NULL: a
+/* Import raw_path into the private library, load its picture, and load
+ * xmp_path (NULL: a
  * sidecar named <raw>.xmp is picked up if it exists). The session starts
  * from exactly that XMP's edit; without an XMP (xmp_path NULL and no
  * sidecar) from the default edit, as a first import shows it, whatever an
  * earlier session in this process did to the image. The guard runs first;
  * if it fails, the image still opens, for viewing, read-only: every [M] call
  * and dtb_xmp_write return DTB_E_READ_ONLY. Returns DTB_OK in both cases
- * (see image_info "read_only"). The RAW file is only ever read. */
+ * (see image_info "read_only"). The RAW file is only ever read.
+ * A file without a picture darktable can decode (junk, empty, truncated,
+ * unsupported) is refused with DTB_E_IO and the loader's reason; no session
+ * is left open (P1b, E1). */
 int dtb_open(const char *raw_path, const char *xmp_path);
 
 /* Close the session. Writes nothing. */
@@ -195,14 +204,19 @@ int dtb_module_reset(const char *op, int priority);
 /* What a module's desktop panel computes itself. args_json may be NULL
  * (= {}). *result_json receives a JSON value (may be NULL on failure).
  * Unknown action: DTB_E_NOT_FOUND. Actions that change parameters are [M].
- *   temperature:    get_wb -> {temperature, tint, preset}; set_wb {temperature, tint} [M];
+ * docs/design/engine-api.md 2.4 and 5.4 have the JSON.
+ *   temperature:    get_wb -> {temperature, tint, preset, coefficients, tuning, preset_index};
+ *                   set_wb {temperature, tint} [M];
  *                   list_presets -> [ {name, kind, tuning_min, tuning_max, tuning_default} ];
  *                   apply_preset {name, tuning?} [M]
  *   lens:           list_cameras -> [ {maker, model, variant, mount, crop_factor} ];
- *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal} ];
+ *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal, min_aperture, max_aperture} ];
+ *                   use_latest_md [M] (desktop's "use latest algorithm": md_version 2, scale_md_v1 0);
  *                   set_lens {camera, lens} [M]
  *   lut3d:          set_file {path} [M]
- *   denoiseprofile: list_profiles -> [ {index, name, auto, iso} ], index = position
+ *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
+ *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
+ *   denoiseprofile: list_profiles -> [ {index, name, auto, iso, current} ], index = position
  *                   in desktop's profile list, 0 = the automatic entry;
  *                   set_profile {index} or {name} [M] (a name selects the first
  *                   entry of that name; names can repeat, indices do not) */
@@ -325,6 +339,69 @@ int dtb_xmp_write(const char *xmp_path);
  *              | "adobergb" | "displayp3" }
  * A format whose library is not built: DTB_E_ARG with a message. */
 int dtb_export(const char *path, const char *options_json);
+
+
+/* ---------------------------------------------------------------------- */
+/* 5.2 presets (P1b; docs/design/engine-api.md section 5.2 has the JSON)   */
+/* Presets live in darktable's database in configdir (data.db), as on
+ * desktop. Calls that only change that database are not [M]. */
+
+/* Every stored preset of module `op`, all versions, in desktop's menu
+ * order: [ { "name", "description", "builtin", "op_version", "usable",
+ * "enabled", "autoapply", "filter", "match": { "model", "maker", "lens",
+ * "iso": [min, max|null], "exposure": [..], "aperture": [..],
+ * "focal_length": [..], "format": [ "raw"|"ldr"|"hdr"|"matrix"|"monochrome"
+ * |"color" ] }, "matches", "fits", "active" } ]. "matches", "fits" and
+ * "active" refer to the open image and instance (op, priority); null when
+ * no image is open. Unknown op: DTB_E_NOT_FOUND. */
+int dtb_presets_list(const char *op, int priority, char **json);
+/* [M] Apply a preset to an instance as desktop does: one history item. */
+int dtb_preset_apply(const char *op, int priority, const char *name);
+/* Store the instance's parameters, switch and blending as a user preset
+ * (needs an open image). An existing user preset of that name: DTB_E_ARG
+ * unless overwrite != 0. Built-in names: DTB_E_ARG. */
+int dtb_preset_store(const char *op, int priority, const char *name, const char *description, int overwrite);
+/* User presets only (DTB_E_ARG for built-in ones); every version of the name. */
+int dtb_preset_rename(const char *op, const char *name, const char *new_name);
+int dtb_preset_delete(const char *op, const char *name);
+/* Import one .dtpreset file -> { "op", "name", "op_version", "usable" }.
+ * Refused (DTB_E_ARG, nothing stored) for an unknown module, a newer module
+ * or blend version, a built-in name, or an existing user preset of that
+ * name unless overwrite != 0. DTB_E_IO: not a readable preset file. */
+int dtb_preset_import(const char *path, int overwrite, char **json);
+/* Write <dir>/<name>.dtpreset as desktop does -> { "path" }. */
+int dtb_preset_export(const char *op, const char *name, const char *dir, char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 5.3 styles (P1b)                                                        */
+
+/* [ { "name", "description", "has_module_order", "usable",
+ *     "items": [ { "num", "op", "priority", "instance_name", "enabled",
+ *                  "module_version", "blend_version", "problem": null |
+ *                  "unknown_operation" | "newer_module_version"
+ *                  | "newer_blend_version" } ] } ] by name. */
+int dtb_styles_list(char **json);
+/* [M] Apply a style to the open image. mode "append", "overwrite", or NULL
+ * = desktop's preference. One undo step. A style with an item the engine
+ * cannot use is refused with DTB_E_ARG and nothing changes. */
+int dtb_style_apply(const char *name, const char *mode);
+/* Import .dtstyle files: paths_json is a JSON array of paths ->
+ * { "imported": [ { "path", "name", "usable" } ],
+ *   "refused": [ { "path", "reason": "io" | "not_a_style" | "exists" } ] }. */
+int dtb_styles_import(const char *paths_json, int overwrite, char **json);
+int dtb_style_delete(const char *name);
+/* Create a style from the open image's history: items_json NULL = every
+ * item below the history end, else a JSON array of history nums. Does not
+ * change the edit. */
+int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite);
+
+/* ---------------------------------------------------------------------- */
+/* 5.6 per-module times of the last render (P1b, E2)                       */
+
+/* { "pipe": "full" | "preview" | null, "total_ms",
+ *   "modules": [ { "op", "priority", "instance_name", "ms", "cpu_ms", "tiles" } ] }
+ * The modules that ran in the last render, in pipeline order. */
+int dtb_render_times(char **json);
 
 #ifdef __cplusplus
 }

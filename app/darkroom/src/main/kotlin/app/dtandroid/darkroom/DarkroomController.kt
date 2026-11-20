@@ -217,7 +217,7 @@ class DarkroomController(
                         if (knownUnreadable(item.rawPath)) continue
                         try {
                             val stamp = stampOf(item.rawPath)
-                            engine.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
+                            openOrRemember(engine, item.rawPath, item.xmpPath.takeIf { File(it).isFile }, stamp)
                             // brief P2h: never a render of a session without a picture (closed already then)
                             if (pictureOrClose(engine, item.rawPath, stamp) == null) continue
                             try { thumbs[i] = engine.renderPreview(thumbnailSize) } finally { runCatching { engine.close() } }
@@ -247,7 +247,7 @@ class DarkroomController(
                     // brief P2h: a file known to hold no picture is not opened again until it changes
                     if (knownUnreadable(item.rawPath)) return@bg null
                     val stamp = stampOf(item.rawPath)
-                    e.open(item.rawPath, item.xmpPath.takeIf { File(it).isFile })
+                    openOrRemember(e, item.rawPath, item.xmpPath.takeIf { File(it).isFile }, stamp)
                     var open = true
                     try {
                         // no picture: pictureOrClose closed the session already
@@ -362,6 +362,23 @@ class DarkroomController(
 
     private fun noPicture(): Nothing = throw EngineException(EngineError.IO, NO_PICTURE)
 
+    /**
+     * Brief P1b (E1): `open` itself refuses a file without a decodable picture
+     * ([EngineException.isUndecodableFile]). Handled as P2h/P2i handle "no picture" from image_info: remembered
+     * with [stamp] for background passes, and the darkroom's NO_PICTURE sentence ([noPicture]). Any other
+     * failure (a missing file, an unreadable XMP) is passed on as it is and not remembered.
+     */
+    private suspend fun openOrRemember(e: DarktableEngine, rawPath: String, xmp: String?, stamp: FileStamp) {
+        try {
+            e.open(rawPath, xmp)
+        } catch (ex: EngineException) {
+            if (!ex.isUndecodableFile) throw ex
+            unreadable[rawPath] = stamp
+            Timeline.mark("darkroom: ${File(rawPath).name} has no picture (open answered ${ex.message}), not opened")
+            noPicture()
+        }
+    }
+
     /** Brief P2f: the photo's last picture, else its thumbnail, while it opens; and what happens, in words. */
     private fun showPlaceholder(index: Int, item: SeriesItem, working: String) {
         val pic = thumbnailStore?.loadPicture(item) ?: _state.value.thumbnails[index] ?: thumbnailStore?.load(item)
@@ -417,7 +434,7 @@ class DarkroomController(
             val stamp = stampOf(item.rawPath)
             Timeline.mark("darkroom: engine open start")
             redoGuard.engineRedoEmpty()
-            engine.open(item.rawPath, xmp)
+            openOrRemember(engine, item.rawPath, xmp, stamp)
             // brief P3a: a new session starts from the file: a switch-off left by a failed undo is gone with the old one
             cropBracketOpen = false
             // brief P2h: 0 x 0 or an engine error from image_info: the session is already closed here
@@ -1572,7 +1589,7 @@ class DarkroomController(
                         noPicture()
                     }
                     val stamp = stampOf(rawPath)
-                    e.open(rawPath, xmpPath.takeIf { File(it).isFile })
+                    openOrRemember(e, rawPath, xmpPath.takeIf { File(it).isFile }, stamp)
                     var open = true
                     try {
                         if (pictureOrClose(e, rawPath, stamp) == null) { open = false; noPicture() }

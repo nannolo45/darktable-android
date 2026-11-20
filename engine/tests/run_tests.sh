@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Bridge tests on three test images: T1 to T9 and X1 (brief S3), C1 to C7
-# (brief P1a, Engine API v1 section 4), C8, C9 (brief P1c).
+# (brief P1a, Engine API v1 section 4), C8, C9 (brief P1c), C10 to C16
+# (brief P1b part 1, engine-api.md section 5).
 #
 #   engine/tests/run_tests.sh <bridge build dir> <darktable prefix> <darktable-tests dir> <output dir> [T1 C2 ...]
 #
@@ -326,7 +327,73 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
       cmp_rec C7 "$C" "$D/e_default.jpg" "$D/c7_cli.jpg" --tolerance 0
     fi
   fi
+  # ---- P1b part 1 (engine-api.md section 5) ----
+  if want C10; then
+    # a non-raw picture darktable reads: darktable-cli's own PNG of this image
+    cp "$D/cli.png" "$D/nonraw.png" 2>/dev/null
+    drv C10 e1 "undecodable files refused at open; truncated RAW; non-raw opens"
+  fi
+  if want C11; then
+    drv C11 presets "presets: list, apply, store, rename, delete, import, export"
+    parity C11 preset_builtin; parity C11 preset_user
+    if "$DTB" "$W" persist "$RAW" presets "$D" > "$D/C11-persist.log" 2>&1; then
+      pass C11 "$C" "presets kept in the configuration folder across processes"
+    else
+      fail C11 "$C" "presets lost across processes, see $D/C11-persist.log"
+    fi
+  fi
+  if want C12; then
+    # a public style: one of darktable's example styles (GPL-3.0, shipped with darktable)
+    DTB_TEST_STYLE="${DTB_TEST_STYLE:-$DT_PREFIX/share/darktable/styles/examples_effects_day for twilight.dtstyle}" \
+      drv C12 styles "styles: list, import, refuse, apply append/overwrite, create, delete"
+    parity C12 style_append; parity C12 style_overwrite; parity C12 style_created; parity C12 style_default_append
+    # darktable-cli applying the same style from the same database (a copy of the bridge's configuration
+    # folder) during its export: --style is the append mode. It builds the history in the export path
+    # (imageio.c dt_imageio_export_with_flags), the bridge as desktop does (common/styles.c
+    # _styles_apply_to_image_ext); the two place a new instance at a different pipe position (exposure.1
+    # before exposure in darktable-cli, after it on desktop), which changes the picture by at most 2
+    # levels on the test images (P1b report). The exact check is the parity of the bridge's XMP above.
+    rm -rf "$OUT/cli-config-style-$C"; cp -r "$W/config" "$OUT/cli-config-style-$C"
+    rm -f "$D/style_cli_append.png" "$D/style_cli_overwrite.png"
+    "$CLI" "$RAW" "$D/style_cli_append.png" --style "p1b public" --core $CLI_LEVEL \
+      --configdir "$OUT/cli-config-style-$C" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
+    cmp_rec C12 "$C/bridge-append-vs-cli-style" "$D/style_default_append_bridge.ppm" "$D/style_cli_append.png" --tolerance 2 --mean-tolerance 0.5
+    # --style-overwrite replaces the history with the style alone (no default edit): not desktop's overwrite
+    "$CLI" "$RAW" "$D/style_cli_overwrite.png" --style "p1b public" --style-overwrite --core $CLI_LEVEL \
+      --configdir "$OUT/cli-config-style-$C" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
+    note "INFO C12 $C bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): $($CMP "$D/style_default_append_bridge.ppm" "$D/style_cli_overwrite.png" --tolerance 255 2>&1)"
+    if "$DTB" "$W" persist "$RAW" styles "$D" > "$D/C12-persist.log" 2>&1; then
+      pass C12 "$C" "styles kept in the configuration folder across processes"
+    else
+      fail C12 "$C" "styles lost across processes, see $D/C12-persist.log"
+    fi
+  fi
+  if want C13; then
+    drv C13 defedit "the default edit equals the bridge's reopened XMP of it"
+    if [ -f "$D/fresh.xmp" ]; then
+      rm -f "$D/fresh_cli.png"
+      cli "$RAW" "$D/fresh.xmp" "$D/fresh_cli.png" "$D/cli.log"
+      cmp_rec C13 "$C/default-edit-xmp-vs-cli" "$D/fresh_bridge.ppm" "$D/fresh_cli.png" --tolerance 0
+    else
+      fail C13 "$C" "fresh.xmp was not written"
+    fi
+  fi
+  if want C14; then drv C14 actions2 "colorin profiles, denoise current, WB tuning, framing aspect, lens md"; parity C14 actions2; fi
+  if want C16; then drv C16 times "per-module times of the last render"; fi
 done
+
+# C15 once: the engine on its own thread, the process's CPU set changing under it
+if want C15; then
+  if "$DTB" "$OUT/cpus-work" cpus > "$OUT/C15.log" 2>&1; then
+    pass C15 all "$(grep '^RESULT' "$OUT/C15.log" | cut -d' ' -f2- | tr '\n' ';')"
+  else
+    fail C15 all "$(grep '^FAIL' "$OUT/C15.log" | head -3 | tr '\n' ';') see $OUT/C15.log"
+  fi
+  # point 3: started with one CPU allowed (GCC's libgomp on Linux counts the mask at load)
+  if command -v taskset > /dev/null; then
+    note "INFO C15 started with CPU 0 only (Linux, libgomp): $(taskset -c 0 "$DTB" "$OUT/cpus-work1" api "$TESTS/images/mire1.cr2" "$TESTS/0001-exposure/exposure.xmp" "$OUT" 2>/dev/null | grep '^RESULT engine darktable')"
+  fi
+fi
 
 md5_after=$(cd "$TESTS" && md5sum images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw)
 if [ "$md5_before" = "$md5_after" ]; then note "PASS safety: RAW files unchanged"

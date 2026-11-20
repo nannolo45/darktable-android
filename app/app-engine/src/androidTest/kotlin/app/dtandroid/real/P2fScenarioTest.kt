@@ -486,8 +486,8 @@ class P2fScenarioTest {
 
     /**
      * f7 (brief P2h deliverable 1): what `open` and `image_info` answer for the junk file on the real engine,
-     * recorded with the engine's log lines in between (p2h-f7-engine-log.txt). No render. Nothing asserted
-     * about the answer itself: this test establishes it; f8 checks the app's behaviour for it.
+     * recorded with the engine's log lines in between (p2h-f7-engine-log.txt). No render. Since brief P1b (E1) the
+     * answer is asserted: `open` refuses the file (IO, "cannot decode", engine-api.md 5.1) and leaves no session.
      */
     @Test
     fun f7_imageInfoOfAnUndecodableFile() = kotlinx.coroutines.runBlocking<Unit> {
@@ -517,6 +517,13 @@ class P2fScenarioTest {
         TestFiles.record(res, "f7_answer", answer)
         android.util.Log.i("dt-android-test", "P2h f7: $answer")
         log.lines().filter { it.isNotBlank() }.take(40).forEach { android.util.Log.i("dt-android-test", "P2h f7 engine log: $it") }
+        // brief P1b (E1): since the engine refuses such files at open, the truth is "open answered IO, cannot
+        // decode" (engine-api.md 5.1); before P1b open answered OK and image_info ENGINE (P2h report)
+        assertTrue(answer, answer.startsWith("open answered IO: IO: ${app.dtandroid.engine.api.EngineException.UNDECODABLE_PREFIX}"))
+        val after = AppHost.controller.withEngine { e ->
+            try { e.imageInfo(); "a session is open" } catch (ex: app.dtandroid.engine.api.EngineException) { ex.error.name }
+        }
+        assertEquals("no session left open by the refused open", "STATE", after)
         TestFiles.record(res, "f7", "done")
     }
 
@@ -551,6 +558,8 @@ class P2fScenarioTest {
             assertEquals("cannot open ${junk.name}: ${app.dtandroid.darkroom.DarkroomController.NO_PICTURE}", st.message)
             assertEquals("the session is closed", null, c.openRawPath())
             assertTrue("remembered", c.knownUnreadable(junk.path))
+            // brief P1b (E1): the engine's open refused it (before P1b: open OK, then image_info failed)
+            assertTrue(Timeline.events().any { it.name.startsWith("darkroom: ${junk.name} has no picture (open answered") })
 
             // the LightPhotoLibrary preview of the good photo, on a session of its own, right away
             val out = File(TestFiles.out, "p2h-f8-lpl-preview.jpg").apply { delete() }
