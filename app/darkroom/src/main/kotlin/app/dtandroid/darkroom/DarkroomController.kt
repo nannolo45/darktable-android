@@ -1698,7 +1698,12 @@ class DarkroomController(
 
     fun setView(v: BottomView) = _state.update { it.copy(view = v, overlay = null) }
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
-    fun setOverlay(o: Overlay?) = _state.update { it.copy(overlay = o) }
+    fun setOverlay(o: Overlay?) {
+        val was = _state.value.overlay
+        _state.update { it.copy(overlay = o) }
+        // brief P3b: closing the presets or styles sheet drops its pages (an open import question is cancelled)
+        if (was != o && (was is Overlay.Presets || was == Overlay.Styles)) stylesPresets.closed()
+    }
     fun clearMessage() = _state.update { it.copy(message = null) }
 
     /**
@@ -1709,6 +1714,17 @@ class DarkroomController(
         if (s.current?.rawPath != rawPath) s else s.copy(syncStep = syncStep, syncProgress = syncProgress, lastEdit = lastEdit)
     }
     fun showMessage(text: String) = _state.update { it.copy(message = text) }
+
+    // ------------------------------------------------------------------ brief P3b: presets and styles
+
+    /** The presets and styles sheets (engine-api.md 5.2, 5.3). */
+    val stylesPresets: StylesPresets by lazy { StylesPresets(this) }
+
+    /** An engine call that does not change the edit (lists, darktable's database of presets and styles), under the lock. */
+    internal suspend fun <T> engineRead(block: suspend (DarktableEngine) -> T): T = fg { block(engine) }
+
+    /** A change of the edit through [block], as every change: render cancelled, state read again, rendered again. */
+    internal suspend fun engineChange(block: suspend (DarktableEngine) -> Unit) = change { block(engine) }
 
     // ------------------------------------------------------------------ helpers for screens
 

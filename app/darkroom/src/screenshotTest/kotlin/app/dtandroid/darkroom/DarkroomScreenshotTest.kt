@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import app.dtandroid.darkroom.ui.DarkroomLayout
 import app.dtandroid.darkroom.ui.DarkroomScreen
+import app.dtandroid.darkroom.ui.ImportFiles
 import app.dtandroid.darkroom.ui.LayoutFiles
 import app.dtandroid.schema.Control
 import app.dtandroid.ui.theme.DtTheme
@@ -60,7 +61,7 @@ abstract class ScreenshotBase {
         if (group != null) c.selectGroup(group)
         runBlocking { c.setup() }
         compose.setContent {
-            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout, layoutFiles = NoFiles) }
+            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout, layoutFiles = NoFiles, importFiles = NoImport) }
         }
         settle(c)
         return c
@@ -70,6 +71,11 @@ abstract class ScreenshotBase {
     private object NoFiles : LayoutFiles {
         override fun pickImport() = Unit
         override fun export(fileName: String, bytes: ByteArray) = Unit
+    }
+
+    /** brief P3b: the file picker for styles and presets, as a no-op, so the sheets show "import…" as in the app */
+    private object NoImport : ImportFiles {
+        override fun pickImport() = Unit
     }
 
     protected fun settle(c: DarkroomController) {

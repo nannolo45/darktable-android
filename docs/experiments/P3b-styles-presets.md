@@ -19,3 +19,10 @@ Measurements: **CI** = GitHub runners (x86_64); **emulator** = CI's x86_64 Andro
   drop `_builtin_` and each segment's `_l10n_`).
 - darktable's 534 shipped styles are all named `_l10n_darktable|…` (data/styles at the pin).
 - Branch added to the push triggers of p2a-app.yml and p2b-real-engine.yml.
+- First code: `darkroom/StylesPresets.kt` (logic: names as desktop shows them, the folding tree, presets and styles
+  actions, the import with desktop's overwrite question, favourites/recent/apply mode in the app's settings),
+  `darkroom/ui/StylesSheets.kt` (sheets on the phone, the right panel on the tablet), "styles…" in the photo menu,
+  two controller hooks (`engineRead`, `engineChange`, beside `stylesPresets`), the real app's file pickers (styles and
+  presets; module layouts, which the real app had not wired), icons `favorite`/`favoriteOn`. Tests: JVM
+  `P3bStylesPresetsTest` (10), screenshots `P3bScreenshotTest` (phone and tablet), emulator `P3bScenarioTest` (3), and
+  the p3b comparison in p2b-real-engine's compare job. Nothing compiled on the workspace (no Android SDK): first CI run.
