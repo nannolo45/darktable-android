@@ -25,3 +25,9 @@ Times UTC. Numbers from the build workspace are x86_64 on 2 cores; from CI, the 
 - The build workspace has no Android SDK (`SDK location not found`) and Maven Central answered 429 to the first
   download; the JVM tests run in CI only for this package.
 - p2a run 44691789989 failed at compile: Kotlin refuses `in` on a ConcurrentHashMap in the test. Fixed in f210e04.
+- 44693487694 (a64282a), emulator: 42/42 passed. **Deliverable 1: `open` OK, then `image_info` fails with ENGINE (-9)
+  "image could not be loaded (mipmap 12)"**, not 0 x 0 as the P2f report says. f8 passed: sentence after 17 ms, LPL
+  preview of the good photo 1920x1278 right after, good photo preview shown. Each junk file decoded once in the whole
+  run. Evidence copied to `P2h-results/emulator-44693487694.txt`. (Its compare job was cancelled by the next push.)
+- 51ef5a0: timeline text only (the error's name appeared twice: "ENGINE: ENGINE: ..."). Last code commit.
+- Report written; waiting for both workflows on 51ef5a0.
