@@ -392,7 +392,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   fi
   if want C22; then
     drv C22 masks "drawn masks: create, attach, share, edit, delete, reopen"
-    parity C22 masks_drawn; parity C22 masks_shared; parity C22 masks_edited
+    parity C22 masks_drawn; parity C22 masks_duplicate; parity C22 masks_shared; parity C22 masks_edited
   fi
   if want C24; then drv C24 maskshow "mask display overlay"; fi
 done

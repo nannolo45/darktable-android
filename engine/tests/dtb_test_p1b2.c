@@ -817,6 +817,21 @@ static int cmd_masks(const char *raw, const char *xmp, const char *outdir)
   const int grp = json_object_get_int_member(bl, "mask_id");
   json_node_unref(k);
   save_render(outdir, "masks_drawn");
+  // a duplicated instance keeps the mask (desktop's dt_masks_iop_use_same_as, on the session's forms)
+  {
+    int dp = 0;
+    MUST(dtb_instance_duplicate("exposure", 0, &dp));
+    s = NULL;
+    MUST(dtb_masks(&s));
+    JsonNode *aa = jparse_owned(s);
+    JsonObject *cc = mask_find(aa, c);
+    const guint u = cc ? json_array_get_length(json_object_get_array_member(cc, "used_by")) : 0;
+    fprintf(stdout, "RESULT duplicate of the masked instance (priority %d): circle used by %u instances\n", dp, u);
+    CHECK(u == 2, "a duplicated instance lost its mask");
+    json_node_unref(aa);
+    save_render(outdir, "masks_duplicate");
+    MUST(dtb_undo());
+  }
   // one form used by a second instance; member settings; the group's operator
   int np = 0;
   MUST(dtb_instance_new("exposure", 0, &np));

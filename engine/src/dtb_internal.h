@@ -248,6 +248,9 @@ void dtb__times_reset(void);
 /* actions2.c: 1 = no such action there */
 int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 
+/* masks.c: desktop's dt_masks_iop_use_same_as on the session's forms (no history) */
+gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src);
+
 /* actions3.c: module actions that pick (P1b part 2); 1 = no such action there */
 int dtb__module_action3(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 

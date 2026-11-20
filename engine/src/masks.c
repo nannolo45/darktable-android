@@ -1116,3 +1116,33 @@ int dtb_mask_group_set(int id, const char *options_json)
   dtb__change_end(DTB_CHANGE_OTHER, user);
   return DTB_OK;
 }
+
+/* desktop's dt_masks_iop_use_same_as() (masks/masks.c) for the session: it
+ * looks the groups up in, and copies forms into, the global develop object
+ * (darktable.develop), which is not the session's, so a duplicated instance
+ * lost its mask (P1a's instance_duplicate called it; found by P1b part 2).
+ * The same steps on the session's forms: the new instance's group, then
+ * dt_masks_group_add_members_of with the global object's form list pointed
+ * at the session's for the call. No history item (the caller records one). */
+gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src)
+{
+  dt_masks_form_t *src_grp = _root(src);
+  if(!src_grp || src_grp->type != DT_MASKS_GROUP) return FALSE;
+  dt_masks_form_t *grp = _root(m);
+  if(!grp)
+  {
+    grp = dt_masks_create(DT_MASKS_GROUP);
+    while(_id_used(grp->formid)) grp->formid++;
+    gchar *label = dt_history_item_get_name(m);
+    snprintf(grp->name, sizeof(grp->name), _("group `%s'"), label);
+    g_free(label);
+    dtb_S.dev.forms = g_list_append(dtb_S.dev.forms, grp);
+    dt_develop_blend_set_mask_group_id(m, m->blend_params, grp->formid);
+  }
+  GList *global = darktable.develop->forms;
+  darktable.develop->forms = dtb_S.dev.forms;
+  dt_masks_group_add_members_of(grp, src_grp);
+  dtb_S.dev.forms = darktable.develop->forms;
+  darktable.develop->forms = global;
+  return TRUE;
+}

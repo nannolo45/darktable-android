@@ -44,6 +44,7 @@ static int _instance_add(const char *op, int prio, const gboolean copy, int *new
   }
 
   dt_iop_reload_defaults(m);
+  gboolean masks_copied = FALSE;
   if(copy)
   {
     memcpy(m->params, base->params, m->params_size);
@@ -55,12 +56,21 @@ static int _instance_add(const char *op, int prio, const gboolean copy, int *new
       {
         m->blend_params->mask_id = NO_MASKID;
         m->blend_params->blend_mask_id = NO_MASKID;
-        dt_masks_iop_use_same_as(m, base);
+        // P1b part 2: on the session's forms (dt_masks_iop_use_same_as works
+        // on the global develop object and left the copy without its mask)
+        masks_copied = dtb__masks_use_same_as(m, base);
       }
     }
   }
   // "we save the new instance creation"
   dt_dev_history_seal(&dtb_S.dev, TRUE);
+  if(masks_copied)
+  {
+    // as dt_masks_iop_use_same_as: a masks history item for the copy
+    dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+    dt_dev_add_masks_history_item_ext(&dtb_S.dev, m, TRUE, TRUE);
+    dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  }
   dtb__history_add(m, TRUE);
   dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
   dtb__change_end(DTB_CHANGE_OTHER, m);
