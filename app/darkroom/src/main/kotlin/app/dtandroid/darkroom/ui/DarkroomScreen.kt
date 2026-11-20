@@ -84,6 +84,8 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
         PhoneTopBar(controller, s, onBack, onDone, menu)
         PhotoView(controller, s, DtTheme.space.m, twoFingerUndo = true, Modifier.fillMaxWidth().height(DtTheme.sizes.photoPhoneHeight))
         InfoLine(s)
+        // brief P3a deliverable 4: rotation and straighten while the crop tool is open
+        CropRotationRow(controller, s)
         LastEditLine(s)
         if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripPhone, DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight, centered = false)
         Notices(s)
@@ -223,6 +225,7 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Notices(s)
                 PhotoView(controller, s, DtTheme.space.xxl, twoFingerUndo = false, Modifier.weight(1f).fillMaxWidth())
+                CropRotationRow(controller, s) // brief P3a deliverable 4
                 if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripTablet, DtTheme.sizes.thumbTabletWidth, DtTheme.sizes.thumbTabletHeight, centered = true)
             }
             VerticalDivider(Modifier.fillMaxHeight())
@@ -249,7 +252,9 @@ private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBac
             horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xl, Alignment.CenterHorizontally),
         ) {
             DtText(s.current?.fileName ?: "", DtTheme.type.title, c.textStrong, middle = true)
-            DtText(s.info?.exif?.let { exifLine(it, withCamera = false) } ?: "", DtTheme.type.label, c.textMuted)
+            // brief P3a: with the crop tool open, the size the cropped picture will have
+            DtText(s.cropTool?.let { cropNote(it) } ?: s.info?.exif?.let { exifLine(it, withCamera = false) } ?: "", DtTheme.type.label,
+                if (s.cropTool != null) c.text else c.textMuted)
             Row(
                 Modifier.height(DtTheme.sizes.touch).clickable(role = Role.Button) { controller.toggleFilmstrip() }
                     .semantics { stateDescription = if (s.filmstrip) "expanded" else "collapsed" }

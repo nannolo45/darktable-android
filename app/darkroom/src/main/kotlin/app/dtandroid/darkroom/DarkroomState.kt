@@ -138,6 +138,8 @@ data class DarkroomState(
     val syncProgress: Float? = null,
     /** Brief P2f (R15): the open photo's last edit in one line, set by the app; null = nothing known */
     val lastEdit: String? = null,
+    /** Brief P3a: the crop tool on the photo while crop's panel is open; null when it is not open */
+    val cropTool: CropToolState? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

@@ -182,8 +182,10 @@ private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boo
  * darktable's bauhaus slider for touch: label left, value right, a track with
  * a lighter fill from the left and a small marker under the value. The whole
  * row is the touch target. A horizontal drag moves the value through the soft
- * range; a long press or double tap opens exact entry; a double tap on the
- * label resets to the default.
+ * range; a long press opens exact entry; a double tap on the label or on the
+ * bar (the track with its marker) resets to the default, as a double click
+ * does on desktop (brief P3a); a double tap anywhere else on the row (the
+ * value) opens exact entry.
  */
 @Composable
 fun SliderControl(
@@ -233,6 +235,13 @@ fun SliderControl(
             DtText(label, DtTheme.type.label, textColor, labelModifier)
             DtText(text, DtTheme.type.label, textColor, Modifier.padding(start = DtTheme.space.m))
         }
+        // brief P3a deliverable 5: the bar resets on a double tap (desktop: double click on the slider); its long
+        // press stays exact entry. Its touch area is the bar and the gap above it, from under the label row.
+        var barModifier = Modifier.fillMaxWidth()
+        if (enabled) barModifier = barModifier.pointerInput(slider.id) {
+            detectTapGestures(onDoubleTap = { onReset() }, onLongPress = { onExact() })
+        }
+        Column(barModifier.semantics { contentDescription = "$label bar" }) {
         Spacer(Modifier.height(DtTheme.space.s))
         BoxWithConstraints(Modifier.fillMaxWidth().height(z.sliderTrack + z.sliderMarkerHeight)) {
             // P1c: a slider with colour stops shows them in its track, as desktop's
@@ -266,6 +275,7 @@ fun SliderControl(
                     .size(z.sliderMarkerWidth, z.sliderMarkerHeight),
             )
         }
+        }
     }
 }
 
@@ -278,7 +288,9 @@ private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boo
     if (aspect != null) {
         val p = ctx.instance.params
         fun int(n: String) = (p.paramAt(n) as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: -1
-        val text = app.dtandroid.schema.CropAspect.label(aspect, int(aspect.ratioD), int(aspect.ratioN))
+        // brief P3a: with the crop tool open, the ratio chosen in the tool (written when the tool is left)
+        val (rd, rn) = ctx.controller.cropRatioShown(ctx.state, ctx.key, int(aspect.ratioD), int(aspect.ratioN))
+        val text = app.dtandroid.schema.CropAspect.label(aspect, rd, rn)
         val enabled = sensitive && !ctx.readOnly
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) {

@@ -36,6 +36,12 @@ class DtColors(t: TokenSource) {
     val scrim = t.color("color.scrim")
     val photoBackground = t.color("color.photoBackground")
     val banner = t.color("color.banner")
+    /** brief P3a, crop tool (mockup B3-Crop): the picture outside the frame, the frame, its grid, its handles */
+    val cropDim = t.color("color.cropDim")
+    val cropFrame = t.color("color.cropFrame")
+    val cropGrid = t.color("color.cropGrid")
+    val cropHandle = t.color("color.cropHandle")
+    val cropHandleFill = t.color("color.cropHandleFill")
 }
 
 class DtSizes(t: TokenSource) {
@@ -85,6 +91,13 @@ class DtSizes(t: TokenSource) {
     /** brief P2f: the thumbnail and the height of a row of the photo list */
     val listThumb = t.dp("size.listThumb")
     val listRow = t.dp("size.listRow")
+    /** brief P3a, crop tool: frame and grid lines, the corner handles (square, outlined), the side handles (bars) */
+    val cropFrameLine = t.dp("size.cropFrameLine")
+    val cropGridLine = t.dp("size.cropGridLine")
+    val cropHandle = t.dp("size.cropHandle")
+    val cropHandleLine = t.dp("size.cropHandleLine")
+    val cropSideHandleLength = t.dp("size.cropSideHandleLength")
+    val cropSideHandleWidth = t.dp("size.cropSideHandleWidth")
 }
 
 class DtSpace(t: TokenSource) {

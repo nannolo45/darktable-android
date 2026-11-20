@@ -11,7 +11,7 @@ name: p2a-app
 on:
   push:
     branches: [main, p2a-app-foundation, p2d-module-layouts, p2e-lpl-client, p2e-state-fix]
-    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "tools/colorharmonizer-hue-tables.py", "tools/p2j-reference-vectors.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
+    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "tools/colorharmonizer-hue-tables.py", "tools/p2j-reference-vectors.py", "tools/p3a-crop-reference.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
   workflow_dispatch:
 
 # nothing by default; the job asks for what it needs
@@ -101,6 +101,20 @@ jobs:
           python3 -I tools/colorharmonizer-hue-tables.py /tmp/p2j-src --samples 2>/dev/null | diff - app/schema/src/test/resources/p2j-harmonizer-samples.json
           python3 -I tools/p2j-reference-vectors.py /tmp/p2j-src 2>/dev/null | diff - app/schema/src/test/resources/p2j-reference.json
           echo "P2j reference values and tables match upstream at $PIN"
+
+      - name: P3a crop reference values are upstream's (brief P3a)
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          PIN=$(git ls-tree HEAD upstream/darktable | awk '{print $3}')
+          for f in src/iop/crop.c src/iop/ashift.c src/common/math.h; do
+            mkdir -p "/tmp/p3a-src/$(dirname "$f")"
+            curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 --max-time 120 \
+              -o "/tmp/p3a-src/$f" "https://raw.githubusercontent.com/darktable-org/darktable/$PIN/$f" \
+              || { echo "could not download $f at $PIN"; exit 1; }
+          done
+          DT_UPSTREAM_COMMIT="$PIN" python3 -I tools/p3a-crop-reference.py /tmp/p3a-src | diff - app/schema/src/test/resources/p3a-crop-reference.json
+          echo "P3a crop reference values match src/iop/crop.c and ashift.c at $PIN"
 
       - name: Controls still waiting for a parameter binding are the listed ones (brief P2j)
         run: |
