@@ -10,8 +10,8 @@ name: p2a-app
 
 on:
   push:
-    branches: [main, p2a-app-foundation, p2d-module-layouts, p2e-lpl-client, p2e-state-fix]
-    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", ".github/workflows/p2a-app.yml"]
+    branches: [main, p2a-app-foundation, p2d-module-layouts, p2e-lpl-client, p2e-state-fix, p2j-unbound-controls]
+    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
   workflow_dispatch:
 
 # nothing by default; the job asks for what it needs
@@ -84,6 +84,11 @@ jobs:
 
       - name: Module names for LightPhotoLibrary match the control schema (brief P2f, R15)
         run: python3 -I tools/schema-module-names.py --check
+
+      - name: Controls still waiting for a parameter binding are the listed ones (brief P2j)
+        run: |
+          python3 -I tools/schema-unbound-controls.py "scene-referred (sigmoid)" "modules: all" \
+            --check docs/experiments/P2j-results/unbound-controls-modules-all.txt
 
       - name: Rule check (literal colours, sizes, icon drawings in screen code)
         id: rules

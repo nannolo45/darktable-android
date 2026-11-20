@@ -66,8 +66,10 @@ object SchemaLoader {
 
     private fun parseModule(op: String, o: JsonObject): ModuleSchema {
         val params = LinkedHashMap<String, ParamField>()
+        val fieldNames = LinkedHashSet<String>()
         ((o["params"] as? JsonObject)?.get("fields") as? JsonArray)?.forEach {
             val f = it.jsonObject
+            f.str("name")?.let { n -> fieldNames += n.substringBefore('[') }
             if (f.bool("in_array") == true) return@forEach
             val name = f.str("name") ?: return@forEach
             params[name] = ParamField(
@@ -101,6 +103,7 @@ object SchemaLoader {
             pipePosition = o.int("pipe_position") ?: 0,
             actionPaths = actions.mapValues { it.value.first },
             actionKinds = actions.mapValues { it.value.second },
+            fieldNames = fieldNames,
         )
     }
 

@@ -123,10 +123,12 @@ class LayoutTest {
         assertEquals(Binding.Param("illum_fluo"), (r("channelmixerrgb/F source").control as Control.ComboBox).binding)
         assertEquals(QuickAccess.Kind.ON_OFF, r("lens").kind)
         assertEquals(QuickAccess.Kind.ON_OFF, r("bilat").kind)
-        // derived on desktop, no parameter: shown disabled with the name
+        // derived on desktop, no parameter: until brief P2j shown disabled; now computed from x and y
+        // (schema/overrides/channelmixerrgb.json) and usable
         for (id in listOf("channelmixerrgb/hue", "channelmixerrgb/chroma")) {
-            assertEquals(id, QuickAccess.Kind.UNAVAILABLE, r(id).kind)
+            assertEquals(id, QuickAccess.Kind.CONTROL, r(id).kind)
             assertEquals(true, r(id).shownOnDesktop)
+            assertEquals(Binding.Computed, (r(id).control as Control.Slider).binding)
         }
         // white balance's temperature and tint go through module_action (schema/overrides/temperature.json, P2a)
         assertTrue((r("temperature/temperature").control as Control.Slider).binding is Binding.Action)

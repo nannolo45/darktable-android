@@ -50,6 +50,17 @@ data class ModuleSchema(
     val actionKinds: Map<Int, String> = emptyMap(),
     /** brief P2f: an aspect list made usable by an override (crop), with the parameters it drives */
     val aspect: AspectSpec? = null,
+    /**
+     * Brief P2j: controls that desktop keeps outside the parameters and whose callbacks the app repeats
+     * (override files: `computed`, `value_list`, `stock_list`, `toggle_writes`), by control id.
+     */
+    val computed: Map<Int, Computed> = emptyMap(),
+    /** Brief P2j: one plain line under a control that waits for a later tool ("needs the colour picker"). */
+    val notes: Map<Int, String> = emptyMap(),
+    /** Brief P2j: controls that change nothing on a phone (desktop keeps them in its configuration): not shown. */
+    val hidden: Set<Int> = emptySet(),
+    /** every parameter field's name without its index (arrays and text fields included) */
+    val fieldNames: Set<String> = emptySet(),
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {
@@ -99,6 +110,12 @@ sealed interface Binding {
      * reshapes the frame as desktop does ([AspectSpec], [CropAspect]).
      */
     data object Aspect : Binding
+
+    /**
+     * Brief P2j: a control whose value is computed from parameters and written back by upstream's
+     * arithmetic or table ([ModuleSchema.computed] holds the model).
+     */
+    data object Computed : Binding
 }
 
 sealed class Control {

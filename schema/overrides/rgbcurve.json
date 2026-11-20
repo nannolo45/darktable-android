@@ -1,0 +1,39 @@
+{
+  "op": "rgbcurve",
+  "reason": "brief P2j. the interpolation method writes the same curve type into curve_type[0..2] (interpolator_callback, src/iop/rgbcurve.c) and is shown from curve_type[0] (gui_update).",
+  "value_list": [
+    {
+      "node": 9,
+      "expect_label": "interpolation method",
+      "read": [
+        "curve_type[0]"
+      ],
+      "entries": [
+        {
+          "label": "cubic spline",
+          "set": {
+            "curve_type[0]": 0,
+            "curve_type[1]": 0,
+            "curve_type[2]": 0
+          }
+        },
+        {
+          "label": "centripetal spline",
+          "set": {
+            "curve_type[0]": 1,
+            "curve_type[1]": 1,
+            "curve_type[2]": 1
+          }
+        },
+        {
+          "label": "monotonic spline",
+          "set": {
+            "curve_type[0]": 2,
+            "curve_type[1]": 2,
+            "curve_type[2]": 2
+          }
+        }
+      ]
+    }
+  ]
+}

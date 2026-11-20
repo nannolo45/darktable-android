@@ -91,10 +91,11 @@ internal object Overrides {
                 entries, a.str("flip_label") ?: "swap", a.str("flip_icon") ?: "aspectFlip")
             controls = replace(controls, node) { (it as Control.ComboBox).copy(binding = Binding.Aspect) }
         }
-        return m.copy(controls = controls, overrides = m.overrides + file, aspect = aspect)
+        val p2j = P2jOverrides.apply(m.copy(controls = controls), o, file)
+        return p2j.copy(overrides = m.overrides + file, aspect = aspect)
     }
 
-    private fun replace(cs: List<Control>, id: Int, f: (Control) -> Control): List<Control> = cs.map { c ->
+    internal fun replace(cs: List<Control>, id: Int, f: (Control) -> Control): List<Control> = cs.map { c ->
         if (c.id == id) f(c) else when (c) {
             is Control.Collapsible -> c.copy(children = replace(c.children, id, f))
             is Control.Page -> c.copy(children = replace(c.children, id, f))

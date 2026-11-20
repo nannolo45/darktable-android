@@ -80,6 +80,12 @@ fun BoxScope.Sheet(title: String, onClose: () -> Unit, maxWidth: androidx.compos
     }
 }
 
+/** A section heading inside a list (darktable's combobox sections, brief P2j). */
+@Composable
+fun SheetSection(label: String) {
+    DtText(label, DtTheme.type.small, DtTheme.colors.textMuted, Modifier.padding(top = DtTheme.space.m, bottom = DtTheme.space.xxs))
+}
+
 @Composable
 fun SheetItem(label: String, enabled: Boolean, selected: Boolean = false, onClick: () -> Unit) {
     val c = DtTheme.colors
@@ -138,6 +144,20 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 }
                 return
             }
+            // brief P2j: a computed list: its entries for these parameters; an entry writes what desktop's callback writes
+            (ms.computed[c.id] as? app.dtandroid.schema.ComputedList)?.takeIf { c.binding == Binding.Computed }?.let { model ->
+                val cur = model.current(m.params)
+                Sheet("${fullName(m)} · ${c.label ?: ""}", close, maxW) {
+                    for ((i, e) in model.entries(m.params).withIndex()) {
+                        if (e.section) { SheetSection(e.label); continue }
+                        SheetItem(e.label, e.enabled && !s.readOnly, selected = i == cur) {
+                            controller.setOverlay(null)
+                            controller.launch { chooseComputed(o.key, c.id, i) }
+                        }
+                    }
+                }
+                return
+            }
             val b = c.binding as? Binding.Param ?: return
             val field = ms.params[b.path]
             val cur = app.dtandroid.schema.ParamRuleInputs(ms, m.params).param(b.path)
@@ -171,7 +191,7 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 val v = ValueFormat.parse(c, text)
                 if (v == null) "enter a number from $lo to $hi" else {
                     controller.setOverlay(null)
-                    controller.launch { setSlider(o.key, c.binding, v, c.integer) }
+                    controller.launch { setSlider(o.key, c.binding, v, c.integer, c.id) }
                     null
                 }
             }

@@ -11,8 +11,8 @@ name: p2b-real-engine
 
 on:
   push:
-    branches: [main, p2b-real-engine, p2e-lpl-client, p1c-engine-followups, p2e-state-fix]
-    paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", ".github/workflows/p2b-real-engine.yml"]
+    branches: [main, p2b-real-engine, p2e-lpl-client, p1c-engine-followups, p2e-state-fix, p2j-unbound-controls]
+    paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", "tools/spektrafilm-stock-table.py", ".github/workflows/p2b-real-engine.yml"]
   workflow_dispatch:
 
 # nothing by default; jobs ask for what they need
@@ -208,6 +208,8 @@ jobs:
           curl -fsSL --retry 5 --retry-all-errors -o /home/runner/sf/LICENSE "https://raw.githubusercontent.com/darktable-org/darktable-spektrafilm/$SF_REF/LICENSE"
           du -sb /home/runner/sf/darktable/spektrafilm; ls /home/runner/sf/darktable/spektrafilm | head
           echo "DTA_SF_ARG=-Pdta.spektrafilmDir=/home/runner/sf" >> "$GITHUB_ENV"
+          # brief P2j: the stock table in schema/overrides/spektrafilm.json is the pack the APK carries
+          python3 -I tools/spektrafilm-stock-table.py /home/runner/sf/darktable/spektrafilm --check
 
       - name: Rule check and JVM tests (fake engine, screenshots included)
         id: tests

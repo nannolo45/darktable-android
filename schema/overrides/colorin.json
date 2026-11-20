@@ -1,0 +1,101 @@
+{
+  "op": "colorin",
+  "reason": "brief P2j. the working profile list is darktable's built-in profiles in work_pos order plus installed ICC files; an entry writes type_work and filename_work (_workicc_changed, src/iop/colorin.c). The phone has no ICC folder, so the list is the built-in profiles. The input profile list begins with the image's own profiles (embedded, standard and enhanced matrix), which only the engine knows: it waits for a bridge call.",
+  "value_list": [
+    {
+      "node": 1,
+      "expect_label": "working profile",
+      "read": [
+        "type_work",
+        "filename_work"
+      ],
+      "entries": [
+        {
+          "label": "sRGB (web-safe)",
+          "set": {
+            "type_work": "DT_COLORSPACE_SRGB",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "Adobe RGB (compatible)",
+          "set": {
+            "type_work": "DT_COLORSPACE_ADOBERGB",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "linear Rec709 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_LIN_REC709",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "Rec709 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_REC709",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "linear Rec2020 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_LIN_REC2020",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "PQ Rec2020 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_PQ_REC2020",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "HLG Rec2020 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_HLG_REC2020",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "PQ P3 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_PQ_P3",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "HLG P3 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_HLG_P3",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "Display P3 RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_DISPLAY_P3",
+            "filename_work": ""
+          }
+        },
+        {
+          "label": "linear ProPhoto RGB",
+          "set": {
+            "type_work": "DT_COLORSPACE_PROPHOTO_RGB",
+            "filename_work": ""
+          }
+        }
+      ]
+    }
+  ],
+  "note": [
+    {
+      "node": 0,
+      "expect_label": "input profile",
+      "text": "needs the engine to list this photo's profiles (a later package)",
+      "class": "c"
+    }
+  ]
+}

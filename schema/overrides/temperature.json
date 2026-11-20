@@ -1,6 +1,6 @@
 {
   "op": "temperature",
-  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4).",
+  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4). Brief P2j: the settings list and its finetune are not built yet (see the P2j report).",
   "bind_action": [
     {
       "node": 12,
@@ -23,6 +23,20 @@
         "temperature",
         "tint"
       ]
+    }
+  ],
+  "note": [
+    {
+      "node": 9,
+      "expect_label": "settings",
+      "text": "not available yet on the phone",
+      "class": "b"
+    },
+    {
+      "node": 10,
+      "expect_label": "finetune",
+      "text": "needs the engine to report the tuning (a later package)",
+      "class": "c"
     }
   ]
 }

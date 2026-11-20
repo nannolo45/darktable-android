@@ -1,0 +1,84 @@
+{
+  "op": "channelmixerrgb",
+  "reason": "brief P2j. hue and chroma of a custom illuminant are interface-only on desktop: _illum_xy_callback (src/iop/channelmixerrgb.c) turns them into the illuminant's x, y (dt_Lch_to_xyY at L 100 around D50) and its temperature (xy_to_CCT, below 3000 K CCT_reverse_lookup); gui_changed shows them back from x, y (dt_xyY_to_Lch; the hue only above chroma 0). app/schema Formulas.IlluminantHueChroma repeats both directions. The area mapping and colour checker controls wait for the colour picker and the chart tool.",
+  "computed": [
+    {
+      "node": 11,
+      "expect_label": "hue",
+      "formula": "illuminant_hue_chroma",
+      "role": "hue",
+      "params": {
+        "x": "x",
+        "y": "y",
+        "temperature": "temperature"
+      },
+      "partners": {
+        "hue": 11
+      }
+    },
+    {
+      "node": 12,
+      "expect_label": "chroma",
+      "formula": "illuminant_hue_chroma",
+      "role": "chroma",
+      "params": {
+        "x": "x",
+        "y": "y",
+        "temperature": "temperature"
+      },
+      "partners": {
+        "hue": 11
+      }
+    }
+  ],
+  "note": [
+    {
+      "node": 16,
+      "expect_label": "area mode",
+      "text": "needs the colour picker (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 17,
+      "expect_label": "take channel mixing into account",
+      "text": "needs the colour picker (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 24,
+      "expect_label": "lightness",
+      "text": "needs the colour picker (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 25,
+      "expect_label": "hue",
+      "text": "needs the colour picker (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 26,
+      "expect_label": "chroma",
+      "text": "needs the colour picker (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 59,
+      "expect_label": "chart",
+      "text": "needs the colour checker tool (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 60,
+      "expect_label": "optimize for",
+      "text": "needs the colour checker tool (a later package)",
+      "class": "d"
+    },
+    {
+      "node": 61,
+      "expect_label": "patch scale",
+      "text": "needs the colour checker tool (a later package)",
+      "class": "d"
+    }
+  ]
+}
