@@ -22,4 +22,12 @@ for t in $(grep -v '^#' "$HERE/tests.txt"); do
   echo "$img" > "$DEST/$t/image"
   [ -s "$DEST/images/$img" ] || git -C "$G" show "$DTT_COMMIT:images/$img" > "$DEST/images/$img"
 done
+# P1b probe: local tests (an XMP of a public test image), same layout
+for d in "$HERE"/local/*/; do
+  [ -f "$d/test.xmp" ] || continue
+  t=$(basename "$d"); mkdir -p "$DEST/$t"; cp "$d/test.xmp" "$DEST/$t/test.xmp"
+  img=$(sed -n 's/.*xmpMM:DerivedFrom="\([^"]*\)".*/\1/p' "$DEST/$t/test.xmp" | head -1)
+  echo "$img" > "$DEST/$t/image"
+  [ -s "$DEST/images/$img" ] || git -C "$G" show "$DTT_COMMIT:images/$img" > "$DEST/images/$img"
+done
 ls -l "$DEST/images"
