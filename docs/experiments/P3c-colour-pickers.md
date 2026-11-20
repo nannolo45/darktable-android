@@ -33,3 +33,12 @@ emulator. None is a phone.
   configured, not built, in /tmp on the workspace): no error, no warning. Linking and running: CI only.
 - Emulator: `P3cScenarioTest` (white balance and exposure by injected touches, picks for fixed areas); p2b compare
   job: darktable-cli renders of p3c-wb.xmp and p3c-exposure.xmp, picks against `dtb_pickref` on Linux.
+- CI g0-app 44781177183 (commit 7ecb243e): Linux bridge tests 347 PASS, 0 FAIL; **C25 on cr2, raf and arw: the
+  bridge's five picker actions (17 cases each) equal darktable's own callbacks compiled verbatim, largest difference
+  0** (logs `runs/44781177183-a1/g0-linux/<image>/C25.log` on ci-logs). The apk job of that run (and p2a 44781177234)
+  failed on a compile error in the darkroom (field limits, smart cast), fixed in the next commit.
+- Deliverable 3: filmic rgb (4 pickers) and color balance rgb (6) set sliders from the picked values;
+  `tools/p3c-picker-reference.py` compiles upstream's functions verbatim (workspace, gcc -O0) for 360 + 36 reference
+  cases; the Kotlin formulas match within 2.6e-7 / 5.6e-7 (P3cPickerTest, workspace `gradle :schema:test`).
+- Deliverable 5: `action_list` override (input colour profile, denoise (profiled)), `bind_action` with `args_from`,
+  `needs`, `round` (white balance finetune).
