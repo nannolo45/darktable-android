@@ -1,12 +1,102 @@
 {
   "op": "colorbalancergb",
-  "reason": "brief P2j: the checkerboard size belongs to the mask preview (desktop's configuration).",
+  "reason": "brief P2j: the checkerboard size belongs to the mask preview (desktop's configuration). Brief P3c: the pickers of the four hue sliders (offset, lift, power, gain), white fulcrum and contrast gray fulcrum set those values from the picked area as colorbalancergb.c's color_picker_apply does (pipe_RGB_to_Ych; the hue the picked colour's opponent, its chroma Y x c): app/schema PickerFormulas, formulas colorbalance_*.",
   "note": [
     {
       "node": 54,
       "expect_label": "checkerboard size",
       "text": "needs the mask preview (a later package)",
       "class": "d"
+    }
+  ],
+  "picker": [
+    {
+      "node": 23,
+      "expect_label": "hue",
+      "label": "offset hue from the area (its opponent colour)",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_hue",
+        "writes": {
+          "hue": "global_H",
+          "chroma": "global_C"
+        }
+      }
+    },
+    {
+      "node": 27,
+      "expect_label": "hue",
+      "label": "lift hue from the area (its opponent colour)",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_hue",
+        "writes": {
+          "hue": "shadows_H",
+          "chroma": "shadows_C"
+        }
+      }
+    },
+    {
+      "node": 31,
+      "expect_label": "hue",
+      "label": "gain hue from the area (its opponent colour)",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_hue",
+        "writes": {
+          "hue": "highlights_H",
+          "chroma": "highlights_C"
+        }
+      }
+    },
+    {
+      "node": 35,
+      "expect_label": "hue",
+      "label": "power hue from the area (its opponent colour)",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_hue",
+        "writes": {
+          "hue": "midtones_H",
+          "chroma": "midtones_C"
+        }
+      }
+    },
+    {
+      "node": 45,
+      "expect_label": "white fulcrum",
+      "label": "white fulcrum from the area",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_white_fulcrum",
+        "writes": {
+          "white_fulcrum": "white_fulcrum"
+        }
+      }
+    },
+    {
+      "node": 46,
+      "expect_label": "contrast gray fulcrum",
+      "label": "contrast gray fulcrum from the area",
+      "kinds": [
+        "area"
+      ],
+      "set_slider": {
+        "formula": "colorbalance_grey_fulcrum",
+        "writes": {
+          "grey_fulcrum": "grey_fulcrum"
+        }
+      }
     }
   ]
 }

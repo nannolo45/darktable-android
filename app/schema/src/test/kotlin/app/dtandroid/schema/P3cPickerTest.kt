@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -167,5 +168,83 @@ class P3cPickerTest {
         assertNotNull(load("""{"op":"exposure","picker":[{"node":5,"expect_label":"exposure","kinds":["area"],"action":{"name":"spot","settings":{"mode":"nope"}}}]}"""))
         assertNotNull(load("""{"op":"exposure","picker_setting":[{"node":14,"expect_label":"area mode","key":"k","entries":{"a":"a"},"default":"a"}]}"""))
         assertNull(load("""{"op":"exposure","picker":[{"node":5,"expect_label":"exposure","kinds":["area","point"]}]}"""))
+    }
+
+    /**
+     * Deliverable 3: filmic rgb's pickers against darktable's own functions, compiled verbatim
+     * (tools/p3c-picker-reference.py: apply_auto_grey, apply_auto_black, apply_auto_white_point_source,
+     * apply_autotune, get_pixel_norm, _compute_output_power) on 360 cases: four picks, three parameter sets, six norms.
+     */
+    @Test fun filmicsPickersAreDesktopsArithmetic() {
+        val ref = kotlinx.serialization.json.Json.parseToJsonElement(
+            javaClass.classLoader.getResourceAsStream("p3c-picker-reference.json")!!.readBytes().decodeToString()) as JsonObject
+        val ms = m("filmicrgb")
+        val norms = mapOf(0 to "DT_FILMIC_METHOD_NONE", 1 to "DT_FILMIC_METHOD_MAX_RGB", 2 to "DT_FILMIC_METHOD_LUMINANCE",
+            3 to "DT_FILMIC_METHOD_POWER_NORM", 4 to "DT_FILMIC_METHOD_EUCLIDEAN_NORM_V1", 5 to "DT_FILMIC_METHOD_EUCLIDEAN_NORM_V2")
+        val byFormula = ms.pickers.values.mapNotNull { it.setSlider }.associateBy { it.formula }
+        assertEquals(setOf("filmic_grey", "filmic_black", "filmic_white", "filmic_autotune"), byFormula.keys)
+        var worst = 0.0
+        val cases = ref["cases"] as JsonArray
+        for (ce in cases) {
+            val c = ce as JsonObject
+            fun d(k: String) = c[k]!!.jsonPrimitive.double
+            fun v(k: String) = (c[k] as JsonArray).map { it.jsonPrimitive.double } + 0.0
+            val spec = byFormula.getValue(c["formula"]!!.jsonPrimitive.content)
+            val params = JsonObject(mapOf(
+                "grey_point_source" to JsonPrimitive(d("grey")), "black_point_source" to JsonPrimitive(d("black")),
+                "white_point_source" to JsonPrimitive(d("white")), "security_factor" to JsonPrimitive(d("security")),
+                "grey_point_target" to JsonPrimitive(d("target")), "output_power" to JsonPrimitive(4.0),
+                "preserve_color" to JsonPrimitive(norms.getValue(c["norm"]!!.jsonPrimitive.content.toInt())),
+                "custom_grey" to JsonPrimitive(c["custom_grey"]!!.jsonPrimitive.content == "1"),
+            ))
+            val stats = PickStats("rgb", v("mean"), v("min"), v("max"), listOf(0, 0, 1, 1))
+            val w = PickerFormulas.apply(spec, stats, params) { n -> ms.params[n]?.let { f -> f.min!! to f.max!! } }
+            val out = c["out"] as JsonObject
+            for ((role, param) in listOf("grey" to "grey_point_source", "black" to "black_point_source", "white" to "white_point_source", "power" to "output_power")) {
+                val want = out[role]!!.jsonPrimitive.double
+                val got = w[param]?.double ?: params[param]!!.jsonPrimitive.double
+                val diff = abs(got - want) / maxOf(1.0, abs(want))
+                worst = maxOf(worst, diff)
+                assertTrue("$c: $role $got, desktop $want", diff < 2e-5)
+            }
+        }
+        println("filmic pickers: ${cases.size} cases, largest relative difference to desktop's functions ${"%.2e".format(worst)}")
+    }
+
+    /**
+     * Deliverable 3: color balance rgb's six pickers against darktable's color_picker_apply and pipe_RGB_to_Ych,
+     * compiled verbatim (tools/p3c-picker-reference.py), working profile linear Rec2020. Desktop writes the hue as it
+     * comes (30..390) and the chroma unbounded; the app writes the same hue within 0..360 and the chroma within its
+     * field's limits (the bridge checks them), so those two are compared that way.
+     */
+    @Test fun colorBalancesPickersAreDesktopsArithmetic() {
+        val ref = kotlinx.serialization.json.Json.parseToJsonElement(
+            javaClass.classLoader.getResourceAsStream("p3c-picker-reference.json")!!.readBytes().decodeToString()) as JsonObject
+        val ms = m("colorbalancergb")
+        val byParam = ms.pickers.values.mapNotNull { it.setSlider }.associateBy { it.writes.values.first() }
+        assertEquals(6, ms.pickers.size)
+        var worst = 0.0
+        val cases = ref["colorbalancergb"] as JsonArray
+        for (ce in cases) {
+            val c = ce as JsonObject
+            fun v(k: String) = (c[k] as JsonArray).map { it.jsonPrimitive.double } + 0.0
+            val picker = c["picker"]!!.jsonPrimitive.content
+            val spec = byParam.getValue(picker)
+            val stats = PickStats("rgb", v("mean"), v("mean"), v("max"), listOf(0, 0, 1, 1))
+            val w = PickerFormulas.apply(spec, stats, JsonObject(emptyMap())) { n -> ms.params[n]?.let { f -> f.min!! to f.max!! } }
+            val out = c["out"] as JsonObject
+            for ((param, value) in w) {
+                var want = out[param]!!.jsonPrimitive.double
+                // a grey has no hue (chroma ~1e-7: its angle is rounding noise, float on desktop, double here)
+                if (param.endsWith("_H") && out[param.dropLast(1) + "C"]!!.jsonPrimitive.double < 1e-5) continue
+                if (param.endsWith("_H")) want = ((want % 360.0) + 360.0) % 360.0
+                ms.params[param]?.let { f -> want = want.coerceIn(f.min!!, f.max!!) }
+                val diff = abs(value.double - want) / maxOf(1.0, abs(want))
+                worst = maxOf(worst, diff)
+                assertTrue("$c: $param ${value.double}, desktop $want", diff < 1e-4)
+            }
+            assertEquals(if (picker.endsWith("_H")) 2 else 1, w.size)
+        }
+        println("color balance rgb pickers: ${cases.size} cases, largest relative difference to desktop's functions ${"%.2e".format(worst)}")
     }
 }

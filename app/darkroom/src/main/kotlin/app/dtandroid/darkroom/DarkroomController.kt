@@ -1342,7 +1342,11 @@ class DarkroomController(
                 }
                 slider != null -> {
                     val pick = engine.colorPick(key.op, key.priority, PickRequest(sel.area, sel.point, denoise = spec.denoise))
-                    val writes = PickerFormulas.apply(slider, if (slider.buffer == "output") pick.output else pick.input)
+                    val m = _state.value.modules.firstOrNull { it.key == key } ?: return
+                    val fields = schema.modules[key.op]?.params ?: emptyMap()
+                    val writes = PickerFormulas.apply(slider, if (slider.buffer == "output") pick.output else pick.input, m.params) { name ->
+                        fields[name]?.let { f -> if (f.min != null && f.max != null) f.min to f.max else null }
+                    }
                     if (writes.isNotEmpty()) {
                         engine.paramsSet(key.op, key.priority, writes)
                         engine.historySeal()

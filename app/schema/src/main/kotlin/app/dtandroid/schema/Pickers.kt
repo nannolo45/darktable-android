@@ -241,7 +241,8 @@ object PickerReadout {
         val rows = if (area) listOf("mean" to stats.mean, "min" to stats.min, "max" to stats.max) else listOf("mean" to stats.mean)
         return rows.mapNotNull { (name, v) ->
             val rgb = v.take(3).map { it ?: return@mapNotNull null }
-            val lab = labOfSrgb(rgb[0], rgb[1], rgb[2])
+            // no "-0.00" for a grey: the rounding's sign is noise
+            val lab = labOfSrgb(rgb[0], rgb[1], rgb[2]).map { if (abs(it) < 0.005) 0.0 else it }
             String.format(Locale.ROOT, "%s  RGB %d %d %d  Lab %.2f %.2f %.2f", name,
                 (rgb[0] * 255.0).roundToInt(), (rgb[1] * 255.0).roundToInt(), (rgb[2] * 255.0).roundToInt(),
                 lab[0].coerceIn(0.0, 100.0), lab[1], lab[2])
@@ -277,16 +278,15 @@ object PickerReadout {
     }
 
     /**
-     * sRGB to XYZ (D50), row-major: sRGB's primaries and D65 white (x 0.3127, y 0.3290) adapted by Bradford to
-     * darktable's D50 white (0.9642, 1, 0.8249), as LittleCMS builds the colorants of darktable's sRGB profile; white
-     * maps onto D50 exactly.
+     * sRGB to XYZ (D50), row-major: sRGB's primaries and darktable's D65 white (`D65xyY`, x 0.31271, y 0.32902,
+     * common/colorspaces.h) adapted by Bradford to the D50 white (0.9642, 1, 0.8249), as LittleCMS builds the colorants
+     * of darktable's sRGB profile (not quantised to the profile's 16.16 numbers: white maps onto D50 exactly).
      */
     val SRGB_TO_XYZ_D50 = doubleArrayOf(
-        0.4360412516, 0.3851129108, 0.1430458376,
-        0.2224845402, 0.7169050786, 0.0606103812,
-        0.0139201875, 0.0970672387, 0.7139125738,
-    )
-}
+        0.4360368528, 0.3851236708, 0.1430394764,
+        0.2224817884, 0.7169127513, 0.0606054604,
+        0.0139223444, 0.0970781896, 0.7138994659,
+    )}
 
 /** A setting's value as a number or a switch, for the generated controls. */
 fun JsonPrimitive.settingNumber(): Double? = if (isString) null else doubleOrNull

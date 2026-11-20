@@ -79,6 +79,7 @@ object SchemaLoader {
                     val vo = v.jsonObject
                     vo.str("name")!! to (vo.int("value") ?: 0)
                 } ?: emptyMap(),
+                min = f.dbl("min"), max = f.dbl("max"),
             )
         }
         val controls = (o["controls"] as? JsonArray)?.map { parseControl(it.jsonObject, params) } ?: emptyList()

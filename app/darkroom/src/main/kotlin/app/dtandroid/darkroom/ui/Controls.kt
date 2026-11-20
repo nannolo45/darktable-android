@@ -341,7 +341,16 @@ private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boo
     }
     val entry = c.entries.firstOrNull { it.value == current }?.label ?: current?.toString() ?: ""
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && c.entries.isNotEmpty()
-    // brief P3c: a list with desktop's picker quad (filmic's auto tune levels) gets the picker button at its right
+    // brief P3c: a list with desktop's picker quad (filmic's auto tune levels) gets the picker button at its right;
+    // one without entries (only there for its picker) shows its name and the button
+    if (c.id in ctx.module.pickerMarks && label == null && c.entries.isEmpty()) {
+        val usable = ctx.module.pickers[c.id] != null && !ctx.readOnly
+        Row(Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.sliderRow), verticalAlignment = Alignment.CenterVertically) {
+            DtText(c.label ?: "", DtTheme.type.label, if (usable) DtTheme.colors.text else DtTheme.colors.textDisabled, Modifier.weight(1f))
+            PickerButton(ctx, c.id, sensitive)
+        }
+        return
+    }
     if (c.id in ctx.module.pickerMarks && label == null) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { ListControl(c.label ?: "", entry, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) } }

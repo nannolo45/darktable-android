@@ -9,6 +9,8 @@ set_target_properties(dtb_test PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:dtbridg
 # and run against the bridge's picker actions by dtb_pickref. Unlike dtb_test it includes darktable's headers and
 # the bridge's internal header (engine/src/dtb_internal.h): it needs a module's own structure and the bridge's pipe.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+# the copied callbacks are the modules' own code: they refer to GTK as the modules do
+pkg_check_modules(PICKREF_GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 set(PICKREF_OPS temperature exposure rgblevels rgbcurve channelmixerrgb)
 set(PICKREF_GEN "${CMAKE_CURRENT_BINARY_DIR}/pickref-gen")
 set(PICKREF_INC "")
@@ -29,5 +31,5 @@ target_include_directories(dtb_pickref PRIVATE "${PICKREF_GEN}" "${CMAKE_CURRENT
 target_include_directories(dtb_pickref SYSTEM PRIVATE ${DT_SYS_INCS})
 target_compile_definitions(dtb_pickref PRIVATE ${DT_DEFS})
 target_compile_options(dtb_pickref PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
-target_link_libraries(dtb_pickref PRIVATE dtbridge ${DARKTABLE_LIB} PkgConfig::DTB_DEPS OpenMP::OpenMP_C m)
+target_link_libraries(dtb_pickref PRIVATE dtbridge ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::PICKREF_GTK OpenMP::OpenMP_C m)
 set_target_properties(dtb_pickref PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:dtbridge>;${DARKTABLE_LIBDIR}")

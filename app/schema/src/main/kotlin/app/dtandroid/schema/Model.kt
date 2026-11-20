@@ -17,6 +17,9 @@ data class ParamField(
     val name: String,
     val type: String,
     val enumValues: Map<String, Int>,
+    /** the field's limits from darktable's introspection (`$MIN`, `$MAX`), null for enums and switches */
+    val min: Double? = null,
+    val max: Double? = null,
 )
 
 data class ModuleSchema(
