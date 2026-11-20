@@ -63,6 +63,7 @@ import app.dtandroid.schema.CropTool
 import app.dtandroid.schema.PickSelection
 import app.dtandroid.schema.PickerTool
 import app.dtandroid.darkroom.PickerState
+import app.dtandroid.darkroom.PhotoGeometry
 import androidx.compose.foundation.layout.heightIn
 import app.dtandroid.engine.api.Exif
 import app.dtandroid.engine.api.RenderedImage
@@ -185,12 +186,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         var zoomed = 1f
                         var upTime = down.uptimeMillis
                         // brief P3a: the photo's point under a finger, as fractions of the picture shown
-                        fun picturePoint(p: Offset): Pair<Float, Float> {
-                            val ds = currentFit * zoom
-                            val left = size.width / 2f - cx * iw * ds
-                            val top = size.height / 2f - cy * ih * ds
-                            return ((p.x - left) / (iw * ds)) to ((p.y - top) / (ih * ds))
-                        }
+                        fun picturePoint(p: Offset): Pair<Float, Float> =
+                            PhotoGeometry.picturePoint(p.x, p.y, size.width, size.height, iw, ih, currentFit, zoom, cx, cy)
                         // brief P3a deliverable 4: "straighten" on: one finger draws the line
                         var line = false
                         val lineFrom = picturePoint(down.position)

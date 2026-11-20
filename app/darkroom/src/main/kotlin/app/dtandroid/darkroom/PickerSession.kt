@@ -23,3 +23,26 @@ data class PickerState(
     /** the selection lies outside the picture (the edit's geometry moved it away) */
     val outside: Boolean = false,
 )
+
+/**
+ * Where a finger is on the picture: the view of [viewW] x [viewH] pixels shows the picture of [iw] x [ih] (its size
+ * at scale 1) at [fit] x [zoom] pixels per picture pixel, centred on ([cx], [cy]) (fractions of the picture). Returns
+ * fractions of the picture (outside 0..1 beside it). The crop tool and the colour picker take touches through this,
+ * so a selection lands on the same part of the picture at any zoom.
+ */
+object PhotoGeometry {
+    fun picturePoint(x: Float, y: Float, viewW: Int, viewH: Int, iw: Int, ih: Int, fit: Float, zoom: Float, cx: Float, cy: Float): Pair<Float, Float> {
+        val ds = fit * zoom
+        val left = viewW / 2f - cx * iw * ds
+        val top = viewH / 2f - cy * ih * ds
+        return ((x - left) / (iw * ds)) to ((y - top) / (ih * ds))
+    }
+
+    /** The view pixel where picture fraction ([fx], [fy]) is shown: the inverse of [picturePoint]. */
+    fun viewPoint(fx: Float, fy: Float, viewW: Int, viewH: Int, iw: Int, ih: Int, fit: Float, zoom: Float, cx: Float, cy: Float): Pair<Float, Float> {
+        val ds = fit * zoom
+        val left = viewW / 2f - cx * iw * ds
+        val top = viewH / 2f - cy * ih * ds
+        return (left + fx * iw * ds) to (top + fy * ih * ds)
+    }
+}

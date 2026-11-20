@@ -1325,22 +1325,24 @@ class DarkroomController(
         if (orig.none { it == null }) pickerMemory[key to p.controlId] = orig.filterNotNull() to sel.isArea
         var changed = false
         try {
+            val action = spec.action
+            val slider = spec.setSlider
             when {
-                spec.action != null -> {
+                action != null -> {
                     val s = _state.value
-                    val (name, args) = spec.action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
+                    val (name, args) = action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
                     Timeline.mark("darkroom: picker ${key.op} $name ${args.toString().take(200)}")
                     val r = engine.moduleAction(key.op, key.priority, name, args) as? JsonObject
                     engine.historySeal()
                     changed = true
                     // desktop shows some results in the settings (exposure's measured lightness)
-                    for ((field, settingKey) in spec.action.results) {
+                    for ((field, settingKey) in action.results) {
                         (r?.get(field) as? JsonPrimitive)?.let { v -> _state.update { it.copy(pickerSettings = it.pickerSettings + (settingKey to v)) } }
                     }
                 }
-                spec.setSlider != null -> {
+                slider != null -> {
                     val pick = engine.colorPick(key.op, key.priority, PickRequest(sel.area, sel.point, denoise = spec.denoise))
-                    val writes = PickerFormulas.apply(spec.setSlider, if (spec.setSlider.buffer == "output") pick.output else pick.input)
+                    val writes = PickerFormulas.apply(slider, if (slider.buffer == "output") pick.output else pick.input)
                     if (writes.isNotEmpty()) {
                         engine.paramsSet(key.op, key.priority, writes)
                         engine.historySeal()
