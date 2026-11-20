@@ -49,3 +49,8 @@ Measurements: **CI** = GitHub runners (x86_64); **emulator** = CI's x86_64 Andro
   read from the engine per photo; no model for that in the schema's computed controls yet).
 - `tools/schema-unbound-controls.py`'s kept list (`docs/experiments/P2j-results/unbound-controls-modules-all.txt`)
   regenerated: lens' "use latest algorithm" leaves it (33 → 32 controls; class c 4 → 3).
+- Last code commit d0ae88e: p2a-app 44751209350 success (267 JVM tests, 0 failed); p2b-real-engine 44751209351
+  success (emulator 60 of 60, P3bScenarioTest s1-s4; compare p3b append 47.72 dB, overwrite 48.25 dB). styles() on the
+  emulator 94 / 60 / 52 ms, through the darkroom 122 ms, from the cache 6 µs. Release dt-android-d0ae88e7d08a.
+- Report written (`P3b-styles-presets-REPORT.md`). Stopped here: the three remaining controls of deliverable 6 need
+  a new kind of computed control (open question 4 of the report).
