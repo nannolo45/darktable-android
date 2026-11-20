@@ -716,3 +716,237 @@ static int cmd_blend(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   return g_fail;
 }
+
+/* ---- C22: drawn masks (6.7) ---- */
+
+static int mask_new(const char *type, const char *geometry)
+{
+  char *s = NULL;
+  MUST(dtb_mask_create(type, geometry, NULL, &s));
+  JsonNode *n = jparse_owned(s);
+  const int id = json_object_get_int_member(json_node_get_object(n), "id");
+  json_node_unref(n);
+  return id;
+}
+
+static JsonObject *mask_find(JsonNode *all, const int id)
+{
+  JsonArray *a = json_node_get_array(all);
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(json_object_get_int_member(o, "id") == id) return o;
+  }
+  return NULL;
+}
+
+static int cmd_masks(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  char *s = NULL;
+  MUST(dtb_masks(&s));
+  JsonNode *all = jparse_owned(s);
+  const guint n0 = json_array_get_length(json_node_get_array(all));
+  json_node_unref(all);
+  // exposure +1.5 EV through a mask of every drawn type
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.5"));
+  MUST(dtb_history_seal());
+  const int c = mask_new("circle", "{\"center\":[0.3,0.35],\"radius\":0.12,\"border\":0.05}");
+  const int e = mask_new("ellipse", "{\"center\":[0.7,0.3],\"radius\":[0.15,0.08],\"rotation\":30,\"border\":0.04}");
+  const int g = mask_new("gradient", "{\"anchor\":[0.5,0.8],\"rotation\":10,\"compression\":0.3,\"steepness\":0.0}");
+  const int p = mask_new("path", "{\"points\":[{\"corner\":[0.1,0.6]},{\"corner\":[0.3,0.55]},{\"corner\":[0.35,0.9]},{\"corner\":[0.12,0.85]}]}");
+  const int b = mask_new("brush", "{\"stroke\":[[0.55,0.55],[0.6,0.57],[0.65,0.6],[0.7,0.62],[0.75,0.61],[0.8,0.6]],\"size\":0.03,\"hardness\":0.7}");
+  int end = 0;
+  const int h0 = history_count(&end);
+  for(int k = 0; k < 5; k++)
+  {
+    const int ids[5] = { c, e, g, p, b };
+    gchar *o = g_strdup_printf("{\"opacity\":%g}", k == 2 ? 0.5 : 1.0);
+    MUST(dtb_mask_attach("exposure", 0, ids[k], o));
+    g_free(o);
+  }
+  const int h1 = history_count(&end);
+  fprintf(stdout, "RESULT five forms made (%d %d %d %d %d) and attached to exposure: history %d -> %d\n", c, e, g, p, b, h0, h1);
+  CHECK(h1 == h0 + 5, "one history item per attach");
+  s = NULL;
+  MUST(dtb_masks(&s));
+  all = jparse_owned(s);
+  JsonObject *bo = mask_find(all, b);
+  JsonArray *bp = bo ? json_object_get_array_member(json_object_get_object_member(bo, "geometry"), "points") : NULL;
+  fprintf(stdout, "RESULT masks listed: %u (before %u); brush stroke of 6 samples -> %u brush points\n",
+          json_array_get_length(json_node_get_array(all)), n0, bp ? json_array_get_length(bp) : 0);
+  CHECK(json_array_get_length(json_node_get_array(all)) >= n0 + 6, "five forms and the module's group");
+  JsonObject *co = mask_find(all, c);
+  CHECK(co && json_array_get_length(json_object_get_array_member(co, "used_by")) == 1, "circle used by exposure");
+  json_node_unref(all);
+  JsonNode *k = NULL;
+  JsonObject *bl = blend_of(&k, "exposure", 0);
+  fprintf(stdout, "RESULT exposure masks after attach: %s, mask group %ld\n", json_object_get_string_member(bl, "masks"),
+          (long)(json_object_get_null_member(bl, "mask_id") ? -1 : json_object_get_int_member(bl, "mask_id")));
+  CHECK(!strcmp(json_object_get_string_member(bl, "masks"), "flexi"), "attach switches the mask on (flexi)");
+  const int grp = json_object_get_int_member(bl, "mask_id");
+  json_node_unref(k);
+  save_render(outdir, "masks_drawn");
+  // one form used by a second instance; member settings; the group's operator
+  int np = 0;
+  MUST(dtb_instance_new("exposure", 0, &np));
+  MUST(dtb_param_set("exposure", np, "exposure", "-1.0"));
+  MUST(dtb_history_seal());
+  MUST(dtb_mask_attach("exposure", np, c, "{\"inverse\":true}"));
+  MUST(dtb_mask_member_set("exposure", 0, e, "{\"opacity\":0.6,\"inverse\":true}"));
+  MUST(dtb_mask_group_set(grp, "{\"operator\":\"screen\",\"opacity\":0.9}"));
+  s = NULL;
+  MUST(dtb_masks(&s));
+  all = jparse_owned(s);
+  co = mask_find(all, c);
+  const guint users = co ? json_array_get_length(json_object_get_array_member(co, "used_by")) : 0;
+  JsonObject *go = mask_find(all, grp);
+  const char *op = go ? json_object_get_string_member(json_object_get_object_member(go, "geometry"), "operator") : "?";
+  fprintf(stdout, "RESULT circle used by %u instances; group operator %s\n", users, op);
+  CHECK(users == 2 && !strcmp(op, "screen"), "shared form and group operator");
+  json_node_unref(all);
+  save_render(outdir, "masks_shared");
+  // update, rename, detach, delete; refusals
+  MUST(dtb_mask_update(c, "{\"center\":[0.4,0.4],\"radius\":0.2,\"border\":0.1}"));
+  MUST(dtb_mask_rename(c, "a renamed circle"));
+  MUST(dtb_mask_detach("exposure", 0, g));
+  MUST(dtb_mask_delete(g));
+  EXPECT(dtb_mask_delete(grp), DTB_E_ARG);
+  EXPECT(dtb_mask_attach("exposure", 0, c, NULL), DTB_E_ARG);
+  EXPECT(dtb_mask_attach("exposure", 0, 424242, NULL), DTB_E_NOT_FOUND);
+  EXPECT(dtb_mask_attach("rawprepare", 0, c, NULL), DTB_E_ARG);
+  EXPECT(dtb_mask_update(c, "{\"radius\":0.2}"), DTB_E_ARG);
+  EXPECT(dtb_mask_update(c, "{\"center\":[0.4,0.4],\"radius\":5}"), DTB_E_RANGE);
+  EXPECT(dtb_mask_create("triangle", "{}", NULL, &s), DTB_E_ARG);
+  EXPECT(dtb_mask_member_set("exposure", 0, c, "{\"opacity\":3}"), DTB_E_RANGE);
+  EXPECT(dtb_mask_group_set(grp, "{\"operator\":\"mean\"}"), DTB_E_ARG);
+  save_render(outdir, "masks_edited");
+  s = NULL;
+  MUST(dtb_masks(&s));
+  gchar *listed = g_strdup(s);
+  dtb_free(s);
+  // the XMP the bridge writes holds them: a fresh session lists the same and renders the same
+  int w0, h0r;
+  uint8_t *r0 = render_full(&w0, &h0r, NULL);
+  char *x = path_join(outdir, "masks_edited.xmp");
+  MUST(dtb_close());
+  MUST(dtb_open(raw, x));
+  s = NULL;
+  MUST(dtb_masks(&s));
+  CHECK(!strcmp(s, listed), "masks after reopening the bridge's XMP differ");
+  fprintf(stdout, "RESULT reopened from the bridge's XMP: masks %s\n", strcmp(s, listed) ? "DIFFER" : "equal");
+  dtb_free(s);
+  int w1, h1r;
+  uint8_t *r1 = render_full(&w1, &h1r, NULL);
+  double mean = 0;
+  const int md = (w1 == w0 && h1r == h0r) ? max_diff(r0, r1, (size_t)4 * w0 * h0r, &mean) : 999;
+  fprintf(stdout, "RESULT reopened render vs before: max %d\n", md);
+  CHECK(md == 0, "render after reopening differs (max %d)", md);
+  free(r0);
+  free(r1);
+  free(x);
+  g_free(listed);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* desktop-made XMPs with masks (darktable-tests): list them, render; run_tests compares with darktable-cli */
+static int cmd_masks_desktop(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  char *s = NULL;
+  MUST(dtb_masks(&s));
+  JsonNode *all = jparse_owned(s);
+  JsonArray *a = json_node_get_array(all);
+  int shapes = 0, groups = 0, used = 0;
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *o = json_array_get_object_element(a, i);
+    if(!strcmp(json_object_get_string_member(o, "type"), "group")) groups++;
+    else shapes++;
+    if(json_array_get_length(json_object_get_array_member(o, "used_by"))) used++;
+  }
+  fprintf(stdout, "RESULT %s: %d shapes, %d groups, %d in use\n", outdir, shapes, groups, used);
+  CHECK(shapes > 0 && used > 0, "no shapes listed");
+  json_node_unref(all);
+  save_render(outdir, "desktop_masks");
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- C24: mask display (6.8) ---- */
+
+static void px_at(const uint8_t *b, int w, int x, int y, int *rgb)
+{
+  for(int c = 0; c < 3; c++) rgb[c] = b[4 * ((size_t)y * w + x) + c];
+}
+
+static int cmd_maskshow(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  // a module after the input colour profile: colorin's blue-mapping path
+  // (colorin.c _process_cmatrix_bm) sets the mask channel to 0, so a mask of
+  // a module before it does not reach gamma (the report says so)
+  const char *opt = "{\"show_mask\":{\"op\":\"colorbalancergb\",\"priority\":0}}";
+  int w, h;
+  uint8_t *b = NULL;
+  MUST(dtb_param_set("colorbalancergb", 0, "saturation_global", "0.3"));
+  MUST(dtb_history_seal());
+  EXPECT(dtb_render_preview_ex(512, opt, &b, &w, &h), DTB_E_ARG);  // no mask yet
+  // a circle in the upper left third
+  const int c = mask_new("circle", "{\"center\":[0.3,0.35],\"radius\":0.1,\"border\":0.02}");
+  MUST(dtb_mask_attach("colorbalancergb", 0, c, NULL));
+  uint8_t *plain = preview_ex(NULL, &w, &h);
+  gchar *st0 = session_state(outdir, "maskshow-before.xmp");
+  int ws, hs;
+  uint8_t *shown = preview_ex(opt, &ws, &hs);
+  write_ppm(path_join(outdir, "maskshow_preview.ppm"), shown, ws, hs);
+  // where does the circle's centre land in the picture
+  char *s = NULL;
+  MUST(dtb_coords_transform("{\"direction\":\"to_processed\",\"points\":[[0.3,0.35],[0.85,0.85]]}", &s));
+  JsonNode *cn = jparse_owned(s);
+  JsonArray *pa = json_object_get_array_member(json_node_get_object(cn), "points");
+  const int cx = json_array_get_double_element(json_array_get_array_element(pa, 0), 0) * ws;
+  const int cy = json_array_get_double_element(json_array_get_array_element(pa, 0), 1) * hs;
+  const int fx = json_array_get_double_element(json_array_get_array_element(pa, 1), 0) * ws;
+  const int fy = json_array_get_double_element(json_array_get_array_element(pa, 1), 1) * hs;
+  json_node_unref(cn);
+  int in[3], out[3];
+  px_at(shown, ws, cx, cy, in);
+  px_at(shown, ws, fx, fy, out);
+  fprintf(stdout, "RESULT mask shown: inside the circle %d %d %d, far outside %d %d %d\n", in[0], in[1], in[2], out[0],
+          out[1], out[2]);
+  // desktop's overlay: the mask yellow (blue lowest), the rest grey
+  CHECK(in[2] + 20 < in[0] && in[2] + 20 < in[1], "inside the mask is not yellow");
+  CHECK(abs(out[0] - out[1]) <= 3 && abs(out[1] - out[2]) <= 3, "outside the mask is not grey");
+  // a region shows it too
+  int rw, rh;
+  uint8_t *rs = region_ex(opt, 0.25f, &rw, &rh);
+  free(rs);
+  // nothing of the session changed; the next plain render is the one from before
+  gchar *st1 = session_state(outdir, "maskshow-after.xmp");
+  CHECK(!strcmp(st0, st1), "session changed by mask display renders");
+  int w2, h2;
+  uint8_t *again = preview_ex(NULL, &w2, &h2);
+  CHECK(w2 == w && h2 == h && !memcmp(again, plain, (size_t)4 * w * h), "plain preview after mask display differs");
+  fprintf(stdout, "RESULT session unchanged %s; plain preview afterwards equal %s\n", strcmp(st0, st1) ? "NO" : "yes",
+          (w2 == w && h2 == h && !memcmp(again, plain, (size_t)4 * w * h)) ? "yes" : "NO");
+  EXPECT(dtb_render_preview_ex(512, "{\"show_mask\":{\"op\":\"colorin\",\"priority\":0}}", &b, &w, &h), DTB_E_ARG);
+  // a module before the input colour profile (the mask channel kept through colorin, see maskdisplay.c)
+  MUST(dtb_mask_attach("exposure", 0, c, NULL));
+  int we, he;
+  uint8_t *ex = preview_ex("{\"show_mask\":{\"op\":\"exposure\",\"priority\":0}}", &we, &he);
+  px_at(ex, we, cx, cy, in);
+  px_at(ex, we, fx, fy, out);
+  fprintf(stdout, "RESULT exposure's mask shown: inside %d %d %d, outside %d %d %d\n", in[0], in[1], in[2], out[0], out[1], out[2]);
+  CHECK(in[2] + 20 < in[0] && in[2] + 20 < in[1], "exposure: inside the mask is not yellow");
+  CHECK(abs(out[0] - out[1]) <= 3 && abs(out[1] - out[2]) <= 3, "exposure: outside the mask is not grey");
+  free(ex);
+  free(plain);
+  free(shown);
+  free(again);
+  g_free(st0);
+  g_free(st1);
+  MUST(dtb_close());
+  return g_fail;
+}

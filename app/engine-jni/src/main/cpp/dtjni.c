@@ -829,6 +829,16 @@ Java_app_dtandroid_engine_NativeBridge_renderRegionIntoEx(JNIEnv *env, jclass cl
 #define DTJ2_COORDS 2
 #define DTJ2_BLEND_GET 3
 #define DTJ2_BLEND_SET 4
+#define DTJ2_MASKS 5
+#define DTJ2_MASK_CREATE 6
+#define DTJ2_MASK_UPDATE 7
+#define DTJ2_MASK_RENAME 8
+#define DTJ2_MASK_DELETE 9
+#define DTJ2_MASK_ATTACH 10
+#define DTJ2_MASK_DETACH 11
+#define DTJ2_MASK_MEMBER_SET 12
+#define DTJ2_MASK_GROUP_CREATE 13
+#define DTJ2_MASK_GROUP_SET 14
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -844,9 +854,18 @@ Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, 
     case DTJ2_COORDS: r = dtb_coords_transform(b.s, &s); break;
     case DTJ2_BLEND_GET: r = dtb_blend_get(a.s, n1, &s); break;
     case DTJ2_BLEND_SET: r = dtb_blend_set(a.s, n1, b.s); break;
+    case DTJ2_MASKS: r = dtb_masks(&s); break;
+    case DTJ2_MASK_CREATE: r = dtb_mask_create(a.s, b.s, c.s, &s); break;
+    case DTJ2_MASK_UPDATE: r = dtb_mask_update(n2, b.s); break;
+    case DTJ2_MASK_RENAME: r = dtb_mask_rename(n2, c.s); break;
+    case DTJ2_MASK_DELETE: r = dtb_mask_delete(n2); break;
+    case DTJ2_MASK_ATTACH: r = dtb_mask_attach(a.s, n1, n2, b.s); break;
+    case DTJ2_MASK_DETACH: r = dtb_mask_detach(a.s, n1, n2); break;
+    case DTJ2_MASK_MEMBER_SET: r = dtb_mask_member_set(a.s, n1, n2, b.s); break;
+    case DTJ2_MASK_GROUP_CREATE: r = dtb_mask_group_create(b.s, c.s, &s); break;
+    case DTJ2_MASK_GROUP_SET: r = dtb_mask_group_set(n2, b.s); break;
     default: break;
   }
-  (void)n2;
   _str_free(&a); _str_free(&b); _str_free(&c);
   if(r == DTB_OK && !s) s = strdup("{}");
   return _json_status(env, r, s, status);

@@ -198,4 +198,27 @@ interface DarktableEngine {
      * refused. Merges with following blendSet / paramSet calls on the instance until [historySeal].
      */
     suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>)
+
+    /** 6.7: every form of the session. */
+    suspend fun masks(): List<MaskForm>
+
+    /** 6.7: a new form (circle, ellipse, gradient, path, brush) used by no instance yet; returns its id. */
+    suspend fun maskCreate(type: String, geometry: JsonObject, name: String? = null): Int
+
+    suspend fun maskUpdate(id: Int, geometry: JsonObject)
+    suspend fun maskRename(id: Int, name: String)
+
+    /** Removes the form from every group; ARG for a form that is an instance's whole mask. */
+    suspend fun maskDelete(id: Int)
+
+    /** Add a form to an instance's mask (its flexi group, created if needed; the mask switched on). */
+    suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember = MaskMember())
+    suspend fun maskDetach(op: String, priority: Int, id: Int)
+    suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember)
+
+    /** A flexi group of existing forms; returns its id. */
+    suspend fun maskGroupCreate(memberIds: List<Int>, name: String? = null): Int
+
+    /** A flexi group's settings: operator, invert, bypass, opacity, name (engine-api.md 6.7). */
+    suspend fun maskGroupSet(id: Int, settings: JsonObject)
 }

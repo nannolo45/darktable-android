@@ -18,6 +18,8 @@ import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleMode
 import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.MaskForm
+import app.dtandroid.engine.api.MaskMember
 import app.dtandroid.engine.api.Blend
 import app.dtandroid.engine.api.PickResult
 import app.dtandroid.engine.api.Histogram
@@ -434,5 +436,38 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>) = onEngine {
         p1b2(NativeBridge.BLEND_SET, op, JsonObject(values).toString(), n1 = priority); Unit
+    }
+
+    override suspend fun masks(): List<MaskForm> = onEngine { MaskForm.listFromJson(p1b2(NativeBridge.MASKS)) }
+
+    private fun idOf(e: JsonElement): Int =
+        ((e as? JsonObject)?.get("id") as? JsonPrimitive)?.content?.toIntOrNull() ?: throw EngineException(EngineError.ENGINE, "no id")
+
+    override suspend fun maskCreate(type: String, geometry: JsonObject, name: String?): Int = onEngine {
+        idOf(p1b2(NativeBridge.MASK_CREATE, type, geometry.toString(), name))
+    }
+
+    override suspend fun maskUpdate(id: Int, geometry: JsonObject) = onEngine { p1b2(NativeBridge.MASK_UPDATE, s2 = geometry.toString(), n2 = id); Unit }
+    override suspend fun maskRename(id: Int, name: String) = onEngine { p1b2(NativeBridge.MASK_RENAME, s3 = name, n2 = id); Unit }
+    override suspend fun maskDelete(id: Int) = onEngine { p1b2(NativeBridge.MASK_DELETE, n2 = id); Unit }
+
+    override suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        p1b2(NativeBridge.MASK_ATTACH, op, member.toJson().toString(), n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskDetach(op: String, priority: Int, id: Int) = onEngine {
+        p1b2(NativeBridge.MASK_DETACH, op, n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        p1b2(NativeBridge.MASK_MEMBER_SET, op, member.toJson().toString(), n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun maskGroupCreate(memberIds: List<Int>, name: String?): Int = onEngine {
+        idOf(p1b2(NativeBridge.MASK_GROUP_CREATE, s2 = kotlinx.serialization.json.JsonArray(memberIds.map { JsonPrimitive(it) }).toString(), s3 = name))
+    }
+
+    override suspend fun maskGroupSet(id: Int, settings: JsonObject) = onEngine {
+        p1b2(NativeBridge.MASK_GROUP_SET, s2 = settings.toString(), n2 = id); Unit
     }
 }

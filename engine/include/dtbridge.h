@@ -468,6 +468,42 @@ int dtb_blend_get(const char *op, int priority, char **json);
  * same instance until dtb_history_seal(), as param_set. */
 int dtb_blend_set(const char *op, int priority, const char *values_json);
 
+/* ---------------------------------------------------------------------- */
+/* 6.7 drawn masks (P1b part 2; engine-api.md 6.7 has the JSON)            */
+
+/* Every form of the session: [ { "id", "type", "name", "version",
+ * "geometry": {...}, "used_by": [ { "op", "priority", "root" } ] } ].
+ * Coordinates are normalised to the original image (the pipe's input). */
+int dtb_masks(char **json);
+/* [M] A new form (circle, ellipse, gradient, path, brush) used by no
+ * instance yet; name NULL = darktable's automatic name -> { "id" }. A brush
+ * may be given as a "stroke" of points, turned into brush points as
+ * desktop's brush tool does. */
+int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json);
+/* [M] New geometry for a form (same type). */
+int dtb_mask_update(int id, const char *geometry_json);
+/* [M] */
+int dtb_mask_rename(int id, const char *name);
+/* [M] Delete a form and remove it from every group. DTB_E_ARG for a form
+ * that is an instance's whole mask. */
+int dtb_mask_delete(int id);
+/* [M] Add a form (or group) to an instance's mask, as desktop's panel adds
+ * a shape: the instance's flexi group is created if needed and its mask
+ * switched on. options_json: { "inverse": bool, "opacity": 0..1,
+ * "disabled": bool } or NULL. A form may be in several instances' masks. */
+int dtb_mask_attach(const char *op, int priority, int id, const char *options_json);
+/* [M] Remove a form from an instance's mask (the form stays). */
+int dtb_mask_detach(const char *op, int priority, int id);
+/* [M] Change inverse, opacity, disabled of a form in an instance's mask. */
+int dtb_mask_member_set(const char *op, int priority, int id, const char *options_json);
+/* [M] A flexi group of existing forms ([id, ...]) -> { "id" }. */
+int dtb_mask_group_create(const char *member_ids_json, const char *name, char **json);
+/* [M] A flexi group's own settings: { "operator": "maximum" | "screen" |
+ * "minimum" | "product" | "sum" | "difference" | "exclusion", "invert",
+ * "bypass", "opacity": 0..1, "name" }. An instance's mask is such a group
+ * (blend_get "mask_id"). */
+int dtb_mask_group_set(int id, const char *options_json);
+
 #ifdef __cplusplus
 }
 #endif

@@ -93,6 +93,28 @@ void dtb__pipes_reattach(void)
     }
 }
 
+/* P1b part 2: a piece's hash includes its mask's shapes, but
+ * dt_iop_commit_params() (develop/imageop.c) looks the mask group up in the
+ * global develop object (dt_masks_get_from_id(darktable.develop, ...) and
+ * dt_masks_group_hash, which walks darktable.develop->forms), not in the
+ * pipe's own. In the bridge that object is not the session's and has no
+ * forms, so a change of a shape's geometry left the hash, and the cached
+ * output of the modules using it, as they were (engine test C22 found it: a
+ * shape moved after it was attached rendered at its old place until the
+ * edit was opened again). While a pipe synchronises its pieces, the global
+ * develop object's form list is the session's; nothing else runs then. */
+static GList *_forms_swap_in(void)
+{
+  GList *saved = darktable.develop ? darktable.develop->forms : NULL;
+  if(darktable.develop) darktable.develop->forms = dtb_S.dev.forms;
+  return saved;
+}
+
+static void _forms_swap_out(GList *saved)
+{
+  if(darktable.develop) darktable.develop->forms = saved;
+}
+
 /* Set up a cached pipeline the way dt_imageio_export_with_flags() does for
  * an export: same pipe type, so every module takes its export code path,
  * and the same input. Unlike the export pipe, it gets the darkroom's cache
@@ -130,7 +152,9 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
                                p->buf.width, p->buf.height, p->buf.iscale);
     dt_ioppr_resync_modules_order(&dtb_S.dev);
     dt_dev_pixelpipe_create_nodes(&p->pipe, &dtb_S.dev);
+    GList *global_forms = _forms_swap_in();
     dt_dev_pixelpipe_synch_all(&p->pipe, &dtb_S.dev);
+    _forms_swap_out(global_forms);
     dt_dev_pixelpipe_get_dimensions(&p->pipe, &dtb_S.dev, p->pipe.iwidth, p->pipe.iheight,
                                     &p->pipe.processed_width, &p->pipe.processed_height);
     p->pipe.changed = DT_DEV_PIPE_UNCHANGED;
@@ -142,7 +166,9 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
     const dt_dev_pixelpipe_change_t what = p->pipe.changed;
     if(p->pipe.changed & DT_DEV_PIPE_REMOVE) dt_ioppr_resync_modules_order(&dtb_S.dev);
     // takes dev->history_mutex, rebuilds nodes on REMOVE, resynchs on SYNCH
+    GList *global_forms = _forms_swap_in();
     dt_dev_pixelpipe_change(&p->pipe, &dtb_S.dev);
+    _forms_swap_out(global_forms);
     dtb__tlog((what & DT_DEV_PIPE_REMOVE) ? "render.pipe_change_remove"
               : (what & DT_DEV_PIPE_SYNCH) ? "render.pipe_change_synch_all"
               : (what & DT_DEV_PIPE_TOP_CHANGED) ? "render.pipe_change_synch_top" : "render.pipe_change_other", t0);
@@ -334,7 +360,10 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
 
   if(finalscale) finalscale->enabled = FALSE;
   const double t0 = dtb__t();
-  const gboolean early = dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
+  // desktop's mask overlay is drawn by gamma (maskdisplay.c)
+  const gboolean early = dtb__mask_display_active
+                           ? dt_dev_pixelpipe_process(&p->pipe, &dtb_S.dev, x, y, w, h, scale, DT_DEVICE_NONE)
+                           : dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
   dtb__tlog("render.process", t0);
   if(finalscale) finalscale->enabled = TRUE;
 

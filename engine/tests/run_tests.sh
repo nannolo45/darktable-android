@@ -390,6 +390,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C21 blend "blending: get, set, validation, grouping"
     parity C21 blend_uniform; parity C21 blend_parametric; parity C21 blend_lab
   fi
+  if want C22; then
+    drv C22 masks "drawn masks: create, attach, share, edit, delete, reopen"
+    parity C22 masks_drawn; parity C22 masks_shared; parity C22 masks_edited
+  fi
+  if want C24; then drv C24 maskshow "mask display overlay"; fi
 done
 
 # C15 once: the engine on its own thread, the process's CPU set changing under it
@@ -403,6 +408,26 @@ if want C15; then
   if command -v taskset > /dev/null; then
     note "INFO C15 started with CPU 0 only (Linux, libgomp): $(taskset -c 0 "$DTB" "$OUT/cpus-work1" api "$TESTS/images/mire1.cr2" "$TESTS/0001-exposure/exposure.xmp" "$OUT" 2>/dev/null | grep '^RESULT engine darktable')"
   fi
+fi
+
+# C23 once: XMPs with masks made by desktop darktable (darktable-tests, on the
+# cr2): listed and rendered through the bridge as darktable-cli renders them,
+# and the XMP the bridge writes again renders the same
+if want C23; then
+  for X in 0004-masks/masks.xmp 0081-mask-groups/mask-groups.xmp 0090-mask-combine/mask-combine.xmp \
+           0144-masks-combine-sum/masks-combine-sum.xmp; do
+    N=$(dirname "$X"); D="$OUT/C23-$N"; mkdir -p "$D"
+    if [ ! -f "$TESTS/$X" ]; then fail C23 "$N" "$X missing (fetch it from darktable-tests)"; continue; fi
+    if "$DTB" "$OUT/C23-work" masks_desktop "$TESTS/images/mire1.cr2" "$TESTS/$X" "$D" > "$D/C23.log" 2>&1; then
+      pass C23 "$N" "$(grep '^RESULT' "$D/C23.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f3- | tr '\n' ';')"
+      cli "$TESTS/images/mire1.cr2" "$TESTS/$X" "$D/desktop_cli.png" "$D/cli.log"
+      cmp_rec C23 "$N" "$D/desktop_masks_bridge.ppm" "$D/desktop_cli.png"
+      cli "$TESTS/images/mire1.cr2" "$D/desktop_masks.xmp" "$D/bridge_xmp_cli.png" "$D/cli.log"
+      cmp_rec C23 "$N/bridge-xmp" "$D/desktop_masks_bridge.ppm" "$D/bridge_xmp_cli.png"
+    else
+      fail C23 "$N" "$(grep '^FAIL' "$D/C23.log" | head -3 | tr '\n' ';') see $D/C23.log"
+    fi
+  done
 fi
 
 md5_after=$(cd "$TESTS" && md5sum images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw)

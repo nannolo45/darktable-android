@@ -172,9 +172,16 @@ typedef struct dtb_mask_display_t
   dt_iop_module_t *module;
   void *saved[8];
   int saved_int[8];
+  void *piece;     // dt_dev_pixelpipe_iop_t * of the module
+  dt_hash_t hash;  // its hash before the render
 } dtb_mask_display_t;
 int dtb__mask_display_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_mask_display_t *md);
 void dtb__mask_display_end(dtb_mask_display_t *md);
+/* TRUE while a mask display render runs: the pipe runs with gamma */
+extern gboolean dtb__mask_display_active;
+/* times.c calls it after every process_plain: the mask channel kept */
+void dtb__mask_display_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const i, void *const o,
+                            const dt_iop_roi_t *const roi_in, const dt_iop_roi_t *const roi_out);
 /* run a ready pipe like an export (render.c _pipe_run): float output in
  * pipe.backbuf, 8-bit copy in out (w*h*4) */
 int dtb__pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uint8_t *out);

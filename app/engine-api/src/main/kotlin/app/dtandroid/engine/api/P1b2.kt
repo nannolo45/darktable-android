@@ -230,3 +230,45 @@ data class Blend(val json: JsonObject) {
         fun fromJson(e: JsonElement) = Blend(e.o("blend"))
     }
 }
+
+// ------------------------------------------------------------------ 6.7 drawn masks
+
+/** An instance that uses a form: [root] when the form is the instance's whole mask (its group). */
+data class MaskUser(val op: String, val priority: Int, val root: Boolean)
+
+/**
+ * One form of the session (engine-api.md 6.7): [type] "circle", "ellipse", "gradient", "path", "brush", "group" or
+ * another darktable type by name; [geometry] in normalised original-image coordinates, as the JSON gives it.
+ */
+data class MaskForm(
+    val id: Int,
+    val type: String,
+    val name: String,
+    val version: Int,
+    val geometry: JsonObject,
+    val usedBy: List<MaskUser>,
+) {
+    /** For a group: its members' ids in order. */
+    val members: List<Int>
+        get() = (geometry["members"] as? JsonArray)?.map { (it as JsonObject).i("id") } ?: emptyList()
+
+    fun toJson(): JsonObject = buildJsonObject {
+        put("id", id); put("type", type); put("name", name); put("version", version); put("geometry", geometry)
+        put("used_by", JsonArray(usedBy.map { buildJsonObject { put("op", it.op); put("priority", it.priority); put("root", it.root) } }))
+    }
+
+    companion object {
+        fun listFromJson(e: JsonElement): List<MaskForm> = e.a("masks").map { f ->
+            val o = f.o("form")
+            MaskForm(o.i("id"), o.s("type"), o.s("name"), o.i("version"), o["geometry"]!!.o("geometry"),
+                o["used_by"]!!.a("used_by").map { u -> u.o("user").let { MaskUser(it.s("op"), it.i("priority"), (it["root"] as JsonPrimitive).content == "true") } })
+        }
+    }
+}
+
+/** A member's settings in an instance's mask: null = leave as it is (attach: desktop's defaults). */
+data class MaskMember(val inverse: Boolean? = null, val opacity: Double? = null, val disabled: Boolean? = null) {
+    fun toJson(): JsonObject = buildJsonObject {
+        inverse?.let { put("inverse", it) }; opacity?.let { put("opacity", it) }; disabled?.let { put("disabled", it) }
+    }
+}

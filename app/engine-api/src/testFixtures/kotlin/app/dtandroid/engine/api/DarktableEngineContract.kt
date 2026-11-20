@@ -901,4 +901,80 @@ abstract class DarktableEngineContract {
         assertEquals("multiply", engine.blendGet("exposure", 0).mode)
         expect(EngineError.NOT_FOUND) { engine.blendGet("nosuchmodule", 0) }
     }
+
+    private fun geo(json: String) = kotlinx.serialization.json.Json.parseToJsonElement(json) as JsonObject
+
+    @Test
+    fun drawnMasksCreateAttachShareEditDelete() = runBlocking<Unit> {
+        openSample()
+        val n0 = engine.masks().size
+        val c = engine.maskCreate("circle", geo("""{"center":[0.3,0.35],"radius":0.12,"border":0.05}"""))
+        val e = engine.maskCreate("ellipse", geo("""{"center":[0.7,0.3],"radius":[0.15,0.08],"rotation":30}"""))
+        val g = engine.maskCreate("gradient", geo("""{"anchor":[0.5,0.8],"rotation":10}"""))
+        val p = engine.maskCreate("path", geo("""{"points":[{"corner":[0.1,0.6]},{"corner":[0.3,0.55]},{"corner":[0.35,0.9]}]}"""))
+        val b = engine.maskCreate("brush", geo("""{"stroke":[[0.55,0.55],[0.6,0.57],[0.65,0.6],[0.7,0.62]]}"""), name = "a stroke")
+        val all = engine.masks()
+        assertEquals(n0 + 5, all.size)
+        assertEquals(setOf("circle", "ellipse", "gradient", "path", "brush"), all.filter { it.id in setOf(c, e, g, p, b) }.map { it.type }.toSet())
+        assertEquals("a stroke", all.first { it.id == b }.name)
+        assertTrue(all.first { it.id == c }.usedBy.isEmpty())
+        val h0 = engine.history().items.size
+        for (id in listOf(c, e, g, p, b)) engine.maskAttach("exposure", 0, id)
+        assertEquals("one history item per attach", h0 + 5, engine.history().items.size)
+        val blend = engine.blendGet("exposure", 0)
+        assertEquals("flexi", blend.masks)
+        val root = blend.maskId!!
+        assertEquals(listOf(c, e, g, p, b), engine.masks().first { it.id == root }.members)
+        // one form in two instances' masks
+        val np = engine.instanceNew("exposure", 0)
+        engine.maskAttach("exposure", np, c, MaskMember(inverse = true))
+        assertEquals(2, engine.masks().first { it.id == c }.usedBy.size)
+        engine.maskMemberSet("exposure", 0, e, MaskMember(opacity = 0.6))
+        engine.maskGroupSet(root, buildJsonObject { put("operator", "screen") })
+        assertEquals("screen", (engine.masks().first { it.id == root }.geometry["operator"] as JsonPrimitive).content)
+        // edit, rename, detach, delete, and the refusals
+        engine.maskUpdate(c, geo("""{"center":[0.4,0.4],"radius":0.2}"""))
+        engine.maskRename(c, "renamed")
+        assertEquals("renamed", engine.masks().first { it.id == c }.name)
+        engine.maskDetach("exposure", 0, g)
+        engine.maskDelete(g)
+        assertFalse(engine.masks().any { it.id == g })
+        expect(EngineError.ARG) { engine.maskDelete(root) }
+        expect(EngineError.ARG) { engine.maskAttach("exposure", 0, c) }
+        expect(EngineError.NOT_FOUND) { engine.maskAttach("exposure", 0, 424242) }
+        expect(EngineError.ARG) { engine.maskUpdate(c, geo("""{"radius":0.2}""")) }
+        expect(EngineError.RANGE) { engine.maskUpdate(c, geo("""{"center":[0.4,0.4],"radius":5}""")) }
+        expect(EngineError.ARG) { engine.maskCreate("triangle", geo("{}")) }
+        expect(EngineError.RANGE) { engine.maskMemberSet("exposure", 0, c, MaskMember(opacity = 3.0)) }
+        expect(EngineError.ARG) { engine.maskGroupSet(root, buildJsonObject { put("operator", "mean") }) }
+        // a group of forms
+        val grp = engine.maskGroupCreate(listOf(c, e))
+        assertEquals(listOf(c, e), engine.masks().first { it.id == grp }.members)
+        // undo takes the last change back
+        engine.undo()
+        assertFalse(engine.masks().any { it.id == grp })
+    }
+
+    @Test
+    fun maskDisplayRender() = runBlocking<Unit> {
+        openSample()
+        val show = RenderOptions(showMask = InstanceRef("exposure", 0))
+        expect(EngineError.ARG) { engine.renderPreview(256, show) }
+        val c = engine.maskCreate("circle", geo("""{"center":[0.3,0.35],"radius":0.1,"border":0.02}"""))
+        engine.maskAttach("exposure", 0, c)
+        val plain = engine.renderPreview(256)
+        val h0 = engine.history()
+        val shown = engine.renderPreview(256, show)
+        assertEquals(plain.width, shown.width)
+        assertFalse(plain.rgba.contentEquals(shown.rgba))
+        // far from the circle the overlay is grey
+        val x = (0.85 * shown.width).toInt(); val y = (0.85 * shown.height).toInt()
+        val i = 4 * (y * shown.width + x)
+        val r = shown.rgba[i].toInt() and 0xff; val g = shown.rgba[i + 1].toInt() and 0xff; val b = shown.rgba[i + 2].toInt() and 0xff
+        assertTrue("grey outside the mask: $r $g $b", kotlin.math.abs(r - g) <= 3 && kotlin.math.abs(g - b) <= 3)
+        val s = engine.renderSize(0.25)
+        engine.renderRegion(0, 0, s.w, s.h, 0.25, show)
+        assertEquals(h0, engine.history())
+        assertTrue(plain.rgba.contentEquals(engine.renderPreview(256).rgba))
+    }
 }

@@ -17,6 +17,9 @@ import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.ParamPath
 import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.MaskForm
+import app.dtandroid.engine.api.MaskMember
+import app.dtandroid.engine.api.MaskUser
 import app.dtandroid.engine.api.Blend
 import app.dtandroid.engine.api.PickResult
 import app.dtandroid.engine.api.PickStats
@@ -58,6 +61,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
 import java.util.concurrent.Executors
@@ -152,7 +156,10 @@ class FakeEngine(
         val blend: JsonObject? = null,
     )
 
-    private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int)
+    /** P1b part 2: a drawn form, kept as data (the stand-in does not render masks) */
+    private data class FakeForm(val id: Int, val type: String, val name: String, val geometry: JsonObject)
+
+    private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int, val forms: List<FakeForm> = emptyList())
 
     private class Session(
         val rawPath: String,
@@ -167,6 +174,9 @@ class FakeEngine(
     ) {
         val undo = ArrayDeque<Snapshot>()
         val redo = ArrayDeque<Snapshot>()
+        /** P1b part 2: the drawn forms (engine-api.md 6.7) */
+        var forms: List<FakeForm> = emptyList()
+        var nextFormId = 1000
         /** instance whose param_set calls currently merge into the last history item */
         var openGroup: Pair<String, Int>? = null
     }
@@ -220,9 +230,9 @@ class FakeEngine(
         return m
     }
 
-    private fun Session.snapshot() = Snapshot(insts, items, end)
+    private fun Session.snapshot() = Snapshot(insts, items, end, forms)
 
-    private fun Session.restore(s: Snapshot) { insts = s.insts; items = s.items; end = s.end; openGroup = null }
+    private fun Session.restore(s: Snapshot) { insts = s.insts; items = s.items; end = s.end; forms = s.forms; openGroup = null }
 
     /** Start a new history group: seal, record the undo state, discard history above `end`. */
     private fun Session.beginChange(truncate: Boolean = true) {
@@ -763,9 +773,12 @@ class FakeEngine(
      */
     private fun Session.bypassOf(options: RenderOptions): Set<Pair<String, Int>> {
         if (options.showMask != null) {
+            // 6.8: refused as the bridge refuses it; the stand-in then draws the picture in grey without the
+            // yellow mask (it renders no masks)
             val m = options.showMask
             inst(m.op, m.priority)
-            fail(EngineError.ARG, "the stand-in engine draws no masks (show_mask)")
+            val masks = (live()[m.op to m.priority]?.blend?.get("masks") as? JsonPrimitive)?.content ?: "off"
+            if (masks == "off" || masks == "uniform") fail(EngineError.ARG, "${m.op} ${m.priority} has no mask to show (mask mode off or uniform)")
         }
         return options.bypass.map { b ->
             inst(b.op, b.priority)
@@ -795,7 +808,17 @@ class FakeEngine(
         val (fw, fh) = r.processedSize(o, 1.0)
         val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
         val (w, h) = r.processedSize(o, scale)
-        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass)
+        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass).let { if (options.showMask != null) grey(it) else it }
+    }
+
+    /** the stand-in's "show mask": the picture in grey (no mask drawn) */
+    private fun grey(img: RenderedImage): RenderedImage {
+        val px = img.rgba.copyOf()
+        for (i in 0 until img.width * img.height) {
+            val y = (0.3 * (px[4 * i].toInt() and 0xff) + 0.59 * (px[4 * i + 1].toInt() and 0xff) + 0.11 * (px[4 * i + 2].toInt() and 0xff)).roundToInt().toByte()
+            px[4 * i] = y; px[4 * i + 1] = y; px[4 * i + 2] = y
+        }
+        return RenderedImage(img.width, img.height, px)
     }
 
     override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage =
@@ -811,7 +834,7 @@ class FakeEngine(
         if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
             fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
         if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
-        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass)
+        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass).let { if (options.showMask != null) grey(it) else it }
     }
 
     private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null,
@@ -1419,6 +1442,216 @@ class FakeEngine(
         val canMerge = s.openGroup == key && s.end == s.items.size && s.items.lastOrNull()?.let { it.op == op && it.priority == priority } == true
         if (canMerge) s.items = s.items.dropLast(1) + s.items.last().copy(enabled = true, blend = blend)
         else { s.beginChange(); s.addItem(op, priority, true, cur.params, blend); s.openGroup = key }
+    }
+
+    // ------------------------------------------------------------ 6.7 drawn masks (as data; nothing is rendered)
+    //
+    // The stand-in keeps forms, groups and the instances' masks as data, with undo, and checks arguments as the
+    // bridge does; it draws no mask on its picture, keeps a brush stroke's samples as its points (the bridge
+    // simplifies them as desktop's brush tool does) and records no history item for a form no instance uses
+    // (the bridge records one for darktable's mask manager). Its XMP does not carry masks.
+
+    private fun Session.form(id: Int) = forms.firstOrNull { it.id == id }
+
+    private fun Session.rootOf(op: String, priority: Int): Int? =
+        ((live()[op to priority]?.blend?.get("mask_id")) as? JsonPrimitive)?.intOrNull
+
+    private fun Session.treeHas(root: Int?, id: Int, depth: Int = 0): Boolean {
+        if (root == null || depth > 8) return false
+        if (root == id) return true
+        val g = form(root) ?: return false
+        val members = (g.geometry["members"] as? JsonArray)?.map { (it as JsonObject)["id"]!!.jsonPrimitive.int } ?: return false
+        return members.any { it == id || treeHas(it, id, depth + 1) }
+    }
+
+    private fun pos(g: JsonObject, k: String, need: Boolean): JsonArray? {
+        val v = g[k] ?: if (need) fail(EngineError.ARG, "geometry: \"$k\" missing") else return null
+        val a = v as? JsonArray ?: fail(EngineError.TYPE, "geometry: \"$k\" takes [x, y]")
+        if (a.size != 2) fail(EngineError.TYPE, "geometry: \"$k\" takes [x, y]")
+        a.forEach { val x = (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "geometry: \"$k\" takes numbers")
+            if (x < -1.0 || x > 2.0) fail(EngineError.RANGE, "geometry: \"$k\" outside -1..2") }
+        return a
+    }
+
+    private fun num(g: JsonObject, k: String, lo: Double, hi: Double) {
+        val v = g[k] ?: return
+        val x = (v as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: fail(EngineError.TYPE, "geometry: \"$k\" takes a number")
+        if (x < lo || x > hi) fail(EngineError.RANGE, "geometry: \"$k\" $x outside $lo..$hi")
+    }
+
+    /** checked as the bridge checks it; returns the geometry the form keeps */
+    private fun checkGeometry(type: String, g: JsonObject): JsonObject {
+        when (type) {
+            "circle" -> { pos(g, "center", true); num(g, "radius", 0.0005, 1.0); num(g, "border", 0.0005, 1.0) }
+            "ellipse" -> { pos(g, "center", true); num(g, "rotation", -360.0, 360.0); num(g, "border", 0.001, 1.0) }
+            "gradient" -> { pos(g, "anchor", true); num(g, "rotation", -360.0, 360.0); num(g, "compression", 0.001, 1.0); num(g, "steepness", 0.0, 1.0) }
+            "path", "brush" -> {
+                val stroke = g["stroke"] as? JsonArray
+                if (type == "brush" && stroke != null) {
+                    if (stroke.isEmpty()) fail(EngineError.ARG, "geometry: \"stroke\" takes [[x, y], ...]")
+                    return buildJsonObject { put("points", JsonArray(stroke.map { buildJsonObject { put("corner", it) } })) }
+                }
+                val pts = g["points"] as? JsonArray
+                val need = if (type == "brush") 2 else 3
+                if (pts == null || pts.size < need) fail(EngineError.ARG, "geometry: \"points\" takes at least $need points")
+                pts.forEach { p -> pos(p as? JsonObject ?: fail(EngineError.TYPE, "geometry: a point is not an object"), "corner", true) }
+            }
+            else -> fail(EngineError.ARG, "type is circle, ellipse, gradient, path or brush")
+        }
+        return g
+    }
+
+    override suspend fun masks(): List<MaskForm> = onEngine {
+        val s = requireSession()
+        s.forms.map { f ->
+            val users = s.insts.filter { s.treeHas(s.rootOf(it.op, it.priority), f.id) }
+                .map { MaskUser(it.op, it.priority, s.rootOf(it.op, it.priority) == f.id) }
+            MaskForm(f.id, f.type, f.name, 7, f.geometry, users)
+        }
+    }
+
+    override suspend fun maskCreate(type: String, geometry: JsonObject, name: String?): Int = onEngine {
+        val s = requireWritable()
+        val g = checkGeometry(type, geometry)
+        s.beginChange(truncate = false)
+        val id = s.nextFormId++
+        val n = name?.takeIf { it.isNotEmpty() } ?: "$type #${s.forms.count { it.type == type } + 1}"
+        s.forms = s.forms + FakeForm(id, type, n, g)
+        id
+    }
+
+    /** a history item for the first instance whose mask holds [id], as the bridge records one */
+    private fun Session.recordFor(id: Int) {
+        val user = insts.firstOrNull { treeHas(rootOf(it.op, it.priority), id) } ?: return
+        val cur = live()[user.op to user.priority]!!
+        addItem(user.op, user.priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskUpdate(id: Int, geometry: JsonObject) = onEngine {
+        val s = requireWritable()
+        val f = s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (f.type == "group") fail(EngineError.ARG, "form $id is a group")
+        val g = checkGeometry(f.type, geometry)
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(geometry = g) else it }
+        s.recordFor(id)
+    }
+
+    override suspend fun maskRename(id: Int, name: String) = onEngine {
+        val s = requireWritable()
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (name.isEmpty()) fail(EngineError.ARG, "empty name")
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(name = name) else it }
+        s.recordFor(id)
+    }
+
+    private fun withoutMember(g: JsonObject, id: Int): JsonObject =
+        JsonObject(g + ("members" to JsonArray((g["members"] as JsonArray).filter { (it as JsonObject)["id"]!!.jsonPrimitive.int != id })))
+
+    override suspend fun maskDelete(id: Int) = onEngine {
+        val s = requireWritable()
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        s.insts.firstOrNull { s.rootOf(it.op, it.priority) == id }?.let { fail(EngineError.ARG, "form $id is the mask of ${it.op} ${it.priority}: switch its mask off first") }
+        s.beginChange()
+        s.recordFor(id)
+        s.forms = s.forms.filter { it.id != id }.map { if (it.type == "group") it.copy(geometry = withoutMember(it.geometry, id)) else it }
+    }
+
+    private fun Session.maskInstance(op: String, priority: Int): Live {
+        val d = def(op)
+        inst(op, priority)
+        if (!d.supportsBlending) fail(EngineError.ARG, "$op has no drawn masks")
+        return live()[op to priority]!!
+    }
+
+    private fun memberJson(id: Int, m: MaskMember, base: JsonObject? = null): JsonObject {
+        m.opacity?.let { if (it < 0.0 || it > 1.0) fail(EngineError.RANGE, "opacity $it outside 0..1") }
+        return buildJsonObject {
+            put("id", id)
+            put("inverse", m.inverse ?: (base?.get("inverse") as? JsonPrimitive)?.booleanOrNull ?: false)
+            put("opacity", m.opacity ?: (base?.get("opacity") as? JsonPrimitive)?.doubleOrNull ?: 1.0)
+            put("disabled", m.disabled ?: (base?.get("disabled") as? JsonPrimitive)?.booleanOrNull ?: false)
+        }
+    }
+
+    override suspend fun maskAttach(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        val root = s.rootOf(op, priority)
+        if (root == id || (root != null && (s.form(root)!!.geometry["members"] as JsonArray).any { (it as JsonObject)["id"]!!.jsonPrimitive.int == id }))
+            fail(EngineError.ARG, "form $id is already in $op's mask")
+        val m = memberJson(id, member)
+        s.beginChange()
+        var blend = (cur.blend ?: defaultBlend(true)).toMutableMap()
+        val rid = root ?: s.nextFormId++.also { gid ->
+            s.forms = s.forms + FakeForm(gid, "group", "group `$op'", buildJsonObject {
+                put("flexi", true); put("operator", "maximum"); put("invert", false); put("bypass", false); put("opacity", 1.0)
+                put("group_name", ""); put("members", JsonArray(emptyList()))
+            })
+            blend["mask_id"] = JsonPrimitive(gid)
+        }
+        blend["masks"] = JsonPrimitive("flexi"); blend["mask_mode_flags"] = JsonArray(listOf("enabled", "flexi").map { JsonPrimitive(it) })
+        s.forms = s.forms.map { if (it.id == rid) it.copy(geometry = JsonObject(it.geometry + ("members" to JsonArray((it.geometry["members"] as JsonArray) + m)))) else it }
+        s.addItem(op, priority, true, cur.params, JsonObject(blend))
+    }
+
+    override suspend fun maskDetach(op: String, priority: Int, id: Int) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        val root = s.rootOf(op, priority)
+        val g = root?.let { s.form(it) }
+        if (g == null || (g.geometry["members"] as JsonArray).none { (it as JsonObject)["id"]!!.jsonPrimitive.int == id })
+            fail(EngineError.NOT_FOUND, "form $id is not a member of $op $priority's mask")
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == root) it.copy(geometry = withoutMember(it.geometry, id)) else it }
+        s.addItem(op, priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskMemberSet(op: String, priority: Int, id: Int, member: MaskMember) = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        val root = s.rootOf(op, priority)
+        val g = root?.let { s.form(it) }
+        val old = (g?.geometry?.get("members") as? JsonArray)?.map { it as JsonObject }?.firstOrNull { it["id"]!!.jsonPrimitive.int == id }
+            ?: fail(EngineError.NOT_FOUND, "form $id is not a member of $op $priority's mask")
+        val m = memberJson(id, member, old)
+        s.beginChange()
+        s.forms = s.forms.map { f -> if (f.id == root) f.copy(geometry = JsonObject(f.geometry + ("members" to JsonArray((f.geometry["members"] as JsonArray).map { e -> if ((e as JsonObject)["id"]!!.jsonPrimitive.int == id) m else e })))) else f }
+        s.addItem(op, priority, true, cur.params, cur.blend)
+    }
+
+    override suspend fun maskGroupCreate(memberIds: List<Int>, name: String?): Int = onEngine {
+        val s = requireWritable()
+        memberIds.forEach { s.form(it) ?: fail(EngineError.NOT_FOUND, "no form $it") }
+        s.beginChange(truncate = false)
+        val id = s.nextFormId++
+        s.forms = s.forms + FakeForm(id, "group", name?.takeIf { it.isNotEmpty() } ?: "group #${s.forms.count { it.type == "group" } + 1}", buildJsonObject {
+            put("flexi", true); put("operator", "maximum"); put("invert", false); put("bypass", false); put("opacity", 1.0); put("group_name", "")
+            put("members", JsonArray(memberIds.map { memberJson(it, MaskMember()) }))
+        })
+        id
+    }
+
+    override suspend fun maskGroupSet(id: Int, settings: JsonObject) = onEngine {
+        val s = requireWritable()
+        val g = s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (g.type != "group") fail(EngineError.ARG, "form $id is not a flexi group")
+        if (settings.isEmpty()) fail(EngineError.ARG, "no settings")
+        val geo = g.geometry.toMutableMap()
+        for ((k, v) in settings) when (k) {
+            "operator" -> { val o = (v as? JsonPrimitive)?.content
+                if (o !in listOf("maximum", "screen", "minimum", "product", "sum", "difference", "exclusion")) fail(EngineError.ARG, "operator: maximum, screen, minimum, product, sum, difference or exclusion")
+                geo["operator"] = JsonPrimitive(o) }
+            "invert", "bypass" -> geo[k] = JsonPrimitive((v as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: fail(EngineError.TYPE, "$k takes true or false"))
+            "opacity" -> { val x = (v as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "opacity takes a number"); if (x < 0 || x > 1) fail(EngineError.RANGE, "opacity 0..1"); geo[k] = JsonPrimitive(x) }
+            "name" -> geo["group_name"] = JsonPrimitive((v as? JsonPrimitive)?.content ?: fail(EngineError.ARG, "name"))
+            else -> fail(EngineError.NOT_FOUND, "no group setting '$k'")
+        }
+        s.beginChange()
+        s.forms = s.forms.map { if (it.id == id) it.copy(geometry = JsonObject(geo)) else it }
+        s.recordFor(id)
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine {
