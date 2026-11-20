@@ -1,0 +1,21 @@
+RESULT engine 04477d3
+RESULT webp format plugin not built: ARG expected
+RESULT export e_default.jpg (defaults) -> 0, 6869729 bytes
+RESULT export e_q80_small.jpg {"format": "jpeg", "quality": 80, "max_width": 1000, "max_height": 1000} -> 0, 151087 bytes
+RESULT export e_8.png {"format": "png", "bit_depth": 8} -> 0, 26792391 bytes
+RESULT export e_16.png {"format": "png", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 1928295 bytes
+RESULT export e_16.tif {"format": "tiff", "bit_depth": 16, "max_width": 800, "max_height": 800} -> 0, 1969148 bytes
+RESULT export e_32.tif {"format": "tiff", "bit_depth": 32, "max_width": 400, "max_height": 400} -> 0, 976154 bytes
+RESULT export e.webp {"format": "webp", "quality": 90, "max_width": 800, "max_height": 800} -> -2, -1 bytes
+RESULT export e_adobe.jpg {"profile": "adobergb", "max_width": 800, "max_height": 800} -> 0, 218724 bytes
+RESULT export e_p3.jpg {"profile": "displayp3", "max_width": 800, "max_height": 800} -> 0, 231729 bytes
+RESULT export e_srgb.jpg {"profile": "srgb", "max_width": 800, "max_height": 800, "high_quality": false} -> 0, 239862 bytes
+RESULT export e_up.jpg {"max_width": 9000, "max_height": 9000, "upscale": true} -> 0, 15455490 bytes
+RESULT export bad1.jpg {"format": "bmp"} -> -2, -1 bytes
+RESULT export bad2.jpg {"format": "jpeg", "bit_depth": 16} -> -2, -1 bytes
+RESULT export bad3.jpg {"quality": 0} -> -5, -1 bytes
+RESULT export bad4.jpg {"colour": 1} -> -2, -1 bytes
+RESULT export bad5.jpg {"profile": "prophoto"} -> -2, -1 bytes
+RESULT export bad6.jpg {"upscale": 1} -> -4, -1 bytes
+RESULT metadata_reload: rating 4, labels [0, 3]
+RESULT exit 0
