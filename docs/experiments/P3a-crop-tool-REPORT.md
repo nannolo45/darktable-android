@@ -1,10 +1,10 @@
 # P3a: crop on the photo — report (pull request description)
 
 Branch `p3a-crop-tool` from `main` at 5b43bc8. Brief: `docs/briefs/P3a-crop-on-the-photo.md`. Running log:
-`docs/experiments/P3a-crop-tool.md`. Last code commit **6c84627**; runs on it: p2a-app **44730200524**, p2b-real-engine
-**44730200543**; APK release tag **dt-android-6c846275d4d8** (interface preview: app-preview-6c846275d4d8).
-The previous code commit a4efb01 was green in both workflows too (p2a-app 44727630437, p2b-real-engine 44727630504);
-6c84627 changes only how the tool's size line rounds (floor, as desktop shows it).
+`docs/experiments/P3a-crop-tool.md`. Last code commit **321fde8**; runs on it: p2a-app **44731123711** (green on attempt 2: attempt 1 failed in Maven
+Central resolution, "could not find kotlin-stdlib 2.0.21"), p2b-real-engine **44731123836** (green: JVM, emulator
+50/50, darktable-cli comparison). APK release tag **dt-android-321fde880e06** (interface preview:
+app-preview-321fde880e06).
 
 No change under `engine/` or `upstream/`, none under `app/engine-api` or `app/engine-jni`, no new dependency.
 No existing test was changed, weakened, skipped or deleted.
@@ -107,7 +107,7 @@ The edit never contains a temporary state; the metadata traces of the bracket ar
 5. **Double tap on a slider's bar resets — done.** The bar (track and marker, with the gap above it) resets on a
    double tap; a long press there opens exact entry; a double tap on the name still resets; a double tap on the
    rest of the row (the value) opens exact entry. `ui-spec.md` section 3 updated; section 6 added for the crop tool.
-6. **Tests — done.** JVM: `CropToolTest` (9: every reference case above, hit test, frame stays inside, portrait,
+6. **Tests — done.** JVM: `CropToolTest` (10: every reference case above, the size line as `gui_post_expose`, hit test, frame stays inside, portrait,
    landscape and square input, flipped ratios; a photo turned by 90° is a portrait crop input), `P3aCropToolTest`
    (18: deliverables 1–4 and every case of 3), screenshot tests on phone and tablet (`P3aCropScreenshotTest`, 6,
    with Compose touch input: corner, move, beyond the picture, away from the frame, rotation, a straightening line).
@@ -137,15 +137,17 @@ Workspace measurements are x86_64 (2 cores); emulator numbers are the x86_64 API
   shapes × 11 ratios × 5 frames × 11 grabs), 162 drags × 4 moves (3 shapes × 6 ratios × 9 grabs: 4 corners,
   4 sides, move), 165 `_commit_box` roundings, 156 straightening lines: all equal within 2e-6 (frames) and 1e-4°
   (angles); one exact 45° tie differs in sign only (see item 4).
-- **JVM tests, p2a-app** (run 44727630437 on a4efb01): 235 tests, 0 failures (new: 9 CropToolTest,
-  18 P3aCropToolTest, 6 crop screenshot tests).
-- **Emulator, p2b-real-engine** (run 44727630504 on a4efb01): 50 of 50 tests (`p3a-results.txt` in ci-logs
-  `runs/44727630504-a1/p2b-emulator/p2b-test/`):
+- **JVM tests, p2a-app** (run 44731123711 on 321fde8): 236 tests, 0 failures (new: 10 CropToolTest,
+  18 P3aCropToolTest, 6 crop screenshot tests); p2b-real-engine's JVM step: 298 tests, 0 failures, 1 skipped
+  (as before).
+- **Emulator, p2b-real-engine** (run 44731123836 on 321fde8): 50 of 50 tests (`p3a-results.txt` in ci-logs
+  `runs/44731123836-a1/p2b-emulator/p2b-test/`):
   - c1: test RAW 3908×2602 uncropped, square crop 2602×2602; corner dragged by injected touches: frame width
     0.666 → 0.499, height 1.000 → 0.750 (square kept); frame moved: x 0.334 → 0.414, y 0.000 → 0.040; history
     and parameters unchanged while the tool was open; writeIfOpen during the tool: edit identical (differences:
-    `change_timestamp`, `history_auto_hash` dropped); panel closed: history 12 → 13 items; picture 1950×1950
-    (the tool showed 1951×1951 then: fixed in 6c84627, desktop's floor); app export 1950×1950.
+    `change_timestamp`, `history_auto_hash` dropped); panel closed: history 12 → 13 items; the tool showed
+    1950×1950, the picture is 1950×1950, the app's export 1950×1950. (On a4efb01 the tool showed 1951×1951 for the
+    same picture: it rounded where desktop's `gui_post_expose` floors; fixed in 6c84627.)
   - c2: tool opened and closed without a change: history equal; XMP differs only in `change_timestamp` and
     `history_auto_hash` (limit 1).
   - c3: straighten by touch: rotation 0 → −2.72° for a line of −2.83° (desktop's function on the line asked
@@ -154,14 +156,18 @@ Workspace measurements are x86_64 (2 cores); emulator numbers are the x86_64 API
   export and of the picture the app showed; app export vs darktable-cli: PSNR 43.81 dB (max 17, mean 1.13),
   accepted bound 40 dB as for the other comparisons. The other comparisons unchanged (G0 75.73 dB, app-written
   edit 74.44 dB, P2f crop ratio 0.6667, P2j 44.34 / 46.99 / 46.11 dB).
-- **Screenshots** (release app-preview-6c846275d4d8, `*-p3a-*.png`): the tool on phone and tablet, after drags by
+- **Found and fixed on the way**: run 44730200524 (6c84627) failed `anUndoThatFailsStopsEveryWrite`: after a
+  failed bracket undo (the stand-in engine made to fail), a second request opened the tool again on the state the
+  failed undo left. Writes were still refused, but the tool must not open on it: 321fde8 keeps the tool closed while
+  that flag is set and clears the flag when the photo is opened again; the test now asks twice and reopens.
+- **Screenshots** (release app-preview-321fde880e06, `*-p3a-*.png`): the tool on phone and tablet, after drags by
   touch, during a rotation drag, a straightening line, after straightening. Looked at: frame, dimming, grid,
   corner squares and side bars as in mockup B3-Crop; the size line under the photo (phone) and in the top bar
   (tablet).
 
 ## 6. Owner instructions
 
-Install `dt-android-arm64-v8a.apk` from the release **dt-android-6c846275d4d8** (it installs over the earlier
+Install `dt-android-arm64-v8a.apk` from the release **dt-android-321fde880e06** (it installs over the earlier
 build). Then, on a photo:
 
 1. Open crop's panel (tap "crop" in the module list). The photo shows the whole picture with the frame; outside it

@@ -134,3 +134,11 @@ that bypasses one instance); it would replace step 2 only.
 - The tool's size line said 1951x1951 for a 1950x1950 picture (Math.round); desktop's `gui_post_expose` floors.
   6c84627 uses desktop's formula (`CropTool.shownSize`). Runs 44730200524 / 44730200543 on it.
 - Report written: `docs/experiments/P3a-crop-tool-REPORT.md`.
+
+## 20 Nov 2026, 12:10 UTC — done: 321fde8 green in both workflows
+
+- 6c84627: p2a 44730200524 failed `anUndoThatFailsStopsEveryWrite` (a second syncCropTool opened the tool on the
+  state a failed undo left); fixed in 321fde8 (no tool while the flag is set; flag cleared when the photo opens).
+- 321fde8: p2a-app 44731123711 green on attempt 2 (attempt 1: Maven Central "could not find"), 236 tests;
+  p2b-real-engine 44731123836 green: emulator 50/50, the tool's size line 1950x1950 = picture = export =
+  darktable-cli's render, PSNR 43.81 dB. APK dt-android-321fde880e06.
