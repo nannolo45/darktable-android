@@ -1,12 +1,15 @@
 {
   "op": "denoiseprofile",
-  "reason": "brief P2j: the profile list can be set through module_action, but which entry an edit holds needs the profiles' a and b from the engine.",
-  "note": [
+  "reason": "brief P3c deliverable 5 (was P2j: which entry an edit holds needed the engine). The profile list shows the profiles the engine lists for this photo (module action list_profiles, the current entry as desktop's gui_update selects it) and sets the chosen one through set_profile {index}.",
+  "action_list": [
     {
       "node": 0,
       "expect_label": "profile",
-      "text": "needs the engine to tell which profile is set (a later package)",
-      "class": "c"
+      "list": "list_profiles",
+      "action": "set_profile",
+      "action_args": {
+        "index": "index"
+      }
     }
   ]
 }

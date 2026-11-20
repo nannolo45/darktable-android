@@ -152,6 +152,36 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 }
                 return
             }
+            // brief P3c deliverable 5: a list the engine gives for this photo
+            if (c.binding == Binding.ActionList) {
+                val model = ms.actionLists[c.id] ?: return
+                val entries = model.entries(s.actionLists[o.key to c.id])
+                val cur = model.currentIndex(entries)
+                Sheet("${fullName(m)} · ${c.label ?: ""}", close, maxW) {
+                    for ((i, e) in entries.withIndex()) {
+                        SheetItem(model.label(e), !s.readOnly, selected = i == cur) {
+                            controller.setOverlay(null)
+                            controller.launch { chooseActionList(o.key, c.id, i) }
+                        }
+                    }
+                }
+                return
+            }
+            // brief P3c: a picker setting (exposure's area mode, ...): the app's own value, nothing written to the engine
+            (c.binding as? Binding.Setting)?.let { sb ->
+                val setting = ms.pickerSettings[c.id] ?: return
+                val cur = setting.entryOf(controller.settingValue(s, o.key.op, sb.key))
+                Sheet("${fullName(m)} · ${c.label ?: ""}", close, maxW) {
+                    for ((i, e) in setting.entries.withIndex()) {
+                        val why = setting.unwritable[e.first]
+                        SheetItem(if (why != null) "${e.first} ($why)" else e.first, why == null && !s.readOnly, selected = i == cur) {
+                            controller.setOverlay(null)
+                            controller.launch { chooseSetting(o.key, c.id, i) }
+                        }
+                    }
+                }
+                return
+            }
             val b = c.binding as? Binding.Param ?: return
             val field = ms.params[b.path]
             val cur = app.dtandroid.schema.ParamRuleInputs(ms, m.params).param(b.path)

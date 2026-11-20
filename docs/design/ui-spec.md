@@ -85,3 +85,23 @@ Debug builds also read an optional token override file from the app's own folder
 - While it is open the photo shows the whole uncropped picture; outside the frame it is dimmed (`color.cropDim`); the frame (`color.cropFrame`, `size.cropFrameLine`) has a rule-of-thirds grid (`color.cropGrid`, `size.cropGridLine`) and handles on the four corners and the four sides (`color.cropHandle` on `color.cropHandleFill`, `size.cropHandle`, `size.cropHandleLine`). The info line shows the size of the cropped picture.
 - A drag that starts within a touch target (`size.touch`) of a corner or a side, inside the frame or up to half a target outside it, resizes from there; a drag that starts elsewhere inside the frame moves it. Two fingers, or a drag that starts away from the frame, pinch and pan the photo. The ratio chosen in the aspect list is kept as desktop keeps it; the frame never leaves the picture.
 - The margins' sliders and the aspect list show the frame live and move it. Read-only photos: no tool.
+
+## 7. Colour pickers (brief P3c)
+
+- A control that has a colour picker on desktop (the schema marks it) shows desktop's picker button: at the right of
+  a slider or list, or as its own row ("from image area", "black", "gray", "white", "show color", ...). A picker the
+  app has not built yet is greyed out. The button is shown on (`color.selected` behind it) while its picker is armed.
+- Tapping it arms the picker: as desktop, the module is switched on and the picker picks at once with its last
+  selection, or desktop's first one (a point in the middle; for pickers that take areas only, the area 2 %..98 %).
+  Only one picker is armed; tapping its button again, opening another module, closing the module's panel or opening
+  another photo disarms it.
+- On the photo (`color.pickerFrame` over `color.pickerShadow`, `size.pickerLine`, `size.pickerHandle`,
+  `size.pickerPoint`): a tap places a point (a picker that takes areas only gets a small area of one touch target
+  there); a one-finger drag that starts away from the selection draws a new area; a drag that starts on the area
+  moves it (inside) or resizes it (sides and corners, within a touch target); one on the point moves it. Two fingers
+  pinch and pan. Each lifted finger picks again. The selection is kept in original-image coordinates, so it stays on
+  the same part of the picture when the edit's geometry changes.
+- The line under the photo shows the picked values as desktop's global colour picker does: RGB (0..255) and Lab, the
+  mean, and for an area the min and max.
+- The picker's settings that desktop keeps outside the edit (exposure's area mode and target lightness, color
+  calibration's area mapping) are the app's, for the app's run; changing a target in "correction" mode picks again.

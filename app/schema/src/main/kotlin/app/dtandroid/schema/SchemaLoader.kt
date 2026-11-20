@@ -79,10 +79,12 @@ object SchemaLoader {
                     val vo = v.jsonObject
                     vo.str("name")!! to (vo.int("value") ?: 0)
                 } ?: emptyMap(),
+                min = f.dbl("min"), max = f.dbl("max"),
             )
         }
         val controls = (o["controls"] as? JsonArray)?.map { parseControl(it.jsonObject, params) } ?: emptyList()
         val actions = LinkedHashMap<Int, Pair<String, String>>().also { collectActions(o["controls"] as? JsonArray, it) }
+        val pickerMarks = LinkedHashSet<Int>().also { collectPickers(o["controls"] as? JsonArray, it) }
         val vis = o["visibility"] as? JsonObject
         val sens = o["sensitivity"] as? JsonObject
         val flags = o["flags"] as? JsonObject
@@ -104,7 +106,19 @@ object SchemaLoader {
             actionPaths = actions.mapValues { it.value.first },
             actionKinds = actions.mapValues { it.value.second },
             fieldNames = fieldNames,
+            pickerMarks = pickerMarks,
         )
+    }
+
+    /** Brief P3c: every control with a colour picker (a quad picker button, or a picker toggle button). */
+    private fun collectPickers(cs: JsonArray?, out: MutableSet<Int>) {
+        cs?.forEach {
+            val c = it.jsonObject
+            val id = c.int("id")
+            val quad = c["quad"] as? JsonObject
+            if (id != null && (c.str("kind") == "colorpicker_button" || quad?.bool("colorpicker") == true)) out += id
+            collectPickers(c["children"] as? JsonArray, out)
+        }
     }
 
     /** Action path and kind of every control that has an action path, by id, in tree order. */

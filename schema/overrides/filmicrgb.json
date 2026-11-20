@@ -1,12 +1,94 @@
 {
   "op": "filmicrgb",
-  "reason": "brief P2j: auto tune levels is a colour picker.",
-  "note": [
+  "reason": "brief P3c (was P2j: auto tune levels is a colour picker). The pickers of middle gray luminance, white and black relative exposure and auto tune levels set those sliders from the picked area, as filmicrgb.c's color_picker_apply does (apply_auto_grey, apply_auto_white_point_source, apply_auto_black, apply_autotune, get_pixel_norm, _compute_output_power): app/schema PickerFormulas, formulas filmic_*; desktop's pickers take areas and denoise.",
+  "picker": [
+    {
+      "node": 3,
+      "expect_label": "middle gray luminance",
+      "label": "middle gray luminance from the area",
+      "kinds": [
+        "area"
+      ],
+      "denoise": true,
+      "set_slider": {
+        "formula": "filmic_grey",
+        "writes": {
+          "grey": "grey_point_source",
+          "black": "black_point_source",
+          "white": "white_point_source",
+          "power": "output_power",
+          "security": "security_factor",
+          "target": "grey_point_target",
+          "norm": "preserve_color",
+          "custom_grey": "custom_grey"
+        }
+      }
+    },
+    {
+      "node": 4,
+      "expect_label": "white relative exposure",
+      "label": "white relative exposure from the area",
+      "kinds": [
+        "area"
+      ],
+      "denoise": true,
+      "set_slider": {
+        "formula": "filmic_white",
+        "writes": {
+          "grey": "grey_point_source",
+          "black": "black_point_source",
+          "white": "white_point_source",
+          "power": "output_power",
+          "security": "security_factor",
+          "target": "grey_point_target",
+          "norm": "preserve_color",
+          "custom_grey": "custom_grey"
+        }
+      }
+    },
+    {
+      "node": 5,
+      "expect_label": "black relative exposure",
+      "label": "black relative exposure from the area",
+      "kinds": [
+        "area"
+      ],
+      "denoise": true,
+      "set_slider": {
+        "formula": "filmic_black",
+        "writes": {
+          "grey": "grey_point_source",
+          "black": "black_point_source",
+          "white": "white_point_source",
+          "power": "output_power",
+          "security": "security_factor",
+          "target": "grey_point_target",
+          "norm": "preserve_color",
+          "custom_grey": "custom_grey"
+        }
+      }
+    },
     {
       "node": 7,
       "expect_label": "auto tune levels",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
+      "label": "auto tune levels",
+      "kinds": [
+        "area"
+      ],
+      "denoise": true,
+      "set_slider": {
+        "formula": "filmic_autotune",
+        "writes": {
+          "grey": "grey_point_source",
+          "black": "black_point_source",
+          "white": "white_point_source",
+          "power": "output_power",
+          "security": "security_factor",
+          "target": "grey_point_target",
+          "norm": "preserve_color",
+          "custom_grey": "custom_grey"
+        }
+      }
     }
   ]
 }

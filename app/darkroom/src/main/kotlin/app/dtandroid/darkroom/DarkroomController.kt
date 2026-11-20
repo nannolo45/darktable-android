@@ -27,6 +27,15 @@ import app.dtandroid.schema.layout.BuiltinLayouts
 import app.dtandroid.schema.layout.LayoutCodec
 import app.dtandroid.schema.layout.QuickAccess
 import app.dtandroid.schema.UiSchema
+import app.dtandroid.schema.PickSelection
+import app.dtandroid.schema.PickerFormulas
+import app.dtandroid.schema.PickerReadout
+import app.dtandroid.schema.PickerSetting
+import app.dtandroid.schema.PickerSpec
+import app.dtandroid.schema.PickerTool
+import app.dtandroid.schema.settingNumber
+import app.dtandroid.engine.api.CoordsDirection
+import app.dtandroid.engine.api.PickRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -416,7 +425,7 @@ class DarkroomController(
         _state.update {
             it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
                 expanded = null, overlay = null, message = null, readOnlyReason = null, info = null, syncStep = null, syncProgress = null, lastEdit = null,
-                cropTool = null)
+                cropTool = null, picker = null)
         }
         // told after the state says no photo is open, so the source sees the photo as closed
         if (left != null) source?.left(left)
@@ -473,7 +482,7 @@ class DarkroomController(
             _state.update {
                 it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
                     expanded = null, overlay = null, readOnlyReason = null, loading = false, placeholder = null, working = null, workingProgress = null,
-                    cropTool = null)
+                    cropTool = null, picker = null)
             }
             if (left != null) source?.left(left)
         }
@@ -512,6 +521,9 @@ class DarkroomController(
 
     // ------------------------------------------------------------------ state from the engine
 
+    /** Brief P3c deliverable 5: the last answer of each action list, with the photo and parameters it was read for. */
+    private val listCache = HashMap<Pair<InstanceKey, Int>, Pair<String, kotlinx.serialization.json.JsonElement>>()
+
     private suspend fun refreshLocked() {
         val modules = engine.modules()
         val history = engine.history()
@@ -524,11 +536,23 @@ class DarkroomController(
                 runCatching { engine.moduleAction(m.op, m.priority, g) as? JsonObject }.getOrNull()?.let { actions[m.key] = it }
             }
         }
+        // brief P3c deliverable 5: the lists the engine gives per photo, read again when their instance changed
+        val lists = HashMap<Pair<InstanceKey, Int>, kotlinx.serialization.json.JsonElement>()
+        for (m in modules) {
+            val ms = schema.modules[m.op] ?: continue
+            for ((id, l) in ms.actionLists) {
+                val stamp = "${_state.value.index} ${m.enabled} ${m.params}"
+                val cached = listCache[m.key to id]
+                val answer = if (cached != null && cached.first == stamp) cached.second
+                    else runCatching { engine.moduleAction(m.op, m.priority, l.list) }.getOrNull()?.also { listCache[m.key to id] = stamp to it }
+                if (answer != null) lists[m.key to id] = answer
+            }
+        }
         val info = engine.imageInfo()
         livePatched.clear()
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
-            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded)
+            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists)
         }
     }
 
@@ -552,6 +576,8 @@ class DarkroomController(
             try { refreshLocked() } catch (e: EngineException) { _state.update { it.copy(message = e.message) } }
             // brief P3a: the tool again on the new state (its uncropped picture rendered again only when needed)
             reopenCropLocked(before)
+            // brief P3c: the armed picker's selection follows the geometry; its values are read again
+            pickerAfterChangeLocked(before)
         }
         requestRender()
     }
@@ -571,6 +597,7 @@ class DarkroomController(
     /** Exact entry or reset to default of a slider, through its binding. */
     suspend fun setSlider(key: InstanceKey, binding: Binding, value: Double, integer: Boolean, controlId: Int? = null) {
         if (cropMargin(key, binding, value)) return // brief P3a: a margin of the frame in the crop tool
+        if (binding is Binding.Setting) { if (controlId != null) setSetting(key, controlId, JsonPrimitive(value)); return }
         setSliderNow(key, binding, value, integer, controlId)
     }
 
@@ -613,6 +640,30 @@ class DarkroomController(
         }
     }
 
+    /**
+     * Brief P3c deliverable 5: an entry of a list the engine gives per photo chosen: its parameters (input colour
+     * profile's type and filename) or its module action (denoise's set_profile), one history step.
+     */
+    suspend fun chooseActionList(key: InstanceKey, controlId: Int, index: Int) = change {
+        val model = schema.modules[key.op]?.actionLists?.get(controlId) ?: throw EngineException(EngineError.STATE, "no list here")
+        val entry = model.entries(_state.value.actionLists[key to controlId]).getOrNull(index) ?: throw EngineException(EngineError.STATE, "no such entry")
+        val writes = model.paramWrites(entry)
+        if (writes != null) {
+            // only the fields that change (a built-in profile keeps the empty file name)
+            val m = _state.value.modules.firstOrNull { it.key == key }
+            // a text field may come as a string or as its characters (an array of codes ending in 0)
+            fun text(e: kotlinx.serialization.json.JsonElement?): String? = when (e) {
+                is JsonPrimitive -> e.content
+                is kotlinx.serialization.json.JsonArray -> e.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: 0 }
+                    .takeWhile { it != 0 }.map { it.toChar() }.joinToString("")
+                else -> null
+            }
+            val changed = writes.filter { (k, v) -> text(m?.params?.paramAt(k)) != v.content }
+            if (changed.isNotEmpty()) engine.paramsSet(key.op, key.priority, changed)
+        } else engine.moduleAction(key.op, key.priority, model.action!!, model.args(entry))
+        engine.historySeal()
+    }
+
     /** A computed switch set: the parameters its callback writes, one history step. */
     suspend fun toggleComputed(key: InstanceKey, controlId: Int, on: Boolean) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedToggle ?: throw EngineException(EngineError.STATE, "no switch here")
@@ -649,11 +700,15 @@ class DarkroomController(
             }
             is Binding.Action -> {
                 val cur = _state.value.actionValues[key] ?: (engine.moduleAction(key.op, key.priority, binding.get) as? JsonObject) ?: JsonObject(emptyMap())
-                val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap()
-                args[binding.field] = JsonPrimitive(value)
+                val args = binding.fields.associateWith { f -> cur[f] ?: JsonPrimitive(0.0) }.toMutableMap<String, kotlinx.serialization.json.JsonElement>()
+                // brief P3c: arguments taken from other fields of the answer (white balance's preset name for its fine tuning)
+                for ((arg, field) in binding.argsFrom) cur[field]?.let { args[arg] = it }
+                args[binding.field] = if (binding.round) JsonPrimitive(Math.round(value)) else JsonPrimitive(value)
                 engine.moduleAction(key.op, key.priority, binding.set, JsonObject(args))
             }
             Binding.None -> throw EngineException(EngineError.ARG, "this control has no parameter")
+            is Binding.Setting -> throw EngineException(EngineError.ARG, "a picker setting is not written to the engine")
+            Binding.ActionList -> throw EngineException(EngineError.ARG, "the list is chosen from its entries")
         }
     }
 
@@ -740,6 +795,10 @@ class DarkroomController(
     /** A finger moves a slider: the value shows at once; the engine follows with the latest value. */
     fun drag(key: InstanceKey, controlId: Int, binding: Binding, value: Double, integer: Boolean) {
         if (cropMargin(key, binding, value)) return // brief P3a: the frame in the crop tool follows the margin
+        if (binding is Binding.Setting) { // brief P3c: a picker setting is the app's, the engine is not told
+            _live.update { it + ((key to controlId) to value) }
+            return
+        }
         _live.update { it + ((key to controlId) to value) }
         drags.trySend(Drag(key, controlId, binding, value, integer, end = false))
     }
@@ -748,6 +807,13 @@ class DarkroomController(
     fun endDrag(key: InstanceKey, controlId: Int, binding: Binding, integer: Boolean) {
         if (cropMarginOf(key, binding) != null) return // brief P3a: nothing to write before the tool is left
         val v = _live.value[key to controlId] ?: return
+        if (binding is Binding.Setting) {
+            launch {
+                setSetting(key, controlId, JsonPrimitive(v))
+                _live.update { it - (key to controlId) }
+            }
+            return
+        }
         drags.trySend(Drag(key, controlId, binding, v, integer, end = true))
     }
 
@@ -1189,6 +1255,289 @@ class DarkroomController(
     // brief P3a: asked of the engine inside the change (an open crop tool's frame may have been written first)
     suspend fun undo() = change { if (engine.undoState().canUndo) engine.undo() }
     suspend fun redo() = change { if (engine.undoState().canRedo) engine.redo() }
+
+    // ------------------------------------------------------------------ brief P3c: colour pickers on the photo
+    //
+    // As desktop's color_picker_proxy.c: a picker belongs to a control (the schema marks them, the override files say
+    // what each does, [PickerSpec]); one is armed at a time, for the module whose panel is open. Arming switches the
+    // module on and picks at once, with the picker's last selection or desktop's first one (a point in the middle,
+    // or the area 2 %..98 %), as desktop does; a tap places a point, a drag draws an area, a drag on the selection
+    // moves or resizes it; each lifted finger picks again. The selection is kept in original-image coordinates
+    // (coords_transform), so a change of the edit's geometry keeps it on the same part of the picture.
+
+    /** Each picker's last selection in original-image coordinates (corners of an area, or the point), by control. */
+    private val pickerMemory = HashMap<Pair<InstanceKey, Int>, Pair<List<Pair<Double, Double>>, Boolean>>()
+
+    /** The drag on the selection in progress: what it holds, where it started, the selection then. */
+    private var pickerGrab = PickerTool.GRAB_NONE
+    private var pickerFrom = 0.0 to 0.0
+    private var pickerStart: PickSelection? = null
+    private var pickerDrawing = false
+
+    /** The picker of control [controlId] of [key]'s module, if the app has built it. */
+    fun pickerSpec(key: InstanceKey, controlId: Int): PickerSpec? = schema.modules[key.op]?.pickers?.get(controlId)
+
+    fun pickerArmed(s: DarkroomState, key: InstanceKey, controlId: Int): Boolean =
+        s.picker?.let { it.key == key && it.controlId == controlId } == true
+
+    /** Desktop's picker button: arms the picker (the previous one goes), or disarms it when it is the armed one. */
+    suspend fun togglePicker(key: InstanceKey, controlId: Int) {
+        if (pickerArmed(_state.value, key, controlId)) { disarmPicker(); return }
+        val spec = pickerSpec(key, controlId) ?: return
+        val s0 = _state.value
+        if (s0.readOnly || s0.info == null || s0.modules.none { it.key == key }) return
+        cancelRenders()
+        fg {
+            _state.update { it.copy(message = null, picker = null) }
+            try {
+                commitCropLocked(close = true)
+                val m = _state.value.modules.firstOrNull { it.key == key } ?: return@fg
+                // desktop: "if(module && module->off) gtk_toggle_button_set_active(module->off, TRUE)"
+                if (!m.enabled) { engine.setEnabled(key.op, key.priority, true); engine.historySeal(); refreshLocked() }
+                val sel = pickerRecallLocked(key, controlId, spec)
+                _state.update { it.copy(picker = PickerState(key, controlId, sel, outside = sel == null)) }
+                Timeline.mark("darkroom: picker armed on ${key.op} ${key.priority} control $controlId")
+                applyPickerLocked()
+            } catch (e: EngineException) {
+                _state.update { it.copy(message = e.message) }
+            }
+        }
+        requestRender()
+    }
+
+    /** The picker disarmed (its button tapped again, its module's panel left, another photo). */
+    fun disarmPicker() {
+        if (_state.value.picker == null) return
+        pickerGrab = PickerTool.GRAB_NONE
+        pickerStart = null
+        pickerDrawing = false
+        _state.update { it.copy(picker = null) }
+        Timeline.mark("darkroom: picker disarmed")
+    }
+
+    /** Leaving the picker's module (another module opened, its panel closed, the module gone) disarms it. */
+    private fun pickerCheck() {
+        val p = _state.value.picker ?: return
+        val s = _state.value
+        if (s.expanded != p.key || s.modules.none { it.key == p.key } || s.readOnly) disarmPicker()
+    }
+
+    /** The selection the picker starts with: its last one mapped onto the picture now, else desktop's first one. */
+    private suspend fun pickerRecallLocked(key: InstanceKey, controlId: Int, spec: PickerSpec): PickSelection? {
+        val mem = pickerMemory[key to controlId]
+        if (mem != null) {
+            val (pts, area) = mem
+            val back = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts).points
+            return PickSelection.fromCorners(back, area)
+        }
+        return if (spec.startsWithArea) PickSelection.DEFAULT_AREA else PickSelection.DEFAULT_POINT
+    }
+
+    /** A setting's value: the app's, else the default of the override. */
+    fun settingValue(s: DarkroomState, op: String, key: String): JsonPrimitive? =
+        s.pickerSettings[key] ?: schema.modules[op]?.pickerSettings?.values?.firstOrNull { it.key == key }?.default
+
+    /** The page chosen in tabs control [tabsId] of [key]'s module (0 when none was chosen). */
+    fun tabPage(s: DarkroomState, key: InstanceKey, tabsId: Int): Int = s.tabs[key to tabsId] ?: 0
+
+    fun chooseTab(key: InstanceKey, tabsId: Int, page: Int) = _state.update { it.copy(tabs = it.tabs + ((key to tabsId) to page)) }
+
+    /**
+     * The picker's tab argument: the chosen page while the tabs are shown, else 0 (desktop goes back to the first
+     * channel when the tabs are hidden, rgblevels.c / rgbcurve.c gui_changed).
+     */
+    private fun pickerTab(s: DarkroomState, key: InstanceKey, tabsId: Int): Int {
+        val ms = schema.modules[key.op] ?: return 0
+        val m = s.modules.firstOrNull { it.key == key } ?: return 0
+        val inputs = ParamRuleInputs(ms, m.params)
+        return if (ms.pathTo(tabsId).all { Rules.isVisible(ms, it, inputs) }) tabPage(s, key, tabsId) else 0
+    }
+
+    /**
+     * Pick with the armed picker's selection and do what its control does: the module action (one history item),
+     * the slider set from the values (deliverable 3), or nothing but showing them; then the readout.
+     */
+    private suspend fun applyPickerLocked() {
+        val p = _state.value.picker ?: return
+        val sel = p.selection ?: return
+        val spec = pickerSpec(p.key, p.controlId) ?: return
+        val key = p.key
+        // the selection in original-image coordinates, for later geometry changes and the next arm
+        val orig = engine.coordsTransform(CoordsDirection.TO_ORIGINAL, sel.corners()).points
+        if (orig.none { it == null }) pickerMemory[key to p.controlId] = orig.filterNotNull() to sel.isArea
+        var changed = false
+        try {
+            val action = spec.action
+            val slider = spec.setSlider
+            when {
+                action != null -> {
+                    val s = _state.value
+                    val (name, args) = action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
+                    Timeline.mark("darkroom: picker ${key.op} $name ${args.toString().take(200)}")
+                    val r = engine.moduleAction(key.op, key.priority, name, args) as? JsonObject
+                    engine.historySeal()
+                    changed = true
+                    // desktop shows some results in the settings (exposure's measured lightness)
+                    for ((field, settingKey) in action.results) {
+                        (r?.get(field) as? JsonPrimitive)?.let { v -> _state.update { it.copy(pickerSettings = it.pickerSettings + (settingKey to v)) } }
+                    }
+                }
+                slider != null -> {
+                    val pick = engine.colorPick(key.op, key.priority, PickRequest(sel.area, sel.point, denoise = spec.denoise))
+                    val m = _state.value.modules.firstOrNull { it.key == key } ?: return
+                    val fields = schema.modules[key.op]?.params ?: emptyMap()
+                    val writes = PickerFormulas.apply(slider, if (slider.buffer == "output") pick.output else pick.input, m.params) { name ->
+                        fields[name]?.let { f -> val lo = f.min; val hi = f.max; if (lo != null && hi != null) lo to hi else null }
+                    }
+                    if (writes.isNotEmpty()) {
+                        engine.paramsSet(key.op, key.priority, writes)
+                        engine.historySeal()
+                        changed = true
+                    }
+                }
+            }
+        } catch (e: EngineException) {
+            _state.update { it.copy(message = e.message) }
+        }
+        if (changed) try { refreshLocked() } catch (e: EngineException) { _state.update { it.copy(message = e.message) } }
+        pickerReadoutLocked()
+    }
+
+    /** Deliverable 4: the picked values as desktop's global colour picker shows them, for the line under the photo. */
+    private suspend fun pickerReadoutLocked() {
+        val p = _state.value.picker ?: return
+        val sel = p.selection
+        val lines = if (sel == null) emptyList() else try {
+            PickerReadout.lines(engine.colorPick(null, 0, PickRequest(sel.area, sel.point)).output, sel.isArea)
+        } catch (e: EngineException) {
+            if (e.error == EngineError.CANCELLED) return
+            emptyList()
+        }
+        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines)) } ?: s }
+    }
+
+    /**
+     * After a change of the edit while a picker is armed: the selection mapped again from the original image when
+     * another module changed (it may move pixels), and the readout taken again.
+     */
+    private suspend fun pickerAfterChangeLocked(before: List<ModuleInstance>) {
+        pickerCheck()
+        val p = _state.value.picker ?: return
+        fun others(ms: List<ModuleInstance>) = ms.filter { it.key != p.key }.map { listOf(it.op, it.priority, it.iopOrder, it.enabled, it.params) }
+        if (others(before) != others(_state.value.modules)) {
+            pickerMemory[p.key to p.controlId]?.let { (pts, area) ->
+                val back = try { engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts).points } catch (e: EngineException) { null }
+                if (back != null) {
+                    val sel = PickSelection.fromCorners(back, area)
+                    _state.update { s -> s.picker?.let { s.copy(picker = it.copy(selection = sel ?: it.selection, outside = sel == null)) } ?: s }
+                }
+            }
+        }
+        pickerReadoutLocked()
+    }
+
+    /** What a touch at ([px], [py]) (fractions of the picture) takes hold of; [tx], [ty]: a touch target in fractions. */
+    fun pickerHit(px: Float, py: Float, tx: Float, ty: Float): Int {
+        val p = _state.value.picker ?: return PickerTool.GRAB_NONE
+        return PickerTool.hit(p.selection, px.toDouble(), py.toDouble(), tx.toDouble(), ty.toDouble())
+    }
+
+    /** A finger takes the selection ([grab] from [pickerHit]) or, away from it, starts a new one at ([px], [py]). */
+    fun pickerDragStart(grab: Int, px: Float, py: Float) {
+        val p = _state.value.picker ?: return
+        val spec = pickerSpec(p.key, p.controlId) ?: return
+        pickerFrom = px.toDouble() to py.toDouble()
+        pickerGrab = grab
+        pickerDrawing = grab == PickerTool.GRAB_NONE
+        pickerStart = p.selection
+        if (pickerDrawing && !spec.area) {
+            // a picker that takes points only: the point follows the finger
+            PickerTool.newPoint(px.toDouble().coerceIn(0.0, 1.0), py.toDouble().coerceIn(0.0, 1.0))?.let { np ->
+                pickerStart = np
+                pickerGrab = PickerTool.GRAB_POINT
+                pickerDrawing = false
+                _state.update { s -> s.picker?.let { s.copy(picker = it.copy(selection = np, dragging = true, outside = false)) } ?: s }
+            }
+            return
+        }
+        _state.update { s -> s.picker?.let { s.copy(picker = it.copy(dragging = true)) } ?: s }
+    }
+
+    fun pickerDragMove(px: Float, py: Float) {
+        val (sx, sy) = pickerFrom
+        val sel = if (pickerDrawing) PickerTool.newArea(sx, sy, px.toDouble(), py.toDouble())
+            else pickerStart?.let { PickerTool.drag(it, pickerGrab, sx, sy, px.toDouble(), py.toDouble()) }
+        if (sel != null) _state.update { s -> s.picker?.let { s.copy(picker = it.copy(selection = sel, outside = false)) } ?: s }
+    }
+
+    /** The finger lifts from the selection: pick with it. */
+    fun pickerDragEnd() {
+        val moved = _state.value.picker?.selection != pickerStart
+        pickerGrab = PickerTool.GRAB_NONE
+        pickerDrawing = false
+        pickerStart = null
+        _state.update { s -> s.picker?.let { s.copy(picker = it.copy(dragging = false)) } ?: s }
+        if (moved) launch { pickerApply() }
+    }
+
+    /** A second finger before the selection moved: a pinch, the selection goes back. */
+    fun pickerDragCancel() {
+        val start = pickerStart
+        pickerGrab = PickerTool.GRAB_NONE
+        pickerDrawing = false
+        pickerStart = null
+        _state.update { s -> s.picker?.let { s.copy(picker = it.copy(dragging = false, selection = start ?: it.selection)) } ?: s }
+    }
+
+    /**
+     * A tap at ([px], [py]) places a point; a picker that takes areas only gets a small area there, one touch target
+     * ([tx] x [ty], fractions of the picture) wide.
+     */
+    fun pickerTap(px: Float, py: Float, tx: Float, ty: Float) {
+        val p = _state.value.picker ?: return
+        val spec = pickerSpec(p.key, p.controlId) ?: return
+        val x = px.toDouble()
+        val y = py.toDouble()
+        if (x < 0.0 || x > 1.0 || y < 0.0 || y > 1.0) return
+        val sel = if (spec.point) PickSelection.point(x, y)
+            else PickerTool.newArea(x - tx / 2.0, y - ty / 2.0, x + tx / 2.0, y + ty / 2.0) ?: return
+        _state.update { s -> s.picker?.let { s.copy(picker = it.copy(selection = sel, outside = false)) } ?: s }
+        launch { pickerApply() }
+    }
+
+    /** Pick again with the armed picker's selection (as a change: the render follows). */
+    suspend fun pickerApply() {
+        if (_state.value.picker == null) return
+        cancelRenders()
+        fg {
+            _state.update { it.copy(message = null) }
+            try { applyPickerLocked() } catch (e: EngineException) { _state.update { it.copy(message = e.message) } }
+        }
+        requestRender()
+    }
+
+    /** A picker setting set (a slider, a list entry, a switch); desktop picks again when its condition holds. */
+    suspend fun setSetting(key: InstanceKey, controlId: Int, value: JsonPrimitive) {
+        val setting = schema.modules[key.op]?.pickerSettings?.get(controlId) ?: return
+        _state.update { it.copy(pickerSettings = it.pickerSettings + (setting.key to value)) }
+        reapplyAfterSetting(key, setting)
+    }
+
+    private suspend fun reapplyAfterSetting(key: InstanceKey, setting: PickerSetting) {
+        val p = _state.value.picker ?: return
+        val cond = setting.reapplyWhen ?: return
+        if (p.key != key || pickerSpec(p.key, p.controlId)?.action == null) return
+        val s = _state.value
+        if (cond.all { (k, v) -> PickerSetting.same(settingValue(s, key.op, k), v) }) pickerApply()
+    }
+
+    /** A list setting's entry chosen. */
+    suspend fun chooseSetting(key: InstanceKey, controlId: Int, index: Int) {
+        val setting = schema.modules[key.op]?.pickerSettings?.get(controlId) ?: return
+        val (label, v) = setting.entries.getOrNull(index) ?: return
+        if (label in setting.unwritable) return
+        setSetting(key, controlId, v)
+    }
 
     // ------------------------------------------------------------------ rendering
     //
@@ -1663,11 +2012,13 @@ class DarkroomController(
             if (i >= 0) s.copy(group = GroupTab.Group(i), expanded = key, search = "", forceShow = null, overlay = null)
             else s.copy(group = GroupTab.Active, forceShow = key, expanded = key, search = "", overlay = null)
         }
+        pickerCheck() // brief P3c: another module's panel: the picker goes
         launch { syncCropTool() } // brief P3a: crop's panel opened or another module's
     }
 
     fun toggleExpanded(key: InstanceKey) {
         _state.update { it.copy(expanded = if (it.expanded == key) null else key, overlay = null) }
+        pickerCheck() // brief P3c: leaving the picker's module disarms it
         launch { syncCropTool() } // brief P3a: opening crop's panel opens the tool; closing it or opening another leaves it
     }
 
@@ -1797,7 +2148,8 @@ class DarkroomController(
             }
             is Binding.Action -> (s.actionValues[key]?.get(b.field) as? JsonPrimitive)?.doubleOrNull
             Binding.Computed -> computedValue(s, key, c.id)
-            Binding.None, Binding.Aspect -> c.default
+            Binding.None, Binding.Aspect, Binding.ActionList -> c.default
+            is Binding.Setting -> settingValue(s, key.op, b.key)?.settingNumber() ?: c.default
         }
     }
 

@@ -60,6 +60,11 @@ import app.dtandroid.darkroom.Viewport
 import app.dtandroid.darkroom.CropToolState
 import app.dtandroid.darkroom.PhotoArea
 import app.dtandroid.schema.CropTool
+import app.dtandroid.schema.PickSelection
+import app.dtandroid.schema.PickerTool
+import app.dtandroid.darkroom.PickerState
+import app.dtandroid.darkroom.PhotoGeometry
+import androidx.compose.foundation.layout.heightIn
 import app.dtandroid.engine.api.Exif
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.ui.theme.DtTheme
@@ -123,6 +128,11 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val zoom100 = max(1f, 1f / fit)
     val currentFit by rememberUpdatedState(fit)
     val currentTool by rememberUpdatedState(tool)
+    // brief P3c: the armed colour picker (not while "before" is shown, nor with the crop tool's picture)
+    val picker = s.picker?.takeIf { !s.before && tool == null }
+    val pickerOn = picker != null
+    val currentPicker by rememberUpdatedState(picker)
+    val pickerLook = PickerLook(c.pickerFrame, c.pickerShadow, DtTheme.sizes.pickerLine, DtTheme.sizes.pickerHandle, DtTheme.sizes.pickerPoint)
     val touch = DtTheme.sizes.touch
     val cropLook = CropLook(
         c.cropDim, c.cropFrame, c.cropGrid, c.cropHandle, c.cropHandleFill, DtTheme.sizes.cropFrameLine, DtTheme.sizes.cropGridLine,
@@ -168,7 +178,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         clampCenter()
                     })
                 }
-                .pointerInput(s.index, twoFingerUndo, toolOpen) {
+                .pointerInput(s.index, twoFingerUndo, toolOpen, pickerOn) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var maxPointers = 1
@@ -176,12 +186,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         var zoomed = 1f
                         var upTime = down.uptimeMillis
                         // brief P3a: the photo's point under a finger, as fractions of the picture shown
-                        fun picturePoint(p: Offset): Pair<Float, Float> {
-                            val ds = currentFit * zoom
-                            val left = size.width / 2f - cx * iw * ds
-                            val top = size.height / 2f - cy * ih * ds
-                            return ((p.x - left) / (iw * ds)) to ((p.y - top) / (ih * ds))
-                        }
+                        fun picturePoint(p: Offset): Pair<Float, Float> =
+                            PhotoGeometry.picturePoint(p.x, p.y, size.width, size.height, iw, ih, currentFit, zoom, cx, cy)
                         // brief P3a deliverable 4: "straighten" on: one finger draws the line
                         var line = false
                         val lineFrom = picturePoint(down.position)
@@ -202,10 +208,62 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                 frame = true
                             }
                         }
+                        // brief P3c: with a picker armed, a touch on its area or point moves or resizes it; one
+                        // finger elsewhere draws a new area once it moves (or places a point when it only taps);
+                        // a second finger before that is a pinch
+                        var pick = false
+                        var pickPending = false
+                        var pickMoved = 0f
+                        val pickFrom = picturePoint(down.position)
+                        if (currentPicker != null && currentTool == null) {
+                            val ds = currentFit * zoom
+                            val grab = controller.pickerHit(pickFrom.first, pickFrom.second, touch.toPx() / (iw * ds), touch.toPx() / (ih * ds))
+                            if (grab != PickerTool.GRAB_NONE) {
+                                controller.pickerDragStart(grab, pickFrom.first, pickFrom.second)
+                                down.consume()
+                                pick = true
+                            } else pickPending = true
+                        }
                         do {
                             val ev = awaitPointerEvent()
                             upTime = ev.changes.maxOf { it.uptimeMillis }
                             val pressed = ev.changes.count { it.pressed }
+                            if (pick) {
+                                if (pressed >= 2 && pickMoved < slop) {
+                                    controller.pickerDragCancel()
+                                    pick = false
+                                    maxPointers = max(maxPointers, pressed)
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed && ch.positionChanged()) {
+                                        pickMoved += (ch.position - ch.previousPosition).getDistance()
+                                        val (px, py) = picturePoint(ch.position)
+                                        controller.pickerDragMove(px, py)
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
+                            if (pickPending) {
+                                if (pressed >= 2) {
+                                    pickPending = false
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed) {
+                                        pickMoved = (ch.position - down.position).getDistance()
+                                        if (pickMoved > slop) {
+                                            // a drag away from the selection: a new area (a point for point pickers)
+                                            controller.pickerDragStart(PickerTool.GRAB_NONE, pickFrom.first, pickFrom.second)
+                                            val (px, py) = picturePoint(ch.position)
+                                            controller.pickerDragMove(px, py)
+                                            pick = true
+                                            pickPending = false
+                                        }
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
                             if (line) {
                                 if (pressed >= 2) {
                                     // two fingers: pinch and pan, no line
@@ -254,6 +312,13 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             }
                         } while (ev.changes.any { it.pressed })
                         if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
+                        if (pick) { controller.pickerDragEnd(); return@awaitEachGesture }
+                        if (pickPending) {
+                            // brief P3c: one finger that did not move: a point there
+                            val ds = currentFit * zoom
+                            controller.pickerTap(pickFrom.first, pickFrom.second, touch.toPx() / (iw * ds), touch.toPx() / (ih * ds))
+                            return@awaitEachGesture
+                        }
                         if (line) {
                             val ds = currentFit * zoom
                             val w = iw * ds
@@ -304,6 +369,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 )
             }
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
+            // brief P3c: the armed picker's area or point
+            picker?.selection?.let { sel -> drawPickerSelection(sel, left, top, imgW, imgH, pickerLook) }
             tool?.line?.let { l -> drawStraightenLine(left + l[0] * imgW, top + l[1] * imgH, left + l[2] * imgW, top + l[3] * imgH, cropLook) }
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
@@ -319,6 +386,58 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
 fun cropNote(t: CropToolState): String {
     val (w, h) = t.outputSize()
     return "crop · $w × $h"
+}
+
+/**
+ * Brief P3c: what the line under the photo says while a picker is armed: the picked values as desktop's global colour
+ * picker shows them, or why there are none.
+ */
+fun pickerNote(p: PickerState): List<String> = when {
+    p.outside -> listOf("picker · the selection is outside the picture: tap or drag on the photo")
+    p.dragging -> listOf("picker · lift the finger to pick")
+    p.readout.isEmpty() -> listOf("picker · picking…")
+    else -> p.readout
+}
+
+/** Brief P3c: the colour picker's colours and sizes, from the tokens. */
+class PickerLook(
+    val frame: androidx.compose.ui.graphics.Color, val shadow: androidx.compose.ui.graphics.Color,
+    val line: Dp, val handle: Dp, val point: Dp,
+)
+
+/**
+ * Brief P3c: the picker's selection over the picture drawn at [left], [top], [w] x [h]: an area as a light frame
+ * over a dark outline with square handles on its corners (it can be moved and resized), a point as a cross with a
+ * small square in its middle.
+ */
+fun DrawScope.drawPickerSelection(sel: PickSelection, left: Float, top: Float, w: Float, h: Float, look: PickerLook) {
+    val l = look.line.toPx()
+    val area = sel.area
+    if (area != null) {
+        val x0 = left + area[0].toFloat() * w
+        val y0 = top + area[1].toFloat() * h
+        val x1 = left + area[2].toFloat() * w
+        val y1 = top + area[3].toFloat() * h
+        drawRect(look.shadow, Offset(x0 - l, y0 - l), Size(x1 - x0 + 2 * l, y1 - y0 + 2 * l), style = Stroke(l * 3))
+        drawRect(look.frame, Offset(x0, y0), Size(x1 - x0, y1 - y0), style = Stroke(l))
+        val hs = look.handle.toPx()
+        for (x in listOf(x0, x1)) for (y in listOf(y0, y1)) {
+            drawRect(look.shadow, Offset(x - hs / 2, y - hs / 2), Size(hs, hs))
+            drawRect(look.frame, Offset(x - hs / 2 + l, y - hs / 2 + l), Size(hs - 2 * l, hs - 2 * l), style = Stroke(l))
+        }
+        return
+    }
+    val p = sel.point ?: return
+    val x = left + p[0].toFloat() * w
+    val y = top + p[1].toFloat() * h
+    val r = look.point.toPx()
+    for ((col, t) in listOf(look.shadow to l * 3, look.frame to l)) {
+        drawRect(col, Offset(x - r, y - t / 2), Size(2 * r, t))
+        drawRect(col, Offset(x - t / 2, y - r), Size(t, 2 * r))
+    }
+    val hs = look.handle.toPx() / 2
+    drawRect(look.shadow, Offset(x - hs, y - hs), Size(2 * hs, 2 * hs), style = Stroke(l * 3))
+    drawRect(look.frame, Offset(x - hs, y - hs), Size(2 * hs, 2 * hs), style = Stroke(l))
 }
 
 /** Brief P3a: the crop tool's colours and sizes, from the tokens (ui-spec.md 6). */
@@ -453,6 +572,17 @@ fun cameraName(e: Exif) = listOf(e.maker, e.model).filter { it.isNotBlank() }.jo
 
 @Composable
 fun InfoLine(s: DarkroomState) {
+    // brief P3c deliverable 4: with a picker armed, the picked values (one line, or mean, min and max for an area)
+    s.picker?.let { p ->
+        androidx.compose.foundation.layout.Column(
+            Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.infoLine).semantics { contentDescription = "picked values" },
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+        ) {
+            val lines = pickerNote(p)
+            for (l in lines) DtText(l, DtTheme.type.small, DtTheme.colors.text)
+        }
+        return
+    }
     Box(Modifier.fillMaxWidth().height(DtTheme.sizes.infoLine), contentAlignment = Alignment.Center) {
         // brief P3a: with the crop tool open, the size the cropped picture will have
         val text = s.cropTool?.let { cropNote(it) } ?: s.info?.exif?.let { exifLine(it) } ?: ""

@@ -63,6 +63,9 @@ internal object Overrides {
                 set = b.str("set") ?: throw SchemaException("$file: bind_action without set"),
                 field = b.str("field") ?: throw SchemaException("$file: bind_action without field"),
                 fields = (b["fields"] as? JsonArray)?.map { it.jsonPrimitive.content } ?: emptyList(),
+                argsFrom = (b["args_from"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap(),
+                needs = b.str("needs"),
+                round = (b["round"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true",
             )
             controls = replace(controls, node) { (it as Control.Slider).copy(binding = binding) }
         }
@@ -92,7 +95,9 @@ internal object Overrides {
             controls = replace(controls, node) { (it as Control.ComboBox).copy(binding = Binding.Aspect) }
         }
         val p2j = P2jOverrides.apply(m.copy(controls = controls), o, file)
-        return p2j.copy(overrides = m.overrides + file, aspect = aspect)
+        // brief P3c: colour pickers and their settings
+        val p3c = P3cOverrides.apply(p2j, o, file)
+        return p3c.copy(overrides = m.overrides + file, aspect = aspect)
     }
 
     internal fun replace(cs: List<Control>, id: Int, f: (Control) -> Control): List<Control> = cs.map { c ->

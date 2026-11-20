@@ -13,7 +13,8 @@ per control: module, control label, kind, section.
 Brief P2j: only what is still open is listed, with its class from the override's `note` (b a list not built yet,
 c needs a bridge call, d waits for a later tool); a control the overrides hide (`hide`, class e) or make usable
 (`computed`, `value_list`, `stock_list`, `toggle_writes`, `bind_param`, `bind_action`, `aspect_list`,
-`replace_with_buttons`) is not listed. A control no override mentions is listed with class "?": a schema update
+`replace_with_buttons`; brief P3c: `picker_setting`, a colour picker's setting, `picker`, a control whose
+picker is built, and `action_list`, a list the engine gives per photo) is not listed. A control no override mentions is listed with class "?": a schema update
 that adds an interface-only control shows up there.
 
     python3 -I tools/schema-unbound-controls.py [workflow] [layout] [--check <file>]
@@ -50,7 +51,7 @@ waiting = {}
 for f in sorted((REPO / "schema/overrides").glob("*.json")):
     o = json.loads(f.read_text(encoding="utf-8"))
     for kind in ("bind_action", "aspect_list", "replace_with_buttons", "computed", "value_list", "toggle_writes",
-                 "bind_param", "hide"):
+                 "bind_param", "hide", "picker_setting", "picker", "action_list"):
         for e in o.get(kind, []):
             fixed.add((o["op"], e["node"]))
     sl = o.get("stock_list")

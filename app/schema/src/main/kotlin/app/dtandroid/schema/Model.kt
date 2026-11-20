@@ -17,6 +17,9 @@ data class ParamField(
     val name: String,
     val type: String,
     val enumValues: Map<String, Int>,
+    /** the field's limits from darktable's introspection (`$MIN`, `$MAX`), null for enums and switches */
+    val min: Double? = null,
+    val max: Double? = null,
 )
 
 data class ModuleSchema(
@@ -61,6 +64,18 @@ data class ModuleSchema(
     val hidden: Set<Int> = emptySet(),
     /** every parameter field's name without its index (arrays and text fields included) */
     val fieldNames: Set<String> = emptySet(),
+    /**
+     * Brief P3c: the controls that carry a colour picker on desktop, as the extractor saw them (a slider or list
+     * with the picker as its quad button, `quad.colorpicker`, or a picker toggle button, kind
+     * `colorpicker_button`), by control id.
+     */
+    val pickerMarks: Set<Int> = emptySet(),
+    /** Brief P3c: what each picker does in the app (override `picker`), by control id; marked controls without one are not built. */
+    val pickers: Map<Int, PickerSpec> = emptyMap(),
+    /** Brief P3c: interface-only controls that hold a picker's settings (override `picker_setting`), by control id. */
+    val pickerSettings: Map<Int, PickerSetting> = emptyMap(),
+    /** Brief P3c deliverable 5: lists whose entries a module action gives per photo (override `action_list`), by control id. */
+    val actionLists: Map<Int, ActionList> = emptyMap(),
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {
@@ -100,10 +115,34 @@ sealed interface Binding {
      * read through `module_action(get)`, written through `module_action(set)`
      * with the other fields of the same action kept (override files only).
      */
-    data class Action(val get: String, val set: String, val field: String, val fields: List<String>) : Binding
+    data class Action(
+        val get: String,
+        val set: String,
+        val field: String,
+        val fields: List<String>,
+        /** brief P3c: arguments of [set] taken from another field of [get]'s answer (argument to field) */
+        val argsFrom: Map<String, String> = emptyMap(),
+        /** brief P3c: the control is usable only while [get]'s answer has a value (not null) in this field */
+        val needs: String? = null,
+        /** brief P3c: the value is written as a whole number (white balance's fine tuning steps) */
+        val round: Boolean = false,
+    ) : Binding
 
     /** Not editable: the schema has no parameter for it (S5 "unbound"). */
     data object None : Binding
+
+    /**
+     * Brief P3c: an interface-only control that holds a setting of a colour picker (exposure's area mode and
+     * target lightness, color calibration's area mapping target): kept by the app under [key], as desktop keeps it
+     * in its configuration, and passed to the picker's module action ([ModuleSchema.pickerSettings]).
+     */
+    data class Setting(val key: String) : Binding
+
+    /**
+     * Brief P3c deliverable 5: a list whose entries and current entry a module action gives for the open photo
+     * (input colour profile's profiles, denoise (profiled)'s profiles): [ModuleSchema.actionLists] holds the model.
+     */
+    data object ActionList : Binding
 
     /**
      * Brief P2f: crop's aspect list (override `aspect_list`): an entry sets the ratio parameters and

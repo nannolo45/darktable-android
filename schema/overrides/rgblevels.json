@@ -1,0 +1,71 @@
+{
+  "op": "rgblevels",
+  "reason": "brief P3c. The black, gray and white pickers set the levels of the selected channel from the picked point (module action pick, engine-api.md 6.3; rgblevels.c color_picker_apply), on the channel of the selected tab (tabs shown only with independent channels, rgblevels.c _rgblevels_show_hide_controls; back to R otherwise). \"auto region\" (levels from a region's histogram) has no engine action yet.",
+  "visibility": [
+    {
+      "node": 1,
+      "expect_label": "",
+      "when_all": [
+        {
+          "param": "autoscale",
+          "in": [
+            1
+          ]
+        }
+      ]
+    }
+  ],
+  "picker": [
+    {
+      "node": 7,
+      "expect_action_path": "pickers/black",
+      "label": "black",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "black"
+        },
+        "tab_args": {
+          "channel": 1
+        }
+      }
+    },
+    {
+      "node": 8,
+      "expect_action_path": "pickers/gray",
+      "label": "gray",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "grey"
+        },
+        "tab_args": {
+          "channel": 1
+        }
+      }
+    },
+    {
+      "node": 9,
+      "expect_action_path": "pickers/white",
+      "label": "white",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "white"
+        },
+        "tab_args": {
+          "channel": 1
+        }
+      }
+    }
+  ]
+}
