@@ -1,0 +1,135 @@
+{
+  "op": "crop",
+  "reason": "crop's \"aspect\" list is an interface-only control on desktop (no parameter): its callback _event_aspect_presets_changed (src/iop/crop.c) sets ratio_d and ratio_n from a table and reshapes the frame with _aspect_apply; the flip button (_event_aspect_flip) negates ratio_d; moving a margin keeps the ratio (gui_changed). The table below is crop.c's list of aspects (gui_init, before custom ratios from the configuration), in the order desktop shows it (_aspect_ratio_cmp), with each entry's d and n. The app does the same arithmetic (app/schema CropAspect).",
+  "aspect_list": [
+    {
+      "node": 0,
+      "expect_label": "aspect",
+      "ratio_d": "ratio_d",
+      "ratio_n": "ratio_n",
+      "left": "cx",
+      "top": "cy",
+      "right": "cw",
+      "bottom": "ch",
+      "flip_label": "swap portrait and landscape",
+      "flip_icon": "aspectFlip",
+      "entries": [
+        {
+          "label": "freehand",
+          "d": 0,
+          "n": 0
+        },
+        {
+          "label": "original image",
+          "d": 1,
+          "n": 0
+        },
+        {
+          "label": "square  1.00",
+          "d": 1,
+          "n": 1
+        },
+        {
+          "label": "10:8 in print  1.20",
+          "d": 2445,
+          "n": 2032
+        },
+        {
+          "label": "5:4, 4x5, 8x10  1.25",
+          "d": 5,
+          "n": 4
+        },
+        {
+          "label": "11x14  1.27",
+          "d": 14,
+          "n": 11
+        },
+        {
+          "label": "45x35, portrait  1.29",
+          "d": 45,
+          "n": 35
+        },
+        {
+          "label": "8.5x11, letter  1.29",
+          "d": 110,
+          "n": 85
+        },
+        {
+          "label": "4:3, VGA, TV  1.33",
+          "d": 4,
+          "n": 3
+        },
+        {
+          "label": "5x7  1.40",
+          "d": 7,
+          "n": 5
+        },
+        {
+          "label": "ISO 216, DIN 476, A4  1.41",
+          "d": 14142136,
+          "n": 10000000
+        },
+        {
+          "label": "3:2, 4x6, 35mm  1.50",
+          "d": 3,
+          "n": 2
+        },
+        {
+          "label": "16:10, 8x5  1.60",
+          "d": 16,
+          "n": 10
+        },
+        {
+          "label": "golden cut  1.62",
+          "d": 16180340,
+          "n": 10000000
+        },
+        {
+          "label": "16:9, HDTV  1.78",
+          "d": 16,
+          "n": 9
+        },
+        {
+          "label": "widescreen  1.85",
+          "d": 185,
+          "n": 100
+        },
+        {
+          "label": "1.91:1  1.91",
+          "d": 1080,
+          "n": 566
+        },
+        {
+          "label": "2:1, Univisium  2.00",
+          "d": 2,
+          "n": 1
+        },
+        {
+          "label": "CinemaScope  2.35",
+          "d": 235,
+          "n": 100
+        },
+        {
+          "label": "21:9  2.37",
+          "d": 237,
+          "n": 100
+        },
+        {
+          "label": "anamorphic  2.39",
+          "d": 239,
+          "n": 100
+        },
+        {
+          "label": "65:24, XPan  2.71",
+          "d": 65,
+          "n": 24
+        },
+        {
+          "label": "3:1, panorama  3.00",
+          "d": 300,
+          "n": 100
+        }
+      ]
+    }
+  ]
+}

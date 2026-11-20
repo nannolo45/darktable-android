@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.dtandroid.darkroom.FileThumbnailStore
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.Words
 import app.dtandroid.darkroom.work.WorkFolder
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
@@ -83,7 +84,7 @@ data class TimingsState(val running: String? = null, val text: String? = null, v
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     val schema get() = AppHost.schema
     val work = WorkFolder(File(app.filesDir, "work"))
-    private val thumbs = FileThumbnailStore(File(app.filesDir, "thumbs"))
+    private val thumbs get() = AppHost.localThumbs
     private val scratch = File(app.cacheDir, "out")
 
     /** The darkroom lives in the process since P2e (the background sync uses its engine session too). */
@@ -130,9 +131,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _library.update { it.copy(items = items, thumbnails = t) }
         val lt = agent.photos.value.mapNotNull { r ->
             val f = File(AppHost.work.folder(r.server, r.id), "thumb.rgba")
-            FolderThumb.load(f, AppHost.work.xmp(r))?.let { r.key to it }
+            FolderThumb.load(f)?.let { r.key to it }
         }.toMap()
         _lplThumbs.value = lt
+        refreshThumbnails()
+    }
+
+    private var thumbJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Brief P2f: thumbnails missing or older than their photo's edit are rendered again, as background work
+     * (never while the user works in the darkroom, cancelled when he starts), then the list shows them.
+     */
+    private fun refreshThumbnails() {
+        if (thumbJob?.isActive == true) return
+        thumbJob = AppEngine.scope.launch {
+            if (AppEngine.status.value !is AppEngine.Status.Ready) return@launch
+            val lpl = agent.photos.value.filter { AppHost.work.hasRaw(it) }.map { it to AppHost.itemFor(it.server, it.id) }
+            val local = work.items()
+            val todo = (lpl.map { it.second } + local).filter { AppHost.thumbStale(it) }
+            if (todo.isEmpty()) return@launch
+            if (controller.renderThumbnails(todo) { AppHost.thumbStale(it) } > 0) {
+                _lplThumbs.value = agent.photos.value.mapNotNull { r ->
+                    FolderThumb.load(File(AppHost.work.folder(r.server, r.id), "thumb.rgba"))?.let { r.key to it }
+                }.toMap()
+                _library.update { st -> st.copy(thumbnails = local.mapNotNull { i -> AppHost.localThumbs.load(i)?.let { i.fileName to it } }.toMap()) }
+            }
+        }
     }
 
     fun show(s: Screen) { _screen.value = s }
@@ -144,12 +169,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (uris.isEmpty()) return
         val cr = getApplication<Application>().contentResolver
         viewModelScope.launch {
-            _library.update { it.copy(busy = "copying ${uris.size} file(s)…", messages = emptyList()) }
+            _library.update { it.copy(busy = "copying ${Words.count(uris.size, "file")}…", messages = emptyList()) }
             val r = withContext(Dispatchers.IO) {
                 val incoming = uris.map { u -> WorkFolder.Incoming(displayName(u)) { cr.openInputStream(u) ?: throw java.io.IOException("cannot read $u") } }
                 work.import(incoming)
             }
-            _library.update { it.copy(busy = null, messages = r.messages + "${r.imported.size} photo(s) in the working folder from this pick") }
+            _library.update { it.copy(busy = null, messages = r.messages + "${Words.count(r.imported.size, "photo").replaceFirstChar { it.uppercase() }} copied from this pick") }
             refreshLibrary()
         }
     }
@@ -341,7 +366,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             AppEngine.scope.launch {
                 var ok = true
                 for (id in r.ids.take(1)) ok = runCatching { agent.take(r.origin, id) }.isSuccess && ok
-                controller.showMessage("LightPhotoLibrary sent ${r.ids.size} photo(s); they are in the list")
+                controller.showMessage(if (r.ids.size == 1) "1 photo arrived from LightPhotoLibrary; it is in the list" else "${r.ids.size} photos arrived from LightPhotoLibrary; they are in the list")
                 r.done.complete(ok)
             }
             return
@@ -351,6 +376,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Open a photo of the working set; the server's other photos are the filmstrip. */
     fun openLplPhoto(r: PhotoRecord) {
+        agent.clearNote(r.server, r.id)
         val list = AppHost.records(r.server)
         val ids = list.map { it.id }
         val h = HandOff(r.server, ids, r.id)
@@ -366,6 +392,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun syncNow(r: PhotoRecord) {
+        agent.clearNote(r.server, r.id)
         AppEngine.scope.launch {
             agent.sync(r.server, r.id)
             if (agent.pending().isNotEmpty()) SyncJob.schedule(getApplication())
@@ -490,23 +517,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openTimings() { _screen.value = Screen.TIMINGS }
 
-    /** Run the fixed sequence on the open photo, or on the last opened (or first) photo of the working folder. */
+    /**
+     * Run the fixed sequence on the open photo, whatever its source; with none open, on the last photo the
+     * darkroom opened (LightPhotoLibrary or this phone's files), else on a photo of the working folder
+     * (brief P2f: before, only the working folder was considered, so photos from LightPhotoLibrary could
+     * not be measured unless open). "timings…" in the darkroom's menu keeps the photo open: it only
+     * switches the screen.
+     */
     fun runTimings(screenW: Int, screenH: Int, appVersion: String) {
         if (_timings.value.running != null) return
         AppEngine.scope.launch {
             val ready = AppEngine.status.value as? AppEngine.Status.Ready
             if (ready == null) { _timings.value = TimingsState(text = "the engine is not running"); return@launch }
             if (controller.state.value.info == null) {
-                val items = work.items()
-                if (items.isEmpty()) { _timings.value = TimingsState(text = "open a photo first: the timings run on a photo of the working folder"); return@launch }
-                val i = (lastIndex ?: 0).coerceIn(0, items.size - 1)
-                lastIndex = i
-                _timings.value = TimingsState(running = "opening ${items[i].fileName}", photo = items[i].fileName)
-                controller.start(work.series(), i, filmstrip = false, thumbnails = false)
+                val last = controller.lastOpened?.takeIf { (series, i) -> series.items.getOrNull(i)?.let { File(it.rawPath).isFile } == true }
+                val held = agent.photos.value.lastOrNull { AppHost.work.hasRaw(it) }
+                val (series, i) = when {
+                    last != null -> last
+                    work.items().isNotEmpty() -> work.series() to (lastIndex ?: 0).coerceIn(0, work.items().size - 1)
+                    held != null -> Series("LightPhotoLibrary", listOf(AppHost.itemFor(held.server, held.id))) to 0
+                    else -> { _timings.value = TimingsState(text = "open a photo first: the timings run on the open photo, or on the last one opened"); return@launch }
+                }
+                val name = series.items[i].fileName
+                _timings.value = TimingsState(running = "opening $name", photo = name)
+                controller.start(series, i, filmstrip = false, thumbnails = false)
             }
             val item = controller.state.value.current ?: return@launch
+            if (controller.state.value.info == null) { _timings.value = TimingsState(text = "${item.fileName} did not open: ${controller.state.value.message ?: "?"}"); return@launch }
             _timings.value = TimingsState(running = "starting", photo = item.fileName)
-            val t = Timings(AppEngine.engine, controller, scratch, screenW, screenH, appVersion, AppEngine.engineId, ready.cores)
+            val source = if (AppHost.lplPhotoOf(item) != null) "LightPhotoLibrary (a copy downloaded to this phone)" else "this phone's files (working folder)"
+            val t = Timings(AppEngine.engine, controller, scratch, screenW, screenH, appVersion, AppEngine.engineId, ready.cores, source)
             val r = t.run(item) { step -> _timings.update { it.copy(running = step) } }
             _timings.value = TimingsState(text = r.text, photo = item.fileName)
         }

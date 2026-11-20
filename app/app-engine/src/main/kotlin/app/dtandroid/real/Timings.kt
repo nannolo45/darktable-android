@@ -5,6 +5,8 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.engine.FastCores
 import app.dtandroid.engine.JniEngine
+import app.dtandroid.engine.ModuleTimes
+import app.dtandroid.engine.NativeBridge
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
@@ -35,6 +37,8 @@ class Timings(
     private val appVersion: String,
     private val engineId: String,
     private val cores: FastCores?,
+    /** brief P2f: where the photo comes from, in plain words (no server or person names) */
+    private val source: String = "?",
 ) {
     class Result(val text: String, val lines: List<Pair<String, String>>)
 
@@ -50,10 +54,26 @@ class Timings(
 
     private fun median(v: List<Long>) = v.sorted()[v.size / 2]
 
+    // brief P2f: darktable's per-module times of one render, from its "-d perf" lines in the captured log
+    private fun logMark(): Long = LongArray(1).also { NativeBridge.logSince(Long.MAX_VALUE, it) }[0]
+
+    private fun modulesSince(mark: Long): List<ModuleTimes.Entry> {
+        // the log is read by a thread of its own: give it a moment to take the last lines
+        Thread.sleep(LOG_SETTLE_MS)
+        return ModuleTimes.parse(NativeBridge.logSince(mark, LongArray(1)) ?: "")
+    }
+
+    private inline fun <T> perModule(label: String, block: () -> T): T {
+        val m = logMark()
+        val r = block()
+        put("per module, $label (ms, slowest first)", ModuleTimes.table(modulesSince(m)))
+        return r
+    }
+
     suspend fun run(item: SeriesItem, progress: (String) -> Unit): Result {
         lines.clear()
         scratch.mkdirs()
-        put("what", "dt-android timings (brief P2b); numbers measured on this device")
+        put("what", "dt-android timings (briefs P2b, P2f); numbers measured on this device")
         put("app", appVersion)
         put("engine package", engineId)
         controller.withEngine { e -> sequence(e, item, progress) }
@@ -84,6 +104,14 @@ class Timings(
             put("android api", android.os.Build.VERSION.SDK_INT.toString())
             put("photo", "${File(item.rawPath).length() / 1_000_000} MB RAW, ${File(item.rawPath).extension.uppercase(Locale.ROOT)}" +
                 (if (readOnly) ", read-only (changes not measured)" else ""))
+            // brief P2f: which photo and edit this run measured
+            put("photo source", source)
+            runCatching {
+                val h = e.history()
+                put("edit", "${h.items.size} history items (current position ${h.end})")
+                val on = e.modules().filter { it.enabled }
+                put("modules on (${on.size})", on.joinToString(", ") { if (it.instanceName.isNotEmpty() || it.priority > 0) "${it.op} ${it.instanceName.ifEmpty { it.priority.toString() }}" else it.op })
+            }
 
             progress("open")
             runCatching { e.close() }
@@ -95,8 +123,10 @@ class Timings(
             put("image", "${info.width} x ${info.height} processed, ${info.rawWidth} x ${info.rawHeight} sensor, ${info.imageClass.json}")
 
             progress("first preview")
-            val (p0, tP0) = timed { e.renderPreview(PREVIEW) }
+            val (p0, tP0) = perModule("first preview, every module") { timed { e.renderPreview(PREVIEW) } }
             put("first preview ${p0.width}x${p0.height} ms", ms(tP0))
+            val (_, tInfo2) = timed { e.imageInfo() }
+            put("image info again ms (the darkroom reads it after every change)", ms(tInfo2))
             val (_, tP1) = timed { e.renderPreview(PREVIEW) }
             put("preview again, nothing changed ms", ms(tP1))
 
@@ -109,12 +139,15 @@ class Timings(
                 put("preview after a late module change (color balance rgb) ms", ms(tLate))
                 val exp0 = (e.modules().first { it.op == "exposure" && it.priority == 0 }.params["exposure"] as? JsonPrimitive)?.doubleOrNull ?: 0.0
                 e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.1)); e.historySeal()
-                val (_, tEarly) = timed { e.renderPreview(PREVIEW) }
+                val (_, tEarly) = perModule("preview after an exposure change") { timed { e.renderPreview(PREVIEW) } }
                 put("preview after an early module change (exposure) ms", ms(tEarly))
 
                 progress("drag picture")
                 // the size the app chooses from what it measured so far, then a fixed table of sizes
                 val chosen = controller.dragPicture.size()
+                perModule("drag picture $chosen px after an exposure step") {
+                    e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.11)); e.renderPreview(chosen)
+                }
                 val dragTimes = ArrayList<Long>()
                 for (i in 1..6) {
                     e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.1 + i * 0.02))
@@ -145,12 +178,12 @@ class Timings(
                 val fit = minOf(screenW.toDouble() / info.width, screenH.toDouble() / info.height).coerceAtMost(1.0)
                 val fs = e.renderSize(fit)
                 e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.2)); e.historySeal()
-                val (_, tFit) = timed { e.renderRegion(0, 0, fs.w, fs.h, fit) }
+                val (_, tFit) = perModule("sharp region at fit after an exposure change") { timed { e.renderRegion(0, 0, fs.w, fs.h, fit) } }
                 put("sharp region at fit ${fs.w}x${fs.h} after a change ms", ms(tFit))
                 val w = minOf(screenW, info.width)
                 val h = minOf(screenH, info.height)
                 e.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + 0.25)); e.historySeal()
-                val (_, t100) = timed { e.renderRegion((info.width - w) / 2, (info.height - h) / 2, w, h, 1.0) }
+                val (_, t100) = perModule("sharp region at 100 % after an exposure change") { timed { e.renderRegion((info.width - w) / 2, (info.height - h) / 2, w, h, 1.0) } }
                 put("sharp region at 100 % ${w}x$h after a change ms", ms(t100))
                 put("region rendered in place (no JNI copy)", (!engine.lastRegionCopied).toString())
             }
@@ -188,6 +221,7 @@ class Timings(
 
     companion object {
         const val PREVIEW = 1024
+        private const val LOG_SETTLE_MS = 80L
         val DRAG_SIZES = listOf(256, 384, 512, 640, 768, 1024)
     }
 }

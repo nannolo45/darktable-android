@@ -90,13 +90,16 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val preview = rememberLayer(s.preview)
     val region = rememberLayer(s.region)
     val before = rememberLayer(s.beforePreview)
+    // brief P2f: the best picture already there, while the photo opens or renders
+    val placeholderImage = s.placeholder
+    val placeholder = remember(placeholderImage) { placeholderImage?.toImageBitmap() }
     val info = s.info
     var size by remember { mutableStateOf(IntSize.Zero) }
     var zoom by remember(s.index) { mutableFloatStateOf(1f) }
     var cx by remember(s.index) { mutableFloatStateOf(0.5f) }
     var cy by remember(s.index) { mutableFloatStateOf(0.5f) }
-    val iw = info?.width ?: 1
-    val ih = info?.height ?: 1
+    val iw = info?.width ?: placeholderImage?.width ?: 1
+    val ih = info?.height ?: placeholderImage?.height ?: 1
     val fit = if (size.width > 0) min(size.width.toFloat() / iw, size.height.toFloat() / ih) else 1f
     val zoom100 = max(1f, 1f / fit)
     val currentFit by rememberUpdatedState(fit)
@@ -175,10 +178,10 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             val imgW = iw * ds
             val imgH = ih * ds
             drawRect(c.photoBackground, Offset(left, top), Size(imgW, imgH))
-            val base = if (s.before) before else preview
+            val base = (if (s.before) before else preview)?.bitmap ?: placeholder
             if (base != null) {
                 drawImage(
-                    base.bitmap,
+                    base,
                     dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
                     dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()),
                     filterQuality = FilterQuality.Medium,
@@ -195,6 +198,30 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 )
             }
         }
+        s.working?.let { WorkingNote(it, s.workingProgress, Modifier.align(Alignment.BottomStart)) }
+    }
+}
+
+/**
+ * Brief P2f: a quiet line over the bottom of the photo saying what is happening ("opening…",
+ * "downloading… 40 %", "rendering…"), with a thin bar when the share done is known.
+ */
+@Composable
+fun WorkingNote(text: String, progress: Float?, modifier: Modifier = Modifier) {
+    val c = DtTheme.colors
+    androidx.compose.foundation.layout.Column(modifier.fillMaxWidth().background(c.scrim)
+        .semantics { contentDescription = text }) {
+        DtText(text, DtTheme.type.small, c.textBright, Modifier.padding(horizontal = DtTheme.space.m, vertical = DtTheme.space.xs))
+        if (progress != null) ProgressLine(progress)
+    }
+}
+
+/** A thin progress bar in the slider's colours (brief P2f: downloads and syncs). */
+@Composable
+fun ProgressLine(progress: Float, modifier: Modifier = Modifier) {
+    val c = DtTheme.colors
+    Box(modifier.fillMaxWidth().height(DtTheme.sizes.progressLine).background(c.sliderTrack)) {
+        Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(DtTheme.sizes.progressLine).background(c.sliderFill))
     }
 }
 

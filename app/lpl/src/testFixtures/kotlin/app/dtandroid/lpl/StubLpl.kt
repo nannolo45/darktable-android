@@ -37,6 +37,10 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         @Volatile var previewPosts: Int = 0,
         @Volatile var xmpPosts: Int = 0,
         @Volatile var lastCheckoutTs: String? = null,
+        /** R15: the `agent` of the last XMP post */
+        @Volatile var lastAgent: String? = null,
+        /** R15: the edit events, newest first (only with [StubLpl.r15]) */
+        val edits: MutableList<String> = Collections.synchronizedList(ArrayList()),
     )
 
     class JobRec(val id: Long, val agentId: String?, val kind: String, val ids: List<Long>, val all: Boolean = false) {
@@ -53,6 +57,10 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var delayMs: Long = 0
     /** how many of the next requests are dropped without an answer (connection closed) */
     @Volatile var dropNext: Int = 0
+    /** brief P2f: answer as a server with R15 (edit events; `GET /api/photos/{id}` with `last_edit`); off = an older server */
+    @Volatile var r15: Boolean = false
+    /** brief P2f: answer `GET /api/auth/token` (R14); off = 404 as an older server */
+    @Volatile var r14: Boolean = false
 
     val photos = Collections.synchronizedMap(LinkedHashMap<Long, Photo>())
     val jobs = Collections.synchronizedList(ArrayList<JobRec>())
@@ -127,7 +135,16 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             record(401); json(out, 401, """{"detail":"login required"}"""); return
         }
         val m = Regex("^/api/photos/(\\d+)/(checkout|original|xmp|preview)$").find(p)
+        val detail = Regex("^/api/photos/(\\d+)(/edits)?$").find(p)
         when {
+            r14 && req.method == "GET" && p == "/api/auth/token" -> { record(200); json(out, 200, """{"required":${password.isNotEmpty()},"ok":true}""") }
+            r15 && req.method == "GET" && detail != null -> {
+                val ph = photos[detail.groupValues[1].toLong()]
+                if (ph == null) { record(404); json(out, 404, """{"detail":"photo not found"}"""); return }
+                record(200)
+                if (detail.groupValues[2].isNotEmpty()) json(out, 200, """{"edits":[${synchronized(ph.edits) { ph.edits.joinToString(",") }}]}""")
+                else json(out, 200, """{"id":${ph.id},"filename":"${ph.filename}","last_edit":${synchronized(ph.edits) { ph.edits.firstOrNull() } ?: "null"},"extra":{"ignored":true}}""")
+            }
             req.method == "GET" && p == "/api/auth" -> { record(200); json(out, 200, """{"required":${password.isNotEmpty()},"ok":false}""") }
             req.method == "GET" && p == "/api/status" -> { record(200); json(out, 200, """{"photos":${photos.size},"version":"stub","mode":"nas","server_time":${now()}}""") }
             req.method == "POST" && p == "/api/agents/heartbeat" -> { record(200); heartbeat(out, req) }
@@ -152,6 +169,13 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                         if (!body.decodeToString().contains("x:xmpmeta")) { record(400); json(out, 400, """{"detail":"not a valid XMP file"}"""); return }
                         val ts = req.query["checkout_ts"]?.toDoubleOrNull() ?: 0.0
                         ph.lastCheckoutTs = req.query["checkout_ts"]
+                        ph.lastAgent = req.query["agent"]?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                        if (r15) {
+                            val agent = ph.lastAgent
+                            val dev = agent?.let { a -> heartbeats[a]?.let { Regex("\"name\"\\s*:\\s*\"([^\"]*)\"").find(it)?.groupValues?.get(1) } }
+                            ph.edits.add(0, """{"id":${ph.edits.size + 1},"photo_id":${ph.id},"time":${now()},"source":"agent","agent_id":${agent?.let { "\"$it\"" } ?: "null"},""" +
+                                """"device":${dev?.let { "\"$it\"" } ?: "null"},"device_os":"android","modules":[],"changes":null,"summary":"exposure"}""")
+                        }
                         val merged = ph.metaMtime > ts && ts > 0
                         val stored = if (merged) withRating(body, ph.rating) else body
                         ph.xmp = stored

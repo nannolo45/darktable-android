@@ -91,8 +91,13 @@ class DragAndBeforeTest {
         }
         val c = controller(DragPicture(), store)
         waitFor("preview") { c.state.value.preview != null }
+        // brief P2f: nothing is rendered before the photo the user asked for; the open photo's thumbnail comes from its preview
+        waitFor("thumbnail of the open photo from its preview") { stored[InterfacePreview.fileName(0)]?.let { it.width <= 128 } == true && c.state.value.thumbnails[0]!!.width <= 128 }
+        // the others are made in the background once no photo is open
+        c.closePhoto()
+        c.renderThumbnails(c.state.value.series.items)
         assertEquals(InterfacePreview.COUNT, stored.size)
-        waitFor("thumbnail of the open photo replaced by its preview's") { stored[InterfacePreview.fileName(0)]!!.width <= 128 && c.state.value.thumbnails[0]!!.width <= 128 }
+        assertTrue(stored.values.all { maxOf(it.width, it.height) <= 128 })
         assertTrue(c.state.value.thumbnails.values.all { maxOf(it.width, it.height) <= 128 })
     }
 }

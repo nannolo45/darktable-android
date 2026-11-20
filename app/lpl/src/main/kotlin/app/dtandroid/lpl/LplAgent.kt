@@ -81,6 +81,13 @@ class LplAgent(
     private val _progress = MutableStateFlow<Map<Pair<ServerOrigin, Long>, Progress>>(emptyMap())
     val progress: StateFlow<Map<Pair<ServerOrigin, Long>, Progress>> = _progress.asStateFlow()
 
+    private val _steps = MutableStateFlow<Map<Pair<ServerOrigin, Long>, Step>>(emptyMap())
+    /** R16 (brief P2f deliverable 6): what is being done with each photo now, for the list, the darkroom and the heartbeat. */
+    val steps: StateFlow<Map<Pair<ServerOrigin, Long>, Step>> = _steps.asStateFlow()
+
+    private fun step(o: ServerOrigin, id: Long, s: Step?) =
+        _steps.update { if (s == null) it - (o to id) else it + ((o to id) to s) }
+
     /** Whether the last call to each server got an answer; null = not tried yet. */
     private val _reachable = MutableStateFlow<Map<ServerOrigin, LplException?>>(emptyMap())
     val lastError: StateFlow<Map<ServerOrigin, LplException?>> = _reachable.asStateFlow()
@@ -175,7 +182,7 @@ class LplAgent(
     private fun recover(dir: File, added: Long): PhotoRecord? {
         val id = dir.name.toLongOrNull() ?: return null
         val origin = servers.list().firstOrNull { it.origin.key == dir.parentFile?.name }?.origin ?: return null
-        val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba")
+        val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba", "picture.rgba")
         val name = dir.list().orEmpty().filter { n ->
             n !in known && !n.endsWith(".xmp") && !n.endsWith(".part") && !n.endsWith(".etag") && !n.endsWith(".tmp") && !n.startsWith(".")
         }.singleOrNull() ?: return null
@@ -262,7 +269,8 @@ class LplAgent(
         }
         n = n.copy(status = settledStatus(n))
         put(n)
-        return n
+        refreshLastEdit(r.server, r.id)
+        return record(r.server, r.id) ?: n
     }
 
     private suspend fun download(origin: ServerOrigin, id: Long, held: PhotoRecord?): PhotoRecord {
@@ -296,8 +304,12 @@ class LplAgent(
             }
             val part = work.part(r)
             _progress.update { it + ((origin to id) to Progress(if (part.isFile) part.length() else 0, co.size)) }
+            step(origin, id, Step(Step.DOWNLOADING, if (co.size > 0 && part.isFile) part.length().toDouble() / co.size else null))
             net(origin) { c ->
-                c.downloadOriginal(id, part, co.size, progress = { d, t -> _progress.update { it + ((origin to id) to Progress(d, t)) } })
+                c.downloadOriginal(id, part, co.size, progress = { d, t ->
+                    _progress.update { it + ((origin to id) to Progress(d, t)) }
+                    step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
+                })
             }
             val raw = work.raw(r)
             if (!part.renameTo(raw)) throw LplException(LplFailure.LOCAL, "cannot move the download into place")
@@ -309,11 +321,13 @@ class LplAgent(
             throw e
         } finally {
             _progress.update { it - (origin to id) }
+            step(origin, id, null)
         }
         val ro = runCatching { editor.xmpReadOnly(work.xmp(r)) }.getOrDefault(false)
         r = r.copy(status = PhotoStatus.OPENING, readOnly = ro, error = if (ro) UserText.NEWER_DARKTABLE else "")
         put(r)
-        return r
+        refreshLastEdit(origin, id)
+        return record(origin, id) ?: r
     }
 
     private fun writeLocal(f: File, bytes: ByteArray) {
@@ -403,18 +417,24 @@ class LplAgent(
             // PLAN.md 2.1: an edit made with a newer darktable is never rewritten or sent back
             return SyncOutcome.READ_ONLY
         }
+        val before = if (xmp.isFile) WorkStore.sha256(xmp) else ""
         editor.writeIfOpen(raw, xmp)
+        // brief P2f: whether the darkroom's open changes were written just now (for what the user is told)
+        lastWroteOpen[r.key] = editor.isOpen(raw) && xmp.isFile && WorkStore.sha256(xmp) != before
         if (!xmp.isFile) return SyncOutcome.SYNCED
         val bytes = xmp.readBytes()
         val hash = WorkStore.sha256(bytes)
         r = record(origin, id) ?: return SyncOutcome.NOT_HELD
         if (hash != r.syncedHash || force) {
             mutate(origin, id) { it?.copy(status = PhotoStatus.SYNCING) }
+            step(origin, id, Step(Step.SENDING_EDIT))
             val answer = try {
-                net(origin) { it.postXmp(id, bytes, r.checkoutTs) }
+                net(origin) { it.postXmp(id, bytes, r.checkoutTs, servers.installId) }
             } catch (e: LplException) {
+                step(origin, id, null)
                 return failed(r, e)
             }
+            step(origin, id, null)
             var syncedHash = hash
             if (answer.merged) {
                 // LPL kept its newer rating, labels and tags: take its file, unless the user changed the
@@ -431,6 +451,7 @@ class LplAgent(
                     ?.let { n -> n.copy(status = if (editor.isOpen(raw)) PhotoStatus.EDITING else settledStatus(n)) }
             } ?: return SyncOutcome.NOT_HELD
             work.backup(r).delete()
+            refreshLastEdit(origin, id)
         } else {
             r = mutate(origin, id) { cur ->
                 cur?.takeIf { !editor.isOpen(raw) && (it.status == PhotoStatus.DIRTY || it.status == PhotoStatus.SYNCING) }
@@ -439,6 +460,20 @@ class LplAgent(
         }
         if (r.previewPending) postPreview(r)
         return SyncOutcome.SYNCED
+    }
+
+    /**
+     * R15: ask LightPhotoLibrary for the photo's last edit and keep it with the photo. A server without R15
+     * gives nothing and nothing changes; a failure is ignored (the line is only information).
+     */
+    fun refreshLastEdit(origin: ServerOrigin, id: Long) {
+        val e = try { client(origin).lastEdit(id) } catch (e: LplException) { return } catch (e: IllegalStateException) { return }
+        mutate(origin, id) { cur -> cur?.takeIf { it.lastEdit != e }?.copy(lastEdit = e) }
+    }
+
+    /** R15 for every photo of [origin] the phone holds (the list asks when it opens). */
+    suspend fun refreshLastEdits(origin: ServerOrigin) = withContext(Dispatchers.IO) {
+        for (r in _photos.value.filter { it.server == origin }) refreshLastEdit(origin, r.id)
     }
 
     private fun failed(r: PhotoRecord, e: LplException): SyncOutcome {
@@ -453,13 +488,17 @@ class LplAgent(
         val xmp = work.xmp(r)
         if (!out.isFile || out.lastModified() < xmp.lastModified()) {
             out.delete()
-            val ok = runCatching { editor.renderPreview(work.raw(r), xmp, out) }.getOrDefault(false)
+            step(r.server, r.id, Step(Step.RENDERING_PREVIEW))
+            val ok = try { runCatching { editor.renderPreview(work.raw(r), xmp, out) }.getOrDefault(false) } finally { step(r.server, r.id, null) }
             if (!ok || !out.isFile || out.length() == 0L) { out.delete(); return }
         }
+        step(r.server, r.id, Step(Step.SENDING_PREVIEW))
         try {
             net(r.server) { it.postPreview(r.id, out.readBytes()) }
         } catch (e: LplException) {
             return
+        } finally {
+            step(r.server, r.id, null)
         }
         out.delete()
         mutate(r.server, r.id) { it?.copy(previewPending = false) }
@@ -518,7 +557,8 @@ class LplAgent(
                 r.status == PhotoStatus.EDITING && !editor.isOpen(work.raw(r)) -> settledStatus(r)
                 else -> r.status
             }
-            WorkingSetLine(r.id, r.filename, status, r.checkoutTs, r.syncedTs, r.error)
+            val st = _steps.value[r.key]
+            WorkingSetLine(r.id, r.filename, status, r.checkoutTs, r.syncedTs, r.error, st?.step, st?.progress)
         }
         return AgentState(lines, open, true, version(), message)
     }
@@ -543,8 +583,17 @@ class LplAgent(
     }
 
     suspend fun jobDone(origin: ServerOrigin, job: Job, ok: Boolean) = withContext(Dispatchers.IO) {
-        try { net(origin) { it.jobDone(job.id, ok) } } catch (e: LplException) { /* LPL keeps it as taken */ }
+        ranJobs.remember(origin, job.id, ok)
+        try { net(origin) { it.jobDone(job.id, ok) } } catch (e: LplException) { /* LPL hands it out again (R13); it is then reported, not run */ }
     }
+
+    /**
+     * R13: LightPhotoLibrary hands a job out again when it was never reported done. A job this app already
+     * ran is not run twice: [ranBefore] gives its result, and the caller reports it again.
+     */
+    fun ranBefore(origin: ServerOrigin, job: Job): Boolean? = ranJobs.result(origin, job.id)
+
+    private val ranJobs = RanJobs(File(work.root.parentFile ?: work.root, "ran-jobs.txt"))
 
     /** The ids a job applies to: its list, or every photo held from that server when it says `all`. */
     fun jobIds(origin: ServerOrigin, job: Job): List<Long> =
@@ -556,13 +605,89 @@ class LplAgent(
      */
     suspend fun runSyncOrRelease(origin: ServerOrigin, job: Job): Boolean {
         var ok = true
-        for (id in jobIds(origin, job)) {
+        val ids = jobIds(origin, job)
+        val what = if (job.kind == "release") "save and remove" else "save"
+        var sent = 0; var waiting = 0; var kept = 0; var removed = 0
+        serverNote(origin, "LightPhotoLibrary asked to $what ${count(ids.size)}…")
+        for (id in ids) {
+            val name = record(origin, id)?.filename ?: continue
+            val wasOpen = record(origin, id)?.let { editor.isOpen(work.raw(it)) } == true
+            val hadChanges = record(origin, id)?.let { isDirty(it) } == true
+            note(origin, id, "LightPhotoLibrary asked to $what this photo: sending…")
             val o = sync(origin, id, force = job.kind == "sync")
-            if (o == SyncOutcome.WAITING || o == SyncOutcome.FAILED) { ok = false; continue }
+            val wroteOpen = lastWroteOpen.remove(origin to id) == true
+            val sentText = when {
+                wroteOpen -> "saved your open changes and sent them"
+                wasOpen -> "sent the edit as of your last \"done\" (no changes since)"
+                hadChanges -> "sent the edit"
+                else -> "sent the edit again (LightPhotoLibrary had it already)"
+            }
+            when (o) {
+                SyncOutcome.WAITING, SyncOutcome.FAILED -> {
+                    ok = false; waiting++
+                    note(origin, id, "LightPhotoLibrary asked for this photo; not sent: ${record(origin, id)?.error?.ifEmpty { null } ?: "the server did not answer"}" +
+                        if (o == SyncOutcome.WAITING) "; tried again later" else "")
+                    continue
+                }
+                SyncOutcome.READ_ONLY -> { note(origin, id, "LightPhotoLibrary asked for this photo; not sent: ${UserText.NEWER_DARKTABLE}"); continue }
+                SyncOutcome.NOT_HELD -> continue
+                SyncOutcome.SYNCED -> { sent++; note(origin, id, "$sentText · as LightPhotoLibrary asked") }
+            }
             if (job.kind == "release") {
-                if (remove(origin, id) != RemoveResult.Removed) ok = false
+                when (remove(origin, id)) {
+                    RemoveResult.Removed -> { removed++; note(origin, id, null); serverNote(origin, "$name: $sentText, then removed from this phone, as LightPhotoLibrary asked") }
+                    RemoveResult.OpenInDarkroom -> { ok = false; kept++; note(origin, id, "$sentText; LightPhotoLibrary asked to remove it from this phone: it stays while it is open in the darkroom") }
+                    RemoveResult.Unsynced -> { ok = false; kept++; note(origin, id, "LightPhotoLibrary asked to remove it from this phone: it stays, it has changes LightPhotoLibrary does not have yet") }
+                }
             }
         }
+        val parts = listOfNotNull(
+            if (sent > 0) "${count(sent)} sent" else null,
+            if (removed > 0) "$removed removed from this phone" else null,
+            if (kept > 0) "$kept kept on this phone" else null,
+            if (waiting > 0) "$waiting waiting to sync" else null,
+        )
+        serverNote(origin, "LightPhotoLibrary asked to $what ${count(ids.size)}: " + (parts.joinToString(", ").ifEmpty { "nothing to do" }))
         return ok
     }
+
+    private fun count(n: Int) = if (n == 1) "1 photo" else "$n photos"
+
+    private val lastWroteOpen = ConcurrentHashMap<Pair<ServerOrigin, Long>, Boolean>()
+
+    private val _notes = MutableStateFlow<Map<Pair<ServerOrigin, Long>, String>>(emptyMap())
+    /** Brief P2f: what a job from LightPhotoLibrary did with a photo, in plain words, for its row and the darkroom. */
+    val notes: StateFlow<Map<Pair<ServerOrigin, Long>, String>> = _notes.asStateFlow()
+
+    private val _serverNotes = MutableStateFlow<Map<ServerOrigin, String>>(emptyMap())
+    /** Brief P2f: the last job from each server and how it went, for the list's header. */
+    val serverNotes: StateFlow<Map<ServerOrigin, String>> = _serverNotes.asStateFlow()
+
+    private fun note(o: ServerOrigin, id: Long, text: String?) = _notes.update { if (text == null) it - (o to id) else it + ((o to id) to text) }
+    private fun serverNote(o: ServerOrigin, text: String) = _serverNotes.update { it + (o to text) }
+
+    /** The user saw the note (opened the photo, synced it by hand): drop it. */
+    fun clearNote(o: ServerOrigin, id: Long) = note(o, id, null)
+}
+
+/** The ids of jobs this app ran, with their result, kept on disk (the last [MAX] of them). */
+internal class RanJobs(private val file: File) {
+    private val lines = LinkedHashMap<String, Boolean>()
+
+    init {
+        runCatching { file.readLines() }.getOrNull()?.forEach { l ->
+            val p = l.split(' ')
+            if (p.size == 3) lines[p[0] + " " + p[1]] = p[2] == "ok"
+        }
+    }
+
+    @Synchronized fun result(origin: ServerOrigin, id: Long): Boolean? = lines["${origin.key} $id"]
+
+    @Synchronized fun remember(origin: ServerOrigin, id: Long, ok: Boolean) {
+        lines["${origin.key} $id"] = ok
+        while (lines.size > MAX) lines.remove(lines.keys.first())
+        runCatching { file.parentFile?.mkdirs(); atomicWrite(file, lines.entries.joinToString("") { "${it.key} ${if (it.value) "ok" else "failed"}\n" }.toByteArray()) }
+    }
+
+    companion object { const val MAX = 500 }
 }

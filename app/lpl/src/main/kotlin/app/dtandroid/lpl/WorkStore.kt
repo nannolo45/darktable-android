@@ -37,6 +37,8 @@ data class PhotoRecord(
     val added: Long = 0,
     /** taken back from a folder whose state was lost: the version guard is checked again before a sync */
     val recovered: Boolean = false,
+    /** R15: the last edit as LightPhotoLibrary reported it; null when unknown or the server has no R15 */
+    val lastEdit: LastEdit? = null,
 ) {
     val key get() = server to id
 }
@@ -104,6 +106,7 @@ class WorkStore(val root: File) {
         put("preview_pending", r.previewPending)
         put("added", r.added)
         put("recovered", r.recovered)
+        r.lastEdit?.let { put("last_edit", it.toJson()) }
     }
 
     private fun decode(o: JsonObject): PhotoRecord? {
@@ -116,6 +119,7 @@ class WorkStore(val root: File) {
             o["synced_ts"].num() ?: 0.0, o["synced_hash"].str() ?: "", o["error"].str() ?: "",
             o["read_only"].bool() ?: false, o["preview_pending"].bool() ?: false, o["added"].long() ?: 0,
             o["recovered"].bool() ?: false,
+            LastEdit.fromJson(o["last_edit"]),
         )
     }
 
@@ -131,7 +135,7 @@ class WorkStore(val root: File) {
                 val ext = n.substringAfterLast('.', "").take(10)
                 n = n.take(110) + if (ext.isNotEmpty()) ".$ext" else ""
             }
-            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || n == "preview.jpg" ||
+            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || n == "preview.jpg" || n == "thumb.rgba" || n == "picture.rgba" ||
                 n.endsWith(".xmp", ignoreCase = true) || n.endsWith(".part") || n.endsWith(".tmp") || n.endsWith(".etag")
             ) return "photo-$id"
             return n

@@ -263,6 +263,23 @@ fun SliderControl(
 
 @Composable
 private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
+    // brief P2f: crop's aspect list (override): the entry from ratio_d / ratio_n, and desktop's flip button
+    val aspect = ctx.module.aspect?.takeIf { c.binding == Binding.Aspect && it.controlId == c.id }
+    if (aspect != null) {
+        val p = ctx.instance.params
+        fun int(n: String) = (p.paramAt(n) as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: -1
+        val text = app.dtandroid.schema.CropAspect.label(aspect, int(aspect.ratioD), int(aspect.ratioN))
+        val enabled = sensitive && !ctx.readOnly
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                ListControl(label ?: c.label ?: "", text, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
+            }
+            DtIcon.byKey(aspect.flipIcon)?.let { icon ->
+                DtIconButton(icon, aspect.flipLabel, DtTheme.colors.text, enabled = enabled, onClick = { ctx.controller.launch { flipAspect(ctx.key) } })
+            }
+        }
+        return
+    }
     val current = when (val b = c.binding) {
         is Binding.Param -> ctx.inputs.param(b.path)
         else -> c.entries.getOrNull(c.currentPos)?.value

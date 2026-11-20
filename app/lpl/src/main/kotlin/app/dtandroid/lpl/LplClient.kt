@@ -100,14 +100,33 @@ class LplClient(
      * `X-LPL-Merged: 1` means it put its own newer rating, labels and tags into it, and the app must take
      * that file. Repeated after a transient failure: posting the same edit twice stores the same file.
      */
-    fun postXmp(id: Long, xmp: ByteArray, checkoutTs: Double): XmpAnswer {
-        val path = "/api/photos/$id/xmp?checkout_ts=${formatTs(checkoutTs)}"
+    fun postXmp(id: Long, xmp: ByteArray, checkoutTs: Double, agentId: String? = null): XmpAnswer {
+        // R15: `agent` names the posting device (the heartbeat's id); a server without R15 ignores it
+        val path = "/api/photos/$id/xmp?checkout_ts=${formatTs(checkoutTs)}" +
+            (agentId?.let { "&agent=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: "")
         return call("POST", path, xmp, "application/rdf+xml", retries = settings.retries) { r ->
             val merged = r.header("x-lpl-merged") == "1"
             val body = r.body.readBytes()
             if (body.isEmpty()) throw LplException(LplFailure.BAD_ANSWER, "POST /api/photos/$id/xmp: empty answer")
             XmpAnswer(merged, body)
         }
+    }
+
+    /**
+     * R15: the photo's last edit (`GET /api/photos/{id}`, its `last_edit`). Null when the server has no R15
+     * (the field is absent or null), and when it answers 404 for the call. Other failures are thrown.
+     */
+    fun lastEdit(id: Long): LastEdit? = try {
+        LastEdit.fromJson(callJson("GET", "/api/photos/$id")["last_edit"])
+    } catch (e: LplException) {
+        if (e.failure == LplFailure.NOT_FOUND) null else throw e
+    }
+
+    /** R15: the photo's edits, newest first (`GET /api/photos/{id}/edits`); empty when the server has no R15. */
+    fun edits(id: Long, limit: Int? = null): List<LastEdit> = try {
+        callJson("GET", "/api/photos/$id/edits" + (limit?.let { "?limit=$it" } ?: ""))["edits"].arr()?.mapNotNull { LastEdit.fromJson(it) } ?: emptyList()
+    } catch (e: LplException) {
+        if (e.failure == LplFailure.NOT_FOUND) emptyList() else throw e
     }
 
     /** `POST /api/photos/{id}/preview`: the engine's JPEG becomes LPL's preview of the photo. */
@@ -259,6 +278,17 @@ class LplClient(
         }
         val required = auth["required"].bool() ?: return ServerCheckResult.NotLpl
         val probe = LplClient(origin, { password }, transport, settings, sleep, log)
+        // R14: a call that only checks the password; an older server answers 404 and the status call decides
+        try {
+            val t = probe.callJson("GET", "/api/auth/token", retries = 0)
+            return ServerCheckResult.Lpl(t["required"].bool() ?: required, t["ok"].bool() ?: true, null)
+        } catch (e: LplException) {
+            when (e.failure) {
+                LplFailure.UNAUTHORIZED -> return ServerCheckResult.Lpl(required, false, null)
+                LplFailure.NOT_FOUND -> {}
+                else -> return ServerCheckResult.Failed(e)
+            }
+        }
         return try {
             val st = probe.callJson("GET", "/api/status", retries = 0)
             ServerCheckResult.Lpl(required, true, st["photos"].long())

@@ -6,13 +6,16 @@
 # (JniEngineContractTest) and the scenario tests (RealEngineScenarioTest), and (brief P2e) the
 # LightPhotoLibrary scenarios against the stub server (LplScenarioTest), pull the results.
 #
-#   tools/app/emulator-p2b.sh <app apk> <test apk> <raw> <xmp> <out dir>
+#   tools/app/emulator-p2b.sh <app apk> <test apk> <raw> <xmp> <out dir> [<spektrafilm raw> <spektrafilm xmp>]
+#
+# Brief P2f: the optional pair is darktable-tests' spektrafilm case; P2fScenarioTest.f5 exports it
+# (spektrafilm.jpg), and the workflow compares that with darktable-cli.
 #
 # <out dir> receives device.txt, instrument.txt, instrument-summary.txt, p2b-test/ (results.txt,
 # export.jpg, app-edit.jpg, app-edit.xmp, timings.txt, log.txt), logcat.txt, crashes.txt,
 # timings.txt. Exit status 0 only if every test passed.
 set -uo pipefail
-APK="${1:?}"; TAPK="${2:?}"; RAW="${3:?}"; XMP="${4:?}"; OUT="${5:?}"
+APK="${1:?}"; TAPK="${2:?}"; RAW="${3:?}"; XMP="${4:?}"; OUT="${5:?}"; SFRAW="${6:-}"; SFXMP="${7:-}"
 PKG=app.dtandroid   # app/app-engine/build.gradle.kts (app.dtandroid.real before brief P2e)
 D=/data/local/tmp/p2b
 mkdir -p "$OUT"
@@ -34,13 +37,21 @@ t1=$(now)
 adb shell "rm -rf $D && mkdir -p $D"
 adb push "$RAW" "$D/$(basename "$RAW")" >/dev/null
 adb push "$XMP" "$D/test.xmp" >/dev/null
+SFARGS=()
+if [ -n "$SFRAW" ] && [ -n "$SFXMP" ]; then
+  adb push "$SFRAW" "$D/$(basename "$SFRAW")" >/dev/null
+  adb push "$SFXMP" "$D/spektrafilm.xmp" >/dev/null
+  SFARGS=(-e sfraw "$D/$(basename "$SFRAW")" -e sfxmp "$D/spektrafilm.xmp")
+fi
 adb logcat -c || true
 
 t2=$(now)
-adb shell am instrument -w -r \
-  -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" \
-  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest \
-  "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | tr -d '\r' > "$OUT/instrument.txt"
+# brief P2f: bounded (a test that waits for ever must not hold the job for hours; each test has its own limit too),
+# and written line by line, so a cut-off run still shows which test was running
+timeout 3000 adb shell am instrument -w -r \
+  -e raw "$D/$(basename "$RAW")" -e xmp "$D/test.xmp" "${SFARGS[@]}" \
+  -e class app.dtandroid.real.RealEngineScenarioTest,app.dtandroid.real.JniEngineContractTest,app.dtandroid.real.LplScenarioTest,app.dtandroid.real.P2fScenarioTest \
+  "$PKG.test/androidx.test.runner.AndroidJUnitRunner" 2>&1 | sed -u 's/\r$//' > "$OUT/instrument.txt"
 t3=$(now)
 python3 -I "$(dirname "$0")/instrument-summary.py" "$OUT/instrument.txt" > "$OUT/instrument-summary.txt" 2>&1 || true
 cat "$OUT/instrument-summary.txt"
@@ -52,6 +63,8 @@ for f in $(adb shell run-as $PKG ls files/p2b-test 2>/dev/null | tr -d '\r'); do
 done
 adb shell run-as $PKG du -sk files/engine 2>/dev/null | tr -d '\r' > "$OUT/p2b-test/unpacked-du-kb.txt"
 adb logcat -d > "$OUT/logcat.txt" 2>/dev/null || true
+# brief P2f: the app's own lines without darktable's per-module "-d perf" lines, which fill the log
+grep -vE "dev_pixelpipe\]|DTB_TIMING" "$OUT/logcat.txt" | grep -E " (dt-android|dt-android-test|darktable|TestRunner|AndroidRuntime|DEBUG|libc) *:" > "$OUT/logcat-app.txt" || true
 grep -E " F DEBUG|Fatal signal|FATAL EXCEPTION| E AndroidRuntime| E dt-android" "$OUT/logcat.txt" > "$OUT/crashes.txt" || true
 {
   echo "install_s $(el "$t0" "$t1")"

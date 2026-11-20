@@ -38,6 +38,16 @@ data class Job(val id: Long, val kind: String, val ids: List<Long>, val all: Boo
 
 data class HeartbeatAnswer(val jobs: List<Job>, val serverTime: Double)
 
+/** R16: a step of a download or a sync, with the share done when known. */
+data class Step(val step: String, val progress: Double? = null) {
+    companion object {
+        const val DOWNLOADING = "downloading"
+        const val SENDING_EDIT = "sending edit"
+        const val RENDERING_PREVIEW = "rendering preview"
+        const val SENDING_PREVIEW = "sending preview"
+    }
+}
+
 /** `POST /api/photos/{id}/xmp`'s answer: the XMP as LPL stored it, and whether LPL merged its own metadata into it. */
 class XmpAnswer(val merged: Boolean, val xmp: ByteArray)
 
@@ -49,6 +59,10 @@ data class WorkingSetLine(
     val checkoutTs: Double,
     val syncedTs: Double,
     val error: String,
+    /** R16: what the device is doing with the photo now (`downloading`, `sending edit`, `rendering preview`, `sending preview`) */
+    val step: String? = null,
+    /** R16: the share of [step] done, 0 to 1, when known */
+    val progress: Double? = null,
 )
 
 /** The agent state sent with every heartbeat (PLAN.md 4.1). */
@@ -70,6 +84,9 @@ data class AgentState(
                 put("checkout_ts", plain(l.checkoutTs))
                 put("synced_ts", plain(l.syncedTs))
                 put("error", l.error)
+                // R16: only while a step runs; servers without R16 ignore them
+                l.step?.let { put("step", it) }
+                l.progress?.let { put("progress", it.coerceIn(0.0, 1.0)) }
             })
         })
         put("darktable_running", darktableRunning)

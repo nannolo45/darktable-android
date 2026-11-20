@@ -70,13 +70,33 @@ class JniEngine private constructor() : DarktableEngine {
 
     // ------------------------------------------------------------------ engine thread
 
-    private class Task<T>(val block: () -> T, val cont: CancellableContinuation<T>) : Runnable {
+    private inner class Task<T>(val block: () -> T, val cont: CancellableContinuation<T>) : Runnable {
         val cancelled = AtomicBoolean(false)
         override fun run() {
             if (cancelled.get()) return
-            val r = runCatching(block)
+            // brief P2f: the bridge's threading rule, checked: no two bridge calls ever overlap
+            if (inBridge.incrementAndGet() > 1) overlaps.incrementAndGet()
+            val r = try { runCatching(block) } finally { inBridge.decrementAndGet() }
             r.fold({ cont.resume(it) }, { cont.resumeWithException(it) })
         }
+    }
+
+    private val inBridge = java.util.concurrent.atomic.AtomicInteger(0)
+    private val overlaps = AtomicLong(0)
+    private val cancelsWithoutRender = AtomicLong(0)
+
+    /** Brief P2f: bridge calls that overlapped another (must stay 0), for tests. */
+    val bridgeOverlaps: Long get() = overlaps.get()
+
+    /** Brief P2f: cancels asked while no render ran; not passed to the bridge (dtbridge.h allows a cancel only during a render). */
+    val cancelsOutsideRender: Long get() = cancelsWithoutRender.get()
+
+    /** Brief P2f: true while a render runs on the engine thread; set and cleared under [cancelGuard]. */
+    @Volatile private var rendering = false
+
+    private fun <T> render(block: () -> T): T {
+        synchronized(cancelGuard) { rendering = true }
+        try { return block() } finally { synchronized(cancelGuard) { rendering = false } }
     }
 
     /** Run [block] on the engine thread; skip it if the caller is cancelled before it starts. */
@@ -119,9 +139,19 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     override suspend fun shutdown() = onEngine {
-        if (initialised) NativeBridge.shutdown()
-        initialised = false
+        synchronized(cancelGuard) { if (initialised) NativeBridge.shutdown(); initialised = false }
     }
+
+    /**
+     * Brief P2f: dtbridge.h says dtb_render_cancel() "must not be called concurrently with dtb_close()": it
+     * writes to the pipe of the render in flight, which close frees. The app now cancels often from other
+     * threads (interactive work stopping background renders, P2f), and a background task closes its own
+     * session right after its render; run 44616800258 ended in heap corruption ("Scudo ERROR: corrupted chunk
+     * header"). So [renderCancel] and every call that frees or replaces the session's pipes (open, close,
+     * shutdown) exclude each other with this lock. The lock is held only for the native cancel (a few
+     * instructions) or by the engine thread for the open or close itself.
+     */
+    private val cancelGuard = Any()
 
     override suspend fun engineInfo(): EngineInfo = onEngine { EngineInfo.fromJson(get(NativeBridge.JSON_ENGINE_INFO)) }
 
@@ -152,9 +182,11 @@ class JniEngine private constructor() : DarktableEngine {
 
     // ------------------------------------------------------------------ 2.3 session
 
-    override suspend fun open(rawPath: String, xmpPath: String?) = onEngine { requireInit(); check(NativeBridge.open(rawPath, xmpPath)) }
+    override suspend fun open(rawPath: String, xmpPath: String?) = onEngine {
+        requireInit(); check(synchronized(cancelGuard) { NativeBridge.open(rawPath, xmpPath) })
+    }
 
-    override suspend fun close() = onEngine { requireInit(); check(NativeBridge.close()) }
+    override suspend fun close() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.close() }) }
 
     override suspend fun imageInfo(): ImageInfo = onEngine { ImageInfo.fromJson(get(NativeBridge.JSON_IMAGE_INFO)) }
 
@@ -242,7 +274,7 @@ class JniEngine private constructor() : DarktableEngine {
         requireInit()
         val wh = IntArray(2)
         val st = IntArray(1)
-        val px = NativeBridge.renderPreview(maxSize, wh, st)
+        val px = render { NativeBridge.renderPreview(maxSize, wh, st) }
         check(st[0])
         RenderedImage(wh[0], wh[1], px ?: throw EngineException(EngineError.ENGINE, "no pixels"))
     }
@@ -258,7 +290,7 @@ class JniEngine private constructor() : DarktableEngine {
             throw EngineException(EngineError.ENGINE, "out of memory for a ${w}x$h region")
         }
         val copied = BooleanArray(1)
-        check(NativeBridge.renderRegionInto(x, y, w, h, scale.toFloat(), buf, copied))
+        check(render { NativeBridge.renderRegionInto(x, y, w, h, scale.toFloat(), buf, copied) })
         lastRegionCopied = copied[0]
         RenderedImage(w, h, buf)
     }
@@ -269,10 +301,12 @@ class JniEngine private constructor() : DarktableEngine {
     override fun renderCancel() {
         if (!initialised) return
         cancels.incrementAndGet()
-        NativeBridge.renderCancel()
+        // dtbridge.h: "dtb_render_cancel() may be called from any thread while a render runs on the engine
+        // thread", and never concurrently with dtb_close(): only then is it passed on
+        synchronized(cancelGuard) { if (initialised && rendering) NativeBridge.renderCancel() else cancelsWithoutRender.incrementAndGet() }
     }
 
-    override suspend fun cacheDrop() = onEngine { requireInit(); check(NativeBridge.cacheDrop()) }
+    override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }
 
     // ------------------------------------------------------------------ 2.8 output
 

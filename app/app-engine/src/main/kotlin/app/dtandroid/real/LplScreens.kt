@@ -115,7 +115,7 @@ fun HandOffScreen(vm: AppViewModel) = Page {
                 }
                 is HandOffUi.UnknownServer -> {
                     PanelHeading("a server the app does not know")
-                    Paragraph("The link asks to open ${s.handOff.ids.size} photo(s) from ${s.handOff.server.url}, which is not in the app's list. " +
+                    Paragraph("The link asks to open ${app.dtandroid.darkroom.Words.count(s.handOff.ids.size, "photo")} from ${s.handOff.server.url}, which is not in the app's list. " +
                         "The app contacts only servers you have added.")
                     Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
                         DtTextButton("add this server", { vm.showServerForm(s.handOff) })

@@ -8,9 +8,10 @@ import app.dtandroid.darkroom.PhotoSource
 import app.dtandroid.darkroom.PhotoSourceException
 import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.darkroom.ThumbnailStore
+import app.dtandroid.darkroom.Timeline
+import app.dtandroid.darkroom.RgbaFile
+import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
-import app.dtandroid.engine.api.ExportOptions
-import app.dtandroid.engine.api.ExportProfile
 import app.dtandroid.engine.api.FileLayoutStore
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.lpl.EditorPort
@@ -22,6 +23,7 @@ import app.dtandroid.lpl.ServerNotAddedException
 import app.dtandroid.lpl.ServerOrigin
 import app.dtandroid.lpl.ServerStore
 import app.dtandroid.lpl.SyncOutcome
+import app.dtandroid.lpl.Step as LplStep
 import app.dtandroid.lpl.WorkStore
 import app.dtandroid.schema.SchemaLoader
 import app.dtandroid.schema.layout.BuiltinLayouts
@@ -68,18 +70,66 @@ object AppHost {
     }
 
     /** P2b's thumbnails for the file-picker photos; LPL photos keep theirs in their own folder (file names repeat across a library). */
-    private val thumbs: ThumbnailStore by lazy {
-        val local = FileThumbnailStore(File(app.filesDir, "thumbs"))
+    val localThumbs by lazy { FileThumbnailStore(File(app.filesDir, "thumbs")) }
+
+    private fun lplDir(item: SeriesItem): File? =
+        File(item.rawPath).takeIf { it.path.startsWith(work.root.path + File.separator) }?.parentFile
+
+    /** Thumbnails (and, brief P2f, the last picture) of both kinds of photos. */
+    val thumbs: ThumbnailStore by lazy {
         object : ThumbnailStore {
-            private fun lplFile(item: SeriesItem): File? =
-                File(item.rawPath).takeIf { it.path.startsWith(work.root.path + File.separator) }?.let { File(it.parentFile, "thumb.rgba") }
-            override fun load(item: SeriesItem): RenderedImage? = lplFile(item)?.let { f -> FolderThumb.load(f, File(item.xmpPath)) } ?: local.load(item)
-            override fun store(item: SeriesItem, image: RenderedImage) { lplFile(item)?.let { FolderThumb.store(it, image) } ?: local.store(item, image) }
+            override fun load(item: SeriesItem): RenderedImage? = lplDir(item)?.let { d -> FolderThumb.load(File(d, "thumb.rgba")) } ?: localThumbs.load(item)
+            override fun store(item: SeriesItem, image: RenderedImage) { lplDir(item)?.let { FolderThumb.store(File(it, "thumb.rgba"), image) } ?: localThumbs.store(item, image) }
+            override fun loadPicture(item: SeriesItem): RenderedImage? =
+                lplDir(item)?.let { RgbaFile.read(File(it, "picture.rgba")) } ?: localThumbs.loadPicture(item)
+            override fun storePicture(item: SeriesItem, image: RenderedImage) {
+                lplDir(item)?.let { RgbaFile.write(File(it, "picture.rgba"), image) } ?: localThumbs.storePicture(item, image)
+            }
         }
     }
 
+    /** Brief P2f: the thumbnail is missing or older than the photo's edit: render it again in the background. */
+    fun thumbStale(item: SeriesItem): Boolean {
+        val d = lplDir(item) ?: return localThumbs.stale(item)
+        val f = File(d, "thumb.rgba")
+        val xmp = File(item.xmpPath)
+        return !f.isFile || (xmp.isFile && xmp.lastModified() > f.lastModified())
+    }
+
     val controller: DarkroomController by lazy {
-        DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { it.source = Source }
+        DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
+            c.source = Source
+            // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
+            // brief P2f: what a job from LightPhotoLibrary did with the open photo, said in the darkroom once
+            AppEngine.scope.launch {
+                var said: String? = null
+                agent.notes.collect { notes ->
+                    val item = c.state.value.current?.takeIf { c.state.value.info != null } ?: return@collect
+                    val (origin, id) = lplPhotoOf(item) ?: return@collect
+                    val n = notes[origin to id]
+                    if (n != null && n != said) { said = n; c.showMessage(n) }
+                }
+            }
+            AppEngine.scope.launch {
+                kotlinx.coroutines.flow.combine(c.state, agent.steps, agent.photos) { st, steps, _ -> st.current to steps }.collect { (item, steps) ->
+                    val it0 = item ?: return@collect
+                    val (origin, id) = lplPhotoOf(it0) ?: return@collect
+                    val r = agent.record(origin, id) ?: return@collect
+                    val step = steps[origin to id]
+                    val stepText = step?.let { s -> when (s.step) {
+                        LplStep.SENDING_EDIT -> "syncing: sending the edit"
+                        LplStep.RENDERING_PREVIEW -> "syncing: making the preview"
+                        LplStep.SENDING_PREVIEW -> "syncing: sending the preview"
+                        LplStep.DOWNLOADING -> "downloading"
+                        else -> s.step
+                    } }
+                    val last = if (agent.isDirty(r) && !r.readOnly) "edited here, not synced yet" else r.lastEdit?.line(thisDevice = servers.installId)
+                    val cur = c.state.value
+                    if (cur.syncStep != stepText || cur.syncProgress != step?.progress?.toFloat() || cur.lastEdit != last)
+                        c.setPhotoNotes(it0.rawPath, stepText, step?.progress?.toFloat(), last)
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------ LightPhotoLibrary
@@ -115,17 +165,29 @@ object AppHost {
 
         override suspend fun reloadIfOpen(raw: File, xmp: File) = controller.reloadMetadataIfOpen(raw.path, xmp.path)
 
-        /** darktable's export, 1920 px on the longer side, JPEG quality 90, sRGB (what LPL shows). */
+        /**
+         * The preview LightPhotoLibrary shows: 1920 px on the longer side, JPEG quality 90.
+         *
+         * Brief P2f: rendered as background work through the bridge's full pipe (render_region over the whole
+         * image at the preview's scale), which is darktable's export pipe type (engine/src/render.c), and
+         * encoded here. Unlike dtb_export it can be cancelled between modules: when the user opens a photo
+         * or changes something, this render stops and is started again when the darkroom is quiet
+         * ([DarkroomController.bg]). Before P2f it was dtb_export under the darkroom's lock, which nothing
+         * could interrupt, so a photo opened right after "done" waited for it with a black frame.
+         * Difference: the output profile is the edit's own (colorout; sRGB unless the user changed it), where
+         * the export forced sRGB; the emulator test f2 measures the two against each other.
+         */
         override suspend fun renderPreview(raw: File, xmp: File, out: File): Boolean {
             if (engineReady(10_000) == null) return false
             val tmp = File(out.parentFile, "preview-tmp.jpg")
             tmp.delete()
             return try {
-                controller.withPhotoSession(raw.path, xmp.path) { e ->
-                    e.export(tmp.path, ExportOptions(quality = 90, maxWidth = PREVIEW_SIZE, maxHeight = PREVIEW_SIZE, profile = ExportProfile.SRGB))
-                } ?: return false
+                val img = controller.withPhotoSession(raw.path, xmp.path) { e -> previewPicture(e) } ?: return false
+                PreviewJpeg.write(img, tmp, PREVIEW_QUALITY)
                 tmp.isFile && tmp.length() > 0 && tmp.renameTo(out)
             } catch (e: EngineException) {
+                false
+            } catch (e: java.io.IOException) {
                 false
             } finally {
                 tmp.delete()
@@ -137,6 +199,24 @@ object AppHost {
     }
 
     const val PREVIEW_SIZE = 1920
+    const val PREVIEW_QUALITY = 90
+
+    /** The whole photo at [PREVIEW_SIZE] px on the longer side, from the full pipe (cancellable). */
+    suspend fun previewPicture(e: app.dtandroid.engine.api.DarktableEngine): RenderedImage {
+        Timeline.mark("LPL preview: render start")
+        try {
+            // brief P2f: never render a file darktable found no picture in (see DarkroomController.hasPicture)
+            val info = e.imageInfo()
+            if (info.width <= 0 || info.height <= 0) throw EngineException(EngineError.IO, "no picture in this file")
+            val full = e.renderSize(1.0)
+            val scale = minOf(1.0, PREVIEW_SIZE.toDouble() / maxOf(full.w, full.h))
+            val sz = e.renderSize(scale)
+            return e.renderRegion(0, 0, sz.w, sz.h, scale).also { Timeline.mark("LPL preview: render end") }
+        } catch (ex: EngineException) {
+            Timeline.mark(if (ex.error == EngineError.CANCELLED) "LPL preview: render cancelled" else "LPL preview: render failed")
+            throw ex
+        }
+    }
 
     /** The LPL photo a darkroom item stands for: its folder is `<work>/<server key>/<id>/`. */
     fun lplPhotoOf(item: SeriesItem): Pair<ServerOrigin, Long>? {
@@ -161,10 +241,12 @@ object AppHost {
 
     /** Photos not on the phone are fetched when the darkroom opens them; the next one ahead of time (brief P2e item 4). */
     object Source : PhotoSource {
-        override suspend fun prepare(item: SeriesItem, progress: (String) -> Unit): SeriesItem {
+        override suspend fun prepare(item: SeriesItem, progress: (String, Float?) -> Unit): SeriesItem {
             val (origin, id) = lplPhotoOf(item) ?: throw PhotoSourceException("this photo is not on the phone")
             val watcher = AppEngine.scope.launch {
-                agent.progress.collect { m -> m[origin to id]?.let { p -> progress(progressText(item.fileName, p.done, p.total)) } }
+                agent.progress.collect { m ->
+                    m[origin to id]?.let { p -> progress(progressText(item.fileName, p.done, p.total), if (p.total > 0) p.done.toFloat() / p.total else null) }
+                }
             }
             try {
                 agent.take(origin, id)
@@ -286,6 +368,8 @@ object AppHost {
     const val HEARTBEAT_MS = 2_000L
 
     private suspend fun runJob(origin: ServerOrigin, job: Job) {
+        // R13: a job handed out again (never reported done) that already ran here is reported, not run twice
+        agent.ranBefore(origin, job)?.let { agent.jobDone(origin, job, it); return }
         val ok = when (job.kind) {
             "sync", "release" -> agent.runSyncOrRelease(origin, job)
             "edit", "open" -> {
@@ -311,10 +395,14 @@ object AppHost {
     fun records(origin: ServerOrigin): List<PhotoRecord> = agent.photos.value.filter { it.server == origin }
 }
 
-/** A thumbnail as raw RGBA in the photo's own folder; used only while it is newer than the photo's XMP. */
+/**
+ * A thumbnail as raw RGBA in the photo's own folder. Brief P2f: shown even when older than the photo's XMP
+ * (before P2f it was then dropped, so a photo whose XMP LightPhotoLibrary had just merged showed black);
+ * [AppHost.thumbStale] has it rendered again in the background.
+ */
 internal object FolderThumb {
-    fun load(f: File, xmp: File): RenderedImage? {
-        if (!f.isFile || (xmp.isFile && xmp.lastModified() > f.lastModified())) return null
+    fun load(f: File): RenderedImage? {
+        if (!f.isFile) return null
         return runCatching {
             java.io.DataInputStream(f.inputStream().buffered()).use { s ->
                 val w = s.readInt(); val h = s.readInt()

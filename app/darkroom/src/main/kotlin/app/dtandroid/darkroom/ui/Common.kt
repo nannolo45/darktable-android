@@ -37,13 +37,15 @@ fun DtText(
     color: Color,
     modifier: Modifier = Modifier,
     maxLines: Int = 1,
+    /** brief P2f: file names are shortened in the middle, so the number at their end stays visible */
+    middle: Boolean = false,
 ) {
     BasicText(
         text = text,
         style = style.copy(color = color),
         modifier = modifier,
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
+        maxLines = if (middle) 1 else maxLines,
+        overflow = if (middle) TextOverflow.MiddleEllipsis else TextOverflow.Ellipsis,
     )
 }
 
@@ -80,6 +82,8 @@ fun DtTextButton(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     enabled: Boolean = true,
+    /** brief P2f: less padding, where a title needs the room (the phone's top bar) */
+    compact: Boolean = false,
 ) {
     val c = DtTheme.colors
     Box(
@@ -88,7 +92,7 @@ fun DtTextButton(
             .clip(RoundedCornerShape(DtTheme.sizes.radiusControl))
             .background(if (selected) c.selected else c.header)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = DtTheme.space.xl),
+            .padding(horizontal = if (compact) DtTheme.space.m else DtTheme.space.xl),
         contentAlignment = Alignment.Center,
     ) {
         DtText(label, DtTheme.type.label, when {

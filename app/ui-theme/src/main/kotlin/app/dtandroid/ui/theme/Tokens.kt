@@ -80,6 +80,11 @@ class DtSizes(t: TokenSource) {
     val tabletMinHeight = t.dp("size.tabletMinHeight")
     /** widest a column of text and fields gets on large screens (the LightPhotoLibrary shell's native screens) */
     val formMaxWidth = t.dp("size.formMaxWidth")
+    /** brief P2f: the thin bar of a download, a sync or a photo that opens */
+    val progressLine = t.dp("size.progressLine")
+    /** brief P2f: the thumbnail and the height of a row of the photo list */
+    val listThumb = t.dp("size.listThumb")
+    val listRow = t.dp("size.listRow")
 }
 
 class DtSpace(t: TokenSource) {
