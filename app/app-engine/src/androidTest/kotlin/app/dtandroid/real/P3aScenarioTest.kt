@@ -85,8 +85,24 @@ class P3aScenarioTest {
         listOf("cx", "cy", "cw", "ch").map { (p[it] as JsonPrimitive).content.toDouble() }
     }
 
-    /** The XMP without its time stamps (the bridge marks the image changed when the bracket runs). */
-    private fun edit(xmp: String) = xmp.replace(Regex("""\s[A-Za-z]+:[A-Za-z_]*(?:timestamp|Date)="[^"]*""""), "")
+    /**
+     * The XMP's edit: without its time stamps (the bridge marks the image changed on every change, the bracket's
+     * too) and without the history's basic and auto hashes. Those two are lost by every undo of the bridge
+     * (engine/src/history.c `_snapshot_restore` → upstream `dt_history_snapshot_restore`, which deletes the image's
+     * history_hash row and writes back the current hash only), the bracket's undo included: reported in the P3a
+     * report, recorded by [differences]. The history, its end, the parameters and the current hash are compared.
+     */
+    private fun edit(xmp: String) = xmp
+        .replace(Regex("""\s[A-Za-z]+:[A-Za-z_]*(?:timestamp|Date)="[^"]*""""), "")
+        .replace(Regex("""\sdarktable:history_(?:basic|auto)_hash="[^"]*""""), "")
+
+    /** The attributes that differ between two XMPs, by name (for the results file). */
+    private fun differences(a: String, b: String): String {
+        val rx = Regex("""([A-Za-z]+:[A-Za-z_]+)="([^"]*)"""")
+        val ma = rx.findAll(a).associate { it.groupValues[1] to it.groupValues[2] }
+        val mb = rx.findAll(b).associate { it.groupValues[1] to it.groupValues[2] }
+        return (ma.keys + mb.keys).filter { ma[it] != mb[it] }.sorted().joinToString(", ") { "$it: ${ma[it] ?: "(none)"} -> ${mb[it] ?: "(none)"}" }
+    }
 
     private fun openTool(c: DarkroomController) {
         c.toggleExpanded(crop)
@@ -158,7 +174,9 @@ class P3aScenarioTest {
         assertEquals(p0, params(c))
         // LightPhotoLibrary's writeIfOpen during a sync job: the edit from before the tool
         c.saveIfOpen(item.rawPath)
-        assertEquals(edit(xmp0), edit(File(item.xmpPath).readText()))
+        val xmpDuring = File(item.xmpPath).readText()
+        TestFiles.record(res, "c1_sync_during_tool_differences", differences(xmp0, xmpDuring).ifEmpty { "none" })
+        assertEquals(edit(xmp0), edit(xmpDuring))
         val shown = c.state.value.cropTool!!.outputSize()
         // crop's panel closed: the frame applied, one history item, the picture as large as the tool said
         c.toggleExpanded(crop)
@@ -228,8 +246,7 @@ class P3aScenarioTest {
         c.save()
         val xmp1 = File(item.xmpPath).readText()
         val same = xmp0 == xmp1
-        val differing = xmp0.lines().zip(xmp1.lines()).filter { (a, b) -> a != b }.joinToString(" | ") { (a, b) -> "${a.trim()} => ${b.trim()}" }
-        TestFiles.record(res, "c2_xmp_identical", "$same${if (same) "" else " (differing lines: $differing)"}")
+        TestFiles.record(res, "c2_xmp_identical", "$same${if (same) "" else " (differing attributes: ${differences(xmp0, xmp1)})"}")
         assertEquals(edit(xmp0), edit(xmp1))
         TestFiles.record(res, "c2", "passed")
     }

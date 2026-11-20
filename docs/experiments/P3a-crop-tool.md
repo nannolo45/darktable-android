@@ -100,3 +100,18 @@ that bypasses one instance); it would replace step 2 only.
   drawn on the photo; angle by ashift.c `_calculate_straightening`, ported and checked against 156 reference values
   from the verbatim function). Sign: desktop sets the slider (factor -1) to `slider - angle`, so the parameter
   becomes `rotation + angle`; a horizon falling 2° to the right gives -2°.
+
+## 20 Nov 2026, 11:15 UTC — emulator run 44723479124: real touches work; the bracket's undo drops `history_auto_hash`
+
+- 47 of 49 emulator tests passed; the two P3a cases failed on the XMP comparison. The injected touches (corner,
+  then the whole frame) worked; the history and the parameters were unchanged by the bracket.
+- The XMP written while the tool was open had lost `darktable:history_auto_hash` (current hash unchanged).
+  Cause: upstream `dt_history_snapshot_restore` (src/common/history_snapshot.c `_history_snapshot_restore`) calls
+  `dt_history_delete_on_image_ext`, which removes the image's `history_hash` row, and writes back only
+  `DT_HISTORY_HASH_CURRENT`; the bridge's `undo()` restores through it (engine/src/history.c `_snapshot_restore`).
+  So every undo through the bridge loses the basic and auto hashes, a user's undo as well as the bracket's.
+  Desktop uses them only for the history status (basic / auto-applied / altered: `dt_history_hash_get_status`);
+  with crop on, the status is "altered" with or without the auto hash. Not fixable without an engine change
+  (the bridge would read the hash row before the restore and write basic and auto back after it). Reported first
+  in the report; the emulator test now compares the edit without those two attributes and records exactly which
+  attributes differ.
