@@ -61,6 +61,16 @@ data class ModuleSchema(
     val hidden: Set<Int> = emptySet(),
     /** every parameter field's name without its index (arrays and text fields included) */
     val fieldNames: Set<String> = emptySet(),
+    /**
+     * Brief P3c: the controls that carry a colour picker on desktop, as the extractor saw them (a slider or list
+     * with the picker as its quad button, `quad.colorpicker`, or a picker toggle button, kind
+     * `colorpicker_button`), by control id.
+     */
+    val pickerMarks: Set<Int> = emptySet(),
+    /** Brief P3c: what each picker does in the app (override `picker`), by control id; marked controls without one are not built. */
+    val pickers: Map<Int, PickerSpec> = emptyMap(),
+    /** Brief P3c: interface-only controls that hold a picker's settings (override `picker_setting`), by control id. */
+    val pickerSettings: Map<Int, PickerSetting> = emptyMap(),
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {
@@ -104,6 +114,13 @@ sealed interface Binding {
 
     /** Not editable: the schema has no parameter for it (S5 "unbound"). */
     data object None : Binding
+
+    /**
+     * Brief P3c: an interface-only control that holds a setting of a colour picker (exposure's area mode and
+     * target lightness, color calibration's area mapping target): kept by the app under [key], as desktop keeps it
+     * in its configuration, and passed to the picker's module action ([ModuleSchema.pickerSettings]).
+     */
+    data class Setting(val key: String) : Binding
 
     /**
      * Brief P2f: crop's aspect list (override `aspect_list`): an entry sets the ratio parameters and

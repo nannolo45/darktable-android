@@ -10,6 +10,7 @@ import app.dtandroid.engine.api.StoredLayout
 import app.dtandroid.schema.layout.Layout
 import app.dtandroid.schema.layout.QuickAccess
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /** One photo of the series the darkroom was opened with, in the caller's order. */
 data class SeriesItem(
@@ -144,6 +145,15 @@ data class DarkroomState(
     val lastEdit: String? = null,
     /** Brief P3a: the crop tool on the photo while crop's panel is open; null when it is not open */
     val cropTool: CropToolState? = null,
+    /** Brief P3c: the colour picker armed on a control of the open module; null when none is */
+    val picker: PickerState? = null,
+    /**
+     * Brief P3c: the pickers' settings by key (exposure's target lightness, ...), as desktop keeps them in its
+     * configuration: for the app's run, every photo; a key not here has its default.
+     */
+    val pickerSettings: Map<String, JsonPrimitive> = emptyMap(),
+    /** Brief P3c: the page chosen in a module's tabs, by instance and tabs control (a picker reads its channel there) */
+    val tabs: Map<Pair<InstanceKey, Int>, Int> = emptyMap(),
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

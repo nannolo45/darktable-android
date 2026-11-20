@@ -1,18 +1,45 @@
 {
   "op": "exposure",
-  "reason": "brief P2j: the area mapping waits for the colour picker.",
-  "note": [
+  "reason": "brief P3c (was P2j: the area mapping waited for the colour picker). The exposure slider's picker is desktop's spot exposure mapping (exposure.c color_picker_apply -> _auto_set_exposure; module action spot, engine-api.md 6.3). Its area mode and target lightness are interface-only on desktop (kept in darktable's configuration, darkroom/modules/exposure/lightness): the app keeps them as picker settings and passes them to the action; \"measure\" writes the measured lightness back as the target, as desktop does; a new target in \"correction\" mode applies the armed picker again (_spot_settings_changed_callback).",
+  "picker_setting": [
     {
       "node": 14,
       "expect_label": "area mode",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
+      "key": "exposure/area mode",
+      "entries": {
+        "correction": "correction",
+        "measure": "measure"
+      },
+      "default": "correction"
     },
     {
       "node": 22,
       "expect_label": "lightness",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
+      "key": "exposure/lightness",
+      "default": 50.0,
+      "reapply_when": {
+        "exposure/area mode": "correction"
+      }
+    }
+  ],
+  "picker": [
+    {
+      "node": 5,
+      "expect_label": "exposure",
+      "label": "set the exposure adjustment using the selected area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "spot",
+        "settings": {
+          "mode": "exposure/area mode",
+          "lightness": "exposure/lightness"
+        },
+        "results": {
+          "lightness": "exposure/lightness"
+        }
+      }
     }
   ]
 }

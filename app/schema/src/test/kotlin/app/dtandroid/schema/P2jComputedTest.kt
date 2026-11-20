@@ -316,11 +316,15 @@ class P2jComputedTest {
     }
 
     @Test fun controlsThatWaitSayWhat() {
-        assertEquals("needs the colour picker (a later package)", m("exposure").notes[14])
-        assertNotNull(m("channelmixerrgb").notes[16])
+        // brief P3c: exposure's and color calibration's area mapping controls are picker settings now (changed on
+        // purpose: they waited for the colour picker); the colour checker's controls still wait
+        assertEquals("needs the colour checker tool (a later package)", m("channelmixerrgb").notes[59])
         assertNotNull(m("colorzones").notes[16])
+        assertNull(m("exposure").notes[14])
+        assertNull(m("channelmixerrgb").notes[16])
+        assertTrue(m("exposure").control(14)!!.isEditable)
         // a control with a note is still not editable
-        assertFalse(m("exposure").control(14)!!.isEditable)
+        assertFalse(m("channelmixerrgb").control(59)!!.isEditable)
     }
 
     /** Brief P3b (P2j section 6): lens' "use latest algorithm" through the engine's lens use_latest_md, shown while md_version is 1. */

@@ -235,6 +235,7 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
                 Notices(s)
                 PhotoView(controller, s, DtTheme.space.xxl, twoFingerUndo = false, Modifier.weight(1f).fillMaxWidth())
                 CropRotationRow(controller, s) // brief P3a deliverable 4
+                if (s.picker != null) InfoLine(s) // brief P3c deliverable 4: the picked values under the photo
                 if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripTablet, DtTheme.sizes.thumbTabletWidth, DtTheme.sizes.thumbTabletHeight, centered = true)
             }
             VerticalDivider(Modifier.fillMaxHeight())

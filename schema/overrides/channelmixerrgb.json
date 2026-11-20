@@ -1,6 +1,6 @@
 {
   "op": "channelmixerrgb",
-  "reason": "brief P2j. hue and chroma of a custom illuminant are interface-only on desktop: _illum_xy_callback (src/iop/channelmixerrgb.c) turns them into the illuminant's x, y (dt_Lch_to_xyY at L 100 around D50) and its temperature (xy_to_CCT, below 3000 K CCT_reverse_lookup); gui_changed shows them back from x, y (dt_xyY_to_Lch; the hue only above chroma 0). app/schema Formulas.IlluminantHueChroma repeats both directions. The area mapping and colour checker controls wait for the colour picker and the chart tool.",
+  "reason": "brief P2j. hue and chroma of a custom illuminant are interface-only on desktop: _illum_xy_callback (src/iop/channelmixerrgb.c) turns them into the illuminant's x, y (dt_Lch_to_xyY at L 100 around D50) and its temperature (xy_to_CCT, below 3000 K CCT_reverse_lookup); gui_changed shows them back from x, y (dt_xyY_to_Lch; the hue only above chroma 0). app/schema Formulas.IlluminantHueChroma repeats both directions. The area mapping and colour checker controls wait for the colour picker and the chart tool. Brief P3c: the CAT tab's picker is desktop's _auto_set_illuminant (channelmixerrgb.c color_picker_apply): with a neutral target (lightness 50 %, chroma 0, desktop's area mapping off) module action illuminant_from_area, else spot with the area mapping's target; the area mode, \"take channel mixing into account\" and the target are interface-only on desktop (darkroom/modules/channelmixerrgb/*) and kept by the app as picker settings; a changed target in \"correction\" mode applies the armed picker again (_spot_settings_changed_callback). \"measure\" is not in the engine (engine-api.md 6.3) and stays greyed out.",
   "computed": [
     {
       "node": 11,
@@ -33,36 +33,6 @@
   ],
   "note": [
     {
-      "node": 16,
-      "expect_label": "area mode",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
-    },
-    {
-      "node": 17,
-      "expect_label": "take channel mixing into account",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
-    },
-    {
-      "node": 24,
-      "expect_label": "lightness",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
-    },
-    {
-      "node": 25,
-      "expect_label": "hue",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
-    },
-    {
-      "node": 26,
-      "expect_label": "chroma",
-      "text": "needs the colour picker (a later package)",
-      "class": "d"
-    },
-    {
       "node": 59,
       "expect_label": "chart",
       "text": "needs the colour checker tool (a later package)",
@@ -79,6 +49,84 @@
       "expect_label": "patch scale",
       "text": "needs the colour checker tool (a later package)",
       "class": "d"
+    }
+  ],
+  "picker_setting": [
+    {
+      "node": 16,
+      "expect_label": "area mode",
+      "key": "channelmixerrgb/area mode",
+      "entries": {
+        "correction": "correction",
+        "measure": "measure"
+      },
+      "default": "correction",
+      "unwritable": {
+        "measure": "not in the engine yet (it needs the white balance as desktop's interface reads it)"
+      }
+    },
+    {
+      "node": 17,
+      "expect_label": "take channel mixing into account",
+      "key": "channelmixerrgb/use mixing",
+      "default": true,
+      "reapply_when": {
+        "channelmixerrgb/area mode": "correction"
+      }
+    },
+    {
+      "node": 24,
+      "expect_label": "lightness",
+      "key": "channelmixerrgb/lightness",
+      "default": 50.0,
+      "reapply_when": {
+        "channelmixerrgb/area mode": "correction"
+      }
+    },
+    {
+      "node": 25,
+      "expect_label": "hue",
+      "key": "channelmixerrgb/hue",
+      "default": 0.0,
+      "reapply_when": {
+        "channelmixerrgb/area mode": "correction"
+      }
+    },
+    {
+      "node": 26,
+      "expect_label": "chroma",
+      "key": "channelmixerrgb/chroma",
+      "default": 0.0,
+      "reapply_when": {
+        "channelmixerrgb/area mode": "correction"
+      }
+    }
+  ],
+  "picker": [
+    {
+      "node": 6,
+      "expect_action_path": "picker",
+      "label": "from image area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "spot",
+        "settings": {
+          "mode": "channelmixerrgb/area mode",
+          "use_mixing": "channelmixerrgb/use mixing",
+          "target.lightness": "channelmixerrgb/lightness",
+          "target.hue": "channelmixerrgb/hue",
+          "target.chroma": "channelmixerrgb/chroma"
+        },
+        "instead": {
+          "when": {
+            "channelmixerrgb/lightness": 50.0,
+            "channelmixerrgb/chroma": 0.0
+          },
+          "name": "illuminant_from_area"
+        }
+      }
     }
   ]
 }

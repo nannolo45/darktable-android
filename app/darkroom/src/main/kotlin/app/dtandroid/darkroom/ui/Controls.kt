@@ -51,6 +51,7 @@ import app.dtandroid.schema.ModuleSchema
 import app.dtandroid.schema.ParamRuleInputs
 import app.dtandroid.schema.Rules
 import app.dtandroid.schema.ValueFormat
+import app.dtandroid.schema.settingBool
 import app.dtandroid.ui.icons.DtIcon
 import app.dtandroid.ui.icons.DtIconImage
 import app.dtandroid.ui.theme.DtTheme
@@ -125,7 +126,8 @@ private fun ControlView(c: Control, ctx: PanelContext) {
             DtText(c.label!!.trim(), DtTheme.type.small, DtTheme.colors.textMuted, Modifier.padding(vertical = DtTheme.space.xs), maxLines = 3)
         }
         is Control.ButtonRow -> ButtonRowView(c, ctx)
-        is Control.Unsupported -> Unit // buttons, pickers and graphs: Tier 2 and 3, later work packages
+        // brief P3c: a picker button that stands alone (white balance's "from image area", levels' black, gray, white)
+        is Control.Unsupported -> if (c.id in ctx.module.pickerMarks) PickerButtonRow(c, ctx) // other buttons and graphs: later packages
     }
 }
 
@@ -166,6 +168,19 @@ fun UnavailableControl(label: String, reason: String?) {
 private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
     val value = ctx.controller.sliderValue(ctx.state, ctx.key, c, ctx.live) ?: c.default
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None
+    // brief P3c: a slider with desktop's picker quad gets the picker button at its right, as on desktop
+    if (c.id in ctx.module.pickerMarks && label == null) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { GeneratedSliderBody(c, ctx, enabled, value, label) }
+            PickerButton(ctx, c.id, sensitive)
+        }
+        return
+    }
+    GeneratedSliderBody(c, ctx, enabled, value, label)
+}
+
+@Composable
+private fun GeneratedSliderBody(c: Control.Slider, ctx: PanelContext, enabled: Boolean, value: Double, label: String?) {
     SliderControl(
         label = label ?: c.label ?: "",
         slider = c,
@@ -312,12 +327,28 @@ private fun GeneratedList(c: Control.ComboBox, ctx: PanelContext, sensitive: Boo
         ListControl(label ?: c.label ?: "", text, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
         return
     }
+    // brief P3c: a picker setting shows the app's own value
+    (c.binding as? Binding.Setting)?.let { sb ->
+        val setting = ctx.module.pickerSettings[c.id]
+        val i = setting?.entryOf(ctx.controller.settingValue(ctx.state, ctx.key.op, sb.key)) ?: -1
+        val text = setting?.entries?.getOrNull(i)?.first ?: ""
+        ListControl(label ?: c.label ?: "", text, sensitive && !ctx.readOnly) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
+        return
+    }
     val current = when (val b = c.binding) {
         is Binding.Param -> ctx.inputs.param(b.path)
         else -> c.entries.getOrNull(c.currentPos)?.value
     }
     val entry = c.entries.firstOrNull { it.value == current }?.label ?: current?.toString() ?: ""
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && c.entries.isNotEmpty()
+    // brief P3c: a list with desktop's picker quad (filmic's auto tune levels) gets the picker button at its right
+    if (c.id in ctx.module.pickerMarks && label == null) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { ListControl(c.label ?: "", entry, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) } }
+            PickerButton(ctx, c.id, sensitive)
+        }
+        return
+    }
     ListControl(label ?: c.label ?: "", entry, enabled) { ctx.controller.setOverlay(Overlay.ListEntries(ctx.key, c.id)) }
 }
 
@@ -345,6 +376,14 @@ private fun GeneratedToggle(c: Control.Toggle, ctx: PanelContext, sensitive: Boo
         val on = computed.on(ctx.instance.params)
         ToggleControl(label ?: c.label ?: "", on, sensitive && !ctx.readOnly) {
             ctx.controller.launch { toggleComputed(ctx.key, c.id, !on) }
+        }
+        return
+    }
+    // brief P3c: a picker setting ("take channel mixing into account"): the app's own value
+    if (b is Binding.Setting) {
+        val on = ctx.controller.settingValue(ctx.state, ctx.key.op, b.key)?.settingBool() ?: c.default
+        ToggleControl(label ?: c.label ?: "", on, sensitive && !ctx.readOnly) {
+            ctx.controller.launch { setSetting(ctx.key, c.id, JsonPrimitive(!on)) }
         }
         return
     }
@@ -411,10 +450,11 @@ private const val NO_TURN = 0f
 private fun TabsBlock(c: Control.Tabs, ctx: PanelContext) {
     val pages = c.pages.filter { Rules.isVisible(ctx.module, it, ctx.inputs) }
     if (pages.isEmpty()) return
-    var selected by rememberSaveable(ctx.instance.op, ctx.instance.priority, c.id) { mutableIntStateOf(0) }
+    // brief P3c: the chosen page is the controller's (a picker takes its channel from it)
+    val selected = ctx.controller.tabPage(ctx.state, ctx.key, c.id)
     val page = pages.getOrElse(selected) { pages[0] }
     Column(Modifier.fillMaxWidth().padding(vertical = DtTheme.space.xs)) {
-        DtTabRow(pages, page, { selected = pages.indexOf(it) }, DtTheme.sizes.touch) { p, sel ->
+        DtTabRow(pages, page, { ctx.controller.chooseTab(ctx.key, c.id, pages.indexOf(it)) }, DtTheme.sizes.touch) { p, sel ->
             DtText(p.label ?: "", DtTheme.type.label, if (sel) DtTheme.colors.textBright else DtTheme.colors.textDim)
         }
         Controls(page.children, ctx)
@@ -439,3 +479,41 @@ private fun ButtonRowView(c: Control.ButtonRow, ctx: PanelContext) {
 
 /** Number shown in the exact-entry field. */
 fun exactText(c: Control.Slider, v: Double) = ValueFormat.numberText(c, v)
+
+// ----------------------------------------------------------------------- brief P3c: colour pickers
+
+/**
+ * Desktop's picker button on control [controlId]: arms the picker for that control (the photo shows its selection),
+ * shown on while armed; tapping it again disarms it. A picker the app has not built yet is shown greyed out.
+ */
+@Composable
+fun PickerButton(ctx: PanelContext, controlId: Int, sensitive: Boolean = true) {
+    val spec = ctx.module.pickers[controlId]
+    val armed = ctx.controller.pickerArmed(ctx.state, ctx.key, controlId)
+    val enabled = spec != null && sensitive && !ctx.readOnly
+    val c = DtTheme.colors
+    val what = spec?.label?.takeIf { it.isNotBlank() }
+    val description = when {
+        spec == null -> "colour picker (not available yet)"
+        what != null -> "colour picker: $what"
+        else -> "colour picker"
+    }
+    DtIconButton(
+        DtIcon.ColorPicker, description, if (armed) c.textBright else c.text,
+        onClick = { ctx.controller.launch { togglePicker(ctx.key, controlId) } },
+        modifier = (if (armed) Modifier.background(c.selected) else Modifier).semantics { stateDescription = if (armed) "on" else "off" },
+        enabled = enabled,
+    )
+}
+
+/** A picker button that stands alone on desktop (an icon in a row): its meaning in words, the button at the right. */
+@Composable
+private fun PickerButtonRow(c: Control.Unsupported, ctx: PanelContext) {
+    val spec = ctx.module.pickers[c.id]
+    val text = spec?.label ?: c.tooltip?.lineSequence()?.firstOrNull() ?: "colour picker"
+    val enabled = spec != null && !ctx.readOnly
+    Row(Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.sliderRow), verticalAlignment = Alignment.CenterVertically) {
+        DtText(text, DtTheme.type.label, if (enabled) DtTheme.colors.text else DtTheme.colors.textDisabled, Modifier.weight(1f), maxLines = 2)
+        PickerButton(ctx, c.id)
+    }
+}

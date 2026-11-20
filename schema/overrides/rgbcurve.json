@@ -1,6 +1,6 @@
 {
   "op": "rgbcurve",
-  "reason": "brief P2j. the interpolation method writes the same curve type into curve_type[0..2] (interpolator_callback, src/iop/rgbcurve.c) and is shown from curve_type[0] (gui_update).",
+  "reason": "brief P2j. the interpolation method writes the same curve type into curve_type[0..2] (interpolator_callback, src/iop/rgbcurve.c) and is shown from curve_type[0] (gui_update). Brief P3c: the two pickers next to the channel tabs. \"create curve\" sets the channel's nodes from the picked area (module action set_nodes_from_area; rgbcurve.c color_picker_apply), on the channel of the selected tab (tabs shown only with independent channels, rgbcurve.c _rgbcurve_show_hide_controls; back to R otherwise). \"show color\" marks the picked values on desktop's graph; without the graph the app shows them in the line under the photo.",
   "value_list": [
     {
       "node": 9,
@@ -34,6 +34,45 @@
           }
         }
       ]
+    }
+  ],
+  "visibility": [
+    {
+      "node": 2,
+      "expect_label": "",
+      "when_all": [
+        {
+          "param": "curve_autoscale",
+          "in": [
+            1
+          ]
+        }
+      ]
+    }
+  ],
+  "picker": [
+    {
+      "node": 6,
+      "expect_action_path": "pickers/show color",
+      "label": "show color",
+      "kinds": [
+        "point",
+        "area"
+      ]
+    },
+    {
+      "node": 7,
+      "expect_action_path": "pickers/create curve",
+      "label": "create curve",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "set_nodes_from_area",
+        "tab_args": {
+          "channel": 2
+        }
+      }
     }
   ]
 }
