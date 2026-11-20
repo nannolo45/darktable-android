@@ -1,0 +1,16 @@
+gcc_ref: calls in the curve fit:  4 <_compute_curve>:-><expf@plt>; 7 <_compute_curve>:-><powf@plt>; 8 <process_loglogistic_per_channel._omp_fn.0>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio._omp_fn.0>:-><powf@plt>;
+gcc_nofast: calls in the curve fit:  13 <_compute_curve>:-><powf@plt>; 2 <process_loglogistic_per_channel._omp_fn.0>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio._omp_fn.0>:-><powf@plt>;
+gcc_noerrno_unsafe: calls in the curve fit:  4 <_compute_curve>:-><expf@plt>; 7 <_compute_curve>:-><powf@plt>; 8 <process_loglogistic_per_channel._omp_fn.0>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio._omp_fn.0>:-><powf@plt>;
+gcc_unsafe_only: calls in the curve fit:  13 <_compute_curve>:-><powf@plt>; 2 <process_loglogistic_per_channel._omp_fn.0>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio._omp_fn.0>:-><powf@plt>;
+clang_fast: calls in the curve fit:  11 <commit_params>:-><powf@plt>; 11 <process>:-><powf@plt>; 8 <process_loglogistic_per_channel.omp_outlined>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio.omp_outlined>:-><powf@plt>;
+clang_nofast: calls in the curve fit:  13 <commit_params>:-><powf@plt>; 13 <process>:-><powf@plt>; 8 <process_loglogistic_per_channel.omp_outlined>:-><powf@plt>; 2 <process_loglogistic_rgb_ratio.omp_outlined>:-><powf@plt>;
+gcc_nofast vs gcc_ref 0097: max 3.941e-02 mean 4.952e-03 psnr 45.3 px>1/255 84.414%
+gcc_nofast vs gcc_ref de: max 3.000e-02 mean 2.135e-03 psnr 52.5 px>1/255 3.515%
+gcc_noerrno_unsafe vs gcc_ref 0097: max 0.000e+00 mean 0.000e+00 psnr inf px>1/255 0.000%
+gcc_noerrno_unsafe vs gcc_ref de: max 0.000e+00 mean 0.000e+00 psnr inf px>1/255 0.000%
+gcc_unsafe_only vs gcc_ref 0097: max 3.941e-02 mean 4.952e-03 psnr 45.3 px>1/255 84.414%
+gcc_unsafe_only vs gcc_ref de: max 3.000e-02 mean 2.135e-03 psnr 52.5 px>1/255 3.515%
+clang_fast vs gcc_ref 0097: max 3.941e-02 mean 4.952e-03 psnr 45.3 px>1/255 84.414%
+clang_fast vs gcc_ref de: max 7.410e-03 mean 5.269e-04 psnr 64.6 px>1/255 0.024%
+clang_nofast vs gcc_ref 0097: max 3.941e-02 mean 4.952e-03 psnr 45.3 px>1/255 84.414%
+clang_nofast vs gcc_ref de: max 3.000e-02 mean 2.135e-03 psnr 52.5 px>1/255 3.515%
