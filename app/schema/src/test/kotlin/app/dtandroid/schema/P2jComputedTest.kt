@@ -156,10 +156,14 @@ class P2jComputedTest {
         assertEquals((16f / 9f).toDouble(), aspect.choose(5, JsonObject(emptyMap())).getValue("aspect").double, 0.0)
         assertEquals("3:2 (4x6, 10x15cm)", e[aspect.current(params("aspect" to 1.5))!!].label)
         assertEquals("custom...", e[aspect.current(params("aspect" to 2.2))!!].label)
-        // the defaults (constant border, -1) show, but image (0) and constant border (-1) cannot be written by the bridge
+        // the defaults (constant border, -1) show. Brief P3b (P2j section 6): image (0) and constant border (-1), outside the
+        // field's limits, are written through the engine's borders set_aspect (before P3b they were greyed out)
         assertEquals("constant border", e[aspect.current(params("aspect" to -1.0))!!].label)
-        assertFalse(e.first { it.label == "image" }.enabled)
-        assertFalse(e.first { it.label == "constant border" }.enabled)
+        assertTrue(e.first { it.label == "image" }.enabled)
+        assertTrue(e.first { it.label == "constant border" }.enabled)
+        assertEquals(ModuleWrite("set_aspect", JsonObject(mapOf("aspect" to JsonPrimitive(0)))), aspect.chooseAction(e.indexOfFirst { it.label == "image" }, JsonObject(emptyMap())))
+        assertEquals(ModuleWrite("set_aspect", JsonObject(mapOf("aspect" to JsonPrimitive(-1)))), aspect.chooseAction(e.indexOfFirst { it.label == "constant border" }, JsonObject(emptyMap())))
+        assertEquals("the other entries write parameters", null, aspect.chooseAction(5, JsonObject(emptyMap())))
         val pos = list("borders", 5)
         assertEquals("1/3", pos.entries(JsonObject(emptyMap()))[pos.current(params("pos_h" to 0.335))!!].label)
         assertEquals((3f / 8f).toDouble(), pos.choose(2, JsonObject(emptyMap())).getValue("pos_h").double, 0.0)
@@ -317,5 +321,18 @@ class P2jComputedTest {
         assertNotNull(m("colorzones").notes[16])
         // a control with a note is still not editable
         assertFalse(m("exposure").control(14)!!.isEditable)
+    }
+
+    /** Brief P3b (P2j section 6): lens' "use latest algorithm" through the engine's lens use_latest_md, shown while md_version is 1. */
+    @Test fun lensUseLatestAlgorithmIsAnAction() {
+        val t = m("lens").computed.getValue(24) as ComputedToggle
+        assertFalse("desktop shows it off", t.on(params("md_version" to "DT_IOP_LENS_EMBEDDED_METADATA_VERSION_1")))
+        assertEquals(ModuleWrite("use_latest_md"), t.action(true, params()))
+        assertNull(t.action(false, params()))
+        assertTrue(m("lens").control(24)!!.isEditable)
+        val rule = m("lens").visibility.getValue(24)
+        assertTrue(Rules.holds(rule, ParamRuleInputs(m("lens"), params("md_version" to "DT_IOP_LENS_EMBEDDED_METADATA_VERSION_1"))))
+        assertFalse(Rules.holds(rule, ParamRuleInputs(m("lens"), params("md_version" to "DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2"))))
+        assertNull("no longer a note", m("lens").notes[24])
     }
 }

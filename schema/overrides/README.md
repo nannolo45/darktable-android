@@ -51,6 +51,7 @@ desktop's callback on the parameters (`app/schema`: `Computed.kt`, `Formulas.kt`
 | `value_list` | a fixed list; each entry's `set` is written when chosen; shown is the first entry whose `read` parameters match (`tolerance` for numbers), else `unmatched`; `section` entries are headings; `unwritable` entries are greyed out with the reason |
 | `stock_list` | spektrafilm's film, paper and spectral upsampling lists from the data pack (`tools/spektrafilm-stock-table.py` writes and checks the table) |
 | `toggle_writes` | a switch that writes `set` when switched on, shown on when `on_when` holds |
+| `action` (in a `value_list` entry or a `toggle_writes`) | brief P3b: written through the engine's module action `{"name", "args"}` (engine-api.md 5.4) instead of `set`, for the values desktop's callback writes outside a field's limits; a list entry's `set` still says when it is the one shown |
 | `bind_param` | a control the extractor saw without a parameter but whose callback writes one parameter directly |
 | `note` | one plain line under a control that waits for something (`class` b, c or d of the P2j report) |
 | `hide` | a control that changes nothing on a phone (desktop's configuration only); `reason` says why |

@@ -16,6 +16,11 @@ import androidx.compose.runtime.getValue
 import kotlinx.coroutines.launch
 import app.dtandroid.darkroom.HostAction
 import app.dtandroid.darkroom.ui.DarkroomScreen
+import app.dtandroid.darkroom.ui.ImportFiles
+import app.dtandroid.darkroom.ui.LayoutFiles
+import android.provider.OpenableColumns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import app.dtandroid.ui.theme.DtTheme
 import app.dtandroid.ui.theme.DtTokens
 
@@ -45,6 +50,62 @@ class MainActivity : ComponentActivity() {
         if (uri != null) vm.saveXmpTo(uri)
     }
 
+    /** brief P3b: .dtstyle and .dtpreset files (one or many) through Android's file picker, no storage permission */
+    private val importStyles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        val work = cacheDir
+        AppEngine.scope.launch {
+            val files = withContext(Dispatchers.IO) { uris.mapNotNull { uri -> readPicked(uri) } }
+            vm.controller.stylesPresets.import(files, work)
+        }
+    }
+
+    private val importFiles = object : ImportFiles {
+        override fun pickImport() = importStyles.launch(arrayOf("*/*"))
+    }
+
+    /** brief P3b: module layouts (.dtpreset) in and out through the file picker, as in the interface preview */
+    private val importLayouts = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        AppEngine.scope.launch {
+            val files = withContext(Dispatchers.IO) { uris.mapNotNull { uri -> readPicked(uri) } }
+            vm.controller.layoutEditor.import(files)
+        }
+    }
+
+    private var pendingLayout: ByteArray? = null
+
+    private val exportLayout = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        val bytes = pendingLayout ?: return@registerForActivityResult
+        pendingLayout = null
+        if (uri == null) return@registerForActivityResult
+        val ok = runCatching { contentResolver.openOutputStream(uri, "wt")!!.use { it.write(bytes) } }.isSuccess
+        vm.controller.layoutEditor.message(if (ok) "exported ${displayName(uri)}" else "the file could not be written")
+    }
+
+    private val layoutFiles = object : LayoutFiles {
+        override fun pickImport() = importLayouts.launch(arrayOf("*/*"))
+        override fun export(fileName: String, bytes: ByteArray) {
+            pendingLayout = bytes
+            exportLayout.launch(fileName)
+        }
+    }
+
+    /** A picked file's name and bytes; null when it cannot be read (or is larger than any style or preset file). */
+    private fun readPicked(uri: Uri): Pair<String, ByteArray>? = runCatching {
+        val out = java.io.ByteArrayOutputStream()
+        contentResolver.openInputStream(uri)!!.use { s ->
+            val buf = ByteArray(1 shl 16)
+            while (out.size() <= MAX_IMPORT_BYTES) { val n = s.read(buf); if (n < 0) break; out.write(buf, 0, n) }
+        }
+        if (out.size() > MAX_IMPORT_BYTES) null else displayName(uri) to out.toByteArray()
+    }.getOrNull()
+
+    private fun displayName(uri: Uri): String =
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        } ?: uri.lastPathSegment ?: "file"
+
     private fun appVersion(): String = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +133,8 @@ class MainActivity : ComponentActivity() {
                     screen == Screen.LIBRARY -> LibraryScreen(vm, onOpen = { openPhotos.launch(arrayOf("*/*")) }, onOpenInLpl = { o, id -> openInLpl(o, id) })
                     screen == Screen.SERVER -> ServerScreen(vm)
                     screen == Screen.HANDOFF -> HandOffScreen(vm)
-                    screen == Screen.DARKROOM -> DarkroomScreen(vm.controller, onBack = { vm.leaveDarkroom() }, onDone = { vm.leaveDarkroom() }, actions = actions)
+                    screen == Screen.DARKROOM -> DarkroomScreen(vm.controller, onBack = { vm.leaveDarkroom() }, onDone = { vm.leaveDarkroom() }, actions = actions,
+                        layoutFiles = layoutFiles, importFiles = importFiles)
                     screen == Screen.ABOUT -> AboutScreen(vm, ready, appVersion())
                     screen == Screen.TIMINGS -> TimingsScreen(vm, appVersion(), onShare = { share(it) })
                 }
@@ -85,7 +147,8 @@ class MainActivity : ComponentActivity() {
             Screen.LIBRARY -> finish()
             Screen.DARKROOM ->
                 if (vm.controller.state.value.layoutEditor) vm.controller.launch { closeLayoutEditor() }
-                else if (vm.controller.state.value.overlay != null) vm.controller.setOverlay(null)
+                // brief P3b: a page of the presets or styles sheet goes back to its list first
+                else if (vm.controller.state.value.overlay != null) { if (!vm.controller.stylesPresets.back()) vm.controller.setOverlay(null) }
                 else vm.leaveDarkroom()
             Screen.ABOUT -> vm.show(Screen.LIBRARY)
             Screen.SERVER -> vm.show(Screen.LIBRARY)
@@ -167,6 +230,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        /** brief P3b: no style or preset file comes near this; a larger pick is not read */
+        const val MAX_IMPORT_BYTES = 8 * 1024 * 1024
         const val LPL_SHELL = "app.dtandroid.lplshell"
         const val LPL_SHELL_OPEN = "app.dtandroid.lplshell.OPEN"
     }

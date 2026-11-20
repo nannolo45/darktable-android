@@ -490,14 +490,29 @@ jobs:
             echo "p3a: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt
           fi
           echo "p3a=$p3a" >> "$GITHUB_OUTPUT"
+          # brief P3b: a public style imported in the app and applied in append and in overwrite mode, written to the XMP:
+          # darktable-cli's render of each XMP against the app's export of it
+          p3b=ok
+          for mode in append overwrite; do
+            if [ ! -f "$A/p3b-$mode.xmp" ] || [ ! -f "$A/p3b-$mode.jpg" ]; then
+              echo "p3b $mode: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt; p3b=bad; continue
+            fi
+            /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/p3b-$mode.xmp" "/tmp/cli-p3b-$mode.jpg" \
+              --core --configdir "/tmp/cli-config-p3b-$mode" --cachedir "/tmp/cli-cache-p3b-$mode" \
+              --conf plugins/imageio/format/jpeg/quality=95 > "/tmp/ci-out/cli-p3b-$mode.log" 2>&1 || true
+            r=$(check "$A/p3b-$mode.jpg" "/tmp/cli-p3b-$mode.jpg" "p3b style $mode: app export vs darktable-cli of the app's XMP" | tail -1)
+            [ "$r" = ok ] || p3b=bad
+            cp "$A/p3b-$mode.xmp" /tmp/ci-out/ 2>/dev/null || true
+          done
+          echo "p3b=$p3b" >> "$GITHUB_OUTPUT"
           cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
 
       - name: Push logs to ci-logs branch
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}-p3b${{ steps.c.outputs.p3b }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok' || steps.c.outputs.p3b != 'ok'
         run: exit 1

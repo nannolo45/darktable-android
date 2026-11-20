@@ -33,6 +33,12 @@ interface ComputedSlider : Computed {
 /** One entry of a computed list; [value] is the position the schema's rules name ("control N"). */
 data class ComputedEntry(val label: String, val value: Int, val enabled: Boolean, val section: Boolean = false)
 
+/**
+ * Brief P3b (P2j section 6): what desktop's callback writes through an engine module action instead of parameters,
+ * for values outside a field's limits (engine-api.md 5.4: framing's `set_aspect` 0 and -1, lens' `use_latest_md`).
+ */
+data class ModuleWrite(val action: String, val args: JsonObject = JsonObject(emptyMap()))
+
 /** A list whose entries and current entry come from parameters (and packaged data). */
 interface ComputedList : Computed {
     fun entries(p: JsonObject): List<ComputedEntry>
@@ -42,6 +48,9 @@ interface ComputedList : Computed {
 
     /** The parameters an entry writes; empty when choosing it changes nothing. */
     fun choose(index: Int, p: JsonObject): Map<String, JsonPrimitive>
+
+    /** Brief P3b: the module action an entry is written with instead of [choose]'s parameters, or null. */
+    fun chooseAction(index: Int, p: JsonObject): ModuleWrite? = null
 
     /** Whether desktop lets the list be used for these parameters (besides the schema's rules). */
     fun enabled(p: JsonObject): Boolean = true
@@ -57,6 +66,9 @@ interface ComputedList : Computed {
 interface ComputedToggle : Computed {
     fun on(p: JsonObject): Boolean
     fun write(on: Boolean, p: JsonObject): Map<String, JsonPrimitive>
+
+    /** Brief P3b: the module action the switch is written with instead of [write]'s parameters, or null. */
+    fun action(on: Boolean, p: JsonObject): ModuleWrite? = null
 }
 
 internal fun JsonObject.num(path: String): Double? = (paramAt(path) as? JsonPrimitive)?.let { it.doubleOrNull ?: it.booleanOrNull?.let { b -> if (b) 1.0 else 0.0 } }
@@ -81,8 +93,11 @@ class ValueList(
     /** entries that cannot be written through the bridge (a value outside the field's limits), by index */
     val unwritable: Map<Int, String> = emptyMap(),
 ) : ComputedList {
-    /** [set] null: a section heading or an entry that writes nothing (framing's "custom..."). */
-    data class Item(val label: String, val value: Int, val set: Map<String, JsonPrimitive>?, val section: Boolean)
+    /**
+     * [set] null: a section heading or an entry that writes nothing (framing's "custom..."). [action]: written through
+     * that module action instead of [set] ([set] still says when the entry is the one shown).
+     */
+    data class Item(val label: String, val value: Int, val set: Map<String, JsonPrimitive>?, val section: Boolean, val action: ModuleWrite? = null)
 
     override fun entries(p: JsonObject) = items.mapIndexed { i, it ->
         ComputedEntry(it.label, it.value, !it.section && i !in unwritable, it.section)
@@ -105,6 +120,8 @@ class ValueList(
     }
 
     override fun choose(index: Int, p: JsonObject): Map<String, JsonPrimitive> = items.getOrNull(index)?.set ?: emptyMap()
+
+    override fun chooseAction(index: Int, p: JsonObject): ModuleWrite? = items.getOrNull(index)?.action
 }
 
 /** A switch that writes fixed values when switched on and is shown on when [onWhen] holds. */
@@ -112,7 +129,10 @@ class ToggleWrites(
     override val controlId: Int,
     val set: Map<String, JsonPrimitive>,
     val onWhen: Map<String, JsonPrimitive>,
+    /** brief P3b: written through this module action when switched on (lens' "use latest algorithm") */
+    val onAction: ModuleWrite? = null,
 ) : ComputedToggle {
     override fun on(p: JsonObject) = onWhen.isNotEmpty() && onWhen.all { (k, v) -> (p.paramAt(k) as? JsonPrimitive)?.content == v.content }
     override fun write(on: Boolean, p: JsonObject) = if (on) set else emptyMap()
+    override fun action(on: Boolean, p: JsonObject) = if (on) onAction else null
 }

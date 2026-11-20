@@ -608,6 +608,12 @@ class DarkroomController(
     suspend fun chooseComputed(key: InstanceKey, controlId: Int, index: Int) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedList ?: throw EngineException(EngineError.STATE, "no list here")
         val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        // brief P3b (P2j section 6): values outside a field's limits go through the engine's module action
+        model.chooseAction(index, m.params)?.let { a ->
+            engine.moduleAction(key.op, key.priority, a.action, a.args)
+            engine.historySeal()
+            return@change
+        }
         val writes = model.choose(index, m.params)
         if (writes.isNotEmpty()) {
             engine.paramsSet(key.op, key.priority, writes)
@@ -619,6 +625,11 @@ class DarkroomController(
     suspend fun toggleComputed(key: InstanceKey, controlId: Int, on: Boolean) = change {
         val model = schema.modules[key.op]?.computed?.get(controlId) as? ComputedToggle ?: throw EngineException(EngineError.STATE, "no switch here")
         val m = _state.value.modules.firstOrNull { it.key == key } ?: throw EngineException(EngineError.STATE, "no such instance")
+        model.action(on, m.params)?.let { a ->
+            engine.moduleAction(key.op, key.priority, a.action, a.args)
+            engine.historySeal()
+            return@change
+        }
         val writes = model.write(on, m.params)
         if (writes.isNotEmpty()) {
             engine.paramsSet(key.op, key.priority, writes)
@@ -1698,7 +1709,12 @@ class DarkroomController(
 
     fun setView(v: BottomView) = _state.update { it.copy(view = v, overlay = null) }
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
-    fun setOverlay(o: Overlay?) = _state.update { it.copy(overlay = o) }
+    fun setOverlay(o: Overlay?) {
+        val was = _state.value.overlay
+        _state.update { it.copy(overlay = o) }
+        // brief P3b: closing the presets or styles sheet drops its pages (an open import question is cancelled)
+        if (was != o && (was is Overlay.Presets || was == Overlay.Styles)) stylesPresets.closed()
+    }
     fun clearMessage() = _state.update { it.copy(message = null) }
 
     /**
@@ -1709,6 +1725,17 @@ class DarkroomController(
         if (s.current?.rawPath != rawPath) s else s.copy(syncStep = syncStep, syncProgress = syncProgress, lastEdit = lastEdit)
     }
     fun showMessage(text: String) = _state.update { it.copy(message = text) }
+
+    // ------------------------------------------------------------------ brief P3b: presets and styles
+
+    /** The presets and styles sheets (engine-api.md 5.2, 5.3). */
+    val stylesPresets: StylesPresets by lazy { StylesPresets(this) }
+
+    /** An engine call that does not change the edit (lists, darktable's database of presets and styles), under the lock. */
+    internal suspend fun <T> engineRead(block: suspend (DarktableEngine) -> T): T = fg { block(engine) }
+
+    /** A change of the edit through [block], as every change: render cancelled, state read again, rendered again. */
+    internal suspend fun engineChange(block: suspend (DarktableEngine) -> Unit) = change { block(engine) }
 
     // ------------------------------------------------------------------ helpers for screens
 

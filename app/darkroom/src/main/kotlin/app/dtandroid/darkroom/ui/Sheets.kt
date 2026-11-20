@@ -118,14 +118,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 for (it in instanceMenu(controller, s, m)) SheetItem(it.label, it.enabled, onClick = it.run)
             }
         }
-        is Overlay.Presets -> {
-            val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
-            Sheet("${fullName(m)} · presets", close, maxW) {
-                // presets and styles come with the engine's extended API (engine-api.md section 3)
-                SheetItem("store new preset…", enabled = false) {}
-                DtText("Presets are not available yet.", DtTheme.type.label, DtTheme.colors.textMuted, Modifier.padding(vertical = DtTheme.space.m))
-            }
-        }
+        // brief P3b: the presets list and the styles are StylesOverlays' (StylesSheets.kt)
+        is Overlay.Presets, Overlay.Styles -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return
@@ -204,6 +198,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
             SheetItem("manage module layouts…", enabled = true) { controller.launch { openLayoutEditor() } }
         }
         Overlay.HostMenu -> Sheet(s.current?.fileName ?: "photo", close, maxW) {
+            // brief P3b: the styles, as desktop's quick styles button in the darkroom
+            SheetItem("styles…", enabled = s.info != null) { controller.setOverlay(Overlay.Styles) }
             for (a in actions) SheetItem(a.label, a.enabled) { controller.setOverlay(null); a.run() }
         }
         is Overlay.Rename -> {

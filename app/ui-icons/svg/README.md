@@ -11,3 +11,6 @@ Supported SVG: what Android's own converter (`Svg2Vector`) accepts; keep to `pat
 
 One exception to the stroke style: `sliderMarker.svg`, the small filled triangle under a slider's value
 (10 x 6, as in the mockups).
+
+Second exception: `favoriteOn.svg`, the filled star of a favourite style (brief P3b), next to the outlined
+`favorite.svg`, so the two states differ in shape and not only in tint.

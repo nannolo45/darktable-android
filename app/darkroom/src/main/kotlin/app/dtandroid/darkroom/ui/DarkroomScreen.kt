@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -57,11 +58,15 @@ fun DarkroomScreen(
     layout: DarkroomLayout? = null,
     /** import and export of module layouts; null where there is no file picker (tests) */
     layoutFiles: LayoutFiles? = null,
-    /** the app's photo menu ("more" in the top bar); empty = no menu (interface preview, tests) */
+    /** the app's photo menu ("more" in the top bar), after the darkroom's own "styles…" */
     actions: List<HostAction> = emptyList(),
+    /** brief P3b: import of .dtstyle and .dtpreset files; null where there is no file picker (tests) */
+    importFiles: ImportFiles? = null,
 ) {
     val s by controller.state.collectAsState()
     val live by controller.liveValues.collectAsState()
+    // brief P3b: the styles are read in the background once, so the list opens without a wait
+    LaunchedEffect(s.info != null) { if (s.info != null) controller.stylesPresets.prefetch() }
     if (s.layoutEditor) {
         LayoutEditorScreen(controller, layoutFiles, modifier)
         return
@@ -71,8 +76,10 @@ fun DarkroomScreen(
             null -> maxWidth >= DtTheme.sizes.tabletMinWidth && maxHeight >= DtTheme.sizes.tabletMinHeight
             else -> layout == DarkroomLayout.TABLET
         }
-        if (tablet) TabletLayout(controller, s, live, onBack, onDone, actions.isNotEmpty()) else PhoneLayout(controller, s, live, onBack, onDone, actions.isNotEmpty())
+        // brief P3b: the photo menu always has "styles…"
+        if (tablet) TabletLayout(controller, s, live, onBack, onDone, menu = true, importFiles) else PhoneLayout(controller, s, live, onBack, onDone, menu = true)
         Overlays(controller, s, tablet, actions)
+        StylesOverlays(controller, s, tablet, importFiles)
     }
 }
 
@@ -209,7 +216,9 @@ private fun LastEditLine(s: DarkroomState) {
 // ----------------------------------------------------------------------- tablet
 
 @Composable
-private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean) {
+private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, onBack: () -> Unit, onDone: () -> Unit, menu: Boolean,
+                         importFiles: ImportFiles?) {
+    val sp by controller.stylesPresets.state.collectAsState()
     Column(Modifier.fillMaxSize()) {
         TabletTopBar(controller, s, onBack, onDone, menu)
         Divider()
@@ -230,8 +239,12 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
             }
             VerticalDivider(Modifier.fillMaxHeight())
             Column(Modifier.width(DtTheme.sizes.tabletRightPanel).fillMaxHeight()) {
-                GroupTabs(controller, s)
-                ModuleList(controller, s, live, tablet = true, modifier = Modifier.weight(1f))
+                // brief P3b deliverable 5: presets and styles beside the photo, in place of the module list
+                if (stylesPanelWanted(s, sp)) StylesPanel(controller, s, importFiles, Modifier.weight(1f))
+                else {
+                    GroupTabs(controller, s)
+                    ModuleList(controller, s, live, tablet = true, modifier = Modifier.weight(1f))
+                }
             }
         }
     }
