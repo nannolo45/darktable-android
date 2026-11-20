@@ -231,3 +231,386 @@ static int cmd_undohash(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   return g_fail;
 }
+
+/* ---- C19: colour pickers, histogram and the module actions that pick (6.3, 6.4) ---- */
+
+static JsonObject *pick_side(JsonNode *n, const char *side)
+{
+  JsonObject *o = json_node_get_object(n);
+  JsonNode *s = json_object_get_member(o, side);
+  return s && JSON_NODE_HOLDS_OBJECT(s) ? json_node_get_object(s) : NULL;
+}
+
+static double vec(JsonObject *side, const char *what, int k)
+{
+  JsonArray *a = json_object_get_array_member(side, what);
+  JsonNode *n = json_array_get_element(a, k);
+  return JSON_NODE_HOLDS_NULL(n) ? NAN : json_node_get_double(n);
+}
+
+static JsonNode *pick(const char *op, int prio, const char *req)
+{
+  char *s = NULL;
+  MUST(dtb_color_pick(op, prio, req, &s));
+  return jparse_owned(s);
+}
+
+#include <float.h>
+
+static int cmd_pickers(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  // the plain preview before any pick, to compare after them
+  int w0, h0;
+  uint8_t *before = preview_ex(NULL, &w0, &h0);
+  // the global picker against the 8-bit picture of the preview pipe at scale 1
+  uint8_t *buf = NULL;
+  int w, h;
+  MUST(dtb_render_preview(100000, &buf, &w, &h));
+  const float a[4] = { 0.40f, 0.35f, 0.62f, 0.55f };
+  gchar *req = g_strdup_printf("{\"area\":[%g,%g,%g,%g]}", a[0], a[1], a[2], a[3]);
+  JsonNode *g = pick(NULL, 0, req);
+  JsonObject *out = pick_side(g, "output");
+  CHECK(out != NULL, "global picker: no output");
+  if(out)
+  {
+    const int x0 = json_array_get_int_element(json_object_get_array_member(out, "box"), 0);
+    const int y0 = json_array_get_int_element(json_object_get_array_member(out, "box"), 1);
+    const int x1 = json_array_get_int_element(json_object_get_array_member(out, "box"), 2);
+    const int y1 = json_array_get_int_element(json_object_get_array_member(out, "box"), 3);
+    double s[3] = { 0 };
+    for(int y = y0; y < y1; y++)
+      for(int x = x0; x < x1; x++)
+        for(int c = 0; c < 3; c++) s[c] += buf[4 * ((size_t)y * w + x) + c];
+    const double n = (double)(x1 - x0) * (y1 - y0);
+    double worst = 0;
+    for(int c = 0; c < 3; c++) worst = fmax(worst, fabs(s[c] / n - 255.0 * vec(out, "mean", c)));
+    fprintf(stdout, "RESULT global picker: preview %dx%d, box %d,%d..%d,%d, mean %.4f %.4f %.4f, 8-bit mean differs by %.3f levels\n",
+            w, h, x0, y0, x1, y1, vec(out, "mean", 0), vec(out, "mean", 1), vec(out, "mean", 2), worst);
+    CHECK(worst < 0.6, "global picker mean vs the 8-bit picture: %.3f levels", worst);
+    CHECK(x0 == (int)(0.5f * (a[0] * w + a[0] * w)) && y1 == (int)(0.5f * (a[3] * h + a[3] * h)), "global picker box");
+  }
+  json_node_unref(g);
+  dtb_free(buf);
+
+  // exposure's picker: out = (in - black) * scale on every statistic and channel
+  JsonNode *e = pick("exposure", 0, req);
+  JsonObject *ei = pick_side(e, "input"), *eo = pick_side(e, "output");
+  CHECK(ei && eo, "exposure picker sides");
+  if(ei && eo)
+  {
+    const double black = param_num("exposure", 0, "black");
+    double k0 = NAN, spread = 0;
+    const char *what[3] = { "mean", "min", "max" };
+    for(int st = 0; st < 3; st++)
+      for(int c = 0; c < 3; c++)
+      {
+        const double in = vec(ei, what[st], c), o = vec(eo, what[st], c);
+        if(fabs(in - black) < 1e-3) continue;
+        const double k = o / (in - black);
+        if(isnan(k0)) k0 = k;
+        spread = fmax(spread, fabs(k / k0 - 1.0));
+      }
+    fprintf(stdout, "RESULT exposure picker: %s in mean %.5f %.5f %.5f, out mean %.5f %.5f %.5f, scale %.5f (spread %.2e), black %.4f\n",
+            json_object_get_string_member(ei, "colorspace"), vec(ei, "mean", 0), vec(ei, "mean", 1), vec(ei, "mean", 2),
+            vec(eo, "mean", 0), vec(eo, "mean", 1), vec(eo, "mean", 2), k0, spread, black);
+    CHECK(spread < 1e-3, "exposure: output is not (input - black) * scale on the same box (spread %.2e)", spread);
+    CHECK(!strcmp(json_object_get_string_member(ei, "colorspace"), "rgb"), "exposure picks rgb");
+  }
+  json_node_unref(e);
+
+  // a point, and the denoise option, and a pick through a crop
+  JsonNode *pt = pick("exposure", 0, "{\"point\":[0.5,0.5],\"denoise\":true}");
+  JsonObject *pti = pick_side(pt, "input");
+  CHECK(pti != NULL, "point pick");
+  if(pti)
+  {
+    JsonArray *b = json_object_get_array_member(pti, "box");
+    fprintf(stdout, "RESULT point pick box %ld,%ld..%ld,%ld\n", (long)json_array_get_int_element(b, 0),
+            (long)json_array_get_int_element(b, 1), (long)json_array_get_int_element(b, 2), (long)json_array_get_int_element(b, 3));
+  }
+  json_node_unref(pt);
+  MUST(dtb_params_set("crop", 0, "{\"cx\":0.5,\"cy\":0.5,\"cw\":1.0,\"ch\":1.0}"));
+  MUST(dtb_history_seal());
+  // the crop keeps the bottom right quarter: the picture's centre is the input's (0.75, 0.75)
+  JsonNode *c1 = pick("exposure", 0, "{\"point\":[0.5,0.5]}");
+  JsonNode *c0 = pick("exposure", 0, "{\"point\":[0.5,0.5],\"bypass\":[{\"op\":\"crop\",\"priority\":0}]}");
+  JsonObject *b1 = pick_side(c1, "input"), *b0 = pick_side(c0, "input");
+  if(b1 && b0)
+  {
+    JsonArray *x1 = json_object_get_array_member(b1, "box"), *x0 = json_object_get_array_member(b0, "box");
+    const double rx = (double)json_array_get_int_element(x1, 0) / json_array_get_int_element(x0, 0);
+    const double ry = (double)json_array_get_int_element(x1, 1) / json_array_get_int_element(x0, 1);
+    fprintf(stdout, "RESULT pick through crop: box %ld,%ld (without crop %ld,%ld), ratio %.3f %.3f (expected 1.5)\n",
+            (long)json_array_get_int_element(x1, 0), (long)json_array_get_int_element(x1, 1),
+            (long)json_array_get_int_element(x0, 0), (long)json_array_get_int_element(x0, 1), rx, ry);
+    CHECK(fabs(rx - 1.5) < 0.01 && fabs(ry - 1.5) < 0.01, "pick through crop: ratio %.3f %.3f", rx, ry);
+  }
+  else
+    CHECK(0, "pick through crop");
+  json_node_unref(c1);
+  json_node_unref(c0);
+  MUST(dtb_undo());
+
+  // errors
+  char *s = NULL;
+  EXPECT(dtb_color_pick("nosuch", 0, req, &s), DTB_E_NOT_FOUND);
+  EXPECT(dtb_color_pick("exposure", 0, "{\"area\":[0.5,0.5,0.2,0.2]}", &s), DTB_E_ARG);
+  EXPECT(dtb_color_pick("exposure", 0, "{\"area\":[0,0,2,1]}", &s), DTB_E_ARG);
+  EXPECT(dtb_color_pick("exposure", 0, "{}", &s), DTB_E_ARG);
+  MUST(dtb_set_enabled("exposure", 0, 0));
+  EXPECT(dtb_color_pick("exposure", 0, req, &s), DTB_E_ARG);
+  MUST(dtb_undo());
+
+  // histogram
+  s = NULL;
+  MUST(dtb_histogram("{\"max_size\":512}", &s));
+  JsonNode *hn = jparse_owned(s);
+  JsonObject *ho = json_node_get_object(hn);
+  JsonArray *counts = json_object_get_array_member(ho, "counts");
+  const gint64 px = json_object_get_int_member(ho, "pixels");
+  for(int c = 0; c < 3; c++)
+  {
+    JsonArray *ch = json_array_get_array_element(counts, c);
+    gint64 sum = 0;
+    for(guint k = 0; k < json_array_get_length(ch); k++) sum += json_array_get_int_element(ch, k);
+    CHECK(sum == px && json_array_get_length(ch) == 256, "histogram channel %d: %ld of %ld pixels", c, (long)sum, (long)px);
+  }
+  fprintf(stdout, "RESULT histogram %ldx%ld, %ld pixels, max %ld\n", (long)json_object_get_int_member(ho, "width"),
+          (long)json_object_get_int_member(ho, "height"), (long)px, (long)json_object_get_int_member(ho, "max"));
+  json_node_unref(hn);
+
+  // picks leave the next plain render as it was
+  {
+    int w1, h1;
+    uint8_t *after = preview_ex(NULL, &w1, &h1);
+    CHECK(w1 == w0 && h1 == h0 && !memcmp(before, after, (size_t)4 * w0 * h0), "preview after picks differs");
+    free(after);
+    free(before);
+  }
+  // module actions that pick (6.3), each against desktop's arithmetic on the picked values
+  int end0 = 0;
+  const int n0 = history_count(&end0);
+  // temperature: color_picker_apply
+  {
+    JsonNode *tp = pick("temperature", 0, req);
+    JsonObject *ti = pick_side(tp, "input");
+    char *r = NULL;
+    MUST(dtb_module_action("temperature", 0, "wb_from_area", req, &r));
+    dtb_free(r);
+    if(ti)
+    {
+      float g[4], want[4];
+      for(int c = 0; c < 4; c++) g[c] = (float)vec(ti, "mean", c);
+      const float gnormal = g[1] > 0.001f ? 1.0f / g[1] : 1.0f;
+      for(int c = 0; c < 4; c++) want[c] = fmaxf(0.0f, fminf(8.0f, (g[c] > 0.001f ? 1.0f / g[c] : 1.0f) / gnormal));
+      want[1] = 1.0f;
+      const char *f[4] = { "red", "green", "blue", "various" };
+      double worst = 0;
+      for(int c = 0; c < 4; c++) worst = fmax(worst, fabs(param_num("temperature", 0, f[c]) - want[c]));
+      fprintf(stdout, "RESULT temperature wb_from_area: %s picked %.5f %.5f %.5f, coefficients %.5f %.5f %.5f (desktop's formula: max diff %.2e)\n",
+              json_object_get_string_member(ti, "colorspace"), g[0], g[1], g[2], param_num("temperature", 0, "red"),
+              param_num("temperature", 0, "green"), param_num("temperature", 0, "blue"), worst);
+      CHECK(worst < 1e-6, "temperature coefficients differ from desktop's formula by %.2e", worst);
+    }
+    else
+      CHECK(0, "temperature picker");
+    json_node_unref(tp);
+    char *wb = NULL;
+    MUST(dtb_module_action("temperature", 0, "get_wb", NULL, &wb));
+    JsonNode *wn = jparse_owned(wb);
+    const char *preset = json_object_get_string_member(json_node_get_object(wn), "preset");
+    CHECK(preset && !strcmp(preset, "from image area"), "white balance mode after wb_from_area: %s", preset ? preset : "null");
+    json_node_unref(wn);
+  }
+  // exposure: spot correction to 50 %, then a measure gives 50 % back
+  {
+    char *r = NULL;
+    gchar *rq = g_strdup_printf("{\"area\":[%g,%g,%g,%g],\"mode\":\"correction\",\"lightness\":50}", a[0], a[1], a[2], a[3]);
+    const double ev0 = param_num("exposure", 0, "exposure");
+    MUST(dtb_module_action("exposure", 0, "spot", rq, &r));
+    JsonNode *cn = jparse_owned(r);
+    const double ev1 = param_num("exposure", 0, "exposure");
+    json_node_unref(cn);
+    g_free(rq);
+    rq = g_strdup_printf("{\"area\":[%g,%g,%g,%g],\"mode\":\"measure\"}", a[0], a[1], a[2], a[3]);
+    r = NULL;
+    MUST(dtb_module_action("exposure", 0, "spot", rq, &r));
+    JsonNode *mn = jparse_owned(r);
+    const double l = json_object_get_double_member(json_node_get_object(mn), "lightness");
+    json_node_unref(mn);
+    g_free(rq);
+    fprintf(stdout, "RESULT exposure spot: %.4f EV -> %.4f EV for lightness 50; measured afterwards %.4f\n", ev0, ev1, l);
+    CHECK(fabs(l - 50.0) < 0.01, "exposure spot: measured %.4f after correcting to 50", l);
+    EXPECT(dtb_module_action("exposure", 0, "spot", "{\"area\":[0.1,0.1,0.2,0.2],\"mode\":\"wrong\"}", &r), DTB_E_ARG);
+  }
+  // rgblevels: the black picker
+  {
+    MUST(dtb_set_enabled("rgblevels", 0, 1));
+    JsonNode *lp = pick("rgblevels", 0, req);
+    JsonObject *li = pick_side(lp, "input");
+    char *r = NULL;
+    gchar *rq = g_strdup_printf("{\"area\":[%g,%g,%g,%g],\"which\":\"black\"}", a[0], a[1], a[2], a[3]);
+    MUST(dtb_module_action("rgblevels", 0, "pick", rq, &r));
+    dtb_free(r);
+    g_free(rq);
+    const double v = li ? vec(li, "mean", 0) : NAN;
+    const double grey = param_num("rgblevels", 0, "levels/0/1");
+    const double want = v > grey ? grey - FLT_EPSILON : v;
+    const double got = param_num("rgblevels", 0, "levels/0/0");
+    fprintf(stdout, "RESULT rgblevels black picker: picked %.5f, black %.5f (desktop's rule: %.5f)\n", v, got, want);
+    CHECK(fabs(got - want) < 1e-6, "rgblevels black %.6f, desktop's rule %.6f", got, want);
+    json_node_unref(lp);
+  }
+  // rgbcurve: nodes from the area (the "set values" picker): min, mean, max added to the default curve
+  {
+    MUST(dtb_set_enabled("rgbcurve", 0, 1));
+    char *r = NULL;
+    MUST(dtb_module_action("rgbcurve", 0, "set_nodes_from_area", req, &r));
+    JsonNode *rn = jparse_owned(r);
+    JsonArray *nodes = json_object_get_array_member(json_node_get_object(rn), "nodes");
+    const int n = json_array_get_length(nodes);
+    gboolean sorted = TRUE, flat = TRUE;
+    for(int k = 0; k < n; k++)
+    {
+      JsonArray *xy = json_array_get_array_element(nodes, k);
+      if(k && json_array_get_double_element(xy, 0) < json_array_get_double_element(json_array_get_array_element(nodes, k - 1), 0)) sorted = FALSE;
+      if(fabs(json_array_get_double_element(xy, 0) - json_array_get_double_element(xy, 1)) > 1e-6) flat = FALSE;
+    }
+    const double nn = param_num("rgbcurve", 0, "curve_num_nodes/0");
+    fprintf(stdout, "RESULT rgbcurve set_nodes_from_area: %d nodes (params %g), sorted %d, on the diagonal %d\n", n, nn, sorted, flat);
+    CHECK(n == (int)nn && (n == 5 || n == 6) && sorted && flat, "rgbcurve nodes");
+    json_node_unref(rn);
+  }
+  int end1 = 0;
+  const int n1 = history_count(&end1);
+  fprintf(stdout, "RESULT history items: %d before the actions, %d after\n", n0, n1);
+  CHECK(n1 == n0 + 6, "history items: %d -> %d (expected 6: wb, exposure, rgblevels on, levels, rgbcurve on, curve)", n0, n1);
+
+  g_free(req);
+  MUST(dtb_close());
+  return g_fail;
+}
+
+/* ---- C20: coordinates between the original image and the picture (6.5) ---- */
+
+static JsonNode *coords(const char *dir, const float *pts, int n, const char *bypass_op)
+{
+  GString *q = g_string_new(NULL);
+  g_string_append_printf(q, "{\"direction\":\"%s\",\"points\":[", dir);
+  for(int i = 0; i < n; i++) g_string_append_printf(q, "%s[%.9g,%.9g]", i ? "," : "", pts[2 * i], pts[2 * i + 1]);
+  g_string_append(q, "]");
+  if(bypass_op) g_string_append_printf(q, ",\"bypass\":[{\"op\":\"%s\",\"priority\":0}]", bypass_op);
+  g_string_append(q, "}");
+  char *s = NULL;
+  MUST(dtb_coords_transform(q->str, &s));
+  g_string_free(q, TRUE);
+  return jparse_owned(s);
+}
+
+static void coords_get(JsonNode *n, float *out, int count, int *w, int *h, const char *size)
+{
+  JsonObject *o = json_node_get_object(n);
+  JsonArray *a = json_object_get_array_member(o, "points");
+  for(int i = 0; i < count; i++)
+  {
+    JsonNode *e = json_array_get_element(a, i);
+    if(JSON_NODE_HOLDS_NULL(e)) { out[2 * i] = out[2 * i + 1] = NAN; continue; }
+    out[2 * i] = json_array_get_double_element(json_node_get_array(e), 0);
+    out[2 * i + 1] = json_array_get_double_element(json_node_get_array(e), 1);
+  }
+  JsonObject *sz = json_object_get_object_member(o, size);
+  *w = json_object_get_int_member(sz, "width");
+  *h = json_object_get_int_member(sz, "height");
+}
+
+/* original -> picture -> original on a grid: the largest error in pixels of the original */
+static double round_trip(const char *label)
+{
+  float g[2 * 49], p[2 * 49], b[2 * 49];
+  int n = 0;
+  for(int y = 0; y < 7; y++)
+    for(int x = 0; x < 7; x++, n++)
+    {
+      g[2 * n] = 0.2f + 0.1f * x;
+      g[2 * n + 1] = 0.2f + 0.1f * y;
+    }
+  int iw, ih, pw, ph;
+  JsonNode *f = coords("to_processed", g, n, NULL);
+  coords_get(f, p, n, &pw, &ph, "processed");
+  json_node_unref(f);
+  JsonNode *r = coords("to_original", p, n, NULL);
+  coords_get(r, b, n, &iw, &ih, "original");
+  json_node_unref(r);
+  double worst = 0;
+  for(int i = 0; i < n; i++)
+    worst = fmax(worst, hypot((b[2 * i] - g[2 * i]) * iw, (b[2 * i + 1] - g[2 * i + 1]) * ih));
+  fprintf(stdout, "RESULT coords %s: original %dx%d, picture %dx%d, centre -> %.4f,%.4f, round trip max %.3f px\n", label, iw, ih,
+          pw, ph, p[2 * 24], p[2 * 24 + 1], worst);
+  return worst;
+}
+
+static int cmd_coords(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  // lens correction maps back with darktable's own approximate inverse: up to half a pixel off (raf: 0.51 px)
+  CHECK(round_trip("as opened") < 1.0, "round trip as opened");
+  // crop keeping the bottom right quarter: picture = (picture without crop - 0.5) * 2
+  MUST(dtb_params_set("crop", 0, "{\"cx\":0.5,\"cy\":0.5,\"cw\":1.0,\"ch\":1.0}"));
+  MUST(dtb_history_seal());
+  {
+    const float g[4] = { 0.6f, 0.7f, 0.9f, 0.8f };
+    float c[4], nc[4];
+    int w, h, w0, h0;
+    JsonNode *a = coords("to_processed", g, 2, NULL), *b = coords("to_processed", g, 2, "crop");
+    coords_get(a, c, 2, &w, &h, "processed");
+    coords_get(b, nc, 2, &w0, &h0, "processed");
+    double worst = 0;
+    for(int k = 0; k < 4; k++)
+      worst = fmax(worst, fabs(c[k] - (nc[k] - 0.5f) * 2.0f) * ((k & 1) ? h : w));
+    fprintf(stdout, "RESULT coords crop: picture %dx%d (without crop %dx%d), relation off by %.3f px\n", w, h, w0, h0, worst);
+    CHECK(worst < 1.0, "crop relation off by %.3f px", worst);
+    json_node_unref(a);
+    json_node_unref(b);
+  }
+  CHECK(round_trip("crop") < 1.0, "round trip with crop");
+  MUST(dtb_undo());
+  // orientation turned clockwise: picture (x, y) = (1 - y, x) of the picture without it
+  MUST(dtb_param_set("flip", 0, "orientation", "\"ORIENTATION_ROTATE_CW_90_DEG\""));
+  MUST(dtb_history_seal());
+  {
+    const float g[4] = { 0.3f, 0.2f, 0.7f, 0.9f };
+    float c[4], n0[4];
+    int w, h, w0, h0;
+    JsonNode *a = coords("to_processed", g, 2, NULL), *b = coords("to_processed", g, 2, "flip");
+    coords_get(a, c, 2, &w, &h, "processed");
+    coords_get(b, n0, 2, &w0, &h0, "processed");
+    double worst = 0;
+    for(int i = 0; i < 2; i++)
+    {
+      worst = fmax(worst, fabs(c[2 * i] - (1.0f - n0[2 * i + 1])) * w);
+      worst = fmax(worst, fabs(c[2 * i + 1] - n0[2 * i]) * h);
+    }
+    fprintf(stdout, "RESULT coords orientation: picture %dx%d (without %dx%d), relation off by %.3f px\n", w, h, w0, h0, worst);
+    CHECK(w == h0 && h == w0 && worst < 1.5, "orientation relation off by %.3f px", worst);
+    json_node_unref(a);
+    json_node_unref(b);
+  }
+  // everything that moves pixels at once: lens correction, rotate and perspective, crop, orientation, framing
+  MUST(dtb_set_enabled("lens", 0, 1));
+  MUST(dtb_params_set("ashift", 0, "{\"rotation\":4.0}"));
+  MUST(dtb_params_set("crop", 0, "{\"cx\":0.1,\"cy\":0.05,\"cw\":0.85,\"ch\":0.9}"));
+  MUST(dtb_set_enabled("borders", 0, 1));
+  MUST(dtb_history_seal());
+  const double rt = round_trip("lens, rotation, crop, orientation, framing");
+  CHECK(rt < 1.0, "round trip through every geometry module: %.3f px", rt);
+  // errors
+  char *s = NULL;
+  EXPECT(dtb_coords_transform("{\"direction\":\"sideways\",\"points\":[]}", &s), DTB_E_ARG);
+  EXPECT(dtb_coords_transform("{\"direction\":\"to_original\",\"points\":[[1]]}", &s), DTB_E_ARG);
+  EXPECT(dtb_coords_transform("{\"direction\":\"to_original\",\"points\":[[\"a\",1]]}", &s), DTB_E_TYPE);
+  MUST(dtb_close());
+  return g_fail;
+}

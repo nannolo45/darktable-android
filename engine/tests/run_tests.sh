@@ -384,6 +384,8 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # P1b part 2 (engine-api.md section 6)
   if want C17; then drv C17 bypass "a render that leaves one instance out"; fi
   if want C18; then drv C18 undohash "undo and redo keep the XMP's history hashes"; fi
+  if want C19; then drv C19 pickers "colour pickers, histogram, picker actions"; fi
+  if want C20; then drv C20 coords "coordinates between the original and the picture"; fi
 done
 
 # C15 once: the engine on its own thread, the process's CPU set changing under it

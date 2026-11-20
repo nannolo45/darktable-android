@@ -55,6 +55,8 @@ static void _timed_plain(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_i
   const double w0 = dtb__t(), c0 = _cpu_ms();
   f(self, piece, i, o, roi_in, roi_out);
   const double w = dtb__t() - w0, c = _cpu_ms() - c0;
+  // P1b part 2: a colour picker waiting for this module's buffers (pickers.c)
+  dtb__pick_hook(self, piece, i, o, roi_in, roi_out);
   if(!g_entries) return;
   for(guint k = 0; k < g_entries->len; k++)
   {

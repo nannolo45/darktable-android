@@ -502,6 +502,12 @@ static void _region_window(dtb_pipe_t *p, const int x, const int y, const int w,
             (_mod(reg.x - full.x, period) || _mod(reg.y - full.y, period)) ? "DIFFERENT" : "same");
 }
 
+int dtb__pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uint8_t *out)
+{
+  g_atomic_int_set(&g_cancel, 0);
+  return _pipe_run(p, x, y, w, h, scale, out);
+}
+
 int dtb__pipe_ready(const gboolean full, dtb_pipe_t **out)
 {
   dtb_pipe_t *p = full ? &dtb_S.full : &dtb_S.preview;

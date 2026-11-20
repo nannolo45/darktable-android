@@ -419,6 +419,37 @@ int dtb_style_create(const char *name, const char *description, const char *item
  * The modules that ran in the last render, in pipeline order. */
 int dtb_render_times(char **json);
 
+/* ---------------------------------------------------------------------- */
+/* 6.3, 6.4 colour pickers and histogram (P1b part 2; engine-api.md)       */
+
+/* Desktop's module picker on instance (op, priority), or with op NULL the
+ * picture the pipe puts out (desktop's global picker). request_json:
+ * { "area": [x0, y0, x1, y1] } or { "point": [x, y] } in normalised
+ * coordinates of the picture, plus "denoise": bool, "pipe": "preview"
+ * (default) | "full", "bypass": [...] (as the render options) ->
+ * { "pipe", "input": { "colorspace", "mean": [4], "min": [4], "max": [4],
+ *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null }.
+ * DTB_E_ARG: bad area, or the instance is switched off. */
+int dtb_color_pick(const char *op, int priority, const char *request_json, char **json);
+
+/* Histogram of the preview pipe's picture: request_json { "max_size": n
+ * (default 1024), "bypass": [...] } -> { "bins": 256, "channels": ["red",
+ * "green", "blue"], "counts": [[256], [256], [256]], "max", "pixels",
+ * "width", "height" }. */
+int dtb_histogram(const char *request_json, char **json);
+
+/* ---------------------------------------------------------------------- */
+/* 6.5 coordinates (P1b part 2)                                            */
+
+/* Points between the original image (the pipe's input, the space drawn
+ * forms are stored in) and the processed picture, both normalised:
+ * request_json { "direction": "to_processed" | "to_original",
+ * "points": [ [x, y], ... ], "bypass": [...] } -> { "points": [ [x, y] |
+ * null, ... ], "original": { "width", "height" }, "processed": { "width",
+ * "height" } }. Through every switched-on module that moves pixels
+ * (dt_dev_distort_transform_plus / _backtransform_plus, all directions). */
+int dtb_coords_transform(const char *request_json, char **json);
+
 #ifdef __cplusplus
 }
 #endif

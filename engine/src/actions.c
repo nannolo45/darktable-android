@@ -378,7 +378,8 @@ static int _wb_check(dt_iop_module_t *m, const dt_image_t *img)
 
 static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *a, char **res)
 {
-  const gboolean mutating = !strcmp(action, "set_wb") || !strcmp(action, "apply_preset");
+  const gboolean mutating = !strcmp(action, "set_wb") || !strcmp(action, "apply_preset")
+                            || !strcmp(action, "wb_from_area");
   if(strcmp(action, "get_wb") && strcmp(action, "list_presets") && !mutating)
     return dtb__err(DTB_E_NOT_FOUND, "temperature has no action '%s'", action);
   if(mutating && _need_writable()) return DTB_E_READ_ONLY;
@@ -506,6 +507,50 @@ static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *
     }
     json_builder_end_array(b);
     *res = dtb__json_finish(b);
+  }
+  else if(!r && !strcmp(action, "wb_from_area"))
+  {
+    // P1b part 2 (engine-api.md 6.3): desktop's "from image area" picker,
+    // temperature.c color_picker_apply(): the module's picker on its input
+    // (raw or rgb, colour space "none"), then the coefficients from the mean
+    float area[4];
+    dtb_pick_result_t pk;
+    r = dtb__read_area(a, area);
+    if(!r) r = dtb__pick(m, area, FALSE, FALSE, NULL, &pk);
+    if(!r && (!pk.have[0] || pk.max[0][0] < pk.min[0][0]))
+      r = dtb__err(DTB_E_ARG, "the area gives no sample in the module's input");
+    if(!r)
+    {
+      const float *grayrgb = pk.mean[0];
+      // as color_picker_apply: normalise green, each coefficient 0..8
+      const float gnormal = grayrgb[1] > 0.001f ? 1.0f / grayrgb[1] : 1.0f;
+      float coeffs[4];
+      for(int c = 0; c < 4; c++)
+        coeffs[c] = fmaxf(0.0f, fminf(8.0f, (grayrgb[c] > 0.001f ? 1.0f / grayrgb[c] : 1.0f) / gnormal));
+      coeffs[1] = 1.0f;
+      void *tmp = dtb__memdup(m->params, m->params_size);
+      void *orig = m->params;
+      m->params = tmp;
+      _wb_params_t wt;
+      _wb_params(m, &wt);
+      for(int k = 0; k < 4; k++) *wt.c[k] = coeffs[k];
+      // _update_preset(self, DT_IOP_TEMP_SPOT): "from image area" is not a
+      // camera mode, so late_correction stays as it is
+      _wb_update_preset(&wt, WB_SPOT);
+      m->params = orig;
+      _commit(m, tmp);
+      g_free(tmp);
+      JsonBuilder *b = json_builder_new();
+      json_builder_begin_object(b);
+      json_builder_set_member_name(b, "picked");
+      dtb__pick_json(b, &pk);
+      json_builder_set_member_name(b, "coefficients");
+      json_builder_begin_array(b);
+      for(int k = 0; k < 4; k++) json_builder_add_double_value(b, coeffs[k]);
+      json_builder_end_array(b);
+      json_builder_end_object(b);
+      *res = dtb__json_finish(b);
+    }
   }
   else if(!r && !strcmp(action, "set_wb"))
   {
@@ -1151,6 +1196,8 @@ int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args,
 {
   const int r2 = dtb__module_action2(m, action, args, result);
   if(r2 != 1) return r2;
+  const int r3 = dtb__module_action3(m, action, args, result);
+  if(r3 != 1) return r3;
   if(dt_iop_module_is(m, "temperature")) return _act_temperature(m, action, args, result);
   if(dt_iop_module_is(m, "lens")) return _act_lens(m, action, args, result);
   if(dt_iop_module_is(m, "lut3d")) return _act_lut3d(m, action, args, result);
