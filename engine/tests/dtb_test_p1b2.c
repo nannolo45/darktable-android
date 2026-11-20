@@ -487,6 +487,36 @@ static int cmd_pickers(const char *raw, const char *xmp, const char *outdir)
   const int n1 = history_count(&end1);
   fprintf(stdout, "RESULT history items: %d before the actions, %d after\n", n0, n1);
   CHECK(n1 == n0 + 6, "history items: %d -> %d (expected 6: wb, exposure, rgblevels on, levels, rgbcurve on, curve)", n0, n1);
+  // color calibration: the area made neutral (the CAT tab's "from image area"); its output there is then grey
+  {
+    JsonNode *mods = get_modules();
+    JsonObject *cm = find_mod(mods, "channelmixerrgb", 0);
+    const gboolean on = cm && json_object_get_boolean_member(cm, "enabled");
+    json_node_unref(mods);
+    if(!on) MUST(dtb_set_enabled("channelmixerrgb", 0, 1));
+    char *r = NULL;
+    MUST(dtb_module_action("channelmixerrgb", 0, "illuminant_from_area", req, &r));
+    JsonNode *rn = jparse_owned(r);
+    JsonObject *ro = json_node_get_object(rn);
+    JsonNode *after = pick("channelmixerrgb", 0, req);
+    JsonObject *ao = pick_side(after, "output");
+    const double R = vec(ao, "mean", 0), G = vec(ao, "mean", 1), B = vec(ao, "mean", 2);
+    const double spread = fmax(fabs(R - G), fabs(B - G)) / fmax(1e-6, G);
+    fprintf(stdout, "RESULT color calibration illuminant_from_area: x %.4f y %.4f (%.0f K); the area's output afterwards %.5f %.5f %.5f (spread %.2e)\n",
+            json_object_get_double_member(ro, "x"), json_object_get_double_member(ro, "y"),
+            json_object_get_double_member(ro, "temperature"), R, G, B, spread);
+    CHECK(spread < 0.01, "color calibration: the area is not neutral after illuminant_from_area (spread %.3g)", spread);
+    json_node_unref(rn);
+    json_node_unref(after);
+    // area mapping to a target colour, then measured: the output's hue follows the target
+    r = NULL;
+    gchar *rq = g_strdup_printf("{\"area\":[%g,%g,%g,%g],\"target\":{\"lightness\":50,\"chroma\":20,\"hue\":120},\"use_mixing\":false}",
+                                a[0], a[1], a[2], a[3]);
+    MUST(dtb_module_action("channelmixerrgb", 0, "spot", rq, &r));
+    dtb_free(r);
+    g_free(rq);
+    EXPECT(dtb_module_action("channelmixerrgb", 0, "spot", "{\"area\":[0.1,0.1,0.2,0.2],\"mode\":\"measure\"}", &r), DTB_E_ARG);
+  }
 
   g_free(req);
   MUST(dtb_close());

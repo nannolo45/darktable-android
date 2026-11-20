@@ -551,7 +551,8 @@ class FakeEngine(
         def(op)
         s.inst(op, priority)
         when (op to action) {
-            "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area" ->
+            "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area",
+            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot" ->
                 fakePickAction(s, op, priority, action, args)
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
@@ -1320,6 +1321,17 @@ class FakeEngine(
                 nodes.forEachIndexed { k, (x, y) -> vals["curve_nodes[$ch][$k].x"] = JsonPrimitive(x); vals["curve_nodes[$ch][$k].y"] = JsonPrimitive(y) }
                 s.setParams(op, priority, vals, merge = false)
                 buildJsonObject { put("picked", picked); put("nodes", JsonArray(nodes.map { JsonArray(listOf(JsonPrimitive(it.first), JsonPrimitive(it.second))) })) }
+            }
+            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot" -> {
+                if (action == "spot" && ((args["mode"] as? JsonPrimitive)?.content ?: "correction") != "correction")
+                    fail(EngineError.ARG, "mode: only \"correction\" is built")
+                // the stand-in: the illuminant's chromaticity is the picked colour's (its picture is not adapted)
+                val sum = max(1e-6, m[0] + m[1] + m[2])
+                val x = m[0] / sum; val y = m[1] / sum
+                val vals = linkedMapOf<String, JsonPrimitive>("x" to JsonPrimitive(x), "y" to JsonPrimitive(y))
+                if (cur.containsKey("illuminant")) vals["illuminant"] = JsonPrimitive("DT_ILLUMINANT_CUSTOM")
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("x", x); put("y", y); put("illuminant", "DT_ILLUMINANT_CUSTOM") }
             }
             else -> fail(EngineError.NOT_FOUND, "$op has no action '$action'")
         }
