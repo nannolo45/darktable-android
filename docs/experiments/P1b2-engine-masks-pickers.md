@@ -26,3 +26,18 @@ Brief: `docs/briefs/P1b2-engine-masks-pickers.md`. Report: `P1b2-engine-masks-pi
   before the undo (desktop's `_pop_undo` does not move it). Engine test C18 (3 images): XMP after undo to the opened
   state = opened XMP apart from `change_timestamp`; after one undo = XMP at that state; redo to the last state:
   byte-equal. The tag is a deliberate difference from desktop (it keeps the tag); engine-api.md 6.2 says so.
+- **Deliverable 2 (crop tool).** `CropSession`/`DarkroomController`: the uncropped picture is
+  `renderSize(1, bypass crop)` + `renderPreview(size, bypass crop)`; the switch-off, render and undo bracket,
+  `cropBracketOpen`, `CROP_NOT_WRITTEN` and `RedoGuard` are gone. `CropToolState.options` keeps the options, and the
+  sharp region of a zoomed-in view is rendered with them while the tool is open (P3a limit 3; `Photo.kt`: one
+  condition, the tool's own region is drawn, not while the picture turns). Kotlin: `RenderOptions`, `InstanceRef`,
+  overloads `renderSize/renderPreview/renderRegion(…, options)` on `DarktableEngine`, the JNI engine and `FakeEngine`
+  (the fake renders the instance as off); contract tests `aBypassRenderLeavesTheEditAlone`,
+  `aRedoStepSurvivesBypassRenders`, `anUndoBackGivesTheXmpOfThatState` (engine-api JVM: green on the workspace).
+- **P3a tests changed to pin the new behaviour** (`P3aCropToolTest`): `theToolOpensOnTheUncroppedPicture…` (no
+  switch-off, no undo, undo state unchanged instead of a hidden redo step), `aSyncDuringTheBracketWaitsAndWritesTheEdit`
+  (waits for the bypass render instead of the switch-off; no undo), `theBracketsRedoStepIsNeverOffered` (now: the
+  user's redo step survives opening and closing the tool), `anUndoThatFailsStopsEveryWrite` (now: a failing render
+  of the uncropped picture leaves the edit and every write as they were). New: `openingAndClosingTheToolWithoutAChange
+  LeavesTheXmpByteEqual`, `zoomedInTheToolShowsItsSharpRegion`. Emulator `P3aScenarioTest` c1 and c2 now also require
+  the XMP to be byte-equal.

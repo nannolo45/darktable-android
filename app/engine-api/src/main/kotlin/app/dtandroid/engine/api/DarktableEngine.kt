@@ -165,4 +165,15 @@ interface DarktableEngine {
 
     /** Per-module times of the last render. */
     suspend fun renderTimes(): RenderTimes
+
+    // 6 (P1b part 2): docs/design/engine-api.md section 6.
+
+    /** [renderSize] with [options] for this call only (6.1): with a bypass, the size of the picture without the instance. */
+    suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize
+
+    /** [renderPreview] with [options] for this call only (6.1). */
+    suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage
+
+    /** [renderRegion] with [options] for this call only (6.1); the region is in the picture the options give. */
+    suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage
 }

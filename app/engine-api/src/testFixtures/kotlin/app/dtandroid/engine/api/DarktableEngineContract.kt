@@ -693,4 +693,78 @@ abstract class DarktableEngineContract {
         val wb = engine.moduleAction("temperature", 0, "get_wb") as JsonObject
         assertTrue(wb.containsKey("tuning") && wb.containsKey("preset_index"))
     }
+
+    // ----------------------------------------------------------------- 6 (P1b part 2)
+
+    @Test
+    fun aBypassRenderLeavesTheEditAlone() = runBlocking<Unit> {
+        openSample()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.5))
+        engine.historySeal()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(1.0))
+        engine.historySeal()
+        engine.undo()
+        val modules0 = engine.modules()
+        val history0 = engine.history()
+        val undo0 = engine.undoState()
+        assertTrue(undo0.canRedo)
+        val xmpA = File(tmp.root, "bypass-a.xmp")
+        engine.xmpWrite(xmpA.path)
+        val plain = engine.renderPreview(256)
+        val off = RenderOptions.bypass("exposure", 0)
+        val bypassed = engine.renderPreview(256, off)
+        val size = engine.renderSize(0.25, off)
+        val region = engine.renderRegion(0, 0, size.w, size.h, 0.25, off)
+        assertEquals(modules0, engine.modules())
+        assertEquals(history0, engine.history())
+        assertEquals(undo0, engine.undoState())
+        val xmpB = File(tmp.root, "bypass-b.xmp")
+        engine.xmpWrite(xmpB.path)
+        assertTrue("the XMP is byte-equal after bypass renders", xmpA.readBytes().contentEquals(xmpB.readBytes()))
+        assertTrue("the next plain render is the one from before", plain.rgba.contentEquals(engine.renderPreview(256).rgba))
+        // the picture equals the one with the instance switched off
+        engine.setEnabled("exposure", 0, false)
+        val switchedOff = engine.renderPreview(256)
+        val switchedOffRegion = engine.renderRegion(0, 0, size.w, size.h, 0.25)
+        engine.undo()
+        assertTrue("bypass preview = switched off", bypassed.rgba.contentEquals(switchedOff.rgba))
+        assertTrue("bypass region = switched off", region.rgba.contentEquals(switchedOffRegion.rgba))
+        assertNotEquals(meanOf(plain), meanOf(bypassed), 1e-9)
+        // the redo step from before is still there (the switch-off and its undo replaced it: a fresh one)
+        expect(EngineError.NOT_FOUND) { engine.renderPreview(256, RenderOptions.bypass("nosuchmodule", 0)) }
+        expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.bypass("colorin", 0)) }
+        assertEquals(engine.renderSize(0.25), engine.renderSize(0.25, RenderOptions.NONE))
+    }
+
+    @Test
+    fun aRedoStepSurvivesBypassRenders() = runBlocking<Unit> {
+        openSample()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.7))
+        engine.historySeal()
+        engine.undo()
+        engine.renderPreview(256, RenderOptions.bypass("exposure", 0))
+        assertTrue(engine.undoState().canRedo)
+        engine.redo()
+        assertEquals(0.7, exposureValue(), 1e-6)
+    }
+
+    @Test
+    fun anUndoBackGivesTheXmpOfThatState() = runBlocking<Unit> {
+        openSample()
+        val a = File(tmp.root, "undo-a.xmp")
+        engine.xmpWrite(a.path)
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.6))
+        engine.historySeal()
+        val b = File(tmp.root, "undo-b.xmp")
+        engine.xmpWrite(b.path)
+        engine.undo()
+        val c = File(tmp.root, "undo-c.xmp")
+        engine.xmpWrite(c.path)
+        fun edit(f: File) = f.readText().replace(Regex("""\s*darktable:change_timestamp="[^"]*""""), "")
+        assertEquals("after an undo the XMP is the one of that state, apart from the change timestamp", edit(a), edit(c))
+        engine.redo()
+        val d = File(tmp.root, "undo-d.xmp")
+        engine.xmpWrite(d.path)
+        assertTrue("redo back to the last state: byte-equal", b.readBytes().contentEquals(d.readBytes()))
+    }
 }

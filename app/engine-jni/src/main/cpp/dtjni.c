@@ -758,3 +758,66 @@ Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, j
   if(r == DTB_OK && !s) s = strdup("{}");  // dtb_free is g_free, which is free() (GLib >= 2.46)
   return _json_status(env, r, s, status);
 }
+
+/* ---------------------------------------------------------------------- */
+/* P1b part 2 (engine-api.md section 6): renders with options (6.1).       */
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderSizeEx(JNIEnv *env, jclass cls, jfloat scale, jstring options,
+                                                    jintArray wh)
+{
+  jstr_t o = _str(env, options);
+  int w = 0, h = 0;
+  const int r = dtb_render_size_ex(scale, o.s, &w, &h);
+  _str_free(&o);
+  const jint v[2] = { w, h };
+  (*env)->SetIntArrayRegion(env, wh, 0, 2, v);
+  return r;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderPreviewEx(JNIEnv *env, jclass cls, jint max_size, jstring options,
+                                                       jintArray wh, jintArray status)
+{
+  jstr_t o = _str(env, options);
+  uint8_t *buf = NULL;
+  int w = 0, h = 0;
+  const int r = dtb_render_preview_ex(max_size, o.s, &buf, &w, &h);
+  _str_free(&o);
+  const jint st = r;
+  (*env)->SetIntArrayRegion(env, status, 0, 1, &st);
+  if(r || !buf)
+  {
+    dtb_free(buf);
+    return NULL;
+  }
+  const jint v[2] = { w, h };
+  (*env)->SetIntArrayRegion(env, wh, 0, 2, v);
+  const jsize n = (jsize)((size_t)w * h * 4);
+  jbyteArray a = (*env)->NewByteArray(env, n);
+  if(a) (*env)->SetByteArrayRegion(env, a, 0, n, (const jbyte *)buf);
+  dtb_free(buf);
+  return a;
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_renderRegionIntoEx(JNIEnv *env, jclass cls, jint x, jint y, jint w, jint h,
+                                                          jfloat scale, jstring options, jbyteArray out,
+                                                          jbooleanArray copied)
+{
+  if(!out || w <= 0 || h <= 0) return DTB_E_ARG;
+  if((*env)->GetArrayLength(env, out) != (jsize)((size_t)w * h * 4)) return DTB_E_ARG;
+  jstr_t o = _str(env, options);
+  jboolean is_copy = JNI_FALSE;
+  jbyte *buf = (*env)->GetByteArrayElements(env, out, &is_copy);
+  if(!buf)
+  {
+    _str_free(&o);
+    return DTB_E_ENGINE;
+  }
+  const int r = dtb_render_region_ex(x, y, w, h, scale, o.s, (uint8_t *)buf);
+  _str_free(&o);
+  (*env)->ReleaseByteArrayElements(env, out, buf, r == DTB_OK ? 0 : JNI_ABORT);
+  if(copied) (*env)->SetBooleanArrayRegion(env, copied, 0, 1, &is_copy);
+  return r;
+}

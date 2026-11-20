@@ -134,4 +134,9 @@ object NativeBridge {
     const val STYLE_CREATE = 11
     const val RENDER_TIMES = 12
     @JvmStatic external fun p1b(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
+
+    // P1b part 2 (engine-api.md section 6): renders with options (JSON, null = none)
+    @JvmStatic external fun renderSizeEx(scale: Float, options: String?, wh: IntArray): Int
+    @JvmStatic external fun renderPreviewEx(maxSize: Int, options: String?, wh: IntArray, status: IntArray): ByteArray?
+    @JvmStatic external fun renderRegionIntoEx(x: Int, y: Int, w: Int, h: Int, scale: Float, options: String?, out: ByteArray, copied: BooleanArray): Int
 }

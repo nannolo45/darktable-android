@@ -99,6 +99,8 @@ data class DarkroomState(
     val actionValues: Map<InstanceKey, JsonObject> = emptyMap(),
     val preview: PhotoLayer? = null,
     val region: PhotoLayer? = null,
+    /** Brief P1b part 2: [region] is a region of the crop tool's uncropped picture (drawn only while the tool shows it) */
+    val regionOfCropTool: Boolean = false,
     /** Brief P2i: the sharp region of a zoomed-in view is being rendered (the screen says "rendering…") */
     val regionPending: Boolean = false,
     val beforePreview: PhotoLayer? = null,

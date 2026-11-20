@@ -6,6 +6,7 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
+import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblemReason
@@ -29,7 +30,6 @@ import app.dtandroid.schema.UiSchema
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -433,10 +433,7 @@ class DarkroomController(
             if (unreadable.containsKey(item.rawPath)) Timeline.mark("darkroom: ${item.fileName} remembered as having no picture, tried again (the user opened it)")
             val stamp = stampOf(item.rawPath)
             Timeline.mark("darkroom: engine open start")
-            redoGuard.engineRedoEmpty()
             openOrRemember(engine, item.rawPath, xmp, stamp)
-            // brief P3a: a new session starts from the file: a switch-off left by a failed undo is gone with the old one
-            cropBracketOpen = false
             // brief P2h: 0 x 0 or an engine error from image_info: the session is already closed here
             val info = pictureOrClose(engine, item.rawPath, stamp) ?: noPicture()
             Timeline.mark("darkroom: engine open end")
@@ -492,8 +489,6 @@ class DarkroomController(
         val s = _state.value
         val item = s.current ?: return
         if (s.info == null || s.readOnly) return
-        // brief P3a: never while the crop tool's switch-off could still be in the engine (only after a failed undo)
-        if (cropBracketOpen) { _state.update { it.copy(message = CROP_NOT_WRITTEN) }; return }
         try {
             engine.xmpWrite(item.xmpPath)
         } catch (e: EngineException) {
@@ -520,10 +515,7 @@ class DarkroomController(
     private suspend fun refreshLocked() {
         val modules = engine.modules()
         val history = engine.history()
-        // brief P3a: the crop tool's bracket leaves its state on the redo queue; it is never offered (RedoGuard)
-        val undo0 = engine.undoState()
-        if (!undo0.canRedo) redoGuard.engineRedoEmpty()
-        val undo = if (redoGuard.mayRedo()) undo0 else undo0.copy(canRedo = false)
+        val undo = engine.undoState()
         val actions = HashMap<InstanceKey, JsonObject>()
         for (m in modules) {
             val ms = schema.modules[m.op] ?: continue
@@ -809,19 +801,9 @@ class DarkroomController(
     // See docs/experiments/P3a-crop-tool.md ("deliverable 3"). While crop's panel is open on an editable photo the
     // photo shows crop's input (the uncropped picture) with the frame over it. The frame is kept here
     // ([CropToolState]), never in the engine, until the tool is left; then it is written with one params_set (one
-    // history item, none when nothing changed). The uncropped picture is rendered in one locked section:
-    // crop switched off, render_size and render_preview, undo. Every xmp_write, every session for
-    // LightPhotoLibrary and every other render take the same lock, so none of them can see the switched-off
-    // state; the undo runs even when the coroutine is cancelled, and the history before and after is compared.
-
-    private val redoGuard = RedoGuard()
-
-    /**
-     * True only between switching crop off for the uncropped picture and the undo that restores the edit; it stays
-     * true only when that undo failed or did not restore the history exactly, and then nothing is written
-     * ([saveLocked], [writeXmp], [export], [withPhotoSession] refuse) until the photo is closed.
-     */
-    @Volatile private var cropBracketOpen = false
+    // history item, none when nothing changed). Brief P1b part 2: the uncropped picture is a render that leaves
+    // crop out for that call only (engine-api.md 6.1, `bypass`): the edit, the history, the undo and redo steps
+    // and the XMP are never touched by it (P3a's switch-off, render and undo bracket and its redo guard are gone).
 
     /** Where the photo's view is in its window (set by the screen), for tests that touch the photo. */
     @Volatile var photoArea: PhotoArea? = null
@@ -837,8 +819,6 @@ class DarkroomController(
     fun cropWanted(s: DarkroomState): InstanceKey? {
         val k = s.expanded ?: return null
         if (k.op != CROP_OP || s.info == null || s.readOnly || s.loading) return null
-        // the engine may still hold crop switched off (an undo that failed): no tool on that state
-        if (cropBracketOpen) return null
         if (schema.modules[k.op]?.aspect == null) return null
         if (cropBlockedBy(s) != null) return null
         return k
@@ -907,7 +887,6 @@ class DarkroomController(
                 if (writes.isNotEmpty()) {
                     engine.paramsSet(t.key.op, t.key.priority, writes)
                     engine.historySeal()
-                    redoGuard.engineRedoEmpty()
                     Timeline.mark("darkroom: crop tool: frame written (${writes.keys.joinToString(",")})")
                 }
                 _state.update { s ->
@@ -936,7 +915,7 @@ class DarkroomController(
         if (t != null && t.key == want && t.picture != null && geometryInputs(before) == geometryInputs(s.modules)) {
             val m = s.modules.firstOrNull { it.key == want } ?: return
             val spec = schema.modules[want.op]?.aspect ?: return
-            _state.update { it.copy(cropTool = toolFromParams(m, spec, t.inW, t.inH, t.picture)) }
+            _state.update { it.copy(cropTool = toolFromParams(m, spec, t.inW, t.inH, t.picture).copy(options = t.options)) }
             return
         }
         _state.update { it.copy(cropTool = null) }
@@ -955,10 +934,10 @@ class DarkroomController(
     }
 
     /**
-     * Brief P3a deliverable 3: the uncropped picture. With crop on: switch it off, read the size and render the
-     * preview, then undo, all under the lock the caller holds; the undo is not cancellable. With crop off the
-     * picture is the current one. The history is compared before and after: a difference keeps [cropBracketOpen]
-     * set (nothing is written) and is reported.
+     * Brief P3a deliverable 3, brief P1b part 2 deliverable 2: the uncropped picture. With crop on, a render that
+     * leaves crop out for this call only (`bypass`); nothing in the engine changes. With crop off the picture is the
+     * current one. [CropToolState.options] keeps the options, so a zoomed-in view renders its sharp region of the
+     * same picture.
      */
     private suspend fun openCropLocked(key: InstanceKey) {
         val s = _state.value
@@ -966,43 +945,24 @@ class DarkroomController(
         if (s.readOnly) return
         val m = s.modules.firstOrNull { it.key == key } ?: return
         val spec = schema.modules[key.op]?.aspect ?: return
-        val wasOn = m.enabled
-        Timeline.mark("darkroom: crop tool: uncropped picture start (crop ${if (wasOn) "on, bracket" else "off"})")
-        val result: Pair<app.dtandroid.engine.api.RenderSize, app.dtandroid.engine.api.RenderedImage> = try {
-            withContext(NonCancellable) {
-                val h0 = if (wasOn) engine.history() else null
-                if (wasOn) {
-                    cropBracketOpen = true
-                    // refused: nothing changed in the engine, nothing to undo
-                    try { engine.setEnabled(key.op, key.priority, false) } catch (e: EngineException) { cropBracketOpen = false; throw e }
-                }
-                try {
-                    val sz = engine.renderSize(1.0)
-                    val vp = viewport
-                    val size = if (vp == null) previewMaxSize else previewSizeFor(vp.widthPx, vp.heightPx, sz.w, sz.h, previewMaxSize, fitPreviewMax)
-                    sz to wanted { engine.renderPreview(size) }
-                } finally {
-                    if (wasOn) {
-                        engine.undo()
-                        redoGuard.bracketed()
-                        val h1 = engine.history()
-                        if (h1 != h0) throw EngineException(EngineError.STATE, "the crop tool could not restore the history ($h0 before, $h1 after)")
-                        cropBracketOpen = false
-                    }
-                }
-            }
+        val options = if (m.enabled) RenderOptions.bypass(key.op, key.priority) else RenderOptions.NONE
+        Timeline.mark("darkroom: crop tool: uncropped picture start (crop ${if (m.enabled) "on, left out of the render" else "off"})")
+        val (sz, img) = try {
+            val sz = engine.renderSize(1.0, options)
+            val vp = viewport
+            val size = if (vp == null) previewMaxSize else previewSizeFor(vp.widthPx, vp.heightPx, sz.w, sz.h, previewMaxSize, fitPreviewMax)
+            sz to wanted { engine.renderPreview(size, options) }
         } catch (e: EngineException) {
-            if (cropBracketOpen) _state.update { it.copy(message = "$CROP_NOT_WRITTEN (${e.message})") }
-            else if (e.error != EngineError.CANCELLED) _state.update { it.copy(message = e.message) }
+            if (e.error != EngineError.CANCELLED) _state.update { it.copy(message = e.message) }
             Timeline.mark("darkroom: crop tool: not opened (${e.message})")
-            try { refreshLocked() } catch (e2: EngineException) { Timeline.mark("darkroom: crop tool: state not read again (${e2.message})") }
             return
         }
-        val (sz, img) = result
         val layer = PhotoLayer(img, 0, 0, img.width.toDouble() / sz.w.coerceAtLeast(1))
-        try { refreshLocked() } catch (e: EngineException) { _state.update { it.copy(message = e.message) } }
         val m2 = _state.value.modules.firstOrNull { it.key == key } ?: return
-        _state.update { it.copy(cropTool = toolFromParams(m2, spec, sz.w, sz.h, layer), preview = it.preview ?: layer, working = null, workingProgress = null) }
+        _state.update {
+            it.copy(cropTool = toolFromParams(m2, spec, sz.w, sz.h, layer).copy(options = options), preview = it.preview ?: layer,
+                region = null, working = null, workingProgress = null)
+        }
         Timeline.mark("darkroom: crop tool: open on ${sz.w}x${sz.h}, picture ${img.width}x${img.height} (photo ${info.width}x${info.height})")
     }
 
@@ -1212,8 +1172,8 @@ class DarkroomController(
     suspend fun historyGoto(end: Int) = change { engine.historyGoto(end) }
     suspend fun historyCompress() = change { engine.historyCompress() }
     // brief P3a: asked of the engine inside the change (an open crop tool's frame may have been written first)
-    suspend fun undo() = change { if (engine.undoState().canUndo) { engine.undo(); redoGuard.undone() } }
-    suspend fun redo() = change { if (engine.undoState().canRedo && redoGuard.mayRedo()) { engine.redo(); redoGuard.redone() } }
+    suspend fun undo() = change { if (engine.undoState().canUndo) engine.undo() }
+    suspend fun redo() = change { if (engine.undoState().canRedo) engine.redo() }
 
     // ------------------------------------------------------------------ rendering
     //
@@ -1343,7 +1303,8 @@ class DarkroomController(
 
     private suspend fun renderRegion() {
         if (!zoomedIn(viewport)) return
-        if (_state.value.cropTool != null) return // brief P3a: the tool shows its preview, scaled when zoomed
+        // brief P1b part 2: with the crop tool open the sharp region is one of its uncropped picture (same options)
+        _state.value.cropTool?.let { if (it.picture == null) return }
         // brief P2i: "rendering…" over the photo while the sharp region of a zoomed-in view is on its way
         if (regionsPending.incrementAndGet() == 1) _state.update { it.copy(regionPending = true) }
         try {
@@ -1352,8 +1313,10 @@ class DarkroomController(
                     // read on every try: the view may be back at fit by now, and then nothing is rendered
                     val vp = viewport?.takeIf { zoomedIn(it) } ?: return@wanted null
                     val info = _state.value.info ?: return@wanted null
-                    val r = regionFor(vp, info.width, info.height) ?: return@wanted null
-                    val size = engine.renderSize(r.scale)
+                    val tool = _state.value.cropTool
+                    val options = tool?.options ?: RenderOptions.NONE
+                    val r = (if (tool != null) regionFor(vp, tool.inW, tool.inH) else regionFor(vp, info.width, info.height)) ?: return@wanted null
+                    val size = engine.renderSize(r.scale, options)
                     val x = r.x.coerceIn(0, size.w - 1)
                     val y = r.y.coerceIn(0, size.h - 1)
                     val w = min(r.w, size.w - x)
@@ -1364,7 +1327,7 @@ class DarkroomController(
                     val t0 = System.nanoTime()
                     val img = try {
                         synchronized(regionGuard) { regionRendering = true }
-                        engine.renderRegion(x, y, w, h, r.scale)
+                        engine.renderRegion(x, y, w, h, r.scale, options)
                     } catch (e: EngineException) {
                         if (e.error == EngineError.CANCELLED) Timeline.mark("darkroom: region render cancelled")
                         throw e
@@ -1375,12 +1338,13 @@ class DarkroomController(
                         synchronized(regionGuard) { regionRendering = false }
                     }
                     _times.update { t -> t.copy(regionMs = (System.nanoTime() - t0) / 1e6) }
-                    PhotoLayer(img, x, y, r.scale)
+                    PhotoLayer(img, x, y, r.scale) to (tool?.picture)
                 }
             } ?: return
-            // shown only while still zoomed in: a zoom back to fit meanwhile drops it
-            if (zoomedIn(viewport)) {
-                _state.update { it.copy(region = layer) }
+            // shown only while still zoomed in: a zoom back to fit meanwhile drops it; a region of the crop tool's
+            // picture only while the tool still shows that picture
+            if (zoomedIn(viewport) && _state.value.cropTool?.picture === layer.second) {
+                _state.update { it.copy(region = layer.first, regionOfCropTool = layer.second != null) }
                 Timeline.mark("darkroom: region shown")
             }
         } finally {
@@ -1511,7 +1475,6 @@ class DarkroomController(
                 // brief P3a: the export shows the frame on the screen: the crop tool's frame is written first
                 commitCropLocked(close = false)
                 refreshLocked()
-                if (cropBracketOpen) throw EngineException(EngineError.STATE, CROP_NOT_WRITTEN)
                 engine.export(path, options)
             }
         } finally {
@@ -1528,7 +1491,6 @@ class DarkroomController(
                 // brief P3a: as for the export, the crop tool's frame is written first
                 commitCropLocked(close = false)
                 refreshLocked()
-                if (cropBracketOpen) throw EngineException(EngineError.STATE, CROP_NOT_WRITTEN)
                 engine.xmpWrite(path)
             }
         } finally {
@@ -1578,8 +1540,6 @@ class DarkroomController(
         val r = bg("session on ${File(rawPath).name}") { e ->
             val s = _state.value
             when {
-                // brief P3a: never on a state the crop tool's bracket left behind (only after a failed undo)
-                s.info != null && s.current?.rawPath == rawPath && cropBracketOpen -> Result.failure(EngineException(EngineError.STATE, CROP_NOT_WRITTEN))
                 s.info != null && s.current?.rawPath == rawPath -> { usedOpen = true; Result.success(block(e)) }
                 s.info == null && !fetching -> {
                     // brief P2h: a file without a picture is not opened again until it changes, and a session
@@ -1851,7 +1811,6 @@ class DarkroomController(
         const val ORIENTATION_PARAM = "orientation"
 
         /** Brief P3a: what the darkroom says when the crop tool's bracket could not restore the edit (never expected). */
-        const val CROP_NOT_WRITTEN = "the edit is not written: the crop tool could not restore it after showing the uncropped picture; close and open the photo again"
 
         /** "rendering…": the line over the photo while a picture is on its way. */
         const val RENDERING = "rendering…"

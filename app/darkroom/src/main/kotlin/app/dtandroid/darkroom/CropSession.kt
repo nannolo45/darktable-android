@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.darkroom
 
+import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.schema.CropAspect
 import app.dtandroid.schema.CropTool
 
@@ -11,7 +12,8 @@ import app.dtandroid.schema.CropTool
  * `g->clip_*`, [ratioD] / [ratioN] the ratio the aspect list or the flip button chose. The edit in the engine is
  * the one from before the tool until the tool is left ([DarkroomController] writes the frame then, one history
  * item, or none when nothing changed). [picture] is the uncropped picture (crop's input), rendered once when the
- * tool opens; [inW] x [inH] is its size at scale 1, the size the frame's fractions refer to.
+ * tool opens with crop left out of that render (brief P1b part 2: `bypass`, nothing in the edit changes); [inW] x
+ * [inH] is its size at scale 1, the size the frame's fractions refer to.
  */
 data class CropToolState(
     val key: InstanceKey,
@@ -30,6 +32,11 @@ data class CropToolState(
      * `rotation`, degrees); the picture is shown turned by the difference until the engine's picture arrives.
      */
     val rotationLive: Double? = null,
+    /**
+     * Brief P1b part 2: the render options of [picture] (crop left out when crop is on); the sharp region of a
+     * zoomed-in view uses the same.
+     */
+    val options: RenderOptions = RenderOptions.NONE,
     /** "straighten" is on: a one-finger drag on the photo draws the line instead of moving the frame */
     val straighten: Boolean = false,
     /** the straightening line being drawn: x0, y0, x1, y1 as fractions of the picture */
@@ -50,36 +57,3 @@ data class CropToolState(
 
 /** Brief P3a: where the photo's view is in its window, in pixels (emulator tests touch the photo through it). */
 data class PhotoArea(val left: Float, val top: Float, val width: Float, val height: Float)
-
-/**
- * Brief P3a: the redo step the crop tool's bracket leaves behind is never offered.
- *
- * The bracket (switch crop off, render, `undo()`) puts the switched-off state on the engine's redo queue. That
- * entry is at the bottom of the queue: user undos push real states above it, user redos take them off again.
- * Redo is allowed while real states are above it; the engine empties the queue on any other change, and then
- * the guard has nothing left to guard ([engineRedoEmpty]).
- */
-class RedoGuard {
-    /** the bottom of the engine's redo queue is the bracket's state */
-    var poisoned = false
-        private set
-
-    /** real states above it */
-    var real = 0
-        private set
-
-    /** The bracket ran: the redo queue is exactly its one state. */
-    fun bracketed() { poisoned = true; real = 0 }
-
-    /** The user's undo pushed a real state onto the redo queue. */
-    fun undone() { if (poisoned) real++ }
-
-    /** The user's redo took one off. */
-    fun redone() { if (poisoned && real > 0) real-- }
-
-    /** The engine reports an empty redo queue (any change empties it). */
-    fun engineRedoEmpty() { poisoned = false; real = 0 }
-
-    /** Whether redo may run when the engine says it can. */
-    fun mayRedo(): Boolean = !poisoned || real > 0
-}

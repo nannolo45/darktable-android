@@ -16,6 +16,7 @@ import app.dtandroid.engine.api.RenderTimes
 import app.dtandroid.engine.api.Style
 import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleMode
+import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -269,24 +270,34 @@ class JniEngine private constructor() : DarktableEngine {
 
     // ------------------------------------------------------------------ 2.7 rendering
 
-    override suspend fun renderSize(scale: Double): RenderSize = onEngine {
+    override suspend fun renderSize(scale: Double): RenderSize = renderSize(scale, RenderOptions.NONE)
+
+    override suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize = onEngine {
         requireInit()
         val wh = IntArray(2)
-        check(NativeBridge.renderSize(scale.toFloat(), wh))
+        check(NativeBridge.renderSizeEx(scale.toFloat(), options.json(), wh))
         RenderSize(wh[0], wh[1])
     }
 
-    override suspend fun renderPreview(maxSize: Int): RenderedImage = onEngine {
+    private fun RenderOptions.json(): String? = if (isNone) null else toJson().toString()
+
+    override suspend fun renderPreview(maxSize: Int): RenderedImage = renderPreview(maxSize, RenderOptions.NONE)
+
+    override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         requireInit()
         val wh = IntArray(2)
         val st = IntArray(1)
         previewCalls.incrementAndGet()
-        val px = render { NativeBridge.renderPreview(maxSize, wh, st) }
+        val opts = options.json()
+        val px = render { NativeBridge.renderPreviewEx(maxSize, opts, wh, st) }
         check(st[0])
         RenderedImage(wh[0], wh[1], px ?: throw EngineException(EngineError.ENGINE, "no pixels"))
     }
 
-    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage = onEngine {
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage =
+        renderRegion(x, y, w, h, scale, RenderOptions.NONE)
+
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         requireInit()
         if (w <= 0 || h <= 0 || x < 0 || y < 0) throw EngineException(EngineError.ARG, "bad region $x,$y ${w}x$h")
         val buf = try {
@@ -298,7 +309,8 @@ class JniEngine private constructor() : DarktableEngine {
         }
         val copied = BooleanArray(1)
         regionCalls.incrementAndGet()
-        check(render { NativeBridge.renderRegionInto(x, y, w, h, scale.toFloat(), buf, copied) })
+        val opts = options.json()
+        check(render { NativeBridge.renderRegionIntoEx(x, y, w, h, scale.toFloat(), opts, buf, copied) })
         lastRegionCopied = copied[0]
         RenderedImage(w, h, buf)
     }

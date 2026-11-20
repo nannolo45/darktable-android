@@ -15,6 +15,7 @@ import app.dtandroid.engine.api.ImageClass
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.ParamPath
+import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -737,41 +738,71 @@ class FakeEngine(
         return catalog["flip"]?.fields?.get("orientation")?.enumValue(name)?.takeIf { it >= 0 } ?: 0
     }
 
-    override suspend fun renderSize(scale: Double): RenderSize = onEngine {
+    private fun orientation(s: Session, bypass: Set<Pair<String, Int>>): Int = if (("flip" to 0) in bypass) 0 else orientation(s)
+
+    /**
+     * 6.1: the instances a render leaves out, checked as the bridge checks them: NOT_FOUND for no such instance,
+     * ARG for a module without an on/off switch.
+     */
+    private fun Session.bypassOf(options: RenderOptions): Set<Pair<String, Int>> {
+        if (options.showMask != null) {
+            val m = options.showMask
+            inst(m.op, m.priority)
+            fail(EngineError.ARG, "the stand-in engine draws no masks (show_mask)")
+        }
+        return options.bypass.map { b ->
+            inst(b.op, b.priority)
+            if (!def(b.op).canSwitch) fail(EngineError.ARG, "${b.op} cannot be left out: it has no on/off switch")
+            b.op to b.priority
+        }.toSet()
+    }
+
+    override suspend fun renderSize(scale: Double): RenderSize = renderSize(scale, RenderOptions.NONE)
+
+    override suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
-        val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s), scale)
+        val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s, bypass), scale)
         RenderSize.fromJson(RenderSize(w, h).toJson())
     }
 
-    override suspend fun renderPreview(maxSize: Int): RenderedImage = onEngine {
+    override suspend fun renderPreview(maxSize: Int): RenderedImage = renderPreview(maxSize, RenderOptions.NONE)
+
+    override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (maxSize < 16) fail(EngineError.ARG, "max_size $maxSize")
         val r = FakeRenderer(s.variant)
-        val o = orientation(s)
+        val o = orientation(s, bypass)
         val (fw, fh) = r.processedSize(o, 1.0)
         val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
         val (w, h) = r.processedSize(o, scale)
-        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview")
+        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass)
     }
 
-    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage = onEngine {
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage =
+        renderRegion(x, y, w, h, scale, RenderOptions.NONE)
+
+    override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        val bypass = s.bypassOf(options)
         if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
         val r = FakeRenderer(s.variant)
-        val o = orientation(s)
+        val o = orientation(s, bypass)
         val (fw, fh) = r.processedSize(o, scale)
         if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
             fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
         if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
-        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full")
+        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass)
     }
 
-    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null): RenderedImage {
+    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null,
+                               bypass: Set<Pair<String, Int>> = emptySet()): RenderedImage {
         val flag = AtomicBoolean(false)
         runningRender.set(flag)
         try {
-            val live = s.live()
+            val live = s.live().mapValues { (k, l) -> if (k in bypass) l.copy(enabled = false) else l }
             val stages = s.insts.mapNotNull { i ->
                 val l = live[i.op to i.priority]!!
                 if (l.enabled) r.stageFor(i.op, l.params) else null
