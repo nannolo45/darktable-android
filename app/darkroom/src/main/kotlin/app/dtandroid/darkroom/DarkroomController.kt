@@ -1376,7 +1376,7 @@ class DarkroomController(
                     val m = _state.value.modules.firstOrNull { it.key == key } ?: return
                     val fields = schema.modules[key.op]?.params ?: emptyMap()
                     val writes = PickerFormulas.apply(slider, if (slider.buffer == "output") pick.output else pick.input, m.params) { name ->
-                        fields[name]?.let { f -> if (f.min != null && f.max != null) f.min to f.max else null }
+                        fields[name]?.let { f -> val lo = f.min; val hi = f.max; if (lo != null && hi != null) lo to hi else null }
                     }
                     if (writes.isNotEmpty()) {
                         engine.paramsSet(key.op, key.priority, writes)

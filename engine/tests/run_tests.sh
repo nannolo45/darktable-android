@@ -398,7 +398,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C24; then drv C24 maskshow "mask display overlay"; fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
-    if "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
+    if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
       pass C25 "$C" "picker actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C25.log" | cut -d' ' -f4-)"
     else
       fail C25 "$C" "$(grep '^FAIL' "$D/C25.log" | head -5 | cut -c1-300 | tr '\n' ';') see $D/C25.log"
