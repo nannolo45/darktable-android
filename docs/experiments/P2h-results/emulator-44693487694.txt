@@ -1,0 +1,74 @@
+# emulator run 44693487694 (commit a64282a), x86_64 emulator of the CI runner, 4 cores; not a phone
+
+## instrument summary (tail)
+PASS    app.dtandroid.real.P2fScenarioTest.f1_openRightAfterDoneTimeline
+PASS    app.dtandroid.real.P2fScenarioTest.f2_previewFromTheFullPipeMatchesTheExport
+PASS    app.dtandroid.real.P2fScenarioTest.f3_dragPictureSizesOnA1080PxScreen
+PASS    app.dtandroid.real.P2fScenarioTest.f4_timingsRunOnAPhotoFromLightPhotoLibrary
+PASS    app.dtandroid.real.P2fScenarioTest.f5_spektrafilmHasItsDataAndIsFound
+PASS    app.dtandroid.real.P2fScenarioTest.f6_cropAspectOnTheRealEngine
+PASS    app.dtandroid.real.P2fScenarioTest.f7_imageInfoOfAnUndecodableFile
+PASS    app.dtandroid.real.P2fScenarioTest.f8_undecodableFileInTheDarkroomThenTheGoodPhoto
+PASS    app.dtandroid.real.P2fScenarioTest.f9_theBridgeWasCalledAsItsHeaderAllows
+passed 42, failed 0, total 42
+runner: INSTRUMENTATION_RESULT: stream=
+runner: OK (42 tests)
+runner: INSTRUMENTATION_CODE: -1
+RESULT: OK 42 tests
+
+## timings
+install_s 4.9
+instrumentation_s 210.5
+
+## p2f-results.txt, f7 to f9
+f7_junk_file	JUNK_F7.CR2, 2000 bytes
+f7_answer	open answered OK (20 ms); image_info answered error ENGINE (-9): ENGINE: image could not be loaded (mipmap 12) (0 ms)
+f7	done
+f8_junk_message	cannot open JUNK_F8.CR2: darktable found no picture in this file (not a RAW it can read, or a broken download) (17 ms)
+f8_lpl_preview_good	1920x1278 638658 bytes 1083 ms (emulator)
+f8_good_photo_preview	1024x681
+f8_no_picture_mark	darkroom: JUNK_F8.CR2 has no picture (image_info answered ENGINE: ENGINE: image could not be loaded (mipmap 12)), session closed, not rendered
+f8	passed
+f9_bridge_overlaps	0
+f9_cancels_outside_a_render_not_passed_on	119
+f9	passed
+
+## f7: what open and image_info answered, and the engine log between (p2h-f7-engine-log.txt)
+open answered OK (20 ms); image_info answered error ENGINE (-9): ENGINE: image could not be loaded (mipmap 12) (0 ms)
+
+   194.4064 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+   194.4156 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+   194.4159 [rawspeed] JUNK_F7.CR2 corrupt: virtual std::unique_ptr<RawDecoder> rawspeed::RawParser::getDecoder(const CameraMetaData *), line 97: No decoder found. Sorry.
+   194.4162 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+   194.4173 [dt_dev_load_raw] loading the image. took 0.007 secs (0.015 CPU)
+
+## logcat lines of the test (logcat-app.txt)
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7: open answered OK (20 ms); image_info answered error ENGINE (-9): ENGINE: image could not be loaded (mipmap 12) (0 ms)
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7 engine log:    194.4064 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7 engine log:    194.4156 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7 engine log:    194.4159 [rawspeed] JUNK_F7.CR2 corrupt: virtual std::unique_ptr<RawDecoder> rawspeed::RawParser::getDecoder(const CameraMetaData *), line 97: No decoder found. Sorry.
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7 engine log:    194.4162 [exiv2 dt_exif_read] /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: /data/user/0/app.dtandroid/files/p2h/JUNK_F7.CR2: The file contains data of an unknown image type
+11-20 07:27:00.841  3739  7004 I dt-android-test: P2h f7 engine log:    194.4173 [dt_dev_load_raw] loading the image. took 0.007 secs (0.015 CPU)
+
+## f8 timeline (p2h-f8-timeline.txt)
++0 ms	darkroom: open JUNK_F8.CR2 asked
++0 ms	darkroom: engine open start
++15 ms	darkroom: JUNK_F8.CR2 has no picture (image_info answered ENGINE: ENGINE: image could not be loaded (mipmap 12)), session closed, not rendered
++581 ms	LPL preview: render start
++960 ms	LPL preview: render end
++1169 ms	LPL preview: render start
++3347 ms	LPL preview: render end
++3990 ms	LPL preview: render start
++6282 ms	LPL preview: render end
++6328 ms	darkroom: JUNK_F8.CR2 known to have no picture, no session opened
++6328 ms	darkroom: open mire1.cr2 asked
++6341 ms	darkroom: engine open start
++6506 ms	darkroom: engine open end
++6704 ms	darkroom: preview shown
++6708 ms	darkroom: open JUNK_F8.CR2 asked
++6731 ms	darkroom: JUNK_F8.CR2 known to have no picture, not opened
+
+## undecodable files: rawspeed 'No decoder found' lines per file over the whole run (darktable's own lines only)
+OTHER_0023.CR2 1
+JUNK_F7.CR2 1
+JUNK_F8.CR2 1

@@ -205,9 +205,18 @@ object AppHost {
     suspend fun previewPicture(e: app.dtandroid.engine.api.DarktableEngine): RenderedImage {
         Timeline.mark("LPL preview: render start")
         try {
-            // brief P2f: never render a file darktable found no picture in (see DarkroomController.hasPicture)
-            val info = e.imageInfo()
-            if (info.width <= 0 || info.height <= 0) throw EngineException(EngineError.IO, "no picture in this file")
+            // brief P2f/P2h: never render a file darktable found no picture in: 0 x 0, or an engine error from
+            // image_info other than CANCELLED (DarkroomController.pictureOrClose; withPhotoSession has already
+            // closed such a session and remembered the file before this runs, this is the second guard)
+            val info = try { e.imageInfo() } catch (ex: EngineException) {
+                if (ex.error == EngineError.CANCELLED) throw ex
+                Timeline.mark("LPL preview: no picture (image_info answered ${ex.message})")
+                throw EngineException(EngineError.IO, DarkroomController.NO_PICTURE)
+            }
+            if (info.width <= 0 || info.height <= 0) {
+                Timeline.mark("LPL preview: no picture (${info.width}x${info.height})")
+                throw EngineException(EngineError.IO, DarkroomController.NO_PICTURE)
+            }
             val full = e.renderSize(1.0)
             val scale = minOf(1.0, PREVIEW_SIZE.toDouble() / maxOf(full.w, full.h))
             val sz = e.renderSize(scale)
