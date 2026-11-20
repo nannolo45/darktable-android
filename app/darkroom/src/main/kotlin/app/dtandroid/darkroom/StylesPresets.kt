@@ -4,9 +4,11 @@ package app.dtandroid.darkroom
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.ItemProblem
+import app.dtandroid.engine.api.LayoutStoreException
 import app.dtandroid.engine.api.Preset
 import app.dtandroid.engine.api.Style
 import app.dtandroid.engine.api.StyleMode
+import app.dtandroid.schema.layout.DtPreset
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -468,10 +470,7 @@ class StylesPresets internal constructor(private val c: DarkroomController) {
                     else -> 0
                 }
                 if (kind == 0) { lines += ImportLine(shown, "not a darktable style or preset file", false); continue }
-                if (kind == 3) {
-                    lines += ImportLine(shown, "a module layout: bring it in with module layouts → manage module layouts → import…", false)
-                    continue
-                }
+                if (kind == 3) { lines += importLayout(shown, bytes); continue }
                 val safe = shown.map { if (it.isLetterOrDigit() || it in "._- ()") it else '_' }.joinToString("").take(MAX_FILE_NAME)
                 val file = File(dir, "$i-$safe").apply { writeBytes(bytes) }
                 if (kind == 1) styles += shown to file else presets += shown to file
@@ -529,6 +528,26 @@ class StylesPresets internal constructor(private val c: DarkroomController) {
         _state.update { it.copy(page = SpPage.ImportResult(withProblems), note = null) }
         _state.value.presetsFor?.let { loadPresets(it) }
         return withProblems
+    }
+
+    /**
+     * A module layout (desktop's preferences → presets → export writes them with the presets, as
+     * `modulegroups_<name>.dtpreset`): stored as "manage module layouts → import…" does (a user layout of that name
+     * is replaced, as on desktop; a built-in layout's name is refused).
+     */
+    private suspend fun importLayout(shown: String, bytes: ByteArray): ImportLine = try {
+        val (name, text) = DtPreset.readLayout(bytes)
+        if (c.layouts.list().any { it.writeProtected && it.name == name }) {
+            ImportLine(shown, "refused: \"$name\" is the name of a built-in module layout", false)
+        } else {
+            c.layouts.write(name, text)
+            c.loadLayout()
+            ImportLine(shown, "imported module layout `$name' (choose it in the layouts menu next to the module groups)", true)
+        }
+    } catch (e: DtPreset.DtPresetException) {
+        ImportLine(shown, "refused: ${e.message}", false)
+    } catch (e: LayoutStoreException) {
+        ImportLine(shown, "refused: ${e.message}", false)
     }
 
     /** Answer the open import question. */

@@ -26,3 +26,10 @@ Measurements: **CI** = GitHub runners (x86_64); **emulator** = CI's x86_64 Andro
   presets; module layouts, which the real app had not wired), icons `favorite`/`favoriteOn`. Tests: JVM
   `P3bStylesPresetsTest` (10), screenshots `P3bScreenshotTest` (phone and tablet), emulator `P3bScenarioTest` (3), and
   the p3b comparison in p2b-real-engine's compare job. Nothing compiled on the workspace (no Android SDK): first CI run.
+- Run p2a-app 44746037935 (a8fa9dd): rule check, JVM and screenshot tests all passed (P3bStylesPresetsTest 10 of 10,
+  PhoneP3bScreenshots 5, TabletP3bScreenshots 5); screenshots looked at (ci-logs `runs/44746037935-a1/p2a-app/screenshots/*p3b*`).
+  p2b-real-engine 44746037680 failed to compile app-engine: in `AppHost`, `app` is the Application property, so the
+  fully qualified `app.dtandroid.darkroom.FileStyleSettings` did not resolve. Fixed with an import.
+- Module layouts in an import (desktop's preferences → presets → export writes them as `modulegroups_<name>.dtpreset`
+  next to the presets) now go into the layout store as "manage module layouts → import…" does, instead of a line
+  saying where to import them.

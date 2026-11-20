@@ -246,7 +246,9 @@ class P3bStylesPresetsTest {
             "unknown.dtpreset" to P3bFiles.preset("u", "p3bnosuchmodule", 1, null),
             "newer.dtpreset" to P3bFiles.preset("n", "exposure", m.version + 1, null),
             "builtin.dtpreset" to P3bFiles.preset(builtin, "exposure", m.version, null),
-            "layout.dtpreset" to P3bFiles.preset("my layout", "modulegroups", 1, null),
+            // desktop's preferences → presets → export writes module layouts with the presets
+            "modulegroups_test layout.dtpreset" to app.dtandroid.schema.layout.DtPreset.writeLayout("test layout",
+                TestSetup.builtins.presets(TestSetup.builtins.defaultWorkflow).first().params),
         )
         val lines = sp.import(files, tmp.newFolder())
         assertEquals("imported preset `bright' of exposure", lines[0].text)
@@ -254,7 +256,8 @@ class P3bStylesPresetsTest {
         assertTrue(lines[2].text, !lines[2].imported && lines[2].text.contains("unknown to this app"))
         assertTrue(lines[3].text, !lines[3].imported && lines[3].text.contains("newer than this app's"))
         assertTrue(lines[4].text, !lines[4].imported && lines[4].text.contains("built-in"))
-        assertTrue(lines[5].text, !lines[5].imported && lines[5].text.contains("module layout"))
+        assertTrue(lines[5].text, lines[5].imported && lines[5].text.contains("module layout `test layout'"))
+        assertTrue(c.layouts.list().any { it.name == "test layout" && !it.writeProtected })
         // the open list was read again: the old one greyed out (not usable), the new one applies
         val bright = c.sp.presets.first { it.name == "bright" }
         assertTrue(bright.usable)
