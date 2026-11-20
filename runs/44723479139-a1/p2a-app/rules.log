@@ -1,0 +1,34 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRulesSelfTest
+self-test: 12 violations found in bad/ (expected 12), 0 in good/ (expected 0)
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:6: literal size: val a = Modifier.padding(16.dp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:7: literal size: val b = TextStyle(fontSize = 13.sp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:8: literal colour: val c = Color(0xFF262626) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:9: literal colour: val d = Color.Red // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:10: literal colour: val e = background("#3b3b3b") // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:11: icon drawn outside ui-icons: val f = Icons.Default.Close // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:12: icon drawn outside ui-icons: val g = painterResource(R.drawable.power) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:13: icon drawn outside ui-icons: val h = drawPath(path, brush) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:14: literal size: val i = Dp(4f) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:15: literal size: val j = x.toFloat().dp // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:16: literal colour: val k = 0xff262626 // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:18: Material component (brings its own colours and sizes): import androidx.compose.material3.Text // VIOLATION
+
+> Task :checkScreenRules
+check-screen-rules: 42 files, 0 violations
+
+BUILD SUCCESSFUL in 43s
+2 actionable tasks: 2 executed
