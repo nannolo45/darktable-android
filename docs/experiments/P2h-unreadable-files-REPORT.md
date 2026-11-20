@@ -14,6 +14,15 @@ under `engine/` or `upstream/` changed.
   stopped the render. This package handles both answers the same way.
 - **No local JVM run.** The build workspace has no Android SDK (`SDK location not found`) and Maven Central answered
   429 to the first downloads; the JVM tests and the rule check ran in CI only (both workflows, section 3).
+- **l4 failed once on the last code commit and passed on the rerun** (p2b run 44695287219: attempt 1, 41 of 42;
+  attempt 2, the emulator job rerun with no change, 42 of 42). The failing check is l4's "released: gone from the
+  phone" (`LplScenarioTest.kt:216`): all four jobs reported done, but the photo's record or folder was still there.
+  Not caused by this package as far as I can see, and not fixed here: the background thumbnail pass (P2f) can render
+  a photo while a `release` job removes it, and `FolderThumb.store` → `AtomicFiles.write` makes the folder again
+  (`dir.mkdirs()`), which `LplAgent.remove` guards against for state writes but not for thumbnails. In attempt 1 the
+  engine was rendering thumbnails during l4 (darktable's log), and the scheduler showed background work running at
+  the failure. Not shown that this is the cause (no timeline line for thumbnail renders); l4 passed in the 16 earlier
+  emulator runs of the logs branch where it ran to the end. Open question 4.
 - **Two CI runs needed a rerun for Maven Central** ("could not find" / robolectric fetch): 44692381418 and
   44693487742, both green on rerun with no change.
 - **What is not shown.** Only the one junk file (2000 bytes of junk) was tried on the real engine. A truncated real
@@ -134,7 +143,13 @@ instrumentation 210.5 s.
 - f9: 0 overlapping bridge calls.
 
 **Last code commit** 51ef5a0 (only the timeline text: the error's name was written twice). Runs on it:
-RUNS_PLACEHOLDER
+- p2a-app **44695287334**: green (JVM tests incl. `P2hUnreadableTest` 7/7, rule check, screenshots).
+- p2b-real-engine **44695287219**: green on attempt 2 (attempt 1: l4 as in section 0). Emulator 42 of 42,
+  instrumentation 155.2 s; f7 again `open answered OK (17 ms); image_info answered error ENGINE (-9): ENGINE: image
+  could not be loaded (mipmap 12)`; f8 passed (sentence after 16 ms, LPL preview of the good photo 1920 x 1278 in
+  773 ms); each undecodable file decoded once in the run; f9 0 overlaps; compare job green.
+  Evidence: `P2h-results/emulator-44695287219.txt`.
+- APK: release **`dt-android-51ef5a052fb9`** (`dt-android-arm64-v8a.apk`, from the usual release step).
 
 ## 4. Surprises in upstream
 
@@ -153,3 +168,6 @@ refuses it and `image_info` fails; the preview mipmap of the same session is not
    emulator, and no render.
 3. LightPhotoLibrary keeps the preview of such a photo pending and asks again at each sync; each ask is now refused
    without opening the file. Should the agent mark the photo (for instance "no picture") instead?
+4. The l4 failure of section 0: should a thumbnail (and the LPL preview's temporary file) be written only while the
+   photo's folder still exists, under the same record lock `LplAgent.remove` takes? It is a small change in
+   `AppHost.thumbs`/`FolderThumb`, outside this brief, so left for the reviewer to place.

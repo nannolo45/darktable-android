@@ -31,3 +31,7 @@ Times UTC. Numbers from the build workspace are x86_64 on 2 cores; from CI, the 
   run. Evidence copied to `P2h-results/emulator-44693487694.txt`. (Its compare job was cancelled by the next push.)
 - 51ef5a0: timeline text only (the error's name appeared twice: "ENGINE: ENGINE: ..."). Last code commit.
 - Report written; waiting for both workflows on 51ef5a0.
+- 51ef5a0: p2a 44695287334 green. p2b 44695287219 attempt 1: 41/42, l4 "released: gone from the phone" failed (jobs
+  all done; a thumbnail written after the release can make the folder again, `AtomicFiles.write` mkdirs; reported,
+  not fixed). Emulator job rerun (attempt 2) with no change: 42/42, compare green. Release dt-android-51ef5a052fb9.
+- Report finished. Evidence in `P2h-results/emulator-44695287219.txt`.
