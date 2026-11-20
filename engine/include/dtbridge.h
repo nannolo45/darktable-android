@@ -3,10 +3,11 @@
  * dtbridge.h: the only interface between the app and the darktable engine.
  *
  * Engine API v1, sections 1 and 2 ("Core") of docs/design/engine-api.md,
- * which is the source of truth for meaning and JSON shapes. Section 3
- * ("Extended": blending, masks, coordinates, presets, analysis) is a later
- * work package; dtb_mask_add_circle() below is the prototype from S3, kept
- * for its test until then.
+ * which is the source of truth for meaning and JSON shapes; section 5
+ * (presets, styles, P1b part 1) and section 6 (render options, pickers,
+ * histogram, coordinates, blending, masks, P1b part 2) are at the end of
+ * this file. dtb_mask_add_circle() below is the prototype from S3, kept for
+ * its test.
  *
  * Nothing above this header may include darktable's own headers, and this
  * header exposes no darktable type.
@@ -216,6 +217,13 @@ int dtb_module_reset(const char *op, int priority);
  *   lut3d:          set_file {path} [M]
  *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
  *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
+ *   P1b part 2 (engine-api.md 6.3), each picks an "area" or "point" first:
+ *   temperature:     wb_from_area {area} [M];
+ *   exposure:        spot {area, mode: "correction"|"measure", lightness?} [M];
+ *   rgblevels:       pick {which: "black"|"grey"|"white", area, channel?} [M];
+ *   rgbcurve:        set_nodes_from_area {area, channel?, offset?} [M];
+ *   channelmixerrgb: illuminant_from_area {area, use_mixing?} [M],
+ *                    spot {area, mode: "correction", target?, use_mixing?} [M]
  *   denoiseprofile: list_profiles -> [ {index, name, auto, iso, current} ], index = position
  *                   in desktop's profile list, 0 = the automatic entry;
  *                   set_profile {index} or {name} [M] (a name selects the first
@@ -269,7 +277,9 @@ int dtb_history_compress(void);
 int dtb_history_seal(void);
 /* [M] Step back to the whole-history state recorded before the last sealed
  * change, or forward again. At least 50 steps are kept. DTB_E_STATE when
- * there is nothing to undo or redo. */
+ * there is nothing to undo or redo. The image's history hashes and its
+ * "darktable|changed" tag come back with the state; the change timestamp is
+ * not moved, as on desktop (P1b part 2, engine-api.md 6.2). */
 int dtb_undo(void);
 int dtb_redo(void);
 /* { "can_undo": bool, "can_redo": bool } */
