@@ -187,3 +187,46 @@ data class CoordsResult(
         }
     }
 }
+
+// ------------------------------------------------------------------ 6.6 blending
+
+/** One parametric channel of a blend (engine-api.md 6.6): [range] a <= b <= c <= d in 0..1. */
+data class BlendChannel(val active: Boolean, val invert: Boolean, val range: List<Double>, val boost: Double)
+
+/**
+ * The blend settings of an instance (engine-api.md 6.6), as [DarktableEngine.blendGet] gives them; [json] is the
+ * whole answer. [blendSet] takes the same names as paths (`opacity`, `masks`, `combine.invert`,
+ * `parametric.L_in.range`, ...).
+ */
+data class Blend(val json: JsonObject) {
+    private fun str(k: String) = (json[k] as? JsonPrimitive)?.takeIf { it.isString }?.content
+    private fun num(k: String) = (json[k] as? JsonPrimitive)?.doubleOrNull
+    private fun bool(k: String) = (json[k] as? JsonPrimitive)?.content == "true"
+    val supported: Boolean get() = bool("supported")
+    /** "off", "uniform", "drawn", "parametric", "drawn_parametric", "raster", "flexi" (or "other") */
+    val masks: String? get() = str("masks")
+    val colorspace: String? get() = str("colorspace")
+    val effectiveColorspace: String? get() = str("effective_colorspace")
+    val mode: String? get() = str("mode")
+    val reverse: Boolean get() = bool("reverse")
+    val opacity: Double? get() = num("opacity")
+    val parameter: Double? get() = num("parameter")
+    val featheringRadius: Double? get() = num("feathering_radius")
+    val blurRadius: Double? get() = num("blur_radius")
+    val contrast: Double? get() = num("contrast")
+    val brightness: Double? get() = num("brightness")
+    val details: Double? get() = num("details")
+    val combineInvert: Boolean get() = ((json["combine"] as? JsonObject)?.get("invert") as? JsonPrimitive)?.content == "true"
+    val combineMode: String? get() = ((json["combine"] as? JsonObject)?.get("mode") as? JsonPrimitive)?.content
+    val maskId: Int? get() = (json["mask_id"] as? JsonPrimitive)?.intOrNull
+    val parametric: Map<String, BlendChannel>
+        get() = (json["parametric"] as? JsonObject)?.mapValues { (_, v) ->
+            val o = v.o("channel")
+            BlendChannel((o["active"] as JsonPrimitive).content == "true", (o["invert"] as JsonPrimitive).content == "true",
+                o["range"]!!.a("range").map { it.dbl("range") }, o.d("boost"))
+        } ?: emptyMap()
+
+    companion object {
+        fun fromJson(e: JsonElement) = Blend(e.o("blend"))
+    }
+}

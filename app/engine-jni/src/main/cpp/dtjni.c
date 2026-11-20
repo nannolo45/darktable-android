@@ -827,6 +827,8 @@ Java_app_dtandroid_engine_NativeBridge_renderRegionIntoEx(JNIEnv *env, jclass cl
 #define DTJ2_COLOR_PICK 0
 #define DTJ2_HISTOGRAM 1
 #define DTJ2_COORDS 2
+#define DTJ2_BLEND_GET 3
+#define DTJ2_BLEND_SET 4
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -840,6 +842,8 @@ Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, 
     case DTJ2_COLOR_PICK: r = dtb_color_pick(a.s, n1, b.s, &s); break;
     case DTJ2_HISTOGRAM: r = dtb_histogram(b.s, &s); break;
     case DTJ2_COORDS: r = dtb_coords_transform(b.s, &s); break;
+    case DTJ2_BLEND_GET: r = dtb_blend_get(a.s, n1, &s); break;
+    case DTJ2_BLEND_SET: r = dtb_blend_set(a.s, n1, b.s); break;
     default: break;
   }
   (void)n2;

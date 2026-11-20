@@ -17,6 +17,7 @@ import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.ParamPath
 import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.Blend
 import app.dtandroid.engine.api.PickResult
 import app.dtandroid.engine.api.PickStats
 import app.dtandroid.engine.api.Histogram
@@ -147,6 +148,8 @@ class FakeEngine(
     private data class Item(
         val op: String, val priority: Int, val instanceName: String, val enabled: Boolean, val params: JsonObject,
         val unknown: Boolean = false,
+        /** P1b part 2: the blend settings (engine-api.md 6.6 JSON), null = the module's defaults */
+        val blend: JsonObject? = null,
     )
 
     private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int)
@@ -196,7 +199,7 @@ class FakeEngine(
             ?: fail(EngineError.NOT_FOUND, "no instance $op/$priority")
 
     /** enabled and params of every instance after the first [end] history items */
-    private data class Live(val enabled: Boolean, val params: JsonObject, val inHistory: Boolean)
+    private data class Live(val enabled: Boolean, val params: JsonObject, val inHistory: Boolean, val blend: JsonObject? = null)
 
     private fun Session.live(upTo: Int = end): Map<Pair<String, Int>, Live> {
         val m = LinkedHashMap<Pair<String, Int>, Live>()
@@ -206,7 +209,7 @@ class FakeEngine(
         }
         for (it in items.take(upTo)) {
             val k = it.op to it.priority
-            if (k in m) m[k] = Live(it.enabled || !catalog[it.op]!!.canSwitch, it.params, true)
+            if (k in m) m[k] = Live(it.enabled || !catalog[it.op]!!.canSwitch, it.params, true, it.blend)
         }
         // P2b: as the bridge, "in_history" means the instance has an item anywhere in the history list,
         // also above the current end
@@ -230,9 +233,10 @@ class FakeEngine(
         if (truncate && end < items.size) items = items.take(end)
     }
 
-    private fun Session.addItem(op: String, priority: Int, enabled: Boolean, params: JsonObject) {
+    private fun Session.addItem(op: String, priority: Int, enabled: Boolean, params: JsonObject,
+                                blend: JsonObject? = live()[op to priority]?.blend) {
         val name = inst(op, priority).instanceName
-        items = items + Item(op, priority, name, enabled, params)
+        items = items + Item(op, priority, name, enabled, params, blend = blend)
         end = items.size
     }
 
@@ -1296,6 +1300,125 @@ class FakeEngine(
             }
             else -> fail(EngineError.NOT_FOUND, "$op has no action '$action'")
         }
+    }
+
+    // ------------------------------------------------------------ 6.6 blending (as data; the stand-in does not blend)
+
+    private val sceneChannels = listOf("g_in", "R_in", "G_in", "B_in", "Jz_in", "Cz_in", "hz_in", "g_out", "R_out", "G_out", "B_out", "Jz_out", "Cz_out", "hz_out")
+    private val displayChannels = listOf("g_in", "R_in", "G_in", "B_in", "H_in", "S_in", "l_in", "g_out", "R_out", "G_out", "B_out", "H_out", "S_out", "l_out")
+    private val labChannels = listOf("L_in", "a_in", "b_in", "C_in", "h_in", "L_out", "a_out", "b_out", "C_out", "h_out")
+
+    private fun channelsOf(cs: String) = when (cs) { "lab" -> labChannels; "rgb_display" -> displayChannels; "rgb_scene" -> sceneChannels; else -> emptyList() }
+
+    private fun parametricDefaults(cs: String) = JsonObject(channelsOf(cs).associateWith { ch ->
+        buildJsonObject {
+            put("active", false); put("invert", false)
+            put("range", JsonArray(listOf(0.0, 0.0, 1.0, 1.0).map { JsonPrimitive(it) }))
+            put("boost", if (cs == "rgb_scene" && (ch.startsWith("Jz") || ch.startsWith("Cz"))) -6.64385619 else 0.0)
+        }
+    })
+
+    /** desktop's defaults (develop/blend.c _default_blendop_params); the stand-in blends in "rgb_scene" */
+    private fun defaultBlend(supported: Boolean): JsonObject = buildJsonObject {
+        put("supported", supported)
+        if (!supported) return@buildJsonObject
+        put("masks", "off"); put("mask_mode_flags", JsonArray(emptyList()))
+        put("colorspace", "default"); put("effective_colorspace", "rgb_scene")
+        put("mode", "normal"); put("reverse", false); put("parameter", 0.0); put("opacity", 100.0)
+        put("combine", buildJsonObject { put("invert", false); put("mode", "exclusive") })
+        put("feathering_radius", 0.0); put("feathering_guide", "input_after_blur"); put("blur_radius", 0.0)
+        put("contrast", 0.0); put("brightness", 0.0); put("details", 0.0)
+        put("parametric", parametricDefaults("rgb_scene"))
+        put("raster", JsonNull); put("mask_id", JsonNull); put("mask_lock", false)
+    }
+
+    override suspend fun blendGet(op: String, priority: Int): Blend = onEngine {
+        val s = requireSession()
+        val d = def(op)
+        s.inst(op, priority)
+        Blend(s.live()[op to priority]?.blend ?: defaultBlend(d.supportsBlending))
+    }
+
+    private val maskModes = mapOf("off" to listOf<String>(), "uniform" to listOf("enabled"), "drawn" to listOf("enabled", "drawn"),
+        "parametric" to listOf("enabled", "parametric"), "drawn_parametric" to listOf("enabled", "drawn", "parametric"),
+        "raster" to listOf("enabled", "raster"), "flexi" to listOf("enabled", "flexi"))
+    private val displayModes = listOf("normal", "average", "difference", "normal_bounded", "lighten", "addition", "screen", "darken",
+        "subtract", "multiply", "overlay", "softlight", "hardlight", "vividlight", "linearlight", "pinlight")
+    private fun modesOf(cs: String) = when (cs) {
+        "lab" -> displayModes + listOf("lab_lightness", "lab_a", "lab_b", "lab_color", "hue", "color", "coloradjustment", "lightness", "chromaticity")
+        "rgb_display" -> displayModes + listOf("rgb_red", "rgb_green", "rgb_blue", "hsv_value", "hsv_color", "hue", "color", "coloradjustment", "lightness", "chromaticity")
+        else -> listOf("normal", "average", "difference", "multiply", "divide", "addition", "subtract", "geometric_mean", "harmonic_mean",
+            "rgb_red", "rgb_green", "rgb_blue", "lightness", "chromaticity")
+    }
+
+    override suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        s.inst(op, priority)
+        if (!d.supportsBlending) fail(EngineError.ARG, "$op has no blending")
+        if (values.isEmpty()) fail(EngineError.ARG, "blend_set takes an object {path: value, ...}")
+        val b = (s.live()[op to priority]?.blend ?: defaultBlend(true)).toMutableMap()
+        fun str(k: String, v: JsonElement) = (v as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.TYPE, "$k takes a name")
+        fun bool(k: String, v: JsonElement) = (v as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: fail(EngineError.TYPE, "$k takes true or false")
+        fun num(k: String, v: JsonElement, lo: Double, hi: Double): Double {
+            val x = (v as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: fail(EngineError.TYPE, "$k takes a number")
+            if (x < lo || x > hi) fail(EngineError.RANGE, "$k: $x outside $lo..$hi")
+            return x
+        }
+        fun cs() = (b["effective_colorspace"] as JsonPrimitive).content
+        val ordered = values.entries.sortedBy { if (it.key == "colorspace") 0 else 1 }
+        for ((k, v) in ordered) {
+            when {
+                k == "masks" -> { val m = str(k, v); val f = maskModes[m] ?: fail(EngineError.ARG, "masks: unknown mode '$m'")
+                    if (m == "raster") fail(EngineError.ARG, "masks: raster needs a raster mask source")
+                    b["masks"] = JsonPrimitive(m); b["mask_mode_flags"] = JsonArray(f.map { JsonPrimitive(it) }) }
+                k == "colorspace" -> { val c = str(k, v)
+                    if (c !in listOf("default", "lab", "rgb_display", "rgb_scene")) fail(EngineError.ARG, "colorspace '$c' is not offered for $op")
+                    val eff = if (c == "default") "rgb_scene" else c
+                    if (eff != cs()) { b["parametric"] = parametricDefaults(eff); b["mode"] = JsonPrimitive("normal"); b["reverse"] = JsonPrimitive(false); b["parameter"] = JsonPrimitive(0.0) }
+                    b["colorspace"] = JsonPrimitive(c); b["effective_colorspace"] = JsonPrimitive(eff) }
+                k == "mode" -> { val m = str(k, v); if (m !in modesOf(cs())) fail(EngineError.ARG, "mode '$m' is not offered in this blend colour space"); b["mode"] = JsonPrimitive(m) }
+                k == "reverse" -> b["reverse"] = JsonPrimitive(bool(k, v))
+                k == "opacity" -> b[k] = JsonPrimitive(num(k, v, 0.0, 100.0))
+                k == "parameter" -> b[k] = JsonPrimitive(num(k, v, -18.0, 18.0))
+                k == "feathering_radius" -> b[k] = JsonPrimitive(num(k, v, 0.0, 250.0))
+                k == "blur_radius" -> b[k] = JsonPrimitive(num(k, v, 0.0, 100.0))
+                k == "contrast" || k == "brightness" || k == "details" -> b[k] = JsonPrimitive(num(k, v, -1.0, 1.0))
+                k == "feathering_guide" -> { val g = str(k, v)
+                    if (g !in listOf("input_before_blur", "output_before_blur", "input_after_blur", "output_after_blur")) fail(EngineError.ARG, "feathering_guide: unknown '$g'")
+                    b[k] = JsonPrimitive(g) }
+                k == "combine.invert" -> b["combine"] = JsonObject((b["combine"] as JsonObject) + ("invert" to JsonPrimitive(bool(k, v))))
+                k == "combine.mode" -> { val m = str(k, v); if (m != "inclusive" && m != "exclusive") fail(EngineError.ARG, "combine.mode: inclusive or exclusive")
+                    b["combine"] = JsonObject((b["combine"] as JsonObject) + ("mode" to JsonPrimitive(m))) }
+                k == "mask_lock" -> b[k] = JsonPrimitive(bool(k, v))
+                k.startsWith("parametric.") -> {
+                    val parts = k.removePrefix("parametric.").split(".", limit = 2)
+                    val chans = (b["parametric"] as JsonObject).toMutableMap()
+                    val ch = chans[parts[0]] as? JsonObject
+                    if (ch == null || parts.size < 2) fail(EngineError.NOT_FOUND, "no parametric channel in '$k'")
+                    val c = ch.toMutableMap()
+                    when (parts[1]) {
+                        "active", "invert" -> c[parts[1]] = JsonPrimitive(bool(k, v))
+                        "boost" -> { val lo = (ch["boost"] as JsonPrimitive).double.coerceAtMost(0.0); c["boost"] = JsonPrimitive(num(k, v, lo, lo + 18.0)) }
+                        "range" -> { val a = (v as? JsonArray)?.takeIf { it.size == 4 } ?: fail(EngineError.TYPE, "$k takes [a, b, c, d]")
+                            val r = a.map { num(k, it, 0.0, 1.0) }
+                            if (!(r[0] <= r[1] && r[1] <= r[2] && r[2] <= r[3])) fail(EngineError.RANGE, "$k: the points must be in order")
+                            c["range"] = JsonArray(r.map { JsonPrimitive(it) })
+                            if (r != listOf(0.0, 0.0, 1.0, 1.0)) c["active"] = JsonPrimitive(true) }
+                        else -> fail(EngineError.NOT_FOUND, "no field '${parts[1]}' of a parametric channel")
+                    }
+                    chans[parts[0]] = JsonObject(c)
+                    b["parametric"] = JsonObject(chans)
+                }
+                else -> fail(EngineError.NOT_FOUND, "no blend setting '$k'")
+            }
+        }
+        val blend = JsonObject(b)
+        val key = op to priority
+        val cur = s.live()[key]!!
+        val canMerge = s.openGroup == key && s.end == s.items.size && s.items.lastOrNull()?.let { it.op == op && it.priority == priority } == true
+        if (canMerge) s.items = s.items.dropLast(1) + s.items.last().copy(enabled = true, blend = blend)
+        else { s.beginChange(); s.addItem(op, priority, true, cur.params, blend); s.openGroup = key }
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine {

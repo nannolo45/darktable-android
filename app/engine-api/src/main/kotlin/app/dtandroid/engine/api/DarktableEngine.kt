@@ -188,4 +188,14 @@ interface DarktableEngine {
 
     /** 6.5: normalised points between the original image and the picture, through every module that moves pixels. */
     suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions = RenderOptions.NONE): CoordsResult
+
+    /** 6.6: the blend settings of an instance by name. */
+    suspend fun blendGet(op: String, priority: Int): Blend
+
+    /**
+     * 6.6: set blend settings by path (`opacity`, `masks`, `colorspace`, `mode`, `combine.invert`,
+     * `parametric.<channel>.range`, ...), checked as desktop's panel constrains them; nothing changes if one is
+     * refused. Merges with following blendSet / paramSet calls on the instance until [historySeal].
+     */
+    suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>)
 }

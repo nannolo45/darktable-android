@@ -18,6 +18,7 @@ import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleMode
 import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.Blend
 import app.dtandroid.engine.api.PickResult
 import app.dtandroid.engine.api.Histogram
 import app.dtandroid.engine.api.CoordsDirection
@@ -425,5 +426,13 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions): CoordsResult = onEngine {
         CoordsResult.fromJson(p1b2(NativeBridge.COORDS, s2 = CoordsResult.request(direction, points, options).toString()))
+    }
+
+    override suspend fun blendGet(op: String, priority: Int): Blend = onEngine {
+        Blend.fromJson(p1b2(NativeBridge.BLEND_GET, op, n1 = priority))
+    }
+
+    override suspend fun blendSet(op: String, priority: Int, values: Map<String, JsonElement>) = onEngine {
+        p1b2(NativeBridge.BLEND_SET, op, JsonObject(values).toString(), n1 = priority); Unit
     }
 }

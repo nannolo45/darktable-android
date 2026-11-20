@@ -450,6 +450,24 @@ int dtb_histogram(const char *request_json, char **json);
  * (dt_dev_distort_transform_plus / _backtransform_plus, all directions). */
 int dtb_coords_transform(const char *request_json, char **json);
 
+/* ---------------------------------------------------------------------- */
+/* 6.6 blending (P1b part 2)                                               */
+
+/* The instance's blend settings by name (engine-api.md 6.6): { "supported",
+ * "masks", "mask_mode_flags", "colorspace", "effective_colorspace", "mode",
+ * "reverse", "parameter", "opacity", "combine": { "invert", "mode" },
+ * "feathering_radius", "feathering_guide", "blur_radius", "contrast",
+ * "brightness", "details", "parametric": { "<channel>": { "active",
+ * "invert", "range": [a, b, c, d], "boost" } }, "raster", "mask_id",
+ * "mask_lock" }. */
+int dtb_blend_get(const char *op, int priority, char **json);
+/* [M] Set blend settings: { "<path>": value, ... } with the names of
+ * blend_get ("combine.invert", "parametric.L_in.range", ...). Checked first,
+ * nothing changes if one is refused (TYPE, RANGE, ARG, NOT_FOUND). Merged
+ * into one history item with following blend_set / param_set calls on the
+ * same instance until dtb_history_seal(), as param_set. */
+int dtb_blend_set(const char *op, int priority, const char *values_json);
+
 #ifdef __cplusplus
 }
 #endif

@@ -342,20 +342,19 @@ result:  { "pipe": s,
 area (empty, outside 0..1), a module that is switched off (desktop's pickers only pick on modules that are on).
 Kotlin: `colorPick(op: String?, priority: Int, request: PickRequest): PickResult`.
 
-**Module actions that use a picked area** (`dtb_module_action`, desktop's picker buttons; each [M] unless "read
-only"). Arguments take `area` (or `point`) as in `dtb_color_pick`; the module's own picker runs on the preview pipe,
-then the module's own `color_picker_apply` arithmetic is applied as desktop does it:
-| op | action | what desktop's button does |
-|---|---|---|
-| `temperature` | `wb_from_area {area}` | white balance coefficients from the area (green normalised, 0..8), mode "spot"; returns `get_wb` |
-| `channelmixerrgb` | `illuminant_from_area {area}` | CAT illuminant detected from the area (`_auto_set_illuminant`); returns the new illuminant fields |
-| `channelmixerrgb` | `spot {area, mode: "correction" \| "measure", target: {lightness, chroma, hue}?}` | area mapping: measure the area, or change the mixer so the area becomes the target |
-| `exposure` | `spot {area, mode: "correction" \| "measure", lightness?}` | spot exposure mapping (`_auto_set_exposure`): measure, or set exposure so the area's lightness becomes `lightness` (default desktop's 50 %) |
-| `rgblevels` | `pick {which: "black" \| "grey" \| "white" \| "auto", area}` | the black, grey or white point, or all three from an area (desktop's pickers and its "auto" area) |
-| `rgbcurve`, `tonecurve` | `pick {area}` (read only) | the picked mean / min / max in the curve's x coordinates, for the marks desktop draws on the curve |
-| `rgbcurve`, `tonecurve` | `set_nodes_from_area {area}` | desktop's ctrl-click picker: nodes at the area's min, mean and max |
-Each returns `{ "picked": {input/output as above}, ... the fields written }`. Which of these are built, and the
-comparison of each with desktop's own code for the same area, is in the report.
+**Module actions that use a picked area** (`dtb_module_action`, desktop's picker buttons; each [M]). Arguments take
+`area` (or `point`) as in `dtb_color_pick`; the module's own picker runs on the preview pipe (the module must be on),
+then the module's own `color_picker_apply` arithmetic is applied as desktop does it. Each returns
+`{ "picked": { "input": ..., "output": ... }, ... }` plus the fields named below. `ARG` when the area gives no
+sample in the module's input.
+| op | action | what desktop's button does | built |
+|---|---|---|---|
+| `temperature` | `wb_from_area {area}` | coefficients from the input mean (green normalised, each 0..8), mode "from image area" (`temperature.c` `color_picker_apply`); → `coefficients: [4]` | yes |
+| `exposure` | `spot {area, mode: "correction" (default) \| "measure", lightness?}` | `exposure.c` `_auto_set_exposure`: "measure" returns the area's lightness after exposure (and stores it as the target in `darkroom/modules/exposure/lightness`, as desktop); "correction" sets exposure so the area's lightness becomes `lightness` (default: that stored target, 50 %), black kept under white; manual mode only (`ARG` in deflicker mode); → `input_lightness`, `lightness`, `exposure` | yes |
+| `rgblevels` | `pick {which: "black" \| "grey" \| "white", area, channel?: 0..2}` | `rgblevels.c` `color_picker_apply` on the input mean's first value; a history item only when a level moved; → `levels: [3]`, `changed` | yes |
+| `rgbcurve` | `set_nodes_from_area {area, channel?: 0..2, offset?: "flat" \| "upper" \| "lower"}` | `rgbcurve.c` "set values" picker: the channel's curve reset, nodes at min, mean, max (luminance in linked mode, middle grey compensation), offset as desktop's ctrl / shift; → `nodes: [[x, y]]` | yes |
+| `channelmixerrgb` | illuminant from an area, area mapping | `channelmixerrgb.c` `_auto_set_illuminant` | **not built** (see the report) |
+| `tonecurve`, `rgbcurve` | the read-only marks desktop draws on the curve | `color_picker_apply` (drawing only) | not built: `dtb_color_pick` gives the same numbers |
 
 ### 6.4 Histogram (deliverable 4)
 

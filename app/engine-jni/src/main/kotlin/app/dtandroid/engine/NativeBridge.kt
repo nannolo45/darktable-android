@@ -141,10 +141,13 @@ object NativeBridge {
     @JvmStatic external fun renderRegionIntoEx(x: Int, y: Int, w: Int, h: Int, scale: Float, options: String?, out: ByteArray, copied: BooleanArray): Int
 
     // P1b part 2: one entry point for the JSON calls, [what] selects the call. Arguments:
-    // COLOR_PICK (s1 op or null, n1 priority, s2 request); HISTOGRAM (s2 request); COORDS (s2 request).
+    // COLOR_PICK (s1 op or null, n1 priority, s2 request); HISTOGRAM (s2 request); COORDS (s2 request);
+    // BLEND_GET (s1 op, n1 priority); BLEND_SET (s1 op, n1 priority, s2 values).
     // Returns the JSON ("{}" for calls without one) or null with status[0] = the code.
     const val COLOR_PICK = 0
     const val HISTOGRAM = 1
     const val COORDS = 2
+    const val BLEND_GET = 3
+    const val BLEND_SET = 4
     @JvmStatic external fun p1b2(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
 }

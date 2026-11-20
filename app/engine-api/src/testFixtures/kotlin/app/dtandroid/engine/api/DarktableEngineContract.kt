@@ -850,4 +850,55 @@ abstract class DarktableEngineContract {
             assertEquals(c.first, a.second, 1.5 / t.processedHeight)
         }
     }
+
+    @Test
+    fun blendingGetSetValidateAndGroup() = runBlocking<Unit> {
+        openSample()
+        val b0 = engine.blendGet("exposure", 0)
+        assertTrue(b0.supported)
+        assertEquals("off", b0.masks)
+        assertEquals("normal", b0.mode)
+        assertEquals(100.0, b0.opacity!!, 0.0)
+        val cs = b0.effectiveColorspace!!
+        assertTrue(cs, cs == "rgb_scene" || cs == "rgb_display")
+        val h0 = engine.history()
+        val m0 = engine.modules()
+        expect(EngineError.RANGE) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(150.0))) }
+        expect(EngineError.ARG) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(50.0), "mode" to JsonPrimitive("lab_a"))) }
+        expect(EngineError.NOT_FOUND) { engine.blendSet("exposure", 0, mapOf("nosuch" to JsonPrimitive(1))) }
+        expect(EngineError.TYPE) { engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive("x"))) }
+        expect(EngineError.RANGE) {
+            engine.blendSet("exposure", 0, mapOf("parametric.g_in.range" to kotlinx.serialization.json.JsonArray(listOf(0.5, 0.2, 0.6, 0.9).map { JsonPrimitive(it) })))
+        }
+        assertEquals(h0, engine.history())
+        assertEquals(m0, engine.modules())
+        // a slider drag on opacity: one history item until sealed, merged with a parameter change of the instance
+        engine.blendSet("exposure", 0, mapOf("masks" to JsonPrimitive("uniform"), "opacity" to JsonPrimitive(50.0)))
+        engine.blendSet("exposure", 0, mapOf("opacity" to JsonPrimitive(60.0)))
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.9))
+        engine.historySeal()
+        assertEquals(h0.items.size + 1, engine.history().items.size)
+        val b1 = engine.blendGet("exposure", 0)
+        assertEquals("uniform", b1.masks)
+        assertEquals(60.0, b1.opacity!!, 1e-6)
+        engine.blendSet("exposure", 0, mapOf("masks" to JsonPrimitive("parametric"),
+            "parametric.g_in.range" to kotlinx.serialization.json.JsonArray(listOf(0.0, 0.2, 0.6, 0.9).map { JsonPrimitive(it) }),
+            "combine.invert" to JsonPrimitive(true)))
+        engine.historySeal()
+        val g = engine.blendGet("exposure", 0).parametric.getValue("g_in")
+        assertTrue(g.active)
+        assertEquals(listOf(0.0, 0.2, 0.6, 0.9), g.range.map { Math.round(it * 1000) / 1000.0 })
+        assertTrue(engine.blendGet("exposure", 0).combineInvert)
+        // a colour space change resets the channels and the mode, as desktop's
+        engine.blendSet("exposure", 0, mapOf("mode" to JsonPrimitive("multiply")))
+        engine.historySeal()
+        engine.blendSet("exposure", 0, mapOf("colorspace" to JsonPrimitive("lab")))
+        engine.historySeal()
+        val lab = engine.blendGet("exposure", 0)
+        assertEquals("normal", lab.mode)
+        assertTrue(lab.parametric.containsKey("L_in"))
+        engine.undo()
+        assertEquals("multiply", engine.blendGet("exposure", 0).mode)
+        expect(EngineError.NOT_FOUND) { engine.blendGet("nosuchmodule", 0) }
+    }
 }

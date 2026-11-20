@@ -62,3 +62,14 @@ Brief: `docs/briefs/P1b2-engine-masks-pickers.md`. Report: `P1b2-engine-masks-pi
   round trips 0.000 px (cr2, arw as opened), 0.512 px (raf, whose XMP has lens correction: darktable's approximate
   inverse); crop and orientation relations exact (0.000 px, against the same points with the module left out);
   lens + rotation 4° + crop + orientation + framing round trip 0.002 / 0.512 / 0.052 px.
+- **Deliverable 6 (blending).** `dtb_blend_get` / `dtb_blend_set` (`engine/src/blend.c`): mask mode by name and as
+  flags, blend colour space (offered as desktop's panel offers it; a change resets the parametric channels and the
+  mode as `_blendif_change_blend_colorspace`), blend mode (desktop's list for the colour space), reverse, fulcrum,
+  opacity, combine (with desktop's polarity rule for unused channels), refinement (feathering and its guide, blur,
+  contrast, brightness, details), parametric channels per colour space (active, invert, range in order, boost),
+  raster (read; invert settable), mask_lock. Grouped like `param_set`. Engine test C21: refusals change nothing;
+  param_set + two blend_set without a seal = one item; renders of the bridge vs darktable-cli of its XMP: max 0
+  (uniform 60 %, parametric with refinement, Lab colour space with "Lab a-channel" reversed; cr2, workspace).
+  Kotlin `blendGet` / `blendSet`, `Blend`; FakeEngine keeps blend settings as data in its history (it does not blend
+  its picture); contract `blendingGetSetValidateAndGroup`.
+- 14:05 g0-app and p2b-real-engine triggers added for this branch; first engine CI run on items 1 to 6.

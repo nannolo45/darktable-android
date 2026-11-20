@@ -614,3 +614,105 @@ static int cmd_coords(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   return g_fail;
 }
+
+/* ---- C21: blending (6.6) ---- */
+
+static JsonObject *blend_of(JsonNode **keep, const char *op, int prio)
+{
+  char *s = NULL;
+  MUST(dtb_blend_get(op, prio, &s));
+  *keep = jparse_owned(s);
+  return json_node_get_object(*keep);
+}
+
+static void save_render(const char *outdir, const char *name)
+{
+  int w, h;
+  uint8_t *buf = render_full(&w, &h, NULL);
+  gchar *ppm = g_strdup_printf("%s_bridge.ppm", name), *x = g_strdup_printf("%s.xmp", name);
+  write_ppm(path_join(outdir, ppm), buf, w, h);
+  char *xp = path_join(outdir, x);
+  MUST(dtb_xmp_write(xp));
+  free(xp);
+  free(buf);
+  g_free(ppm);
+  g_free(x);
+}
+
+static int cmd_blend(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  JsonNode *k = NULL;
+  JsonObject *b = blend_of(&k, "exposure", 0);
+  fprintf(stdout, "RESULT exposure blending as opened: supported %d, masks %s, colorspace %s (%s), mode %s, opacity %.0f\n",
+          json_object_get_boolean_member(b, "supported"), json_object_get_string_member(b, "masks"),
+          json_object_get_string_member(b, "colorspace"), json_object_get_string_member(b, "effective_colorspace"),
+          json_object_get_string_member(b, "mode"), json_object_get_double_member(b, "opacity"));
+  CHECK(json_object_get_boolean_member(b, "supported"), "exposure supports blending");
+  const gchar *eff = json_object_get_string_member(b, "effective_colorspace");
+  CHECK(!strcmp(eff, "rgb_scene") || !strcmp(eff, "rgb_display"), "exposure blends in rgb");
+  json_node_unref(k);
+  int end0;
+  const int n0 = history_count(&end0);
+  char *m0 = get_modules_str();
+  // refused, nothing changes
+  EXPECT(dtb_blend_set("exposure", 0, "{\"opacity\":150}"), DTB_E_RANGE);
+  EXPECT(dtb_blend_set("exposure", 0, "{\"opacity\":50,\"mode\":\"lab_a\"}"), DTB_E_ARG);
+  EXPECT(dtb_blend_set("exposure", 0, "{\"colorspace\":\"raw\"}"), DTB_E_ARG);
+  EXPECT(dtb_blend_set("exposure", 0, "{\"nosuch\":1}"), DTB_E_NOT_FOUND);
+  EXPECT(dtb_blend_set("exposure", 0, "{\"opacity\":\"x\"}"), DTB_E_TYPE);
+  EXPECT(dtb_blend_set("exposure", 0, "{\"parametric.g_in.range\":[0.5,0.2,0.6,0.9]}"), DTB_E_RANGE);
+  EXPECT(dtb_blend_set("rawprepare", 0, "{\"opacity\":50}"), DTB_E_ARG);
+  char *m1 = get_modules_str();
+  CHECK(!strcmp(m0, m1) && history_count(&end0) == n0, "a refused blend_set changed something");
+  dtb_free(m1);
+  // uniform at half opacity, then a parametric mask on grey: one item while not sealed
+  MUST(dtb_param_set("exposure", 0, "exposure", "1.5"));
+  MUST(dtb_blend_set("exposure", 0, "{\"masks\":\"uniform\",\"opacity\":50}"));
+  MUST(dtb_blend_set("exposure", 0, "{\"opacity\":60}"));
+  MUST(dtb_history_seal());
+  const int n1 = history_count(&end0);
+  b = blend_of(&k, "exposure", 0);
+  fprintf(stdout, "RESULT blend_set uniform 60 %%: history %d -> %d, masks %s, opacity %.0f\n", n0, n1,
+          json_object_get_string_member(b, "masks"), json_object_get_double_member(b, "opacity"));
+  CHECK(n1 == n0 + 1, "param_set and two blend_set without a seal: %d items, expected one", n1 - n0);
+  CHECK(fabs(json_object_get_double_member(b, "opacity") - 60.0) < 1e-6, "opacity");
+  json_node_unref(k);
+  save_render(outdir, "blend_uniform");
+  MUST(dtb_blend_set("exposure", 0,
+                     "{\"masks\":\"parametric\",\"parametric.g_in.range\":[0.0,0.2,0.6,0.9],\"parametric.g_in.invert\":true,"
+                     "\"feathering_radius\":10,\"blur_radius\":5,\"contrast\":0.3,\"brightness\":-0.2,\"combine.invert\":true}"));
+  MUST(dtb_history_seal());
+  b = blend_of(&k, "exposure", 0);
+  JsonObject *g = json_object_get_object_member(json_object_get_object_member(b, "parametric"), "g_in");
+  fprintf(stdout, "RESULT parametric: masks %s, g_in active %d invert %d range %.2f..%.2f, combine invert %d\n",
+          json_object_get_string_member(b, "masks"), json_object_get_boolean_member(g, "active"),
+          json_object_get_boolean_member(g, "invert"),
+          json_array_get_double_element(json_object_get_array_member(g, "range"), 1),
+          json_array_get_double_element(json_object_get_array_member(g, "range"), 2),
+          json_object_get_boolean_member(json_object_get_object_member(b, "combine"), "invert"));
+  CHECK(json_object_get_boolean_member(g, "active") && json_object_get_boolean_member(g, "invert"), "g_in");
+  json_node_unref(k);
+  save_render(outdir, "blend_parametric");
+  // a blend colour space change resets the parametric channels and the mode, as desktop's
+  MUST(dtb_blend_set("exposure", 0, "{\"mode\":\"multiply\"}"));
+  MUST(dtb_blend_set("exposure", 0, "{\"colorspace\":\"lab\"}"));
+  MUST(dtb_history_seal());
+  b = blend_of(&k, "exposure", 0);
+  g = json_object_get_object_member(json_object_get_object_member(b, "parametric"), "L_in");
+  fprintf(stdout, "RESULT colour space lab: mode %s, L_in active %d\n", json_object_get_string_member(b, "mode"),
+          g ? json_object_get_boolean_member(g, "active") : -1);
+  CHECK(g && !strcmp(json_object_get_string_member(b, "mode"), "normal"), "colour space change");
+  json_node_unref(k);
+  MUST(dtb_blend_set("exposure", 0, "{\"mode\":\"lab_a\",\"reverse\":true}"));
+  MUST(dtb_history_seal());
+  save_render(outdir, "blend_lab");
+  // undo goes back through them
+  MUST(dtb_undo());
+  b = blend_of(&k, "exposure", 0);
+  CHECK(!strcmp(json_object_get_string_member(b, "mode"), "normal"), "undo of the blend mode");
+  json_node_unref(k);
+  dtb_free(m0);
+  MUST(dtb_close());
+  return g_fail;
+}

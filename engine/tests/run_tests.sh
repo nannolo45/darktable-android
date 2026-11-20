@@ -386,6 +386,10 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C18; then drv C18 undohash "undo and redo keep the XMP's history hashes"; fi
   if want C19; then drv C19 pickers "colour pickers, histogram, picker actions"; fi
   if want C20; then drv C20 coords "coordinates between the original and the picture"; fi
+  if want C21; then
+    drv C21 blend "blending: get, set, validation, grouping"
+    parity C21 blend_uniform; parity C21 blend_parametric; parity C21 blend_lab
+  fi
 done
 
 # C15 once: the engine on its own thread, the process's CPU set changing under it

@@ -98,6 +98,7 @@ add_library(dtbridge SHARED
   src/pickers.c     # colour pickers, histogram (P1b part 2, 6.3, 6.4)
   src/actions3.c    # module actions that pick (P1b part 2, 6.3)
   src/coords.c      # coordinates original <-> processed (P1b part 2, 6.5)
+  src/blend.c       # blending of an instance (P1b part 2, 6.6)
 )
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})
