@@ -135,11 +135,15 @@ database does; `name` in JSON is the stored name (presets in a submenu keep desk
 `film|portra`).
 
 ### 5.1 Open: undecodable files (E1)
-`dtb_open(raw, xmp)` loads the picture before it answers. A file darktable cannot decode is refused with **`DTB_E_IO`**
-and the loader's reason in `dtb_last_error()`: `cannot decode <path>: <reason> (load status n)` with darktable's
-`dt_imageio_retval_t` (for example 3, "no loader could decode it (unsupported format, or a truncated or corrupt
-file)", or 7, "read error"), or `cannot import <path>: darktable does not recognise it as a picture` (an empty
-file); no session is left open and nothing is written. `DTB_E_IO` also for a picture of 0 x 0 pixels. After such a refusal every render, `image_info` and every
+`dtb_open(raw, xmp)` loads the picture before it answers. A file without a picture darktable can decode (junk, an
+empty file, a truncated or corrupt RAW, an unsupported format) is refused with **`DTB_E_IO`** and a message that
+**starts with `cannot decode `** (contract: this prefix tells the undecodable case), followed by the path and the
+loader's reason: `cannot decode <path>: <reason> (load status n)` with darktable's `dt_imageio_retval_t` (for example
+3, "no loader could decode it (unsupported format, or a truncated or corrupt file)", or 7, "read error"), or
+`cannot decode <path>: darktable does not recognise it as a picture (import refused)`. The other `IO` answers of
+`open` keep their own wording and are not this case: `cannot read <path>` (the RAW or the given XMP is missing or not
+a file) and `cannot load XMP <path>`. Kotlin: `EngineException.isUndecodableFile` is true exactly for the first
+case. No session is left open and nothing is written. `DTB_E_IO` also for a picture of 0 x 0 pixels. After such a refusal every render, `image_info` and every
 session call answer `STATE` ("no image open"), as with no `open`. Every render additionally refuses an input buffer of
 0 x 0 (`ENGINE`), so no pipeline ever starts on an empty input.
 

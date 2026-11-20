@@ -89,6 +89,8 @@ void dtb_shutdown(void);
 /* { "darktable_version": s, "api_version": 1, "threads": n,
  *   "threads_max": n,                 the count at dtb_init, the upper limit
  *   "thread_cpus": [ cpu, ... ],      the CPUs set by dtb_set_thread_cpus, [] = not pinned
+ *   "cpus_allowed": [ cpu, ... ],     the CPUs the process may use now (P1b)
+ *   "cpus_configured": n,             the CPUs the device has (P1b)
  *   "plugins": { "files": n, "loaded": n, "missing": [ "<kind>/<name>", ... ],
  *                "moduledir": s,
  *                "iop" | "format" | "storage": { "files", "loaded", "not_loaded": [ name ] },
@@ -105,10 +107,13 @@ int dtb_set_threads(int n);
 
 /* Pin the engine's threads to the given CPUs: the engine thread itself and
  * every OpenMP worker thread, each with sched_setaffinity() on its own
- * thread id, so that threads created later inherit the set. n == 0 removes
- * the pinning (back to the CPUs the process had at dtb_init). The caller
- * chooses the CPUs (on phones: the fast cores); the bridge only applies the
- * list. DTB_E_ARG for an id that is not an allowed CPU of the process. */
+ * thread id, so that threads created later inherit the set. The CPUs are
+ * checked against what the process may use at the time of the call (its
+ * cpuset and its main thread's mask, P1b): the set applied is requested ∩
+ * allowed, DTB_E_ARG only when that is empty; engine_info "thread_cpus"
+ * lists what was applied. n == 0 removes the pinning: back to every CPU the
+ * process may use now. The caller chooses the CPUs (on phones: the fast
+ * cores); the bridge only applies the list. */
 int dtb_set_thread_cpus(const int *cpu_ids, int n);
 
 /* ---------------------------------------------------------------------- */
@@ -126,14 +131,18 @@ int dtb_xmp_check(const char *xmp_path, char **json);
 /* ---------------------------------------------------------------------- */
 /* 2.3 session                                                             */
 
-/* Import raw_path into the private library and load xmp_path (NULL: a
+/* Import raw_path into the private library, load its picture, and load
+ * xmp_path (NULL: a
  * sidecar named <raw>.xmp is picked up if it exists). The session starts
  * from exactly that XMP's edit; without an XMP (xmp_path NULL and no
  * sidecar) from the default edit, as a first import shows it, whatever an
  * earlier session in this process did to the image. The guard runs first;
  * if it fails, the image still opens, for viewing, read-only: every [M] call
  * and dtb_xmp_write return DTB_E_READ_ONLY. Returns DTB_OK in both cases
- * (see image_info "read_only"). The RAW file is only ever read. */
+ * (see image_info "read_only"). The RAW file is only ever read.
+ * A file without a picture darktable can decode (junk, empty, truncated,
+ * unsupported) is refused with DTB_E_IO and the loader's reason; no session
+ * is left open (P1b, E1). */
 int dtb_open(const char *raw_path, const char *xmp_path);
 
 /* Close the session. Writes nothing. */
@@ -195,14 +204,19 @@ int dtb_module_reset(const char *op, int priority);
 /* What a module's desktop panel computes itself. args_json may be NULL
  * (= {}). *result_json receives a JSON value (may be NULL on failure).
  * Unknown action: DTB_E_NOT_FOUND. Actions that change parameters are [M].
- *   temperature:    get_wb -> {temperature, tint, preset}; set_wb {temperature, tint} [M];
+ * docs/design/engine-api.md 2.4 and 5.4 have the JSON.
+ *   temperature:    get_wb -> {temperature, tint, preset, coefficients, tuning, preset_index};
+ *                   set_wb {temperature, tint} [M];
  *                   list_presets -> [ {name, kind, tuning_min, tuning_max, tuning_default} ];
  *                   apply_preset {name, tuning?} [M]
  *   lens:           list_cameras -> [ {maker, model, variant, mount, crop_factor} ];
- *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal} ];
+ *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal, min_aperture, max_aperture} ];
+ *                   use_latest_md [M] (desktop's "use latest algorithm": md_version 2, scale_md_v1 0);
  *                   set_lens {camera, lens} [M]
  *   lut3d:          set_file {path} [M]
- *   denoiseprofile: list_profiles -> [ {index, name, auto, iso} ], index = position
+ *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
+ *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
+ *   denoiseprofile: list_profiles -> [ {index, name, auto, iso, current} ], index = position
  *                   in desktop's profile list, 0 = the automatic entry;
  *                   set_profile {index} or {name} [M] (a name selects the first
  *                   entry of that name; names can repeat, indices do not) */

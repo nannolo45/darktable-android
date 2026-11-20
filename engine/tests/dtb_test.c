@@ -33,7 +33,7 @@
  *   e1 <raw> <xmp> <outdir>        C10: undecodable files refused at open (P1b)
  *   presets <raw> <xmp> <outdir>   C11: presets (P1b)
  *   styles <raw> <xmp> <outdir>    C12: styles (P1b; DTB_TEST_STYLE = a public .dtstyle)
- *   persist <raw> <xmp> <outdir>   C11/C12: presets and styles survive a new process
+ *   persist <raw> presets|styles <outdir>  C11/C12: presets or styles survive a new process
  *   defedit <raw> <xmp> <outdir>   C13: the default edit and its XMP (P1b deliverable 4)
  *   actions2 <raw> <xmp> <outdir>  C14: module actions added by P1b
  *   cpus                           C15: CPUs checked against the process's set now (P1b)
@@ -2339,6 +2339,8 @@ static int e1_case(const char *label, const char *path, const int expect_io)
   {
     fprintf(stdout, "RESULT e1 %s: open refused %d in %.2f s: %s\n", label, r, t, msg);
     CHECK(r == DTB_E_IO, "%s: open answered %d, expected IO (%d)", label, r, DTB_E_IO);
+    // engine-api.md 5.1: the undecodable case is told by this prefix
+    CHECK(!strncmp(msg, "cannot decode ", 14), "%s: message does not start with \"cannot decode \": %s", label, msg);
     char *j = NULL;
     EXPECT(dtb_image_info(&j), DTB_E_STATE);
     uint8_t *buf = NULL;
@@ -2437,6 +2439,12 @@ static int cmd_e1(const char *raw, const char *xmp, const char *outdir)
   }
   else
     CHECK(0, "no %s to test the non-raw case", p);
+  // a missing file and a missing XMP are other IO answers, not "cannot decode"
+  p = path_join(outdir, "missing.cr2");
+  EXPECT(dtb_open(p, NULL), DTB_E_IO);
+  CHECK(strncmp(dtb_last_error(), "cannot decode ", 14), "a missing file is reported as undecodable");
+  EXPECT(dtb_open(raw, p), DTB_E_IO);
+  CHECK(strncmp(dtb_last_error(), "cannot decode ", 14), "a missing XMP is reported as undecodable");
   // the real RAW still opens after all that
   MUST(dtb_open(raw, NULL));
   MUST(dtb_close());
@@ -2622,12 +2630,17 @@ static int cmd_presets(const char *raw, const char *xmp, const char *outdir)
 
 /* a second process on the same configuration folder: presets and styles
  * stored by the previous run are still there (data.db in configdir) */
-static int cmd_persist(const char *raw, const char *xmp, const char *outdir)
+static int cmd_persist(const char *raw, const char *what, const char *outdir)
 {
-  (void)raw; (void)xmp; (void)outdir;
-  JsonNode *n = presets_of("exposure", 0);
-  CHECK(find_named(json_node_get_array(n), "p1b test") != NULL, "user preset lost between processes");
-  json_node_unref(n);
+  (void)raw; (void)outdir;
+  // what: "presets" (after C11) or "styles" (after C12)
+  if(!strcmp(what, "presets"))
+  {
+    JsonNode *n = presets_of("exposure", 0);
+    CHECK(find_named(json_node_get_array(n), "p1b test") != NULL, "user preset lost between processes");
+    json_node_unref(n);
+    return g_fail;
+  }
   char *s = NULL;
   MUST(dtb_styles_list(&s));
   JsonNode *st = jparse_owned(s);

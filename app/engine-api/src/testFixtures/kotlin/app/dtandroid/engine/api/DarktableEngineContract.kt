@@ -518,7 +518,11 @@ abstract class DarktableEngineContract {
     @Test
     fun openRefusesAnEmptyFile() = runBlocking<Unit> {
         val f = tmp.newFile("EMPTY_0001.CR2")
-        expect(EngineError.IO) { engine.open(f.path, null) }
+        val e = runCatching { engine.open(f.path, null) }.exceptionOrNull()
+        assertTrue("$e", e is EngineException && e.error == EngineError.IO && e.isUndecodableFile)
+        // another IO answer of open is not the undecodable case
+        val x = runCatching { engine.open(sampleRaw(), File(tmp.root, "missing.xmp").path) }.exceptionOrNull()
+        assertTrue("$x", x is EngineException && x.error == EngineError.IO && !x.isUndecodableFile)
         expect(EngineError.STATE) { engine.imageInfo() }
         expect(EngineError.STATE) { engine.renderPreview(128) }
         openSample() // a real image still opens afterwards

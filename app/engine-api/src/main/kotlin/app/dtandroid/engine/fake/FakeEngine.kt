@@ -316,7 +316,7 @@ class FakeEngine(
         if (rawPath.isBlank()) fail(EngineError.ARG, "empty RAW path")
         // as dtb_open (P1b, E1): a file without a picture is refused; the fake decodes nothing, so it
         // can only tell an empty file
-        File(rawPath).let { if (it.isFile && it.length() == 0L) fail(EngineError.IO, "cannot import $rawPath: darktable does not recognise it as a picture") }
+        File(rawPath).let { if (it.isFile && it.length() == 0L) fail(EngineError.IO, "${EngineException.UNDECODABLE_PREFIX}$rawPath: darktable does not recognise it as a picture (import refused)") }
         val name = File(rawPath).name
         val sample = samples[name]
         val variant = (name.hashCode() and 0x7fffffff) % 6

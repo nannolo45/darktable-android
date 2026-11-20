@@ -289,7 +289,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
     // dt_image_import refuses files it cannot identify as a picture (an
     // empty file, for example): a file problem, not an engine one (E1)
     g_free(sidecar);
-    return dtb__err(DTB_E_IO, "cannot import %s: darktable does not recognise it as a picture", raw_path);
+    return dtb__err(DTB_E_IO, "cannot decode %s: darktable does not recognise it as a picture (import refused)", raw_path);
   }
   {
     const int r = _check_decodable(imgid, raw_path);

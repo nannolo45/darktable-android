@@ -459,14 +459,17 @@ int dtb_set_thread_cpus(const int *cpu_ids, int n)
   else
   {
     CPU_ZERO(&set);
+    int refused = -1;
     for(int i = 0; i < n; i++)
     {
       const int c = cpu_ids[i];
       if(c < 0 || c >= CPU_SETSIZE) return dtb__err(DTB_E_ARG, "CPU %d does not exist", c);
       if(CPU_ISSET(c, &allowed)) CPU_SET(c, &set);
+      else if(refused < 0) refused = c;
     }
     if(CPU_COUNT(&set) == 0)
-      return dtb__err(DTB_E_ARG, "none of the %d CPUs given is available to this process now", n);
+      return dtb__err(DTB_E_ARG, "CPU %d is not available to this process (none of the %d CPUs given is available now)",
+                      refused, n);
   }
   const int r = _apply_cpus(&set);
   if(r) return r;

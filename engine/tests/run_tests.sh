@@ -336,6 +336,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C11; then
     drv C11 presets "presets: list, apply, store, rename, delete, import, export"
     parity C11 preset_builtin; parity C11 preset_user
+    if "$DTB" "$W" persist "$RAW" presets "$D" > "$D/C11-persist.log" 2>&1; then
+      pass C11 "$C" "presets kept in the configuration folder across processes"
+    else
+      fail C11 "$C" "presets lost across processes, see $D/C11-persist.log"
+    fi
   fi
   if want C12; then
     # a public style: one of darktable's example styles (GPL-3.0, shipped with darktable)
@@ -357,10 +362,10 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     "$CLI" "$RAW" "$D/style_cli_overwrite.png" --style "p1b public" --style-overwrite --core $CLI_LEVEL \
       --configdir "$OUT/cli-config-style-$C" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     note "INFO C12 $C bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): $($CMP "$D/style_default_append_bridge.ppm" "$D/style_cli_overwrite.png" --tolerance 255 2>&1)"
-    if "$DTB" "$W" persist "$RAW" "$XMP" "$D" > "$D/C12-persist.log" 2>&1; then
-      pass C12 "$C" "presets and styles kept in the configuration folder across processes"
+    if "$DTB" "$W" persist "$RAW" styles "$D" > "$D/C12-persist.log" 2>&1; then
+      pass C12 "$C" "styles kept in the configuration folder across processes"
     else
-      fail C12 "$C" "presets or styles lost across processes, see $D/C12-persist.log"
+      fail C12 "$C" "styles lost across processes, see $D/C12-persist.log"
     fi
   fi
   if want C13; then
@@ -386,7 +391,7 @@ if want C15; then
   fi
   # point 3: started with one CPU allowed (GCC's libgomp on Linux counts the mask at load)
   if command -v taskset > /dev/null; then
-    note "INFO C15 started with CPU 0 only (Linux, libgomp): $(taskset -c 0 "$DTB" "$OUT/cpus-work1" api "$TESTS/images/mire1.cr2" "$TESTS/0001-exposure/exposure.xmp" "$OUT" 2>/dev/null | grep '^RESULT engine')"
+    note "INFO C15 started with CPU 0 only (Linux, libgomp): $(taskset -c 0 "$DTB" "$OUT/cpus-work1" api "$TESTS/images/mire1.cr2" "$TESTS/0001-exposure/exposure.xmp" "$OUT" 2>/dev/null | grep '^RESULT engine darktable')"
   fi
 fi
 
