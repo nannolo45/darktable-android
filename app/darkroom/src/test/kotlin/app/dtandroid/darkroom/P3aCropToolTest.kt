@@ -482,7 +482,7 @@ class P3aCropToolTest {
         openTool(c)
         dragCorner(c)
         val n0 = c.state.value.history.items.size
-        val undos = e.undos
+        val renders = e.bypassPreviews.get()
         assertNotNull(c.rotationSlider())
         // the finger moves: only the screen changes
         c.cropRotationDrag(0.5); c.cropRotationDrag(1.0); c.cropRotationDrag(1.5)
@@ -499,7 +499,9 @@ class P3aCropToolTest {
         assertTrue(c.state.value.modules.first { it.op == "ashift" }.enabled)
         waitFor("tool again") { c.state.value.cropTool?.picture != null }
         assertNull(c.state.value.cropTool!!.rotationLive)
-        assertEquals("the uncropped picture rendered again", undos + 1, e.undos)
+        // P1b part 2: rendered again with crop left out (P3a counted the bracket's undo here)
+        assertEquals("the uncropped picture rendered again", renders + 1, e.bypassPreviews.get())
+        assertEquals(0, e.undos)
     }
 
     @Test fun straightenSetsTheRotationAsDesktop() = runBlocking {

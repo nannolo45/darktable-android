@@ -948,10 +948,10 @@ class DarkroomController(
         val options = if (m.enabled) RenderOptions.bypass(key.op, key.priority) else RenderOptions.NONE
         Timeline.mark("darkroom: crop tool: uncropped picture start (crop ${if (m.enabled) "on, left out of the render" else "off"})")
         val (sz, img) = try {
-            val sz = engine.renderSize(1.0, options)
+            val sz = sizeWith(1.0, options)
             val vp = viewport
             val size = if (vp == null) previewMaxSize else previewSizeFor(vp.widthPx, vp.heightPx, sz.w, sz.h, previewMaxSize, fitPreviewMax)
-            sz to wanted { engine.renderPreview(size, options) }
+            sz to wanted { if (options.isNone) engine.renderPreview(size) else engine.renderPreview(size, options) }
         } catch (e: EngineException) {
             if (e.error != EngineError.CANCELLED) _state.update { it.copy(message = e.message) }
             Timeline.mark("darkroom: crop tool: not opened (${e.message})")
@@ -965,6 +965,10 @@ class DarkroomController(
         }
         Timeline.mark("darkroom: crop tool: open on ${sz.w}x${sz.h}, picture ${img.width}x${img.height} (photo ${info.width}x${info.height})")
     }
+
+    /** Brief P1b part 2: the plain call without options (as before), the one with options otherwise. */
+    private suspend fun sizeWith(scale: Double, options: RenderOptions) =
+        if (options.isNone) engine.renderSize(scale) else engine.renderSize(scale, options)
 
     /** With the crop tool open on [key]: change its state with [edit] (marked as touched). False when not open. */
     private fun cropToolEdit(key: InstanceKey, edit: (CropToolState, app.dtandroid.schema.AspectSpec) -> CropToolState): Boolean {
@@ -1316,7 +1320,7 @@ class DarkroomController(
                     val tool = _state.value.cropTool
                     val options = tool?.options ?: RenderOptions.NONE
                     val r = (if (tool != null) regionFor(vp, tool.inW, tool.inH) else regionFor(vp, info.width, info.height)) ?: return@wanted null
-                    val size = engine.renderSize(r.scale, options)
+                    val size = sizeWith(r.scale, options)
                     val x = r.x.coerceIn(0, size.w - 1)
                     val y = r.y.coerceIn(0, size.h - 1)
                     val w = min(r.w, size.w - x)
@@ -1327,7 +1331,7 @@ class DarkroomController(
                     val t0 = System.nanoTime()
                     val img = try {
                         synchronized(regionGuard) { regionRendering = true }
-                        engine.renderRegion(x, y, w, h, r.scale, options)
+                        if (options.isNone) engine.renderRegion(x, y, w, h, r.scale) else engine.renderRegion(x, y, w, h, r.scale, options)
                     } catch (e: EngineException) {
                         if (e.error == EngineError.CANCELLED) Timeline.mark("darkroom: region render cancelled")
                         throw e

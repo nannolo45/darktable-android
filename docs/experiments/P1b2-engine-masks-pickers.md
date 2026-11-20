@@ -41,3 +41,24 @@ Brief: `docs/briefs/P1b2-engine-masks-pickers.md`. Report: `P1b2-engine-masks-pi
   of the uncropped picture leaves the edit and every write as they were). New: `openingAndClosingTheToolWithoutAChange
   LeavesTheXmpByteEqual`, `zoomedInTheToolShowsItsSharpRegion`. Emulator `P3aScenarioTest` c1 and c2 now also require
   the XMP to be byte-equal.
+- 13:42 p2a-app 44745746266 (79017c8): 2 of 131 darkroom tests failed. `P2iFitViewTest.zoomInShowsThePreviewAtOnce…`:
+  the controller called the new `renderRegion(…, options)` overload also without options, which the test's counting
+  wrapper does not see; the controller now calls the plain overloads when there are no options (test unchanged).
+  `P3aCropToolTest.theRotationSliderTurnsThePictureThenWritesOneItem` counted the bracket's undo as "the uncropped
+  picture rendered again": now counts the bypass renders (a sixth P3a test changed to pin the new behaviour).
+- **Deliverable 4.** `dtb_color_pick` (module picker, input and output, and the global picker with op NULL),
+  `dtb_histogram`, module actions `temperature wb_from_area`, `exposure spot` (correction and measure),
+  `rgblevels pick` (black, grey, white), `rgbcurve set_nodes_from_area`. The box mapping and the statistics are
+  desktop's own functions (`dt_color_picker_backtransform_box`, `dt_color_picker_box`, `dt_color_picker_helper`), run
+  with the global develop object's preview pipe pointed at the bridge's pipe for the call; the module is forced to
+  run once (its piece hash changed for that render) on the preview pipe at scale 1, as desktop's preview pipe.
+  Engine test C19 (3 images): global picker vs the 8-bit preview over the same box: 0.41 / 0.001 / 0.30 levels;
+  exposure's input vs output on the same box: out = (in - black) * 2^EV on every statistic (spread < 1e-7); a pick
+  through a crop lands at 1.5 x the box without it (crop keeping the bottom right quarter); temperature
+  coefficients = desktop's formula on the picked mean (max diff 1.2e-7); exposure spot to 50 % then measure: 50.0000;
+  rgblevels black = desktop's rule; the plain preview after picks byte-equal to the one before.
+- **Deliverable 5.** `dtb_coords_transform` (normalised points, both directions, optional bypass) over
+  `dt_dev_distort_transform_plus` / `_backtransform_plus`, DIR_ALL, on the full pipe. Engine test C20 (3 images):
+  round trips 0.000 px (cr2, arw as opened), 0.512 px (raf, whose XMP has lens correction: darktable's approximate
+  inverse); crop and orientation relations exact (0.000 px, against the same points with the module left out);
+  lens + rotation 4° + crop + orientation + framing round trip 0.002 / 0.512 / 0.052 px.
