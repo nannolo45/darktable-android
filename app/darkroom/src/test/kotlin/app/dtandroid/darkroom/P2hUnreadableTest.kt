@@ -48,6 +48,9 @@ class P2hUnreadableTest {
 
         fun opensOf(path: String) = opens[path]?.get() ?: 0
 
+        /** whether the open session is one of the files in [bad] (ConcurrentHashMap takes no null key) */
+        private fun onBadFile() = current?.let { bad.containsKey(it) } == true
+
         override suspend fun open(rawPath: String, xmpPath: String?) {
             opens.getOrPut(rawPath) { AtomicInteger() }.incrementAndGet()
             if (current != null) throw EngineException(EngineError.STATE, "an image is already open")
@@ -59,7 +62,7 @@ class P2hUnreadableTest {
 
         override suspend fun imageInfo(): ImageInfo {
             val i = e.imageInfo()
-            val p = current
+            val p = current ?: return i
             return when (bad[p]) {
                 Answer.ZERO -> i.copy(width = 0, height = 0, rawWidth = 0, rawHeight = 0)
                 // the bridge's words when the full image could not be loaded (engine/src/render.c, _pipe_ensure)
@@ -70,12 +73,12 @@ class P2hUnreadableTest {
         }
 
         override suspend fun renderPreview(maxSize: Int): RenderedImage {
-            if (current in bad) rendersWithoutPicture.incrementAndGet()
+            if (onBadFile()) rendersWithoutPicture.incrementAndGet()
             return e.renderPreview(maxSize)
         }
 
         override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage {
-            if (current in bad) rendersWithoutPicture.incrementAndGet()
+            if (onBadFile()) rendersWithoutPicture.incrementAndGet()
             return e.renderRegion(x, y, w, h, scale)
         }
     }
