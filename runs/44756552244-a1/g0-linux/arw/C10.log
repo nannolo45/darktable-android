@@ -1,0 +1,32 @@
+RESULT engine 04477d3
+     0.2723 [exiv2 dt_exif_read] /home/runner/bridge-tests/arw/junk.arw: /home/runner/bridge-tests/arw/junk.arw: The file contains data of an unknown image type
+     0.2774 [exiv2 dt_exif_read] /home/runner/bridge-tests/arw/junk.arw: /home/runner/bridge-tests/arw/junk.arw: The file contains data of an unknown image type
+     0.2775 [rawspeed] junk.arw corrupt: virtual std::unique_ptr<rawspeed::RawDecoder> rawspeed::RawParser::getDecoder(const rawspeed::CameraMetaData*), line 97: No decoder found. Sorry.
+     0.2775 [exiv2 dt_exif_read] /home/runner/bridge-tests/arw/junk.arw: /home/runner/bridge-tests/arw/junk.arw: The file contains data of an unknown image type
+RESULT e1 junk: open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/arw/junk.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+RESULT e1 empty: open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/empty.arw: darktable does not recognise it as a picture (import refused)
+     0.2878 [rawspeed] (cut0001.arw) I/O error: rawspeed::Buffer::size_type rawspeed::ByteStream::check(rawspeed::Buffer::size_type) const, line 65: Out of bounds access in ByteStream
+RESULT e1 truncated 0.1% (20908 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0001.arw: read error (load status 7)
+     0.2909 [rawspeed] cut0010.arw corrupt: virtual rawspeed::RawImage rawspeed::ArwDecoder::decodeRawInternal(), line 244: Data offset after EOF, file probably truncated
+     0.2913 [rawspeed] cut0010.arw corrupt: virtual rawspeed::RawImage rawspeed::ArwDecoder::decodeRawInternal(), line 244: Data offset after EOF, file probably truncated
+RESULT e1 truncated 1.0% (209085 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0010.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+     0.2953 [rawspeed] cut0100.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+     0.2959 [rawspeed] cut0100.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+RESULT e1 truncated 10.0% (2090854 of 20908544 bytes): open refused -6 in 0.00 s: cannot decode /home/runner/bridge-tests/arw/cut0100.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+     0.3057 [rawspeed] cut0500.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+     0.3097 [rawspeed] cut0500.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+RESULT e1 truncated 50.0% (10454272 of 20908544 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/arw/cut0500.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+     0.3235 [rawspeed] cut0900.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+     0.3297 [rawspeed] cut0900.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+RESULT e1 truncated 90.0% (18817689 of 20908544 bytes): open refused -6 in 0.02 s: cannot decode /home/runner/bridge-tests/arw/cut0900.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+     0.3431 [rawspeed] cut0990.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+     0.3494 [rawspeed] cut0990.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+RESULT e1 truncated 99.0% (20699458 of 20908544 bytes): open refused -6 in 0.02 s: cannot decode /home/runner/bridge-tests/arw/cut0990.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+     0.3622 [rawspeed] cut0999.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+     0.3682 [rawspeed] cut0999.arw corrupt: rawspeed::RawImage rawspeed::RawDecoder::decodeRaw(), line 338: rawspeed::Buffer rawspeed::Buffer::getSubView(size_type, size_type) const, line 80: Buffer overflow: image file may be truncated
+RESULT e1 truncated 99.9% (20887635 of 20908544 bytes): open refused -6 in 0.01 s: cannot decode /home/runner/bridge-tests/arw/cut0999.arw: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)
+RESULT e1 truncated: 7 refused, 0 opened
+RESULT e1 nonraw png: open OK in 0.48 s; image_info 5492 x 3672 (raw 5492 x 3672)
+RESULT e1 nonraw png: render_preview answered 0 (512 x 342)
+RESULT e1 nonraw png: render_region at 1/4 answered 0 (1373 x 918)
+RESULT exit 0
