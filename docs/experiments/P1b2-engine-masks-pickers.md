@@ -116,3 +116,10 @@ and will be pushed when the running CI run has finished.
   (0.18416 0.18419 0.18430, spread 6e-4). Its "measure" mode is not built (it reads the white balance through the
   interface, `_get_corrected_illuminant_xy`).
 - 14:42 masks, mask display, colour calibration pushed (CI on it next).
+- 14:44 **A pre-existing bug, fixed:** `dtb_instance_duplicate` (P1a) called `dt_masks_iop_use_same_as`
+  (develop/masks/masks.c), which works on the global develop object; a duplicated instance lost its drawn mask in the
+  session. The bridge now runs the same steps on the session's forms (`dtb__masks_use_same_as`); C22 checks it
+  (render = darktable-cli of the written XMP, max 0).
+- Workspace regression subset after the masks commits (T3 T9 X1 C3 C9 C11 C12 C22, three images): 94 PASS, 0 FAIL.
+- 14:45 pushed 64a627fb (header comments; last code commit). p2b-real-engine's first attempt failed in "Build
+  darktable for Linux" (package mirrors, three install attempts); failed jobs rerun.
