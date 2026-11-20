@@ -21,8 +21,8 @@ under `engine/` or `upstream/` changed.
   a photo while a `release` job removes it, and `FolderThumb.store` → `AtomicFiles.write` makes the folder again
   (`dir.mkdirs()`), which `LplAgent.remove` guards against for state writes but not for thumbnails. In attempt 1 the
   engine was rendering thumbnails during l4 (darktable's log), and the scheduler showed background work running at
-  the failure. Not shown that this is the cause (no timeline line for thumbnail renders); l4 passed in the 16 earlier
-  emulator runs of the logs branch where it ran to the end. Open question 4.
+  the failure. Not shown that this is the cause (no timeline line for thumbnail renders); on the logs branch, l4 passed in 11
+  earlier emulator runs and failed in 4 with other messages (two older defects, two in the P2f hang runs). Open question 4.
 - **Two CI runs needed a rerun for Maven Central** ("could not find" / robolectric fetch): 44692381418 and
   44693487742, both green on rerun with no change.
 - **What is not shown.** Only the one junk file (2000 bytes of junk) was tried on the real engine. A truncated real
