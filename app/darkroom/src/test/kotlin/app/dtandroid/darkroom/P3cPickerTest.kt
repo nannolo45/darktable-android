@@ -405,9 +405,8 @@ class P3cPickerTest {
         val n0 = c.state.value.history.items.size
         val pick = entries.indexOfFirst { it["type"]!!.jsonPrimitive.content != p0 }
         c.chooseActionList(colorin, 0, pick)
-        // one history step (merged into the top item when that is colorin's already, as desktop merges)
+        // one params_set (the stand-in may merge it into colorin's item of the default edit)
         assertTrue(c.state.value.history.items.size in n0..n0 + 1)
-        assertEquals("colorin", c.state.value.history.items.last().op)
         val p1 = (c.state.value.modules.first { it.key == colorin }.params["type"] as JsonPrimitive).content
         assertEquals(entries[pick]["type"]!!.jsonPrimitive.content, p1)
         // read again for the new parameters: the chosen entry is the current one
