@@ -767,4 +767,87 @@ abstract class DarktableEngineContract {
         engine.xmpWrite(d.path)
         assertTrue("redo back to the last state: byte-equal", b.readBytes().contentEquals(d.readBytes()))
     }
+
+    @Test
+    fun colorPickersAndHistogram() = runBlocking<Unit> {
+        openSample()
+        val history0 = engine.history()
+        val area = PickRequest.area(0.4, 0.35, 0.62, 0.55)
+        val global = engine.colorPick(null, 0, area)
+        val out = global.output!!
+        assertEquals("preview", global.pipe)
+        assertTrue("$out", out.mean.take(3).all { it != null && it in 0.0..1.0 })
+        assertTrue(out.min[0]!! <= out.mean[0]!! && out.mean[0]!! <= out.max[0]!!)
+        val e = engine.colorPick("exposure", 0, area)
+        assertTrue("exposure picks its input and output: $e", e.input != null && e.output != null)
+        assertEquals("rgb", e.input!!.colorspace)
+        val p = engine.colorPick("exposure", 0, PickRequest.point(0.5, 0.5).copy(denoise = true))
+        assertTrue(p.input != null)
+        expect(EngineError.NOT_FOUND) { engine.colorPick("nosuchmodule", 0, area) }
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, PickRequest(area = listOf(0.5, 0.5, 0.2, 0.2))) }
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, PickRequest()) }
+        engine.setEnabled("exposure", 0, false)
+        expect(EngineError.ARG) { engine.colorPick("exposure", 0, area) }
+        engine.undo()
+        val h = engine.histogram(512)
+        assertEquals(256, h.bins)
+        assertEquals(3, h.counts.size)
+        for (c in h.counts) assertEquals(h.pixels, c.sum())
+        assertEquals(h.counts.maxOf { it.max() }, h.max)
+        assertTrue(h.width <= 512 && h.height <= 512)
+        // pickers and histograms change nothing in the edit
+        assertEquals(history0, engine.history())
+    }
+
+    @Test
+    fun moduleActionsThatPick() = runBlocking<Unit> {
+        openSample()
+        val area = buildJsonObject { put("area", kotlinx.serialization.json.JsonArray(listOf(0.4, 0.35, 0.62, 0.55).map { JsonPrimitive(it) })) }
+        val n0 = engine.history().items.size
+        val wb = engine.moduleAction("temperature", 0, "wb_from_area", area) as JsonObject
+        val c = (wb["coefficients"] as kotlinx.serialization.json.JsonArray).map { (it as JsonPrimitive).doubleOrNull!! }
+        assertEquals(1.0, c[1], 0.0)
+        assertEquals(c[0], (instance("temperature").params.paramAt("red") as JsonPrimitive).doubleOrNull!!, 1e-6)
+        // exposure: correct the area to 50 %, then measuring it gives 50 % back
+        engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("correction"), "lightness" to JsonPrimitive(50.0))))
+        val m = engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("measure")))) as JsonObject
+        assertEquals(50.0, (m["lightness"] as JsonPrimitive).doubleOrNull!!, 0.05)
+        expect(EngineError.ARG) { engine.moduleAction("exposure", 0, "spot", JsonObject(area + mapOf("mode" to JsonPrimitive("sideways")))) }
+        // rgblevels' black picker
+        engine.setEnabled("rgblevels", 0, true)
+        val lv = engine.moduleAction("rgblevels", 0, "pick", JsonObject(area + mapOf("which" to JsonPrimitive("black")))) as JsonObject
+        val black = ((lv["levels"] as kotlinx.serialization.json.JsonArray)[0] as JsonPrimitive).doubleOrNull!!
+        assertEquals(black, (instance("rgblevels").params.paramAt("levels[0][0]") as JsonPrimitive).doubleOrNull!!, 1e-6)
+        // rgbcurve: nodes from the area
+        engine.setEnabled("rgbcurve", 0, true)
+        val rc = engine.moduleAction("rgbcurve", 0, "set_nodes_from_area", area) as JsonObject
+        val nodes = rc["nodes"] as kotlinx.serialization.json.JsonArray
+        assertTrue("${nodes.size} nodes", nodes.size == 5 || nodes.size == 6)
+        assertEquals(nodes.size, (instance("rgbcurve").params.paramAt("curve_num_nodes[0]") as JsonPrimitive).content.toInt())
+        // one history item per action that changed the edit (and one per switch)
+        assertEquals(n0 + 6, engine.history().items.size)
+    }
+
+    @Test
+    fun coordinatesBetweenOriginalAndPicture() = runBlocking<Unit> {
+        openSample()
+        val pts = listOf(0.2 to 0.3, 0.5 to 0.5, 0.8 to 0.7)
+        val f = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts)
+        assertTrue(f.originalWidth > 0 && f.processedWidth > 0)
+        val b = engine.coordsTransform(CoordsDirection.TO_ORIGINAL, f.points.map { it!! })
+        for ((p, q) in pts.zip(b.points)) {
+            assertEquals(p.first, q!!.first, 1.0 / f.originalWidth)
+            assertEquals(p.second, q.second, 1.0 / f.originalHeight)
+        }
+        // turned clockwise: (x, y) of the picture = (1 - y, x) of the picture without the orientation
+        engine.paramSet("flip", 0, "orientation", ParamValue.enum("ORIENTATION_ROTATE_CW_90_DEG"))
+        engine.historySeal()
+        val t = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts)
+        val n = engine.coordsTransform(CoordsDirection.TO_PROCESSED, pts, RenderOptions.bypass("flip", 0))
+        assertEquals(t.processedWidth, n.processedHeight)
+        for ((a, c) in t.points.zip(n.points)) {
+            assertEquals(1.0 - c!!.second, a!!.first, 1.5 / t.processedWidth)
+            assertEquals(c.first, a.second, 1.5 / t.processedHeight)
+        }
+    }
 }

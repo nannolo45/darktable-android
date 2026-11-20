@@ -16,6 +16,13 @@ import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.ParamPath
 import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.PickResult
+import app.dtandroid.engine.api.PickStats
+import app.dtandroid.engine.api.Histogram
+import app.dtandroid.engine.api.CoordsDirection
+import app.dtandroid.engine.api.CoordsResult
+import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -47,6 +54,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import java.io.File
 import java.util.concurrent.Executors
@@ -54,6 +64,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -526,6 +537,8 @@ class FakeEngine(
         def(op)
         s.inst(op, priority)
         when (op to action) {
+            "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area" ->
+                fakePickAction(s, op, priority, action, args)
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
                 val (t, tint) = FakeWhiteBalance.fromCoefficients(p)
@@ -1113,6 +1126,176 @@ class FakeEngine(
             val it = s.items[i]
             FStyleItem(i, it.op, it.priority, it.instanceName, it.enabled, catalog[it.op]!!.version, FAKE_BLEND_VERSION, it.params)
         })
+    }
+
+    // ------------------------------------------------------------ 6 (P1b part 2): pickers, histogram, coordinates
+    //
+    // The stand-in engine picks on its own picture (the preview it renders, 0..1 from the 8-bit values): a module's
+    // "input" is the picture with that module left out, its "output" the picture with it in, both "rgb". The
+    // global picker gives the picture's statistics. Coordinates: its only geometry is the orientation (flip).
+
+    private fun area(req: PickRequest): DoubleArray {
+        val a = req.area ?: req.point?.let { listOf(it[0], it[1], it[0], it[1]) }
+            ?: fail(EngineError.ARG, "expected \"area\": [x0, y0, x1, y1] or \"point\": [x, y]")
+        if (req.area != null && req.area.size != 4 || req.point != null && req.point.size != 2) fail(EngineError.ARG, "bad area or point")
+        if (a.any { !it.isFinite() || it < 0.0 || it > 1.0 }) fail(EngineError.ARG, "area and point are normalised coordinates of the picture (0..1)")
+        if (a[2] < a[0] || a[3] < a[1]) fail(EngineError.ARG, "area: x0 <= x1 and y0 <= y1")
+        return a.toDoubleArray()
+    }
+
+    private suspend fun fakeStats(s: Session, a: DoubleArray, bypass: Set<Pair<String, Int>>): PickStats {
+        val r = FakeRenderer(s.variant)
+        val o = orientation(s, bypass)
+        val (fw, fh) = r.processedSize(o, 1.0)
+        val scale = min(1.0, 512.0 / max(fw, fh))
+        val (w, h) = r.processedSize(o, scale)
+        val img = render(s, r, 0, 0, w, h, scale, o, 0, null, bypass)
+        val x0 = (a[0] * w).toInt().coerceIn(0, w - 1)
+        val y0 = (a[1] * h).toInt().coerceIn(0, h - 1)
+        val x1 = max(x0 + 1, (a[2] * w).toInt()).coerceIn(1, w)
+        val y1 = max(y0 + 1, (a[3] * h).toInt()).coerceIn(1, h)
+        val sum = DoubleArray(4)
+        val mn = DoubleArray(4) { Double.MAX_VALUE }
+        val mx = DoubleArray(4) { -Double.MAX_VALUE }
+        for (y in y0 until y1) for (x in x0 until x1) for (c in 0..2) {
+            val v = (img.rgba[4 * (y * w + x) + c].toInt() and 0xff) / 255.0
+            sum[c] += v; mn[c] = min(mn[c], v); mx[c] = max(mx[c], v)
+        }
+        val n = ((x1 - x0) * (y1 - y0)).toDouble()
+        sum[3] = 0.0; mn[3] = 0.0; mx[3] = 0.0
+        return PickStats("rgb", sum.map { it / n }.toMutableList<Double?>().also { it[3] = 0.0 }, mn.toList(), mx.toList(), listOf(x0, y0, x1, y1))
+    }
+
+    override suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult = onEngine {
+        val s = requireSession()
+        if (op != null) { def(op); s.inst(op, priority) }
+        val a = area(request)
+        val bypass = s.bypassOf(request.options)
+        val pipe = if (request.fullPipe) "full" else "preview"
+        if (op == null) return@onEngine PickResult(pipe, null, fakeStats(s, a, bypass))
+        val on = s.live()[op to priority]!!.enabled && (op to priority) !in bypass
+        if (!on) fail(EngineError.ARG, "$op $priority is switched off (or left out): desktop's pickers only pick on modules that are on")
+        PickResult(pipe, fakeStats(s, a, bypass + (op to priority)), fakeStats(s, a, bypass))
+    }
+
+    override suspend fun histogram(maxSize: Int, options: RenderOptions): Histogram = onEngine {
+        val s = requireSession()
+        val bypass = s.bypassOf(options)
+        if (maxSize < 16) fail(EngineError.ARG, "max_size must be >= 16")
+        val r = FakeRenderer(s.variant)
+        val o = orientation(s, bypass)
+        val (fw, fh) = r.processedSize(o, 1.0)
+        val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
+        val (w, h) = r.processedSize(o, scale)
+        val img = render(s, r, 0, 0, w, h, scale, o, 0, null, bypass)
+        val counts = List(3) { LongArray(256) }
+        for (i in 0 until w * h) for (c in 0..2) counts[c][img.rgba[4 * i + c].toInt() and 0xff]++
+        Histogram(256, listOf("red", "green", "blue"), counts.map { it.toList() }, counts.maxOf { it.max() }, (w * h).toLong(), w, h)
+    }
+
+    override suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions): CoordsResult = onEngine {
+        val s = requireSession()
+        val bypass = s.bypassOf(options)
+        val o = orientation(s, bypass)
+        val r = FakeRenderer(s.variant)
+        val (iw, ih) = r.processedSize(0, 1.0)
+        val (pw, ph) = r.processedSize(o, 1.0)
+        // darktable's orientation bits (common/image.h): 1 flip y, 2 flip x, 4 swap x and y, applied as flip.c does
+        fun fwd(p: Pair<Double, Double>): Pair<Double, Double> {
+            var (x, y) = p
+            if (o and 2 != 0) x = 1.0 - x
+            if (o and 1 != 0) y = 1.0 - y
+            return if (o and 4 != 0) y to x else x to y
+        }
+        fun back(p: Pair<Double, Double>): Pair<Double, Double> {
+            var (x, y) = if (o and 4 != 0) p.second to p.first else p
+            if (o and 2 != 0) x = 1.0 - x
+            if (o and 1 != 0) y = 1.0 - y
+            return x to y
+        }
+        val out = points.map { if (direction == CoordsDirection.TO_PROCESSED) fwd(it) else back(it) }
+        CoordsResult(out, iw, ih, pw, ph)
+    }
+
+    /** The stand-in's module actions that pick (6.3), on its own picker (see [colorPick]). */
+    private suspend fun fakePickAction(s: Session, op: String, priority: Int, action: String, args: JsonObject): JsonElement {
+        requireWritable()
+        fun arr(k: String) = (args[k] as? JsonArray)?.map { (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "$k takes numbers") }
+        val req = PickRequest(area = arr("area"), point = arr("point"))
+        val a = area(req)
+        if (!s.live()[op to priority]!!.enabled) fail(EngineError.ARG, "$op $priority is switched off")
+        val input = fakeStats(s, a, setOf(op to priority))
+        val picked = PickResult("preview", input, fakeStats(s, a, emptySet())).toJson()
+        val m = input.mean.map { it ?: 0.0 }
+        fun lum(v: List<Double?>) = 0.2126 * (v[0] ?: 0.0) + 0.7152 * (v[1] ?: 0.0) + 0.0722 * (v[2] ?: 0.0)
+        fun lab(y: Double) = if (y > 216.0 / 24389.0) 116.0 * Math.cbrt(y) - 16.0 else y * 24389.0 / 27.0
+        fun yOf(l: Double) = if (l > 8.0) ((l + 16.0) / 116.0).pow(3) else l * 27.0 / 24389.0
+        val cur = s.live()[op to priority]!!.params
+        return when (op to action) {
+            "temperature" to "wb_from_area" -> {
+                val gnormal = if (m[1] > 0.001) 1.0 / m[1] else 1.0
+                val c = (0..3).map { k -> ((if (m[k] > 0.001) 1.0 / m[k] else 1.0) / gnormal).coerceIn(0.0, 8.0) }.toMutableList()
+                c[1] = 1.0
+                val vals = linkedMapOf<String, JsonPrimitive>("red" to JsonPrimitive(c[0]), "green" to JsonPrimitive(c[1]), "blue" to JsonPrimitive(c[2]))
+                if (cur.containsKey("preset")) vals["preset"] = JsonPrimitive(1)
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("coefficients", JsonArray(listOf(c[0], c[1], c[2], 1.0).map { JsonPrimitive(it) })) }
+            }
+            "exposure" to "spot" -> {
+                val mode = (args["mode"] as? JsonPrimitive)?.content ?: "correction"
+                if (mode != "correction" && mode != "measure") fail(EngineError.ARG, "mode is \"correction\" or \"measure\"")
+                val target = (args["lightness"] as? JsonPrimitive)?.doubleOrNull ?: 50.0
+                if (target !in 0.0..100.0) fail(EngineError.RANGE, "lightness 0..100")
+                val y = lum(input.mean)
+                val ev = (cur["exposure"] as? JsonPrimitive)?.doubleOrNull ?: 0.0
+                buildJsonObject {
+                    put("picked", picked)
+                    put("input_lightness", lab(y))
+                    if (mode == "measure") put("lightness", lab(y * 2.0.pow(ev)))
+                    else {
+                        put("lightness", target)
+                        if (y > 1e-5) {
+                            val e = ln(yOf(target) / y) / ln(2.0)
+                            s.setParams(op, priority, mapOf("exposure" to JsonPrimitive(e)), merge = false)
+                            put("exposure", e)
+                        }
+                    }
+                }
+            }
+            "rgblevels" to "pick" -> {
+                val which = (args["which"] as? JsonPrimitive)?.content
+                if (which !in listOf("black", "grey", "white")) fail(EngineError.ARG, "which is \"black\", \"grey\" or \"white\"")
+                val ch = (args["channel"] as? JsonPrimitive)?.intOrNull ?: 0
+                if (ch !in 0..2) fail(EngineError.ARG, "channel 0..2")
+                val lv = (0..2).map { k -> (cur.paramAt("levels[$ch][$k]") as JsonPrimitive).double }.toMutableList()
+                val v = m[0]
+                when (which) {
+                    "black" -> lv[0] = if (v > lv[1]) lv[1] - 1.1920929E-7 else v
+                    "grey" -> if (!(v < lv[0] || v > lv[2])) lv[1] = v
+                    else -> lv[2] = if (v < lv[1]) lv[1] + 1.1920929E-7 else v
+                }
+                s.setParams(op, priority, (0..2).associate { "levels[$ch][$it]" to JsonPrimitive(lv[it]) }, merge = false)
+                buildJsonObject { put("picked", picked); put("levels", JsonArray(lv.map { JsonPrimitive(it) })); put("changed", true) }
+            }
+            "rgbcurve" to "set_nodes_from_area" -> {
+                val ch = (args["channel"] as? JsonPrimitive)?.intOrNull ?: 0
+                if (ch !in 0..2) fail(EngineError.ARG, "channel 0..2")
+                val d = def(op).defaultParams
+                val n0 = (d.paramAt("curve_num_nodes[$ch]") as JsonPrimitive).int
+                val nodes = (0 until n0).map { k -> (d.paramAt("curve_nodes[$ch][$k].x") as JsonPrimitive).double to (d.paramAt("curve_nodes[$ch][$k].y") as JsonPrimitive).double }.toMutableList()
+                for (v in listOf(lum(input.min), lum(input.mean), lum(input.max))) {
+                    val x = v.coerceIn(0.0, 1.0)
+                    val at = nodes.indexOfFirst { it.first > x }.let { if (it < 0) nodes.size else it }
+                    nodes.add(at, x to x)
+                }
+                if (nodes.size == 5) nodes.add(2, (nodes[1].first + (nodes[3].first - nodes[1].first) / 2) to (nodes[1].second + (nodes[3].second - nodes[1].second) / 2))
+                val vals = linkedMapOf<String, JsonPrimitive>("curve_num_nodes[$ch]" to JsonPrimitive(nodes.size))
+                nodes.forEachIndexed { k, (x, y) -> vals["curve_nodes[$ch][$k].x"] = JsonPrimitive(x); vals["curve_nodes[$ch][$k].y"] = JsonPrimitive(y) }
+                s.setParams(op, priority, vals, merge = false)
+                buildJsonObject { put("picked", picked); put("nodes", JsonArray(nodes.map { JsonArray(listOf(JsonPrimitive(it.first), JsonPrimitive(it.second))) })) }
+            }
+            else -> fail(EngineError.NOT_FOUND, "$op has no action '$action'")
+        }
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine {

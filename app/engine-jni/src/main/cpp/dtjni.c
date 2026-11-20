@@ -821,3 +821,29 @@ Java_app_dtandroid_engine_NativeBridge_renderRegionIntoEx(JNIEnv *env, jclass cl
   if(copied) (*env)->SetBooleanArrayRegion(env, copied, 0, 1, &is_copy);
   return r;
 }
+
+/* P1b part 2: one entry point for the JSON calls, as p1b above; what selects
+ * the call, s1..s3 and n1, n2 are its arguments as listed in NativeBridge.kt */
+#define DTJ2_COLOR_PICK 0
+#define DTJ2_HISTOGRAM 1
+#define DTJ2_COORDS 2
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
+                                            jstring js3, jint n1, jint n2, jintArray status)
+{
+  jstr_t a = _str(env, js1), b = _str(env, js2), c = _str(env, js3);
+  char *s = NULL;
+  int r = DTB_E_ARG;
+  switch(what)
+  {
+    case DTJ2_COLOR_PICK: r = dtb_color_pick(a.s, n1, b.s, &s); break;
+    case DTJ2_HISTOGRAM: r = dtb_histogram(b.s, &s); break;
+    case DTJ2_COORDS: r = dtb_coords_transform(b.s, &s); break;
+    default: break;
+  }
+  (void)n2;
+  _str_free(&a); _str_free(&b); _str_free(&c);
+  if(r == DTB_OK && !s) s = strdup("{}");
+  return _json_status(env, r, s, status);
+}

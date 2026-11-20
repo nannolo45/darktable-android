@@ -17,6 +17,11 @@ import app.dtandroid.engine.api.Style
 import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleMode
 import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.PickResult
+import app.dtandroid.engine.api.Histogram
+import app.dtandroid.engine.api.CoordsDirection
+import app.dtandroid.engine.api.CoordsResult
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -398,4 +403,27 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine { RenderTimes.fromJson(p1b(NativeBridge.RENDER_TIMES)) }
+
+    // ------------------------------------------------------------------ 6 (P1b part 2)
+
+    private fun p1b2(what: Int, s1: String? = null, s2: String? = null, s3: String? = null, n1: Int = 0, n2: Int = 0): JsonElement {
+        requireInit()
+        val st = IntArray(1)
+        return json(NativeBridge.p1b2(what, s1, s2, s3, n1, n2, st), st)
+    }
+
+    override suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult = onEngine {
+        PickResult.fromJson(render { p1b2(NativeBridge.COLOR_PICK, op, request.toJson().toString(), n1 = priority) })
+    }
+
+    override suspend fun histogram(maxSize: Int, options: RenderOptions): Histogram = onEngine {
+        val req = kotlinx.serialization.json.buildJsonObject {
+            put("max_size", JsonPrimitive(maxSize)); for ((k, v) in options.toJson()) put(k, v)
+        }
+        Histogram.fromJson(render { p1b2(NativeBridge.HISTOGRAM, s2 = req.toString()) })
+    }
+
+    override suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions): CoordsResult = onEngine {
+        CoordsResult.fromJson(p1b2(NativeBridge.COORDS, s2 = CoordsResult.request(direction, points, options).toString()))
+    }
 }

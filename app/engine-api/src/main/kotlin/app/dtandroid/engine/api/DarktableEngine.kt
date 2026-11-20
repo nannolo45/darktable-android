@@ -176,4 +176,16 @@ interface DarktableEngine {
 
     /** [renderRegion] with [options] for this call only (6.1); the region is in the picture the options give. */
     suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage
+
+    /**
+     * 6.3: desktop's module picker on ([op], [priority]): statistics of the area on the module's input and output;
+     * [op] null = the picture the pipe puts out (desktop's global picker). ARG for a switched-off module or a bad area.
+     */
+    suspend fun colorPick(op: String?, priority: Int, request: PickRequest): PickResult
+
+    /** 6.4: desktop's RGB histogram of the preview pipe's picture, at most [maxSize] on the longer side. */
+    suspend fun histogram(maxSize: Int = 1024, options: RenderOptions = RenderOptions.NONE): Histogram
+
+    /** 6.5: normalised points between the original image and the picture, through every module that moves pixels. */
+    suspend fun coordsTransform(direction: CoordsDirection, points: List<Pair<Double, Double>>, options: RenderOptions = RenderOptions.NONE): CoordsResult
 }
