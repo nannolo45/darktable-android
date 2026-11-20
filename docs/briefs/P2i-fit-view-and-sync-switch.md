@@ -1,4 +1,4 @@
-# P2i: the view at fit shows the preview pipe's picture; a switch for automatic syncing
+# P2i: the view at fit shows the preview pipe's picture; a switch for automatic syncing; color calibration's custom illuminant
 
 Decided by the owner on 20 Nov 2026 after a timings run on the phone with a real edit. App side only: **no change
 under `engine/` or `upstream/`**. Branch `p2i-fit-view` from `main` (after P2h is merged). Report
@@ -41,6 +41,17 @@ inside demosaic before anything happens. That is the lag the owner sees.
    says so as today. The heartbeat continues (the phone stays visible in LightPhotoLibrary) and reports the photos as
    edited and not synced. The header says "automatic sync is off" while it is. Does not touch the LPL contract; if you
    find it would, stop and write why.
+7. **Color calibration: "hue" and "chroma" of the illuminant work when the illuminant is "custom"** (owner, 20 Nov:
+   both sliders are greyed out on the phone). Cause as for crop's aspect list in P2f: on desktop they are
+   interface-only sliders without a parameter (`P2f-results/unbound-controls-scene-referred.txt`, lines 7 and 8);
+   their callbacks in `src/iop/channelmixerrgb.c` compute the illuminant's `x` and `y` from hue and chroma, and
+   the sliders are set from `x` and `y` when the module is shown. Bind them through `schema/overrides/` with the
+   same arithmetic as upstream (name the functions in the report), both directions, with the slider colours desktop
+   paints if the schema can carry them. Tests: JVM round trip (hue, chroma → x, y → hue, chroma) against values
+   computed from upstream's formulas; emulator: set hue and chroma on a custom illuminant, write the XMP, and
+   darktable-cli's render of that XMP equals the app's export within the usual bound. They stay disabled, as on
+   desktop, for the illuminants where desktop hides or disables them. The other unbound controls of color
+   calibration (area mode, the target section, the chart controls) are not in this package.
 6. Tests: JVM for 1, 2 and 5 (fake engine and stub server); emulator: 4, and the timings page still reports the fit
    and 100 % region numbers (it calls the full pipe itself). Screenshot of the header with the switch off. Both
    workflows green on the last code commit; APK from the usual release step. Owner instructions in the report.
