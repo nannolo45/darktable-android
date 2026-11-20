@@ -78,3 +78,12 @@ out ("not available yet").
 | `rgblevels.json` | black, gray, white (`pick`, channel from the tabs) |
 | `rgbcurve.json` | "create curve" (`set_nodes_from_area`, channel from the tabs), "show color" (values only) |
 | `tonecurve.json`, `colorzones.json` | "pick color" / "show color" (values only) |
+| `filmicrgb.json` | middle gray luminance, white and black relative exposure, auto tune levels (deliverable 3: `set_slider`, formulas `filmic_*`) |
+| `colorbalancergb.json` | the hue of offset, lift, power and gain, white fulcrum, contrast gray fulcrum (deliverable 3: `set_slider`, formulas `colorbalance_*`) |
+
+### Brief P3c deliverable 5: values the engine gives per photo
+
+| Operation | What it does |
+|---|---|
+| `action_list` | a list whose entries and current entry a module action gives for the open photo: `list` (the action), `filter` (entry fields that must match), `label`, `current` (entry fields), and either `params` (parameter to entry field, written with one `params_set`) or `action` with `action_args` (argument to entry field). Read again when the instance's parameters or the photo change. Files: `colorin.json` (input profile), `denoiseprofile.json` (profile) |
+| `bind_action` (fields added) | `args_from` (argument of `set` taken from another field of `get`'s answer), `needs` (the control is greyed out while that field is null), `round` (whole numbers). File: `temperature.json` (finetune: `get_wb` tuning, `apply_preset {name, tuning}`) |
