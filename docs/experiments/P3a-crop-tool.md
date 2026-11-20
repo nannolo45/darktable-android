@@ -125,4 +125,4 @@ that bypasses one instance); it would replace step 2 only.
   and `darktable:history_auto_hash` (dropped). c3 straighten by touch: rotation 0 -> -2.72° for a line whose
   angle (desktop's function on the line asked for) is -2.83°; one history item (ashift).
 - The two failures: my normalizer removed one whitespace character before a dropped attribute instead of all
-  of it. Fixed (b4b…, next push).
+  of it. Fixed in a4efb01.
