@@ -45,7 +45,6 @@ import app.dtandroid.lpl.PhotoRecord
 import app.dtandroid.lpl.PhotoStatus
 import app.dtandroid.lpl.Step
 import app.dtandroid.darkroom.HostAction
-import app.dtandroid.darkroom.Words
 import app.dtandroid.darkroom.ui.PhotoList
 import app.dtandroid.darkroom.ui.PhotoListScreen
 import app.dtandroid.lpl.Progress
@@ -124,6 +123,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
     val lplThumbs by vm.lplThumbs.collectAsState()
     val notes by vm.agent.notes.collectAsState()
     val serverNotes by vm.agent.serverNotes.collectAsState()
+    // brief P2i: the "sync automatically" switch
+    val autoSync by vm.agent.settings.autoSync.collectAsState()
     val servers = remember(photos, lib) { vm.servers.list() }
     val sections = ArrayList<PhotoList.Section>()
     for (srv in servers) {
@@ -135,12 +136,12 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             srv.origin in errors -> "connected"
             else -> "not contacted yet"
         }
-        val line = "this phone is \"${srv.deviceName}\" · $conn" + if (waiting > 0) " · ${Words.count(waiting, "photo")} waiting to sync" else ""
+        val line = PhotoList.serverLine(srv.deviceName, conn, waiting, autoSync)
         sections += PhotoList.Section(
             key = srv.origin.url, title = "LightPhotoLibrary", line = line,
             action = HostAction("sync now", enabled = mine.isNotEmpty()) { vm.syncAll() },
             empty = "No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".",
-            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl).copy(note = notes[r.key]) },
+            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl, autoSync).copy(note = notes[r.key]) },
             note = serverNotes[srv.origin],
         )
     }
@@ -181,15 +182,18 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
 }
 
 private fun lplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step?, thumb: RenderedImage?, origin: ServerOrigin,
-                   onOpenInLpl: (ServerOrigin, Long) -> Unit): PhotoList.Row {
+                   onOpenInLpl: (ServerOrigin, Long) -> Unit, autoSync: Boolean = true): PhotoList.Row {
     val dirty = vm.agent.isDirty(r)
+    val status = statusLine(vm, r, p, step, autoSync)
     val last = when {
-        dirty && !r.readOnly -> "edited here, not synced yet"
+        // brief P2i: when the status line says it already, the line below says what LightPhotoLibrary knows
+        dirty && !r.readOnly && !status.startsWith(PhotoList.NOT_SYNCED_HERE) -> PhotoList.NOT_SYNCED_HERE
+        dirty && !r.readOnly -> r.lastEdit?.line(thisDevice = vm.servers.installId)
         else -> r.lastEdit?.line(thisDevice = vm.servers.installId)
     }
     return PhotoList.Row(
         key = "${r.id}", name = r.filename,
-        status = statusLine(vm, r, p, step),
+        status = status,
         progress = step?.let { it.progress?.toFloat() ?: 0f } ?: p?.let { if (it.total > 0) it.done.toFloat() / it.total else 0f },
         lastEdit = last, thumb = thumb,
         actions = listOf(
@@ -205,7 +209,7 @@ private fun lplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step?, 
  * The status in plain words, one line, with the contract's state behind it (brief P2e item 3, P2f item 5):
  * a step that runs (R16) says what happens now.
  */
-internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step? = null): String {
+internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step? = null, autoSync: Boolean = vm.agent.autoSync): String {
     val dirty = vm.agent.isDirty(r)
     step?.let { st ->
         val pct = st.progress?.let { String.format(Locale.ROOT, " %d %%", (it * 100).toInt()) } ?: ""
@@ -222,9 +226,11 @@ internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: St
                                    else "download not complete · continues when you open it"
         PhotoStatus.OPENING -> "ready to edit"
         PhotoStatus.EDITING -> "open in the darkroom"
-        PhotoStatus.DIRTY -> UserText.WAITING
+        // brief P2i: with automatic sync off nothing waits: the edit stays here until "sync now"
+        PhotoStatus.DIRTY -> if (autoSync) UserText.WAITING else PhotoList.NOT_SYNCED_HERE
         PhotoStatus.SYNCING -> "syncing"
-        PhotoStatus.SYNCED -> if (dirty) UserText.WAITING else "synced" + if (r.previewPending) " · preview still to send" else ""
+        PhotoStatus.SYNCED -> if (dirty) (if (autoSync) UserText.WAITING else PhotoList.NOT_SYNCED_HERE)
+                              else "synced" + if (r.previewPending) " · preview still to send" else ""
         PhotoStatus.ERROR -> "error"
     }
     val extra = when {

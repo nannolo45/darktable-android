@@ -150,13 +150,17 @@ class P2hUnreadableTest {
         assertEquals("opened once, by the darkroom", 1, engine.opensOf(bad.rawPath))
         assertNull(store.load(bad))
 
-        // the darkroom again: the same sentence, without opening it
+        // the darkroom again: brief P2i changed this (the user's open is always tried, the memory is for background
+        // passes only): the file is opened again, the same sentence, the session closed, still remembered
         c.openPhoto(0)
         assertNotNull(c.state.value.info)
         c.openPhoto(1)
         assertEquals("cannot open ${bad.fileName}: ${DarkroomController.NO_PICTURE}", c.state.value.message)
-        assertEquals(1, engine.opensOf(bad.rawPath))
+        assertEquals("brief P2i: tried again because the user opened it", 2, engine.opensOf(bad.rawPath))
         assertNull(engine.current)
+        assertTrue("still remembered for background passes", c.knownUnreadable(bad.rawPath))
+        assertEquals(0, c.renderThumbnails(items))
+        assertEquals(2, engine.opensOf(bad.rawPath))
         assertEquals("never a render of a session without a picture", 0, engine.rendersWithoutPicture.get())
     }
 
@@ -178,7 +182,9 @@ class P2hUnreadableTest {
         c.openPhoto(1)
         assertNull(c.state.value.info)
         assertEquals("cannot open ${bad.fileName}: ${DarkroomController.NO_PICTURE}", c.state.value.message)
-        assertEquals(1, engine.opensOf(bad.rawPath))
+        // brief P2i: the user's open is always tried (before P2i it was refused without opening: 1)
+        assertEquals(2, engine.opensOf(bad.rawPath))
+        assertNull(engine.current)
         assertEquals(0, engine.rendersWithoutPicture.get())
     }
 

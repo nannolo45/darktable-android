@@ -198,7 +198,9 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 )
             }
         }
-        s.working?.let { WorkingNote(it, s.workingProgress, Modifier.align(Alignment.BottomStart)) }
+        // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
+        val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
+        note?.let { WorkingNote(it, if (s.working != null) s.workingProgress else null, Modifier.align(Alignment.BottomStart)) }
     }
 }
 

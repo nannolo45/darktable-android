@@ -138,6 +138,95 @@ class P2fScenarioTest {
     }
 
     /**
+     * f10 (brief P2i deliverables 1 to 4): with f1's heavy edit, at fit, a change is followed by the preview in the
+     * time the preview costs, and no full-pipe render runs: the darkroom starts no region, the bridge gets no
+     * `render_region` call, and darktable's per-module lines of the change show each module once (one pipe). Then
+     * zoomed in: the preview stays, "rendering…", the region; back at fit while a region renders after a change:
+     * the region render is stopped. Named f10 so that it runs after f1 and before f9 (name order).
+     */
+    @Test
+    fun f10_aChangeAtFitRendersThePreviewOnly() {
+        val s = StubLpl().also { stubs += it }
+        s.add(StubLpl.Photo(101, TestFiles.raw.name, TestFiles.raw.readBytes(), rating = 1))
+        AppHost.servers.put(s.origin, "Phone", null)
+        val v = openLink(s, 101)
+        val c = v.controller
+        val e = TestFiles.engine()
+        for (op in heavy) {
+            val j = c.launch { setEnabled(InstanceKey(op, 0), true) }
+            waitFor("$op on") { j.isCompleted && c.state.value.modules.any { it.op == op && it.enabled } }
+        }
+        // the emulator's own darkroom frame, at fit
+        waitFor("the view's size") { c.currentViewport != null }
+        val fit = c.currentViewport!!.copy(zoom = 1f, centerX = 0.5f, centerY = 0.5f)
+        c.setViewport(fit)
+        waitFor("preview of the heavy edit at the frame's size") { c.state.value.preview != null && Math.abs((c.renderTimes.value.previewPx ?: 0) - c.previewSize()) <= 1 && c.state.value.region == null }
+        Thread.sleep(1500)
+        val info = c.state.value.info!!
+        TestFiles.record(res, "f10_view", "${fit.widthPx}x${fit.heightPx}, photo ${info.width}x${info.height}, preview asked ${c.previewSize()} px")
+        val exp0 = (c.state.value.modules.first { it.op == "exposure" && it.priority == 0 }.params["exposure"] as kotlinx.serialization.json.JsonPrimitive).content.toDouble()
+        val regions0 = c.regionRenders.get()
+        val bridgeRegions0 = e.regionCalls.get()
+        val lines = StringBuilder()
+        for (i in 1..3) {
+            Timeline.clear()
+            val mark = bridgeLogMark()
+            val t0 = System.nanoTime()
+            Timeline.mark("change $i asked")
+            val j = c.launch { setParam(InstanceKey("exposure", 0), "exposure", kotlinx.serialization.json.JsonPrimitive(exp0 + 0.1 * i)) }
+            waitFor("preview after change $i", 120_000) { j.isCompleted && Timeline.first("darkroom: preview shown") != null }
+            val shown = (Timeline.first("darkroom: preview shown")!!.nanos - t0) / 1_000_000
+            val previewMs = c.renderTimes.value.previewMs ?: -1.0
+            Thread.sleep(2000) // anything that would follow the preview (before P2i: the region at fit) has time to start
+            val modules = app.dtandroid.engine.ModuleTimes.parse(bridgeLogSince(mark))
+            val twice = modules.groupBy { it.module }.filter { it.value.size > 1 }.keys
+            val line = "change $i: preview shown $shown ms after the change (its render ${"%.0f".format(java.util.Locale.ROOT, previewMs)} ms, " +
+                "${c.renderTimes.value.previewPx} px); per module: ${app.dtandroid.engine.ModuleTimes.table(modules)}"
+            lines.append(line).append('\n')
+            TestFiles.record(res, "f10_change_$i", line)
+            File(TestFiles.out, "p2i-f10-timeline-$i.txt").writeText(Timeline.text() + "\n")
+            assertTrue("change $i: a module ran twice (two pipes?): $twice", twice.isEmpty())
+            assertTrue("change $i: no region render: ${Timeline.text()}", Timeline.events().none { it.name.startsWith("darkroom: region render start") })
+            // the change's own work (param_set, history, modules(), image_info) plus the preview's render
+            assertTrue("change $i: preview shown after $shown ms, its render took $previewMs ms", shown <= previewMs + 1000)
+        }
+        assertEquals("no region render at fit", regions0, c.regionRenders.get())
+        assertEquals("no render_region call in the bridge at fit", bridgeRegions0, e.regionCalls.get())
+        assertEquals(null, c.state.value.region)
+        File(TestFiles.out, "p2i-f10-changes-at-fit.txt").writeText(lines.toString())
+
+        // zoomed in: the preview stays (scaled up), "rendering…" meanwhile, then the region
+        val preview = c.state.value.preview
+        Timeline.clear()
+        val tz = System.nanoTime()
+        c.setViewport(fit.copy(zoom = 3f))
+        assertTrue("the preview is kept at once", c.state.value.preview === preview)
+        waitFor("rendering… while the region renders", 30_000) { c.state.value.regionPending || c.state.value.region != null }
+        val sawPending = c.state.value.regionPending
+        waitFor("region when zoomed in", 300_000) { c.state.value.region != null && !c.state.value.regionPending }
+        val regionMs = (Timeline.first("darkroom: region shown")!!.nanos - tz) / 1_000_000
+        TestFiles.record(res, "f10_zoom_in", "region shown $regionMs ms after the zoom (render ${c.renderTimes.value.regionMs} ms), rendering… seen $sawPending")
+        assertTrue(c.state.value.preview === preview)
+
+        // a change while zoomed in, then back to fit while its region renders: the region render is stopped
+        Timeline.clear()
+        val j = c.launch { setParam(InstanceKey("exposure", 0), "exposure", kotlinx.serialization.json.JsonPrimitive(exp0 + 0.5)) }
+        waitFor("region render after the change", 300_000) { j.isCompleted && Timeline.events().any { it.name.startsWith("darkroom: region render start") } }
+        Thread.sleep(50)
+        val tb = System.nanoTime()
+        c.setViewport(fit)
+        waitFor("nothing pending at fit", 120_000) { !c.state.value.regionPending }
+        val stopped = (System.nanoTime() - tb) / 1_000_000
+        val cancelled = Timeline.first("darkroom: region render cancelled") != null
+        val finished = Timeline.first("darkroom: region shown") != null
+        TestFiles.record(res, "f10_back_to_fit", "region render ${if (cancelled) "cancelled" else if (finished) "finished first" else "?"}, nothing pending $stopped ms after the zoom out")
+        File(TestFiles.out, "p2i-f10-zoom-timeline.txt").writeText(Timeline.text() + "\n")
+        assertEquals("no region at fit", null, c.state.value.region)
+        assertTrue("the region render was cancelled or had ended: ${Timeline.text()}", cancelled || finished)
+        TestFiles.record(res, "f10", "passed")
+    }
+
+    /**
      * f2: the LightPhotoLibrary preview now comes from the full pipe (cancellable) instead of dtb_export.
      * Both are darktable's export pipe type; this measures how far the two pictures are apart (test RAW and
      * test XMP, the photo's own output profile is sRGB there) and that a cancel stops the new one.
@@ -273,6 +362,14 @@ class P2fScenarioTest {
         File(TestFiles.out, "p2f-f4-timings-last.txt").writeText(t2)
         assertTrue(t2, t2.contains("photo source: LightPhotoLibrary"))
         assertTrue(t2, t2.contains("per module, sharp region at fit after an exposure change"))
+        // brief P2i: the timings page calls the full pipe itself: the fit and 100 % region numbers are still there,
+        // and the preview at the darkroom's fit size (what a change at fit costs since P2i)
+        for (t in listOf(t1, t2)) {
+            assertTrue(t, Regex("sharp region at fit \\d+x\\d+ after a change ms: [0-9.]+").containsMatchIn(t))
+            assertTrue(t, Regex("sharp region at 100 % \\d+x\\d+ after a change ms: [0-9.]+").containsMatchIn(t))
+            assertTrue(t, t.contains("per module, preview at the darkroom's fit size after an exposure change"))
+            assertTrue(t, Regex("preview at the darkroom's fit size \\(asked \\d+ px, got \\d+x\\d+[^)]*\\) after an exposure change ms: [0-9.]+").containsMatchIn(t))
+        }
         TestFiles.record(res, "f4", "passed")
     }
 
@@ -473,12 +570,15 @@ class P2fScenarioTest {
             assertEquals(raw.path, c.openRawPath())
             TestFiles.record(res, "f8_good_photo_preview", c.state.value.preview!!.image.let { "${it.width}x${it.height}" })
 
-            // the junk file once more from the filmstrip: the sentence, without opening it
+            // the junk file once more from the filmstrip: brief P2i: a photo the user opens is always tried (the
+            // memory is for background passes only): opened again, the sentence, the session closed
             c.openPhoto(0)
             assertEquals("cannot open ${junk.name}: ${app.dtandroid.darkroom.DarkroomController.NO_PICTURE}", c.state.value.message)
-            assertTrue(Timeline.first("darkroom: ${junk.name} known to have no picture, not opened") != null)
+            assertTrue(Timeline.first("darkroom: ${junk.name} remembered as having no picture, tried again (the user opened it)") != null)
+            assertEquals("the session is closed", null, c.openRawPath())
             val noPicture = Timeline.events().filter { it.name.startsWith("darkroom: ${junk.name} has no picture") }
-            assertEquals("found once, then remembered", 1, noPicture.size)
+            assertEquals("found by the first open, and again by the user's second open", 2, noPicture.size)
+            assertTrue("still remembered for background passes", c.knownUnreadable(junk.path))
             TestFiles.record(res, "f8_no_picture_mark", noPicture.first().name)
         } finally {
             File(TestFiles.out, "p2h-f8-timeline.txt").writeText(Timeline.text() + "\n")

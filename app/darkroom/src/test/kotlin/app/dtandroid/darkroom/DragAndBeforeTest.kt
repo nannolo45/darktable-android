@@ -49,6 +49,8 @@ class DragAndBeforeTest {
     @Test
     fun dragShowsTheSmallPictureThenTheFullOneAndReadsModulesOnlyAtTheEnd() = runBlocking<Unit> {
         val c = controller(DragPicture(minSize = 240, maxSize = 240))
+        // brief P2i: the sharp region is rendered only when zoomed in beyond fit (at fit: the preview only, P2iFitViewTest)
+        c.setViewport(Viewport(400, 300, zoom = 2f))
         waitFor("full preview") { (c.state.value.preview?.image?.width ?: 0) > 240 && c.state.value.region != null }
         val n0 = c.state.value.history.items.size
         c.drag(exposureKey, slider.id, slider.binding, 1.0, false)

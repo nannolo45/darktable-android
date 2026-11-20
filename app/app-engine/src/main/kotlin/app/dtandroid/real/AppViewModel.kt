@@ -205,7 +205,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             controller.closePhoto()
             refreshLibrary()
             // brief P2e: previews that waited for the engine (another photo was open) can be made now
-            if (agent.pending().isNotEmpty()) agent.syncPending()
+            // brief P2i: not with automatic syncing off ("done" keeps the edit on the phone)
+            if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically()
             refreshLibrary()
         }
     }
@@ -419,6 +420,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun keep() = _library.update { it.copy(confirmRemove = null) }
+
+    /**
+     * Brief P2i: the "sync automatically" switch. Switched on again: what waited is sent now, and the background
+     * job takes over what cannot be sent yet.
+     */
+    fun setAutoSync(on: Boolean) {
+        try {
+            agent.settings.setAutoSync(on)
+        } catch (e: java.io.IOException) {
+            _server.update { it.copy(error = "the change could not be saved on this phone (storage full?)") }
+            return
+        }
+        if (on) AppEngine.scope.launch {
+            if (agent.pending().isNotEmpty() && agent.syncPendingAutomatically() == false) SyncJob.schedule(getApplication())
+            refreshLibrary()
+        } else refreshLibrary()
+    }
 
     /** The LPL photo open in the darkroom, if any. */
     fun currentLplPhoto(): Pair<ServerOrigin, Long>? = controller.state.value.current?.let { AppHost.lplPhotoOf(it) }

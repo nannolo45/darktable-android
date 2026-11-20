@@ -129,6 +129,22 @@ abstract class ListScreenshotBase {
         compose.onNodeWithContentDescription("IMG_20261119_000123.CR2: downloading 40 %").assertExists()
         capture("04-download-in-progress")
     }
+
+    /** Brief P2i: the header while "sync automatically" is off, and photos whose edit stays on the phone. */
+    @Test fun autoSyncOff() {
+        val rows = listOf(
+            PhotoList.Row("1", "IMG_20261119_000124.CR2", PhotoList.NOT_SYNCED_HERE, thumb = thumb(2), actions = more,
+                lastEdit = "last edited on Desktop · 18 Nov · exposure, color balance rgb"),
+            PhotoList.Row("2", "IMG_20261119_000125.CR2", PhotoList.NOT_SYNCED_HERE, thumb = thumb(3), actions = more),
+            PhotoList.Row("3", "IMG_20261119_000126.CR2", "synced", thumb = thumb(4), actions = more,
+                lastEdit = "last edited on this phone · today 14:05 · exposure"),
+        )
+        val line = PhotoList.serverLine("Phone", "connected", 2, autoSync = false)
+        assertTrue(line, line.contains(PhotoList.AUTO_SYNC_OFF))
+        showList(listOf(server(rows, line), local(emptyList())))
+        compose.onNode(hasText(line)).assertExists()
+        capture("05-auto-sync-off")
+    }
 }
 
 @Config(sdk = [35], qualifiers = "w390dp-h844dp-port-xhdpi")
