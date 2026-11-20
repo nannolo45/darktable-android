@@ -651,7 +651,14 @@ class DarkroomController(
         if (writes != null) {
             // only the fields that change (a built-in profile keeps the empty file name)
             val m = _state.value.modules.firstOrNull { it.key == key }
-            val changed = writes.filter { (k, v) -> (m?.params?.paramAt(k) as? JsonPrimitive)?.content != v.content }
+            // a text field may come as a string or as its characters (an array of codes ending in 0)
+            fun text(e: kotlinx.serialization.json.JsonElement?): String? = when (e) {
+                is JsonPrimitive -> e.content
+                is kotlinx.serialization.json.JsonArray -> e.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: 0 }
+                    .takeWhile { it != 0 }.map { it.toChar() }.joinToString("")
+                else -> null
+            }
+            val changed = writes.filter { (k, v) -> text(m?.params?.paramAt(k)) != v.content }
             if (changed.isNotEmpty()) engine.paramsSet(key.op, key.priority, changed)
         } else engine.moduleAction(key.op, key.priority, model.action!!, model.args(entry))
         engine.historySeal()
