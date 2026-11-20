@@ -115,3 +115,14 @@ that bypasses one instance); it would replace step 2 only.
   (the bridge would read the hash row before the restore and write basic and auto back after it). Reported first
   in the report; the emulator test now compares the edit without those two attributes and records exactly which
   attributes differ.
+
+## 20 Nov 2026, 11:28 UTC — run 44725669469: 48 of 50 emulator tests; the two failures were the test's normalizer
+
+- `p3a-results.txt` (ci-logs `runs/44725669469-a1/p2b-emulator/p2b-test/`): uncropped 3908x2602, cropped
+  2602x2602 (square); corner drag by injected touches w 0.666 -> 0.499, h 1.000 -> 0.750 (square kept); move
+  x 0.334 -> 0.414, y 0 -> 0.040. The XMP written by writeIfOpen while the tool was open, and the XMP after the
+  tool was opened and closed without a change, differ from the XMP before only in `darktable:change_timestamp`
+  and `darktable:history_auto_hash` (dropped). c3 straighten by touch: rotation 0 -> -2.72° for a line whose
+  angle (desktop's function on the line asked for) is -2.83°; one history item (ashift).
+- The two failures: my normalizer removed one whitespace character before a dropped attribute instead of all
+  of it. Fixed (b4b…, next push).
