@@ -12,3 +12,16 @@ Times UTC. Numbers from the build workspace are x86_64 on 2 cores; from CI, the 
   be loaded (mipmap N)" when the mipmap buffer is empty. The P2f report says 0 x 0 for the junk file; the P2f code only
   handled 0 x 0. Which one the emulator gives is deliverable 1: an emulator test records it.
 - Workflow triggers: branch added to `p2a-app.yml` and `p2b-real-engine.yml` (push branches only).
+- d25037b: the change. `DarkroomController.pictureOrClose` (replaces `hasPicture`): after `open`, a picture of 0 x 0
+  or any engine error from `image_info` except CANCELLED means no picture; the session is closed there and then, the
+  file is remembered with its size and modification time. Used by `openLocked`, `renderThumbnails`,
+  `withPhotoSession` (before its block runs) and the stand-in thumbnail loop of `start`. `knownUnreadable` skips a
+  remembered file without opening it, and forgets it when its size or modification time changed. `openLocked` also
+  closes the session on any engine error now (no photo shows as open, so no session stays open).
+  `AppHost.previewPicture` maps an `image_info` error (not CANCELLED) to the same sentence.
+  JVM: `P2hUnreadableTest` (stand-in engine wrapped to answer 0 x 0, an error, or CANCELLED once). Emulator: `f7`
+  (records what open and image_info answer for the junk file, with the engine log) and `f8` (darkroom, LPL preview,
+  good photo) in `P2fScenarioTest`, so the CI script's class list is unchanged and f9 still runs last.
+- The build workspace has no Android SDK (`SDK location not found`) and Maven Central answered 429 to the first
+  download; the JVM tests run in CI only for this package.
+- p2a run 44691789989 failed at compile: Kotlin refuses `in` on a ConcurrentHashMap in the test. Fixed in f210e04.
