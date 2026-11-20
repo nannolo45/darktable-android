@@ -41,3 +41,17 @@ Times UTC. Numbers from the build workspace are x86_64 on 2 cores; from CI, the 
   region is only rendered when zoomed in); `P2hUnreadableTest` and f8 expect the user's second open to try the file
   (7a changes that behaviour on purpose). Emulator: f10 (new), f4 and f8 changed, l4 keeps its timeline, l7 (new).
   Screenshot `list-*-05-auto-sync-off`.
+- Run 44701978982 (p2a, 735be90): green; `P2iFitViewTest` 7/7 (three changes at fit: preview shown 405, 393,
+  412 ms after the change, its render 399, 389, 399 ms; stand-in region 3 s). Run 44701978994 (p2b, 735be90): green,
+  emulator 44/44. f10 measured at the emulator's own 304 x 250 frame (preview 1024 px): preview shown 424, 236, 239 ms
+  after a change at fit (render 398, 214, 218 ms), each module once, no region, no `render_region`. Zoom in: region
+  338 ms; back to fit: region render cancelled, nothing pending after 10 ms. The cancelled region was retried once by
+  `wanted` (it returned nothing, but the timeline said "a cancel not meant for it"): fixed in 710b957.
+- 710b957: f10 on a 1080 x 1500 frame. p2a 44704862454 green; p2b 44704862471: f10 failed ("timed out: preview of the
+  heavy edit at the frame's size"): the frame changed while a preview render (asked at 1024 px) was in flight and the
+  delayed check skipped because a render was running. Fixed in 010cb15 (wait for the render, then compare). The same
+  run's l4 timeline: `+917 ms lpl: 51/mire1.cr2 removed from the phone (folder deleted)`, then `+1012 ms thumbnail
+  pass: 51/mire1.cr2 render start`: the background thumbnail pass renders the released photo after its removal
+  (darktable opened the deleted file). The test ended before that render was stored. l4 now waits for it (010cb15).
+- 010cb15: p2a 44707660011 failed on a Maven 429 (robolectric jar), green on rerun; p2b 44707660180: apk job failed
+  on Maven ("could not find kotlin-stdlib"), rerun.
