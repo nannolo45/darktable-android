@@ -10,6 +10,12 @@ import app.dtandroid.engine.api.ExportOptions
 import app.dtandroid.engine.api.History
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
+import app.dtandroid.engine.api.Preset
+import app.dtandroid.engine.api.PresetRef
+import app.dtandroid.engine.api.RenderTimes
+import app.dtandroid.engine.api.Style
+import app.dtandroid.engine.api.StyleImport
+import app.dtandroid.engine.api.StyleMode
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
@@ -322,4 +328,62 @@ class JniEngine private constructor() : DarktableEngine {
         requireInit()
         check(NativeBridge.exportWith(path, options.toJson().toString()))
     }
+
+    // ------------------------------------------------------------------ 5 (P1b part 1)
+
+    private fun p1b(what: Int, s1: String? = null, s2: String? = null, s3: String? = null, n1: Int = 0, n2: Int = 0): JsonElement {
+        requireInit()
+        val st = IntArray(1)
+        return json(NativeBridge.p1b(what, s1, s2, s3, n1, n2, st), st)
+    }
+
+    private fun jsonArrayOf(items: List<Any>): String =
+        kotlinx.serialization.json.JsonArray(items.map { if (it is Int) JsonPrimitive(it) else JsonPrimitive(it.toString()) }).toString()
+
+    override suspend fun presets(op: String, priority: Int): List<Preset> = onEngine {
+        Preset.listFromJson(p1b(NativeBridge.PRESETS_LIST, op, n1 = priority))
+    }
+
+    override suspend fun presetApply(op: String, priority: Int, name: String) = onEngine {
+        p1b(NativeBridge.PRESET_APPLY, op, name, n1 = priority); Unit
+    }
+
+    override suspend fun presetStore(op: String, priority: Int, name: String, description: String, overwrite: Boolean) = onEngine {
+        p1b(NativeBridge.PRESET_STORE, op, name, description, n1 = priority, n2 = if (overwrite) 1 else 0); Unit
+    }
+
+    override suspend fun presetRename(op: String, name: String, newName: String) = onEngine {
+        p1b(NativeBridge.PRESET_RENAME, op, name, newName); Unit
+    }
+
+    override suspend fun presetDelete(op: String, name: String) = onEngine {
+        p1b(NativeBridge.PRESET_DELETE, op, name); Unit
+    }
+
+    override suspend fun presetImport(path: String, overwrite: Boolean): PresetRef = onEngine {
+        PresetRef.fromJson(p1b(NativeBridge.PRESET_IMPORT, path, n2 = if (overwrite) 1 else 0))
+    }
+
+    override suspend fun presetExport(op: String, name: String, dir: String): String = onEngine {
+        val o = p1b(NativeBridge.PRESET_EXPORT, op, name, dir) as? JsonObject
+        (o?.get("path") as? JsonPrimitive)?.content ?: throw EngineException(EngineError.ENGINE, "no path from preset export")
+    }
+
+    override suspend fun styles(): List<Style> = onEngine { Style.listFromJson(p1b(NativeBridge.STYLES_LIST)) }
+
+    override suspend fun styleApply(name: String, mode: StyleMode?) = onEngine {
+        p1b(NativeBridge.STYLE_APPLY, name, mode?.json); Unit
+    }
+
+    override suspend fun stylesImport(paths: List<String>, overwrite: Boolean): StyleImport = onEngine {
+        StyleImport.fromJson(p1b(NativeBridge.STYLES_IMPORT, jsonArrayOf(paths), n2 = if (overwrite) 1 else 0))
+    }
+
+    override suspend fun styleDelete(name: String) = onEngine { p1b(NativeBridge.STYLE_DELETE, name); Unit }
+
+    override suspend fun styleCreate(name: String, description: String, items: List<Int>?, overwrite: Boolean) = onEngine {
+        p1b(NativeBridge.STYLE_CREATE, name, description, items?.let { jsonArrayOf(it) }, n2 = if (overwrite) 1 else 0); Unit
+    }
+
+    override suspend fun renderTimes(): RenderTimes = onEngine { RenderTimes.fromJson(p1b(NativeBridge.RENDER_TIMES)) }
 }

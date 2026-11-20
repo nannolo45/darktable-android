@@ -18,6 +18,17 @@ import app.dtandroid.engine.api.ParamPath
 import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
+import app.dtandroid.engine.api.ItemProblem
+import app.dtandroid.engine.api.ModuleTime
+import app.dtandroid.engine.api.Preset
+import app.dtandroid.engine.api.PresetMatch
+import app.dtandroid.engine.api.PresetRef
+import app.dtandroid.engine.api.RenderTimes
+import app.dtandroid.engine.api.Style
+import app.dtandroid.engine.api.StyleImport
+import app.dtandroid.engine.api.StyleItem
+import app.dtandroid.engine.api.StyleMode
+import app.dtandroid.engine.api.parseEngineJson
 import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblem
 import app.dtandroid.engine.api.XmpProblemReason
@@ -96,6 +107,9 @@ class FakeEngine(
         )
 
         private const val UNDO_LIMIT = 100
+
+        /** the blend parameter version the fake claims (darktable's at the pinned commit) */
+        const val FAKE_BLEND_VERSION = 15
 
         fun fromSchemaJson(text: String, timing: Timing = Timing.REALISTIC, samples: Map<String, SampleInfo> = emptyMap()) =
             FakeEngine(FakeModuleCatalog.fromSchemaJson(text), timing, samples)
@@ -217,6 +231,7 @@ class FakeEngine(
         if (threads < 0) fail(EngineError.ARG, "threads must be >= 0")
         initThreads = if (threads == 0) Runtime.getRuntime().availableProcessors() else threads
         this.threads = initThreads
+        presetsDb.clear(); presetsDb += builtinPresets(); stylesDb.clear(); lastTimes = null
         initialised = true
     }
 
@@ -299,6 +314,9 @@ class FakeEngine(
     override suspend fun open(rawPath: String, xmpPath: String?) = onEngine {
         requireInit()
         if (rawPath.isBlank()) fail(EngineError.ARG, "empty RAW path")
+        // as dtb_open (P1b, E1): a file without a picture is refused; the fake decodes nothing, so it
+        // can only tell an empty file
+        File(rawPath).let { if (it.isFile && it.length() == 0L) fail(EngineError.IO, "cannot import $rawPath: darktable does not recognise it as a picture") }
         val name = File(rawPath).name
         val sample = samples[name]
         val variant = (name.hashCode() and 0x7fffffff) % 6
@@ -315,6 +333,7 @@ class FakeEngine(
             applyDefaultEdit(s)
         }
         session = Session(rawPath, readOnly, variant, sample, s.insts, s.items, s.end, s.rating, s.colorLabels)
+        lastTimes = null
     }
 
     private fun applyDefaultEdit(s: Session) {
@@ -509,7 +528,38 @@ class FakeEngine(
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
                 val (t, tint) = FakeWhiteBalance.fromCoefficients(p)
-                buildJsonObject { put("temperature", t); put("tint", tint) }
+                buildJsonObject { put("temperature", t); put("tint", tint); put("tuning", JsonNull); put("preset_index", JsonNull) }
+            }
+            // P1b (engine-api.md 5.4)
+            "colorin" to "list_profiles" -> {
+                val p = s.live()[op to priority]!!.params
+                val t = (p["type"] as? JsonPrimitive)?.content
+                val tw = (p["type_work"] as? JsonPrimitive)?.content
+                val inputs = listOf("DT_COLORSPACE_STANDARD_MATRIX" to "standard color matrix", "DT_COLORSPACE_ENHANCED_MATRIX" to "enhanced color matrix",
+                    "DT_COLORSPACE_SRGB" to "sRGB", "DT_COLORSPACE_LIN_REC2020" to "linear Rec2020 RGB")
+                val works = listOf("DT_COLORSPACE_SRGB" to "sRGB", "DT_COLORSPACE_LIN_REC709" to "linear Rec709 RGB", "DT_COLORSPACE_LIN_REC2020" to "linear Rec2020 RGB")
+                buildJsonArray {
+                    for ((ty, n) in inputs) add(buildJsonObject { put("kind", "input"); put("type", ty); put("filename", ""); put("name", n); put("current", ty == t) })
+                    for ((ty, n) in works) add(buildJsonObject { put("kind", "work"); put("type", ty); put("filename", ""); put("name", n); put("current", ty == tw) })
+                }
+            }
+            "borders" to "set_aspect" -> {
+                requireWritable()
+                val v = (args["aspect"] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: fail(EngineError.TYPE, "set_aspect takes {aspect: number}")
+                val d = def(op)
+                val cur = s.live()[op to priority]!!
+                val p = if (v == 0.0 || v == -1.0) JsonObject(cur.params + ("aspect" to JsonPrimitive(v))) else setPath(d, cur.params, "aspect", JsonPrimitive(v))
+                s.beginChange()
+                s.addItem(op, priority, true, p)
+                JsonObject(emptyMap())
+            }
+            "lens" to "use_latest_md" -> {
+                requireWritable()
+                val cur = s.live()[op to priority]!!
+                val p = JsonObject(cur.params + ("md_version" to JsonPrimitive("DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2")) + ("scale_md_v1" to JsonPrimitive(0.0)))
+                s.beginChange()
+                s.addItem(op, priority, true, p)
+                JsonObject(emptyMap())
             }
             "temperature" to "set_wb" -> {
                 requireWritable()
@@ -702,7 +752,7 @@ class FakeEngine(
         val (fw, fh) = r.processedSize(o, 1.0)
         val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
         val (w, h) = r.processedSize(o, scale)
-        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs)
+        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview")
     }
 
     override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double): RenderedImage = onEngine {
@@ -714,10 +764,10 @@ class FakeEngine(
         if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
             fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
         if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
-        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs)
+        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full")
     }
 
-    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long): RenderedImage {
+    private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null): RenderedImage {
         val flag = AtomicBoolean(false)
         runningRender.set(flag)
         try {
@@ -741,12 +791,17 @@ class FakeEngine(
                 }
             }
             val coords = r.coordsFor(x, y, w, h, scale, o)
+            val t0 = System.nanoTime()
             val px = r.scene(coords)
             checkpoint(perStage)
+            val times = ArrayList<ModuleTime>()
             for (st in stages) {
+                val ts = System.nanoTime()
                 st.pixel?.apply(px, n, coords)
                 checkpoint(perStage) // cancel takes effect between modules
+                times += ModuleTime(st.op, 0, "", (System.nanoTime() - ts) / 1e6, (System.nanoTime() - ts) / 1e6, 1)
             }
+            if (pipe != null) lastTimes = RenderTimes(pipe, (System.nanoTime() - t0) / 1e6, times)
             val toneMapped = stages.any { it.op == "sigmoid" || it.op == "filmicrgb" || it.op == "agx" }
             return RenderedImage(w, h, r.toRgba8(px, n, toneMapped))
         } finally {
@@ -796,6 +851,242 @@ class FakeEngine(
         } catch (e: Exception) {
             fail(EngineError.IO, "cannot write $path: ${e.message}")
         }
+    }
+
+    // ------------------------------------------------------------ 5 (P1b part 1)
+    // Presets and styles live in memory for the engine's life (the real engine keeps them in
+    // darktable's data.db in the configuration folder). The fake knows one built-in preset, for
+    // exposure, and no shipped styles.
+
+    private data class FPreset(
+        val op: String, val name: String, val description: String, val builtin: Boolean,
+        val opVersion: Int, val enabled: Boolean, val params: JsonObject,
+    )
+
+    private data class FStyleItem(
+        val num: Int, val op: String, val priority: Int, val instanceName: String, val enabled: Boolean,
+        val moduleVersion: Int, val blendVersion: Int, val params: JsonObject?,
+    )
+
+    private data class FStyle(val name: String, val description: String, val items: List<FStyleItem>)
+
+    private val presetsDb = mutableListOf<FPreset>()
+    private val stylesDb = sortedMapOf<String, FStyle>()
+    private var lastTimes: RenderTimes? = null
+
+    private fun builtinPresets(): List<FPreset> {
+        val d = catalog["exposure"] ?: return emptyList()
+        val p = runCatching { setPath(d, d.defaultParams, "exposure", JsonPrimitive(0.7)) }.getOrDefault(d.defaultParams)
+        return listOf(FPreset("exposure", "_builtin_scene-referred default", "", true, d.version, true, p))
+    }
+
+    private fun problemOf(op: String, moduleVersion: Int, blendVersion: Int): ItemProblem? {
+        val d = catalog[op] ?: return ItemProblem.UNKNOWN_OPERATION
+        if (moduleVersion > d.version) return ItemProblem.NEWER_MODULE_VERSION
+        if (blendVersion > FAKE_BLEND_VERSION) return ItemProblem.NEWER_BLEND_VERSION
+        return null
+    }
+
+    override suspend fun presets(op: String, priority: Int): List<Preset> = onEngine {
+        requireInit()
+        val d = def(op)
+        val s = session
+        val live = s?.let { it.inst(op, priority); it.live()[op to priority] }
+        presetsDb.filter { it.op == op }
+            .sortedWith(compareByDescending<FPreset> { it.builtin }.thenBy { it.name.lowercase() })
+            .map { p ->
+                Preset(
+                    p.name, p.description, p.builtin, p.opVersion, p.opVersion == d.version, p.enabled,
+                    autoapply = false, filter = false, match = PresetMatch(),
+                    matches = if (s != null) true else null, fits = if (s != null) true else null,
+                    active = live?.let { p.opVersion == d.version && it.params == p.params && it.enabled == p.enabled },
+                )
+            }
+    }
+
+    override suspend fun presetApply(op: String, priority: Int, name: String) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        s.inst(op, priority)
+        val all = presetsDb.filter { it.op == op && it.name == name }
+        if (all.isEmpty()) fail(EngineError.NOT_FOUND, "$op has no preset '$name'")
+        val p = all.firstOrNull { it.opVersion == d.version } ?: fail(EngineError.ARG, "preset '$name' was stored for another version of $op")
+        s.beginChange()
+        s.addItem(op, priority, p.enabled, p.params)
+    }
+
+    private fun validName(n: String) = n.isNotEmpty() && '/' !in n
+
+    override suspend fun presetStore(op: String, priority: Int, name: String, description: String, overwrite: Boolean) = onEngine {
+        val s = requireSession()
+        val d = def(op)
+        s.inst(op, priority)
+        if (!validName(name)) fail(EngineError.ARG, "a preset name must be non-empty without '/'")
+        val existing = presetsDb.filter { it.op == op && it.name == name }
+        if (existing.any { it.builtin }) fail(EngineError.ARG, "'$name' is a built-in preset of $op")
+        if (existing.isNotEmpty() && !overwrite) fail(EngineError.ARG, "$op already has a preset '$name' (exists)")
+        val l = s.live()[op to priority]!!
+        val desc = if (existing.isNotEmpty() && description.isEmpty()) existing.first().description else description
+        presetsDb.removeAll(existing)
+        presetsDb += FPreset(op, name, desc, false, d.version, l.enabled, l.params)
+    }
+
+    override suspend fun presetRename(op: String, name: String, newName: String) = onEngine {
+        requireInit()
+        val all = presetsDb.filter { it.op == op && it.name == name }
+        if (all.isEmpty()) fail(EngineError.NOT_FOUND, "$op has no preset '$name'")
+        if (all.any { it.builtin }) fail(EngineError.ARG, "'$name' is a built-in preset")
+        if (!validName(newName)) fail(EngineError.ARG, "a preset name must be non-empty without '/'")
+        if (name == newName) return@onEngine
+        if (presetsDb.any { it.op == op && it.name == newName }) fail(EngineError.ARG, "$op already has a preset '$newName' (exists)")
+        presetsDb.replaceAll { if (it.op == op && it.name == name) it.copy(name = newName) else it }
+    }
+
+    override suspend fun presetDelete(op: String, name: String) = onEngine {
+        requireInit()
+        val all = presetsDb.filter { it.op == op && it.name == name }
+        if (all.isEmpty()) fail(EngineError.NOT_FOUND, "$op has no preset '$name'")
+        if (all.any { it.builtin }) fail(EngineError.ARG, "'$name' is a built-in preset")
+        presetsDb.removeAll(all)
+        Unit
+    }
+
+    private fun xmlEsc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    private fun xmlUnesc(s: String) = s.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+    private fun xmlField(text: String, tag: String): String? =
+        Regex("<$tag>(.*?)</$tag>", RegexOption.DOT_MATCHES_ALL).find(text)?.groupValues?.get(1)?.let { xmlUnesc(it) }
+
+    // The fake's .dtpreset holds the parameters as JSON in <op_params>; the elements around them are darktable's.
+    override suspend fun presetImport(path: String, overwrite: Boolean): PresetRef = onEngine {
+        requireInit()
+        val f = File(path)
+        if (!f.isFile) fail(EngineError.IO, "cannot read $path")
+        val text = f.readText()
+        if (!text.contains("<darktable_preset")) fail(EngineError.IO, "$path is not a darktable preset file")
+        val name = xmlField(text, "name") ?: fail(EngineError.IO, "$path is not a complete darktable preset file")
+        val op = xmlField(text, "operation") ?: fail(EngineError.IO, "$path is not a complete darktable preset file")
+        val ver = xmlField(text, "op_version")?.trim()?.toIntOrNull() ?: fail(EngineError.IO, "$path has no op_version")
+        val bver = xmlField(text, "blendop_version")?.trim()?.toIntOrNull() ?: 0
+        problemOf(op, ver, bver)?.let { fail(EngineError.ARG, "preset '$name' cannot be imported: ${it.json} (module $op version $ver)") }
+        val existing = presetsDb.filter { it.op == op && it.name == name }
+        if (existing.any { it.builtin }) fail(EngineError.ARG, "preset '$name' cannot be imported: $op has a built-in preset of that name")
+        if (existing.isNotEmpty() && !overwrite) fail(EngineError.ARG, "preset '$name' cannot be imported: exists")
+        val params = runCatching { parseEngineJson(xmlField(text, "op_params") ?: "") as JsonObject }.getOrNull()
+            ?: catalog[op]!!.defaultParams
+        presetsDb.removeAll(existing)
+        presetsDb += FPreset(op, name, xmlField(text, "description") ?: "", false, ver, xmlField(text, "enabled")?.trim() != "0", params)
+        PresetRef(op, name, ver, ver == catalog[op]!!.version)
+    }
+
+    override suspend fun presetExport(op: String, name: String, dir: String): String = onEngine {
+        requireInit()
+        val p = presetsDb.filter { it.op == op && it.name == name }.maxByOrNull { it.opVersion }
+            ?: fail(EngineError.NOT_FOUND, "$op has no preset '$name'")
+        val d = File(dir)
+        if (!d.isDirectory) fail(EngineError.IO, "$dir is not a folder")
+        val f = File(d, name.map { if (it in "/<>:\"\\|*?[]") '_' else it }.joinToString("") + ".dtpreset")
+        try {
+            f.writeText(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<darktable_preset version=\"2.0\"><preset>" +
+                    "<name>${xmlEsc(p.name)}</name><description>${xmlEsc(p.description)}</description>" +
+                    "<operation>${p.op}</operation><op_params>${xmlEsc(p.params.toString())}</op_params>" +
+                    "<op_version>${p.opVersion}</op_version><enabled>${if (p.enabled) 1 else 0}</enabled>" +
+                    "<blendop_version>$FAKE_BLEND_VERSION</blendop_version></preset></darktable_preset>\n"
+            )
+        } catch (e: Exception) {
+            fail(EngineError.IO, "cannot write ${f.path}: ${e.message}")
+        }
+        f.path
+    }
+
+    private fun FStyle.toApi() = Style(
+        name, description, false,
+        items.map { StyleItem(it.num, it.op, it.priority, it.instanceName, it.enabled, it.moduleVersion, it.blendVersion, problemOf(it.op, it.moduleVersion, it.blendVersion)) },
+        items.none { problemOf(it.op, it.moduleVersion, it.blendVersion) != null },
+    )
+
+    override suspend fun styles(): List<Style> = onEngine {
+        requireInit()
+        stylesDb.values.map { it.toApi() }
+    }
+
+    override suspend fun styleApply(name: String, mode: StyleMode?) = onEngine {
+        val s = requireWritable()
+        val st = stylesDb[name] ?: fail(EngineError.NOT_FOUND, "no style '$name'")
+        val api = st.toApi()
+        if (!api.usable)
+            fail(EngineError.ARG, "style '$name' cannot be applied: " +
+                api.items.filter { it.problem != null }.joinToString("; ") { "item ${it.num} '${it.op}' ${it.problem!!.json}" })
+        s.beginChange()
+        if (mode == StyleMode.OVERWRITE) {
+            // desktop's overwrite: the default edit, then the style
+            s.items = emptyList(); s.end = 0
+            s.insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
+            applyDefaultEdit(s)
+        }
+        for (it in st.items.sortedWith(compareBy({ it.op }, { it.priority }))) {
+            val prio = if (s.insts.any { i -> i.op == it.op && i.priority == it.priority }) it.priority else 0
+            s.addItem(it.op, prio, it.enabled, it.params ?: catalog[it.op]!!.defaultParams)
+        }
+    }
+
+    override suspend fun stylesImport(paths: List<String>, overwrite: Boolean): StyleImport = onEngine {
+        requireInit()
+        val ok = mutableListOf<StyleImport.Imported>()
+        val no = mutableListOf<StyleImport.Refused>()
+        for (p in paths) {
+            val f = File(p)
+            if (!f.isFile) { no += StyleImport.Refused(p, "io"); continue }
+            val text = f.readText()
+            val name = if (text.contains("<darktable_style")) xmlField(text, "name") else null
+            if (name.isNullOrEmpty()) { no += StyleImport.Refused(p, "not_a_style"); continue }
+            if (name in stylesDb && !overwrite) { no += StyleImport.Refused(p, "exists"); continue }
+            val items = Regex("<plugin>(.*?)</plugin>", RegexOption.DOT_MATCHES_ALL).findAll(text).map { m ->
+                val x = m.groupValues[1]
+                val op = xmlField(x, "operation") ?: ""
+                val params = runCatching { parseEngineJson(xmlField(x, "op_params") ?: "") as JsonObject }.getOrNull()
+                FStyleItem(
+                    xmlField(x, "num")?.trim()?.toIntOrNull() ?: 0, op, xmlField(x, "multi_priority")?.trim()?.toIntOrNull() ?: 0,
+                    xmlField(x, "multi_name") ?: "", xmlField(x, "enabled")?.trim() != "0",
+                    xmlField(x, "module")?.trim()?.toIntOrNull() ?: 0, xmlField(x, "blendop_version")?.trim()?.toIntOrNull() ?: 0,
+                    params?.takeIf { catalog[op] != null },
+                )
+            }.toList()
+            stylesDb[name] = FStyle(name, xmlField(text, "description") ?: "", items)
+            ok += StyleImport.Imported(p, name, stylesDb[name]!!.toApi().usable)
+        }
+        StyleImport(ok, no)
+    }
+
+    override suspend fun styleDelete(name: String) = onEngine {
+        requireInit()
+        stylesDb.remove(name) ?: fail(EngineError.NOT_FOUND, "no style '$name'")
+        Unit
+    }
+
+    override suspend fun styleCreate(name: String, description: String, items: List<Int>?, overwrite: Boolean) = onEngine {
+        val s = requireSession()
+        if (name.isEmpty()) fail(EngineError.ARG, "a style name must be non-empty")
+        if (name in stylesDb && !overwrite) fail(EngineError.ARG, "a style '$name' exists (exists)")
+        if (s.items.any { it.unknown }) fail(EngineError.READ_ONLY, "the history holds items the engine could not load")
+        val chosen = items?.toSet()
+        if (chosen != null) {
+            if (chosen.isEmpty()) fail(EngineError.ARG, "no history item chosen")
+            chosen.firstOrNull { it < 0 || it >= s.end }?.let { fail(EngineError.ARG, "history num $it outside 0..${s.end - 1}") }
+        }
+        // one entry per module instance: its last chosen item, as desktop's dialog
+        val last = LinkedHashMap<Pair<String, Int>, Int>()
+        s.items.take(s.end).forEachIndexed { i, it -> if (chosen == null || i in chosen) last[it.op to it.priority] = i }
+        if (last.isEmpty()) fail(EngineError.ARG, "the chosen history holds no module item")
+        stylesDb[name] = FStyle(name, description, last.values.sorted().map { i ->
+            val it = s.items[i]
+            FStyleItem(i, it.op, it.priority, it.instanceName, it.enabled, catalog[it.op]!!.version, FAKE_BLEND_VERSION, it.params)
+        })
+    }
+
+    override suspend fun renderTimes(): RenderTimes = onEngine {
+        requireSession()
+        lastTimes ?: RenderTimes(null, 0.0, emptyList())
     }
 }
 

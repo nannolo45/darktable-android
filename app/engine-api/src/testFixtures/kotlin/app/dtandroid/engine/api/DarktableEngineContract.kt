@@ -503,4 +503,190 @@ abstract class DarktableEngineContract {
         val p = engine.renderPreview(128)
         assertTrue(p.width > 0)
     }
+
+    // ---------------------------------------------------------------- P1b part 1 (engine-api.md section 5)
+    // Presets and styles persist in the engine's configuration folder: every name made here is unique
+    // and removed again.
+
+    private val stamp = System.nanoTime().toString(36)
+
+    /** darktable's example style "day for twilight" (darktable, GPL-3.0, data/styles), renamed, with [op] as its first module. */
+    private fun publicStyle(name: String, op: String = "exposure", moduleVersion: Int = 6): String = """<?xml version="1.0" encoding="UTF-8"?>
+<darktable_style version="1.0"><info><name>$name</name><description>contract test</description></info><style><plugin><num>10</num><module>$moduleVersion</module><operation>$op</operation><op_params>00000000000080b9feff7fbf00004842000080c000000000</op_params><enabled>1</enabled><blendop_params>gz08eJxjYGBgYAFiCQYYOOHEgAZY0QWAgBGLGANDgz0Ej1Q+dlAx68oBEMbFxwX+AwGIBgCbGCeh</blendop_params><blendop_version>13</blendop_version><multi_priority>0</multi_priority><multi_name>twilight</multi_name><multi_name_hand_edited>1</multi_name_hand_edited></plugin></style></darktable_style>
+"""
+
+    @Test
+    fun openRefusesAnEmptyFile() = runBlocking<Unit> {
+        val f = tmp.newFile("EMPTY_0001.CR2")
+        expect(EngineError.IO) { engine.open(f.path, null) }
+        expect(EngineError.STATE) { engine.imageInfo() }
+        expect(EngineError.STATE) { engine.renderPreview(128) }
+        openSample() // a real image still opens afterwards
+    }
+
+    @Test
+    fun builtinPresetAppliesAsOneHistoryItem() = runBlocking<Unit> {
+        openSample()
+        val list = engine.presets("exposure", 0)
+        val p = list.firstOrNull { it.builtin && it.usable && it.fits == true && it.active == false }
+            ?: list.first { it.builtin && it.usable }
+        assertTrue("built-in presets come first", list.indexOfFirst { !it.builtin }.let { it == -1 || list.take(it).all { x -> x.builtin } })
+        val before = engine.history()
+        engine.presetApply("exposure", 0, p.name)
+        val after = engine.history()
+        assertEquals(before.items.size + 1, after.items.size)
+        assertEquals(after.items.size, after.end)
+        assertEquals(true, engine.presets("exposure", 0).first { it.name == p.name }.active)
+        engine.undo()
+        assertEquals(before.items.size, engine.history().items.size)
+        expect(EngineError.ARG) { engine.presetRename("exposure", p.name, "x$stamp") }
+        expect(EngineError.ARG) { engine.presetDelete("exposure", p.name) }
+        expect(EngineError.ARG) { engine.presetStore("exposure", 0, p.name, "", overwrite = true) }
+        expect(EngineError.NOT_FOUND) { engine.presetApply("exposure", 0, "no such preset $stamp") }
+        expect(EngineError.NOT_FOUND) { engine.presets("nosuchmodule$stamp", 0) }
+    }
+
+    @Test
+    fun userPresetStoreApplyRenameExportImportDelete() = runBlocking<Unit> {
+        openSample()
+        val name = "contract $stamp"
+        try {
+            engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.37))
+            engine.historySeal()
+            engine.presetStore("exposure", 0, name, "made by the contract suite")
+            val stored = engine.presets("exposure", 0).first { it.name == name }
+            assertFalse(stored.builtin)
+            assertEquals(true, stored.active)
+            assertEquals(true, stored.fits)
+            assertTrue(stored.usable)
+            expect(EngineError.ARG) { engine.presetStore("exposure", 0, name) }
+            expect(EngineError.ARG) { engine.presetStore("exposure", 0, "") }
+            engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.55))
+            engine.historySeal()
+            engine.presetStore("exposure", 0, name, overwrite = true)
+            engine.moduleReset("exposure", 0)
+            engine.presetApply("exposure", 0, name)
+            assertEquals(0.55, (instance("exposure").params.paramAt("exposure") as JsonPrimitive).doubleOrNull!!, 1e-6)
+            val dir = tmp.newFolder("presets")
+            val file = engine.presetExport("exposure", name, dir.path)
+            assertTrue(File(file).isFile)
+            engine.presetRename("exposure", name, "$name renamed")
+            expect(EngineError.NOT_FOUND) { engine.presetApply("exposure", 0, name) }
+            engine.presetDelete("exposure", "$name renamed")
+            expect(EngineError.NOT_FOUND) { engine.presetDelete("exposure", "$name renamed") }
+            val ref = engine.presetImport(file)
+            assertEquals("exposure", ref.op)
+            assertEquals(name, ref.name)
+            assertTrue(ref.usable)
+            expect(EngineError.ARG) { engine.presetImport(file) }
+            engine.presetImport(file, overwrite = true)
+            engine.moduleReset("exposure", 0)
+            engine.presetApply("exposure", 0, name)
+            assertEquals(0.55, (instance("exposure").params.paramAt("exposure") as JsonPrimitive).doubleOrNull!!, 1e-6)
+            // a preset of a module the engine does not know is refused
+            val unknown = File(dir, "unknown.dtpreset")
+            unknown.writeText(File(file).readText().replace("<operation>exposure</operation>", "<operation>nosuchmodule</operation>")
+                .replace(name, "$name unknown"))
+            val e = runCatching { engine.presetImport(unknown.path) }.exceptionOrNull()
+            assertTrue("$e", e is EngineException && e.error == EngineError.ARG && "unknown_operation" in (e.message ?: ""))
+            unknown.writeText("not a preset")
+            expect(EngineError.IO) { engine.presetImport(unknown.path) }
+        } finally {
+            runCatching { engine.presetDelete("exposure", name) }
+            runCatching { engine.presetDelete("exposure", "$name renamed") }
+        }
+    }
+
+    @Test
+    fun stylesImportCreateApplyDelete() = runBlocking<Unit> {
+        val dir = tmp.newFolder("styles")
+        val ok = File(dir, "a.dtstyle").apply { writeText(publicStyle("contract a $stamp")) }
+        val unknown = File(dir, "b.dtstyle").apply { writeText(publicStyle("contract b $stamp", op = "nosuchmodule")) }
+        val newer = File(dir, "c.dtstyle").apply { writeText(publicStyle("contract c $stamp", moduleVersion = 99)) }
+        val junk = File(dir, "d.dtstyle").apply { writeText("junk") }
+        val created = "contract created $stamp"
+        try {
+            val r = engine.stylesImport(listOf(ok.path, unknown.path, newer.path, junk.path, File(dir, "missing.dtstyle").path))
+            assertEquals(r.toString(), 3, r.imported.size)
+            assertEquals(setOf("not_a_style", "io"), r.refused.map { it.reason }.toSet())
+            assertEquals(listOf(true, false, false), r.imported.map { it.usable })
+            assertEquals(listOf("exists"), engine.stylesImport(listOf(ok.path)).refused.map { it.reason })
+            assertEquals(1, engine.stylesImport(listOf(ok.path), overwrite = true).imported.size)
+            val all = engine.styles()
+            val b = all.first { it.name == "contract b $stamp" }
+            assertFalse(b.usable)
+            assertEquals(ItemProblem.UNKNOWN_OPERATION, b.items.first().problem)
+            assertEquals(ItemProblem.NEWER_MODULE_VERSION, all.first { it.name == "contract c $stamp" }.items.first().problem)
+
+            openSample()
+            val modules0 = engine.modules()
+            val history0 = engine.history()
+            for (n in listOf("contract b $stamp", "contract c $stamp")) {
+                val e = runCatching { engine.styleApply(n, StyleMode.APPEND) }.exceptionOrNull()
+                assertTrue("$e", e is EngineException && e.error == EngineError.ARG)
+            }
+            assertEquals(modules0, engine.modules())
+            assertEquals(history0, engine.history())
+            expect(EngineError.NOT_FOUND) { engine.styleApply("no such style $stamp") }
+
+            // a style made from the history, applied to the default edit, carries the change
+            engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.8))
+            engine.historySeal()
+            val h = engine.history()
+            engine.styleCreate(created, "contract", listOf(h.end - 1))
+            expect(EngineError.ARG) { engine.styleCreate(created) }
+            expect(EngineError.ARG) { engine.styleCreate("$created bad", items = listOf(h.end + 3)) }
+            assertEquals(listOf("exposure"), engine.styles().first { it.name == created }.items.map { it.op })
+            engine.close()
+            openSample()
+            val n0 = engine.history().items.size
+            engine.styleApply(created, StyleMode.APPEND)
+            assertEquals(0.8, (instance("exposure").params.paramAt("exposure") as JsonPrimitive).doubleOrNull!!, 1e-6)
+            assertTrue(engine.history().items.size > n0)
+            engine.undo()
+            assertEquals(n0, engine.history().items.size)
+            engine.styleApply(created, StyleMode.OVERWRITE)
+            assertEquals(0.8, (instance("exposure").params.paramAt("exposure") as JsonPrimitive).doubleOrNull!!, 1e-6)
+            engine.styleApply("contract a $stamp", StyleMode.APPEND)
+        } finally {
+            for (n in listOf("contract a $stamp", "contract b $stamp", "contract c $stamp", created)) runCatching { engine.styleDelete(n) }
+        }
+        expect(EngineError.NOT_FOUND) { engine.styleDelete(created) }
+    }
+
+    @Test
+    fun renderTimesListTheLastRender() = runBlocking<Unit> {
+        openSample()
+        assertEquals(null, engine.renderTimes().pipe)
+        engine.renderPreview(256)
+        val t = engine.renderTimes()
+        assertEquals("preview", t.pipe)
+        assertTrue("${t.modules}", t.modules.isNotEmpty())
+        assertTrue(t.modules.sumOf { it.ms } <= t.totalMs + 1.0)
+        val s = engine.renderSize(0.25)
+        engine.renderRegion(0, 0, s.w, s.h, 0.25)
+        assertEquals("full", engine.renderTimes().pipe)
+    }
+
+    @Test
+    fun moduleActionsForControlsOutsideTheParameters() = runBlocking<Unit> {
+        openSample()
+        val profiles = engine.moduleAction("colorin", 0, "list_profiles") as kotlinx.serialization.json.JsonArray
+        fun current(kind: String) = profiles.map { it as JsonObject }.filter {
+            (it["kind"] as JsonPrimitive).content == kind && (it["current"] as JsonPrimitive).content == "true"
+        }
+        assertEquals(1, current("input").size)
+        assertEquals(1, current("work").size)
+        engine.moduleAction("borders", 0, "set_aspect", buildJsonObject { put("aspect", -1.0) })
+        assertEquals(-1.0, (instance("borders").params.paramAt("aspect") as JsonPrimitive).doubleOrNull!!, 0.0)
+        engine.moduleAction("borders", 0, "set_aspect", buildJsonObject { put("aspect", 0.0) })
+        assertEquals(0.0, (instance("borders").params.paramAt("aspect") as JsonPrimitive).doubleOrNull!!, 0.0)
+        expect(EngineError.RANGE) { engine.moduleAction("borders", 0, "set_aspect", buildJsonObject { put("aspect", 5.0) }) }
+        engine.moduleAction("lens", 0, "use_latest_md")
+        val lens = instance("lens").params
+        assertEquals("DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2", (lens.paramAt("md_version") as JsonPrimitive).content)
+        assertEquals(0.0, (lens.paramAt("scale_md_v1") as JsonPrimitive).doubleOrNull!!, 0.0)
+        val wb = engine.moduleAction("temperature", 0, "get_wb") as JsonObject
+        assertTrue(wb.containsKey("tuning") && wb.containsKey("preset_index"))
+    }
 }

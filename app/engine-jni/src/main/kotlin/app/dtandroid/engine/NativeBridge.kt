@@ -112,4 +112,26 @@ object NativeBridge {
     /** region into [out] (exactly w*h*4 bytes); copied[0] tells whether JNI had to copy the array */
     @JvmStatic external fun renderRegionInto(x: Int, y: Int, w: Int, h: Int, scale: Float, out: ByteArray, copied: BooleanArray): Int
     @JvmStatic external fun exportWith(path: String, optionsJson: String?): Int
+
+    // P1b part 1 (engine-api.md section 5): one entry point, [what] selects the call. Arguments:
+    // PRESETS_LIST (s1 op, n1 priority); PRESET_APPLY (s1 op, n1 priority, s2 name);
+    // PRESET_STORE (s1 op, n1 priority, s2 name, s3 description, n2 overwrite); PRESET_RENAME (s1 op, s2 name, s3 new);
+    // PRESET_DELETE (s1 op, s2 name); PRESET_IMPORT (s1 path, n2 overwrite); PRESET_EXPORT (s1 op, s2 name, s3 dir);
+    // STYLES_LIST; STYLE_APPLY (s1 name, s2 mode or null); STYLES_IMPORT (s1 JSON array of paths, n2 overwrite);
+    // STYLE_DELETE (s1 name); STYLE_CREATE (s1 name, s2 description, s3 JSON array of nums or null, n2 overwrite);
+    // RENDER_TIMES. Returns the JSON ("{}" for calls without one) or null with status[0] = the code.
+    const val PRESETS_LIST = 0
+    const val PRESET_APPLY = 1
+    const val PRESET_STORE = 2
+    const val PRESET_RENAME = 3
+    const val PRESET_DELETE = 4
+    const val PRESET_IMPORT = 5
+    const val PRESET_EXPORT = 6
+    const val STYLES_LIST = 7
+    const val STYLE_APPLY = 8
+    const val STYLES_IMPORT = 9
+    const val STYLE_DELETE = 10
+    const val STYLE_CREATE = 11
+    const val RENDER_TIMES = 12
+    @JvmStatic external fun p1b(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
 }

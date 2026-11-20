@@ -2805,6 +2805,12 @@ static int cmd_styles(const char *raw, const char *xmp, const char *outdir)
   render_to(outdir, "style_created");
   MUST(dtb_xmp_write(path_join(outdir, "style_created.xmp")));
   MUST(dtb_close());
+  // the public style on the default edit, for darktable-cli --style
+  MUST(dtb_open(raw, NULL));
+  MUST(dtb_style_apply("p1b public", "append"));
+  render_to(outdir, "style_default_append");
+  MUST(dtb_xmp_write(path_join(outdir, "style_default_append.xmp")));
+  MUST(dtb_close());
   MUST(dtb_style_delete("p1b unknown"));
   EXPECT(dtb_style_delete("p1b unknown"), DTB_E_NOT_FOUND);
   dtb_free(mods0);
