@@ -2076,10 +2076,12 @@ class DarkroomController(
 
     // ------------------------------------------------------------------ brief P3d: masks
 
-    private var masksOrNull: Masks? = null
+    /** made once, whichever thread asks first (the screen, a launched reload, a test) */
+    private val masksLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Masks(this) }
+    private val masksOrNull: Masks? get() = if (masksLazy.isInitialized()) masksLazy.value else null
 
     /** The masks tab and the drawing tools (Masks.kt). */
-    val masks: Masks get() = masksOrNull ?: Masks(this).also { masksOrNull = it }
+    val masks: Masks get() = masksLazy.value
 
     /** The render options of "show mask": none unless it is on for an instance. */
     private fun maskRenderOptions(): RenderOptions =
