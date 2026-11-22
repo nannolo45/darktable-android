@@ -1,0 +1,235 @@
+11-22 12:24:57.964  3706  3922 E dt-android-test: l8_aBatchJobWithoutOpeningCopiesThePhotosAndLeavesTheDarkroomClosed(app.dtandroid.real.LplScenarioTest): java.lang.AssertionError: the darkroom was not opened expected null, but was:<SeriesItem(fileName=mire1.cr2, rawPath=/data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_40775/61/mire1.cr2, xmpPath=/data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_40775/61/mire1.cr2.xmp)>
+11-22 12:24:57.964  3706  3922 E dt-android-test: 
+11-22 12:24:57.964  3706  3922 E dt-android-test: ## darkroom scheduler
+11-22 12:24:57.964  3706  3922 E dt-android-test: lock held, interactive 0, background running, dragging false, quiet true, photo mire1.cr2 open false, loading false, fetching false, working null
+11-22 12:24:57.964  3706  3922 E dt-android-test: 
+11-22 12:24:57.964  3706  3922 E dt-android-test: ## timeline
+11-22 12:24:57.964  3706  3922 E dt-android-test: +0 ms	thumbnail pass: 51/mire1.cr2 render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +107 ms	thumbnail pass: 51/mire1.cr2 rendered
+11-22 12:24:57.964  3706  3922 E dt-android-test: +114 ms	thumbnail pass: 51/mire1.cr2 store
+11-22 12:24:57.964  3706  3922 E dt-android-test: +122 ms	lpl: thumbnail of 51/mire1.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +221 ms	LPL preview: render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +744 ms	LPL preview: render end
+11-22 12:24:57.964  3706  3922 E dt-android-test: +855 ms	lpl: 51/mire1.cr2 removed from the phone (folder deleted)
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1038 ms	darkroom: open SECOND.cr2 asked
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1038 ms	darkroom: engine open start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1242 ms	darkroom: engine open end
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1286 ms	darkroom: preview render start (1024 px)
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1547 ms	darkroom: preview rendered 1024x681 in 261 ms
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1547 ms	darkroom: preview shown
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1561 ms	lpl: thumbnail of 52/SECOND.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +1636 ms	lpl: last picture of 52/SECOND.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +2675 ms	thumbnail pass: 53/THIRD.cr2 render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +2948 ms	thumbnail pass: 53/THIRD.cr2 rendered
+11-22 12:24:57.964  3706  3922 E dt-android-test: +2959 ms	thumbnail pass: 53/THIRD.cr2 store
+11-22 12:24:57.964  3706  3922 E dt-android-test: +2965 ms	lpl: thumbnail of 53/THIRD.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3050 ms	LPL preview: render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3081 ms	LPL preview: render cancelled
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3088 ms	background: session on SECOND.cr2 put back for interactive work
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3089 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3091 ms	darkroom: open mire1.cr2 asked
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3092 ms	darkroom: engine open start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3414 ms	darkroom: engine open end
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3542 ms	darkroom: preview render start (1024 px)
+11-22 12:24:57.964  3706  3922 E dt-android-test: +3542 ms	darkroom: preview render start (1024 px)
+11-22 12:24:57.964  3706  3922 E dt-android-test: +4212 ms	LPL preview: render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +5058 ms	LPL preview: render end
+11-22 12:24:57.964  3706  3922 E dt-android-test: +5381 ms	thumbnail pass: 61/mire1.cr2 render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: +5582 ms	thumbnail pass: 61/mire1.cr2 rendered
+11-22 12:24:57.964  3706  3922 E dt-android-test: +5594 ms	thumbnail pass: 61/mire1.cr2 store
+11-22 12:24:57.964  3706  3922 E dt-android-test: +5596 ms	lpl: thumbnail of 61/mire1.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +13054 ms	lpl: thumbnail of 57/mire1.cr2 written
+11-22 12:24:57.964  3706  3922 E dt-android-test: +13066 ms	lpl: 57/mire1.cr2 removed from the phone (folder deleted)
+11-22 12:24:57.964  3706  3922 E dt-android-test: +13070 ms	lpl: thumbnail of photo 57 not written: the photo is no longer on the phone
+11-22 12:24:57.964  3706  3922 E dt-android-test: +13070 ms	lpl: last picture of photo 57 not written: the photo is no longer on the phone
+11-22 12:24:57.964  3706  3922 E dt-android-test: +13955 ms	thumbnail pass: 61/mire1.cr2 render start
+11-22 12:24:57.964  3706  3922 E dt-android-test: 
+11-22 12:24:57.964  3706  3922 E dt-android-test: ## threads
+11-22 12:24:57.964  3706  3922 E dt-android-test: "Signal Catcher" WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test: "HeapTaskDaemon" WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test: "ReferenceQueueDaemon" WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Object.java:568)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "FinalizerDaemon" WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "FinalizerWatchdogDaemon" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.sleep(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.sleep(Thread.java:450)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.sleep(Thread.java:355)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$FinalizerWatchdogDaemon.sleepForNanos(Daemons.java:438)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$FinalizerWatchdogDaemon.waitForProgress(Daemons.java:480)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:369)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "Jit thread pool worker thread 0" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "Profile Saver" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "main" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.app.ActivityThread.main(ActivityThread.java:7924)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.reflect.Method.invoke(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_1" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_2" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_3" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "Instr: androidx.test.runner.AndroidJUnitRunner" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at dalvik.system.VMStack.getThreadStackTrace(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.getStackTrace(Thread.java:1841)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.real.HangGuard$rule$1.failed(HangGuard.kt:32)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.rules.TestWatcher.failedQuietly(TestWatcher.java:90)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.rules.TestWatcher.access$300(TestWatcher.java:52)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:68)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.rules.RunRules.evaluate(RunRules.java:20)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.Suite.runChild(Suite.java:128)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.Suite.runChild(Suite.java:27)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:467)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2361)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-1" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-2" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-3" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "dt-engine" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.NativeBridge.renderPreviewEx(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine.renderPreview$lambda$0$0(JniEngine.kt:300)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine.$r8$lambda$EpkJKMAvn4w5fO4ksXFZAivMJz8(Unknown Source:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda24.invoke(D8$$SyntheticClass:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine.render(JniEngine.kt:114)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine.renderPreview$lambda$0(JniEngine.kt:300)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine.$r8$lambda$1WTAU9O_-2veYSKYdbIUD1EUNRQ(Unknown Source:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda6.invoke(D8$$SyntheticClass:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:94)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.Engine.$r8$lambda$oDRF5EH_LtHKI5kZ_J83oB6ZCGc(Unknown Source:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.engine.Engine$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "InstrumentationConnectionThread" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.HandlerThread.run(HandlerThread.java:67)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "RenderThread" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_4" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-4" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "hwuiTask1" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "hwuiTask0" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "queued-work-looper" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.HandlerThread.run(HandlerThread.java:67)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_5" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-5" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-6" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "OkHttp ConnectionPool" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.okhttp.ConnectionPool$1.run(ConnectionPool.java:106)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "Okio Watchdog" WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Object.wait(Object.java:568)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.okhttp.okio.AsyncTimeout.awaitTimeout(AsyncTimeout.java:313)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.okhttp.okio.AsyncTimeout.access$000(AsyncTimeout.java:42)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at com.android.okhttp.okio.AsyncTimeout$Watchdog.run(AsyncTimeout.java:288)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "DefaultDispatcher-worker-7" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.BinderProxy.transactNative(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.BinderProxy.transact(BinderProxy.java:584)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.app.job.IJobScheduler$Stub$Proxy.schedule(IJobScheduler.java:262)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.app.JobSchedulerImpl.schedule(JobSchedulerImpl.java:50)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.real.SyncJob$Companion.schedule(SyncJob.kt:51)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at app.dtandroid.real.AppHost$background$1.invokeSuspend(AppHost.kt:380)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:829)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "binder:3706_6" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test: "UiAutomation" RUNNABLE
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at android.os.HandlerThread.run(HandlerThread.java:67)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "kotlinx.coroutines.DefaultExecutor" TIMED_WAITING
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at kotlinx.coroutines.DefaultExecutor.run(DefaultExecutor.kt:118)
+11-22 12:24:57.964  3706  3922 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 12:24:57.964  3706  3922 E dt-android-test: "stub-lpl-45347" TERMINATED
