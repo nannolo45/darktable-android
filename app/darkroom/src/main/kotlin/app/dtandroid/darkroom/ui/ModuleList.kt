@@ -152,7 +152,9 @@ fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<
 private fun ModuleBlock(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, m: ModuleInstance, tablet: Boolean) {
     val schema = controller.schema.modules[m.op] ?: return
     val open = s.expanded == m.key
-    Column(Modifier.fillMaxWidth().padding(bottom = DtTheme.space.xxs)) {
+    Column(Modifier.fillMaxWidth().padding(bottom = DtTheme.sizes.moduleGap)) {
+        // brief PUI2a: the modern skin has no gap but a hairline between modules (tokens)
+        if (DtTheme.sizes.moduleSeparator > DtTheme.space.none) Box(Modifier.fillMaxWidth().height(DtTheme.sizes.moduleSeparator).background(DtTheme.colors.border))
         ModuleHeader(controller, s, m, open, showIcons = tablet || open)
         val menu = s.overlay
         if (tablet && menu is Overlay.Instances && menu.key == m.key) InstancesMenuInline(controller, s, m)
@@ -166,13 +168,13 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
     val c = DtTheme.colors
     val full = fullName(m)
     Row(
-        Modifier.fillMaxWidth().height(DtTheme.sizes.moduleHeader).background(c.header),
+        Modifier.fillMaxWidth().height(DtTheme.sizes.moduleHeader).background(if (open) c.raised else c.header),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (m.canSwitch) {
             DtIconButton(
                 DtIcon.Power, (if (m.enabled) "Turn off " else "Turn on ") + full,
-                if (m.enabled) c.textBright else c.textDisabled,
+                if (m.enabled) c.accentPower else c.textDisabled,
                 enabled = !s.readOnly,
                 keepTint = true,
                 onClick = { controller.launch { setEnabled(m.key, !m.enabled) } },
@@ -187,9 +189,9 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
                 .semantics { contentDescription = full; stateDescription = if (open) "expanded" else "collapsed" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DtText(m.name, DtTheme.type.body, if (m.enabled) c.textStrong else c.textDim, Modifier.weight(1f, fill = false))
+            DtText(m.name, DtTheme.type.moduleName, if (m.enabled) c.textStrong else c.textDim, Modifier.weight(1f, fill = false))
             if (m.instanceName.isNotEmpty()) {
-                DtText(m.instanceName, DtTheme.type.body, c.textDim, Modifier.padding(start = DtTheme.space.s))
+                DtText(m.instanceName, DtTheme.type.moduleName, c.textDim, Modifier.padding(start = DtTheme.space.s))
             }
         }
         if (showIcons) {
@@ -291,7 +293,7 @@ private fun QuickHeader(controller: DarkroomController, s: DarkroomState, b: Dar
         if (b.onOff != null && m != null && m.canSwitch) {
             DtIconButton(
                 DtIcon.Power, (if (m.enabled) "Turn off " else "Turn on ") + b.moduleName,
-                if (m.enabled) c.textBright else c.textDisabled,
+                if (m.enabled) c.accentPower else c.textDisabled,
                 enabled = !s.readOnly && !b.severalInstances, keepTint = true,
                 onClick = { controller.launch { setEnabled(m.key, !m.enabled) } },
                 modifier = Modifier.semantics { stateDescription = if (m.enabled) "on" else "off" },
@@ -299,7 +301,7 @@ private fun QuickHeader(controller: DarkroomController, s: DarkroomState, b: Dar
         } else {
             Spacer(Modifier.width(DtTheme.space.panel))
         }
-        DtText(b.moduleName, DtTheme.type.body, if (m?.enabled == true) c.textStrong else c.textDim, Modifier.weight(1f))
+        DtText(b.moduleName, DtTheme.type.moduleName, if (m?.enabled == true) c.textStrong else c.textDim, Modifier.weight(1f))
         if (m != null) {
             DtIconButton(DtIcon.Reset, "Reset ${b.moduleName}", c.text, enabled = !s.readOnly && !b.severalInstances,
                 onClick = { controller.launch { reset(m.key) } })

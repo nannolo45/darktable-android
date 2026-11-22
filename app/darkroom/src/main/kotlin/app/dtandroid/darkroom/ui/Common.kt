@@ -90,7 +90,7 @@ fun DtTextButton(
         modifier = modifier
             .height(DtTheme.sizes.touch)
             .clip(RoundedCornerShape(DtTheme.sizes.radiusControl))
-            .background(if (selected) c.selected else c.header)
+            .background(if (selected) c.selected else c.raised)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (compact) DtTheme.space.m else DtTheme.space.xl),
         contentAlignment = Alignment.Center,
@@ -126,7 +126,7 @@ fun <T> DtTabRow(
                         .clickable(role = Role.Tab) { onSelect(item) },
                 ) {
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { content(item, sel) }
-                    Box(Modifier.fillMaxWidth().height(DtTheme.sizes.tabIndicator).background(if (sel) c.text else c.bg))
+                    Box(Modifier.fillMaxWidth().height(DtTheme.sizes.tabIndicator).background(if (sel) c.accentTab else c.bg))
                 }
             }
         }

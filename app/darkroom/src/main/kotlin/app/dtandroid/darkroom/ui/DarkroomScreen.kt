@@ -169,7 +169,7 @@ private fun BottomTabs(controller: DarkroomController, s: DarkroomState) {
             for ((v, label) in listOf(BottomView.MODULES to "modules", BottomView.HISTORY to "history · ${s.history.end}")) {
                 val sel = s.view == v
                 Column(Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Tab) { controller.setView(v) }) {
-                    Box(Modifier.fillMaxWidth().height(DtTheme.sizes.tabIndicator).background(if (sel) DtTheme.colors.text else DtTheme.colors.bg))
+                    Box(Modifier.fillMaxWidth().height(DtTheme.sizes.tabIndicator).background(if (sel) DtTheme.colors.accentTab else DtTheme.colors.bg))
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         DtText(label, DtTheme.type.label, if (sel) DtTheme.colors.textBright else DtTheme.colors.textDim)
                     }

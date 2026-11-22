@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -252,7 +253,7 @@ fun SliderControl(
                 detectTapGestures(onDoubleTap = { onReset() }, onLongPress = { onExact() })
             }
             DtText(label, DtTheme.type.label, textColor, labelModifier)
-            DtText(text, DtTheme.type.label, textColor, Modifier.padding(start = DtTheme.space.m))
+            DtText(text, DtTheme.type.value, textColor, Modifier.padding(start = DtTheme.space.m))
         }
         // brief P3a deliverable 5: the bar resets on a double tap (desktop: double click on the slider); its long
         // press stays exact entry. Its touch area is the bar and the gap above it, from under the label row.
@@ -262,7 +263,12 @@ fun SliderControl(
         }
         Column(barModifier.semantics { contentDescription = "$label bar" }) {
         Spacer(Modifier.height(DtTheme.space.s))
-        BoxWithConstraints(Modifier.fillMaxWidth().height(z.sliderTrack + z.sliderMarkerHeight)) {
+        val round = DtTheme.shapes.sliderThumbRound
+        val thumb = z.sliderThumbRound
+        // brief PUI2a: `round` draws a circle in the accent colour on the track; the bar's height grows to hold it
+        val barHeight = if (round) maxOf(thumb, z.sliderTrack) else z.sliderTrack + z.sliderMarkerHeight
+        val trackY = if (round) (barHeight - z.sliderTrack) / 2 else DtTheme.space.none
+        BoxWithConstraints(Modifier.fillMaxWidth().height(barHeight)) {
             // P1c: a slider with colour stops shows them in its track, as desktop's
             // _draw_baseline (bauhaus.c) does: the gradient over the track's colour, the fill only
             // for sliders with desktop's fill feedback, brightening ("screen") so the colours stay
@@ -274,7 +280,7 @@ fun SliderControl(
                     gradientAlpha,
                 )
             }
-            Box(Modifier.fillMaxWidth().height(z.sliderTrack).background(c.sliderTrack)) {
+            Box(Modifier.offset(y = trackY).fillMaxWidth().height(z.sliderTrack).background(c.sliderTrack)) {
                 if (gradient != null) {
                     Box(Modifier.fillMaxWidth().height(z.sliderTrack).background(gradient))
                     if (slider.fillFeedback) {
@@ -288,7 +294,12 @@ fun SliderControl(
                     Box(Modifier.fillMaxWidth(fraction).height(z.sliderTrack).background(if (enabled) c.sliderFill else c.header))
                 }
             }
-            DtIconImage(
+            if (round) {
+                Box(
+                    Modifier.offset(x = maxWidth * fraction - thumb / 2).size(thumb)
+                        .background(if (enabled) c.accent else c.header, CircleShape),
+                )
+            } else DtIconImage(
                 DtIcon.SliderMarker, null, textColor, z.sliderMarkerWidth,
                 Modifier.offset(x = maxWidth * fraction - z.sliderMarkerWidth / 2, y = z.sliderTrack)
                     .size(z.sliderMarkerWidth, z.sliderMarkerHeight),
