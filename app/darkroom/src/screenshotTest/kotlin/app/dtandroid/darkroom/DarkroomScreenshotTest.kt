@@ -21,6 +21,7 @@ import app.dtandroid.darkroom.ui.LayoutFiles
 import app.dtandroid.schema.Control
 import app.dtandroid.ui.theme.DtTheme
 import app.dtandroid.ui.theme.DtTokens
+import app.dtandroid.ui.theme.Skin
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -150,6 +151,42 @@ class PhoneScreenshots : ScreenshotBase() {
         val c = show(tokens = DtTokens.load(alt)) { toggleExpanded(InstanceKey("exposure", 0)) }
         settle(c)
         capture("phone-06-alternative-palette")
+    }
+
+    // brief PUI2a: the modern skin (tokens only; the existing screenshots above stay on the darktable skin)
+    private val modern get() = DtTokens.load(Skin.MODERN)
+
+    @Test
+    fun modernModuleList() {
+        val c = show(tokens = modern) { toggleExpanded(InstanceKey("exposure", 0)) }
+        settle(c)
+        compose.onNodeWithContentDescription("Instances of exposure").assertExists()
+        capture("phone-20-modern-modules")
+    }
+
+    @Test
+    fun modernHistory() {
+        val c = show(tokens = modern) {
+            val e = TestSetup.schema.modules.getValue("exposure").allControls().filterIsInstance<Control.Slider>().first { it.label == "exposure" }
+            setSlider(InstanceKey("exposure", 0), e.binding, 1.2, false)
+            setEnabled(InstanceKey("sigmoid", 0), false)
+            setEnabled(InstanceKey("sigmoid", 0), true)
+            historyGoto(state.value.history.items.size - 1)
+            setView(BottomView.HISTORY)
+        }
+        settle(c)
+        capture("phone-21-modern-history")
+    }
+
+    @Test
+    fun modernSheet() {
+        val c = show(tokens = modern) {
+            toggleExpanded(InstanceKey("exposure", 0))
+            setOverlay(Overlay.Instances(InstanceKey("exposure", 0)))
+        }
+        settle(c)
+        compose.onNode(hasText("delete")).assertExists()
+        capture("phone-22-modern-sheet")
     }
 
     @Test

@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import app.dtandroid.ui.theme.DtTheme
 import app.dtandroid.ui.theme.DtTokens
+import androidx.compose.runtime.remember
 
 /**
  * The app on the real engine (brief P2b): start (unpack and start the engine), the working folder,
@@ -37,7 +38,6 @@ import app.dtandroid.ui.theme.DtTokens
 class MainActivity : ComponentActivity() {
     /** public for the instrumented tests (brief P2e), which drive the app through it */
     val vm: AppViewModel by viewModels()
-    private val tokens by lazy { DtTokens.load() }
 
     /** one or several photos, optionally with their .xmp files */
     private val openPhotos = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> vm.import(uris) }
@@ -124,6 +124,9 @@ class MainActivity : ComponentActivity() {
         )
         if (savedInstanceState == null) handle(intent)
         setContent {
+            // brief PUI2a: the interface skin; a change applies at once, the engine keeps running
+            val skin by AppHost.settings.skin.collectAsState()
+            val tokens = remember(skin) { DtTokens.load(skin) }
             DtTheme(tokens) {
                 val status by AppEngine.status.collectAsState()
                 val screen by vm.screen.collectAsState()

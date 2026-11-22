@@ -28,6 +28,10 @@ class DtTextStyles(t: DtTokens) {
     val title = body.copy(fontWeight = FontWeight.Medium)
     /** history step numbers */
     val number = label.copy(fontFamily = FontFamily.Monospace)
+    /** module names in the module headers (brief PUI2a: its own size token) */
+    val moduleName = base(t.text.moduleName)
+    /** slider values: tabular figures when the skin asks for them (brief PUI2a) */
+    val value = if (t.shapes.tabularValues) label.copy(fontFeatureSettings = "tnum") else label
 }
 
 private val LocalDtTokens = staticCompositionLocalOf<DtTokens> { error("DtTheme is not set up") }
@@ -53,6 +57,8 @@ object DtTheme {
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.sizes
     val space: DtSpace
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.space
+    val shapes: DtShapes
+        @Composable @ReadOnlyComposable get() = LocalDtTokens.current.shapes
     val alpha: DtAlpha
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.alpha
     val type: DtTextStyles

@@ -45,6 +45,12 @@ class DtColors(t: TokenSource) {
     /** brief P3c, colour picker on the photo: its area or point, drawn light over a dark outline (desktop: dashed) */
     val pickerFrame = t.color("color.pickerFrame")
     val pickerShadow = t.color("color.pickerShadow")
+    /** brief PUI2a: the accent and where it is used; the darktable skin sets each to today's colour of that use */
+    val accent = t.color("color.accent")
+    val accentPower = t.color("color.accentPower")
+    val accentTab = t.color("color.accentTab")
+    /** raised surfaces: an open module's header and the text buttons */
+    val raised = t.color("color.raised")
 }
 
 class DtSizes(t: TokenSource) {
@@ -105,6 +111,10 @@ class DtSizes(t: TokenSource) {
     val pickerLine = t.dp("size.pickerLine")
     val pickerHandle = t.dp("size.pickerHandle")
     val pickerPoint = t.dp("size.pickerPoint")
+    /** brief PUI2a: gap between modules (a bar in the page colour), the hairline between them, the round slider thumb */
+    val moduleGap = t.dp("size.moduleGap")
+    val moduleSeparator = t.dp("size.moduleSeparator")
+    val sliderThumbRound = t.dp("size.sliderThumbRound")
 }
 
 class DtSpace(t: TokenSource) {
@@ -127,6 +137,20 @@ class DtTextSizes(t: TokenSource) {
     val label: TextUnit = t.sp("type.label")
     val small: TextUnit = t.sp("type.small")
     val tiny: TextUnit = t.sp("type.tiny")
+    val moduleName: TextUnit = t.sp("type.moduleName")
+}
+
+/** Component styles chosen by name in the tokens (brief PUI2a). */
+class DtShapes(t: TokenSource) {
+    /** `marker` (a triangle under the track) or `round` (a circle on it, in the accent colour) */
+    val sliderThumbRound = t.choice("shape.sliderThumb", SLIDER_THUMBS) == "round"
+    /** `tabular`: values with tabular figures */
+    val tabularValues = t.choice("shape.valueFigures", VALUE_FIGURES) == "tabular"
+
+    companion object {
+        val SLIDER_THUMBS = setOf("marker", "round")
+        val VALUE_FIGURES = setOf("proportional", "tabular")
+    }
 }
 
 class DtAlpha(t: TokenSource) {
@@ -143,16 +167,38 @@ class DtTokens(source: TokenSource) {
     val space = DtSpace(source)
     val text = DtTextSizes(source)
     val alpha = DtAlpha(source)
+    val shapes = DtShapes(source)
     /** names in an override file that are not tokens (reported, otherwise ignored) */
     val unknownOverrides: List<String> = source.unknownOverrides
 
     companion object {
         /** The tokens packed into the app (ui-theme/tokens.json) with an optional override file's text on top. */
-        fun load(overrideJson: String? = null, loader: ClassLoader = DtTokens::class.java.classLoader): DtTokens {
+        fun load(overrideJson: String? = null, loader: ClassLoader = DtTokens::class.java.classLoader): DtTokens =
+            load(Skin.DARKTABLE, overrideJson, loader)
+
+        /** Brief PUI2a: the tokens of a skin (modern-tokens.json on top of tokens.json), then an override file's text. */
+        fun load(skin: Skin, overrideJson: String? = null, loader: ClassLoader = DtTokens::class.java.classLoader): DtTokens {
             val base = loader.getResourceAsStream("dtandroid/theme/tokens.json")?.use { it.readBytes().decodeToString() }
                 ?: throw TokenException("tokens.json is not packed into the app")
-            return DtTokens(TokenSource.parse(base, overrideJson))
+            val layers = listOfNotNull(
+                skin.file?.let { f ->
+                    loader.getResourceAsStream("dtandroid/theme/$f")?.use { it.readBytes().decodeToString() }
+                        ?: throw TokenException("$f is not packed into the app")
+                },
+                overrideJson,
+            )
+            return DtTokens(TokenSource.parse(base, layers))
         }
+    }
+}
+
+/** The interface skins (brief PUI2a); [key] is the stored value of the app setting `interface`. */
+enum class Skin(val key: String, val file: String?) {
+    DARKTABLE("darktable", null),
+    MODERN("modern", "modern-tokens.json");
+
+    companion object {
+        fun fromKey(k: String?): Skin = entries.firstOrNull { it.key == k } ?: DARKTABLE
     }
 }
 
@@ -173,6 +219,13 @@ class TokenSource private constructor(private val values: Map<String, JsonPrimit
         return v.doubleOrNull?.takeIf { it.isFinite() && it >= 0.0 } ?: throw TokenException("token $name must be a number >= 0")
     }
 
+    /** a token whose value is one of [allowed] words */
+    fun choice(name: String, allowed: Set<String>): String {
+        val v = string(name)
+        if (v !in allowed) throw TokenException("token $name must be one of ${allowed.sorted().joinToString()}")
+        return v
+    }
+
     private fun string(name: String): String {
         val v = values[name] ?: throw TokenException("token $name missing")
         if (!v.isString) throw TokenException("token $name must be a colour string")
@@ -180,17 +233,24 @@ class TokenSource private constructor(private val values: Map<String, JsonPrimit
     }
 
     companion object {
-        fun parse(baseJson: String, overrideJson: String? = null): TokenSource {
+        fun parse(baseJson: String, overrideJson: String? = null): TokenSource = parse(baseJson, listOfNotNull(overrideJson))
+
+        /** the base file, then each override file's values on top, in order */
+        fun parse(baseJson: String, overrides: List<String>): TokenSource {
             val base = tokens(baseJson)
-            val over = overrideJson?.let { tokens(it) } ?: emptyMap()
+            val over = LinkedHashMap<String, JsonPrimitive>()
+            for (o in overrides) over.putAll(tokens(o))
             val unknown = over.keys.filter { it !in base }.sorted()
             for ((k, v) in over) {
                 val b = base[k] ?: continue
                 if (b.isString != v.isString) throw TokenException("override of $k has the wrong kind of value")
-                if (v.isString) parseColor(k, v.content)
+                if (v.isString && !isChoice(k)) parseColor(k, v.content)
             }
             return TokenSource(base + over.filterKeys { it in base }, unknown)
         }
+
+        /** names that hold a word, not a colour */
+        private fun isChoice(name: String) = name.startsWith("shape.")
 
         private fun tokens(json: String): Map<String, JsonPrimitive> {
             val o = try {

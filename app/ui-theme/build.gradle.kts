@@ -14,6 +14,7 @@ plugins {
 abstract class PackTokens : DefaultTask() {
     @get:InputFile abstract val tokens: RegularFileProperty
     @get:InputFile abstract val altTokens: RegularFileProperty
+    @get:InputFile abstract val modernTokens: RegularFileProperty
     @get:OutputDirectory abstract val outputDir: DirectoryProperty
 
     @TaskAction
@@ -22,12 +23,15 @@ abstract class PackTokens : DefaultTask() {
         tokens.get().asFile.copyTo(out.resolve("tokens.json"))
         // the alternative palette ships too: an example for trying a palette, and the theming screenshot test
         altTokens.get().asFile.copyTo(out.resolve("alt-tokens.json"))
+        // the modern skin (brief PUI2a), loaded on top of tokens.json when the setting `interface` is `modern`
+        modernTokens.get().asFile.copyTo(out.resolve("modern-tokens.json"))
     }
 }
 
 val packTokens = tasks.register<PackTokens>("packTokens") {
     tokens.set(layout.projectDirectory.file("tokens.json"))
     altTokens.set(layout.projectDirectory.file("alt-tokens.json"))
+    modernTokens.set(layout.projectDirectory.file("modern-tokens.json"))
     outputDir.set(layout.buildDirectory.dir("generated/tokens"))
 }
 

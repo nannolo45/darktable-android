@@ -264,6 +264,13 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
             Paragraph("start: " + (if (ready.freshUnpack) "unpacked in ${ready.unpackMs} ms, " else "already unpacked, ") + "engine started in ${ready.initMs} ms")
             Paragraph("working folder: ${vm.work.dir.path}", muted = true)
             Paragraph("this install's id for LightPhotoLibrary: ${vm.servers.installId}", muted = true)
+            // brief PUI2a: the interface skin, applied at once
+            val skin by AppHost.settings.skin.collectAsState()
+            PanelHeading("interface")
+            Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+                for (s in app.dtandroid.ui.theme.Skin.entries) DtTextButton(s.key, { vm.setSkin(s) }, selected = s == skin)
+            }
+            Paragraph("darktable: the look of the desktop application. modern: the same screens with softer corners and an accent colour.", muted = true)
         }
     }
 }
