@@ -23,7 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -158,9 +163,7 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
     for (row in listOf(listOf(MaskMode.OFF, MaskMode.UNIFORM, MaskMode.DRAWN), listOf(MaskMode.PARAMETRIC, MaskMode.BOTH))) {
         Row(Modifier.fillMaxWidth().padding(vertical = sp.xxs), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
             for (md in row) {
-                DtTextButton(md.label, { controller.launch { masks.setMode(md) } }, Modifier.weight(1f)
-                    .semantics { stateDescription = if (mode == md) "selected" else "not selected" },
-                    selected = mode == md, enabled = !ro && md.available, compact = true)
+                ModeButton(md.label, mode == md, !ro && md.available, Modifier.weight(1f)) { controller.launch { masks.setMode(md) } }
             }
         }
     }
@@ -211,6 +214,26 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
     }
     ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
     ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
+}
+
+/** A mask mode: the chosen one with a ring in the accent colour (as the mockup), so it shows in both skins. */
+@Composable
+private fun ModeButton(label: String, selected: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val c = DtTheme.colors
+    val shape = RoundedCornerShape(DtTheme.sizes.radiusControl)
+    var m = modifier.height(DtTheme.sizes.touch).clip(shape).background(if (selected) c.selected else c.raised)
+    if (selected) m = m.border(DtTheme.sizes.border, c.accent, shape)
+    Box(
+        m.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "mask mode $label"; stateDescription = if (selected) "selected" else "not selected" },
+        contentAlignment = Alignment.Center,
+    ) {
+        DtText(label, DtTheme.type.label, when {
+            !enabled -> c.textDisabled
+            selected -> c.textBright
+            else -> c.textStrong
+        })
+    }
 }
 
 /** Desktop's mask manager: every group and shape of the photo. */
@@ -463,9 +486,14 @@ fun DrawScope.drawDrawTool(d: DrawTool, left: Float, top: Float, w: Float, h: Fl
                     val pts = points.map { at(it) }
                     val r = ((st?.size ?: d.size) * side).toFloat()
                     if (d.showMask) {
+                        // the stroke drawn opaque into a layer that is then laid over at the stroke's opacity, so
+                        // its overlapping pieces do not add up
                         val a = look.fillAlpha * (0.4f + 0.6f * (st?.hardness ?: d.hardness).toFloat()) * (st?.opacity ?: d.opacity).toFloat()
-                        for (i in 1 until pts.size) segment(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y, 2 * r, look.fill, a)
-                        for (p in pts) drawOval(look.fill, Offset(p.x - r, p.y - r), Size(2 * r, 2 * r), alpha = a)
+                        val canvas = drawContext.canvas
+                        canvas.saveLayer(Rect(left, top, left + w, top + h), Paint().apply { alpha = a })
+                        for (i in 1 until pts.size) segment(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y, 2 * r, look.fill)
+                        for (p in pts) drawOval(look.fill, Offset(p.x - r, p.y - r), Size(2 * r, 2 * r))
+                        canvas.restore()
                     } else {
                         line(pts, false, look)
                     }
