@@ -103,7 +103,7 @@ private fun UnderPhoto(controller: DarkroomController, s: DarkroomState) {
 private fun L1PhotoArea(controller: DarkroomController, s: DarkroomState, chrome: L1Chrome, fade: Float, onBack: () -> Unit, export: HostAction?,
                         modifier: Modifier) {
     Box(modifier) {
-        PhotoView(controller, s, DtTheme.space.none, twoFingerUndo = true, Modifier.fillMaxSize())
+        PhotoView(controller, s, DtTheme.space.none, twoFingerUndo = true, Modifier.fillMaxSize(), surround = DtTheme.colors.photoBackground)
         L1TopBar(controller, s, fade, onBack, export, Modifier.align(Alignment.TopCenter))
         chrome.pill?.let { L1Pill(it, Modifier.align(Alignment.TopCenter)) }
     }

@@ -2,7 +2,10 @@
 package app.dtandroid.darkroom
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -70,8 +73,11 @@ class PhoneL1Screenshots : PUI3aL1Screens() {
         compose.onNodeWithContentDescription("Instances of exposure").assertExists()
         settle(c)
         capture("phone-l1-02-group-open-module")
-        // one module open at a time: another row closes it
+        // one module open at a time: another row closes it (the panel scrolled to that row first)
         val other = c.visibleModules(c.state.value).first { it.key != exposure }
+        compose.onNode(hasScrollAction() and hasAnyDescendant(hasContentDescription("Instances of exposure")))
+            .performScrollToNode(hasContentDescription(other.name))
+        compose.waitForIdle()
         row(other.name).performClick()
         compose.waitForIdle()
         assertEquals(other.key, c.state.value.expanded)

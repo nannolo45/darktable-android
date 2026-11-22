@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.InstanceKey
@@ -56,7 +57,7 @@ internal fun L1Panel(
                 HistoryView(controller, s)
             }
             else -> Column(Modifier.fillMaxSize()) {
-                if (s.layout.showSearch) SearchLine(controller, s)
+                if (s.layout.showSearch) Box(Modifier.alpha(fade)) { Column { SearchLine(controller, s) } }
                 ModuleList(controller, s, live, tablet = false, modifier = Modifier.weight(1f), l1 = true)
             }
         }
