@@ -1288,7 +1288,10 @@ class DarkroomController(
     private var pickerDrawing = false
 
     /** The picker of control [controlId] of [key]'s module, if the app has built it. */
-    fun pickerSpec(key: InstanceKey, controlId: Int): PickerSpec? = schema.modules[key.op]?.pickers?.get(controlId)
+    fun pickerSpec(key: InstanceKey, controlId: Int): PickerSpec? =
+        // brief P3d stage 2b: the pickers of the parametric sliders are no schema controls: an area that sets a range
+        if (controlId <= ParametricMasks.PICK_BASE) PickerSpec(controlId, "range", point = false, area = true, denoise = false, action = null)
+        else schema.modules[key.op]?.pickers?.get(controlId)
 
     fun pickerArmed(s: DarkroomState, key: InstanceKey, controlId: Int): Boolean =
         s.picker?.let { it.key == key && it.controlId == controlId } == true
@@ -1332,7 +1335,8 @@ class DarkroomController(
     private fun pickerCheck() {
         val p = _state.value.picker ?: return
         val s = _state.value
-        if (s.expanded != p.key || s.modules.none { it.key == p.key } || s.readOnly) disarmPicker()
+        val inMasks = p.controlId <= ParametricMasks.PICK_BASE && s.view == BottomView.MASKS // brief P3d stage 2b
+        if ((s.expanded != p.key && !inMasks) || s.modules.none { it.key == p.key } || s.readOnly) disarmPicker()
     }
 
     /** The selection the picker starts with: its last one mapped onto the picture now, else desktop's first one. */
@@ -1383,6 +1387,7 @@ class DarkroomController(
             val action = spec.action
             val slider = spec.setSlider
             when {
+                p.controlId <= ParametricMasks.PICK_BASE -> changed = parametric.pickLocked(engine, key, p.controlId, sel.area, sel.point)
                 action != null -> {
                     val s = _state.value
                     val (name, args) = action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
@@ -2042,7 +2047,7 @@ class DarkroomController(
         val was = _state.value.view
         _state.update { it.copy(view = v, overlay = null) }
         // brief P3d: leaving the masks tab ends "show mask"; opening it reads the chosen module's mask again
-        if (was == BottomView.MASKS && v != BottomView.MASKS) setShowMask(null)
+        if (was == BottomView.MASKS && v != BottomView.MASKS) { setShowMask(null); if ((_state.value.picker?.controlId ?: 0) <= ParametricMasks.PICK_BASE) disarmPicker() }
         if (v == BottomView.MASKS && was != v) launch { masks.reload() }
     }
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
@@ -2082,6 +2087,9 @@ class DarkroomController(
 
     /** The masks tab and the drawing tools (Masks.kt). */
     val masks: Masks get() = masksLazy.value
+
+    /** Brief P3d stage 2b: parametric channels and mask refinement (ParametricMasks.kt). */
+    val parametric: ParametricMasks by lazy { ParametricMasks(this) }
 
     /** The render options of "show mask": none unless it is on for an instance. */
     private fun maskRenderOptions(): RenderOptions =

@@ -169,7 +169,7 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
             }
         }
     }
-    Note("parametric masks: coming next")
+    if (mode == MaskMode.BOTH) Note("drawn & parametric: not built yet")
     if (mode == null) Note("this mask (${m.engineMode}) is not edited here yet")
     if (mode != null && mode != MaskMode.OFF) {
         MaskSlider(maskSlider(1, "opacity", 0.0, 100.0, 100.0, 1.0, 0, " %"), m.opacity, !ro, live = false) {
@@ -182,6 +182,13 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }
+    // brief P3d stage 2b: the parametric mode and the refinement
+    if (mode == MaskMode.PARAMETRIC) {
+        ParametricSection(controller, s, ro)
+        ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
+        ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
+    }
+    if (mode != null && mode != MaskMode.OFF && mode != MaskMode.UNIFORM) RefinementSection(controller, s, ro)
 }
 
 // brief P3d fix: no early return or `continue` inside the composables below (a skipped group made the slot table

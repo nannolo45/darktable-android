@@ -119,6 +119,9 @@ class DtSizes(t: TokenSource) {
     val maskHandle = t.dp("size.maskHandle")
     val maskIndicator = t.dp("size.maskIndicator")
     val shapeButton = t.dp("size.shapeButton")
+    /** brief P3d stage 2b: the markers of a four-marker range slider (a diamond) and the line of an open one */
+    val rangeMarker = t.dp("size.rangeMarker")
+    val rangeMarkerLine = t.dp("size.rangeMarkerLine")
     /** brief PUI2a: gap between modules (a bar in the page colour), the hairline between them, the round slider thumb */
     val moduleGap = t.dp("size.moduleGap")
     val moduleSeparator = t.dp("size.moduleSeparator")

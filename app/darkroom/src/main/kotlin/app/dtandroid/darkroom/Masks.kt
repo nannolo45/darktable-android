@@ -38,8 +38,8 @@ enum class MaskMode(val label: String, val engineName: String) {
     PARAMETRIC("parametric", "parametric"),
     BOTH("drawn & parametric", "drawn_parametric");
 
-    /** stage 1 builds off, uniform and drawn; the parametric modes come with stage 2 */
-    val available: Boolean get() = this == OFF || this == UNIFORM || this == DRAWN
+    /** stage 2b adds parametric; drawn & parametric waits for stage 2a (what the engine needs for it) */
+    val available: Boolean get() = this != BOTH
 
     companion object {
         /**
@@ -198,7 +198,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     private val readOnly get() = c.state.value.readOnly
 
     /** Another photo: nothing chosen, drawn or open. */
-    fun reset() { _state.value = MasksState() }
+    fun reset() { _state.value = MasksState(); c.parametric.reset() }
 
     // ------------------------------------------------------------------ reading
 
@@ -258,6 +258,8 @@ class Masks internal constructor(private val c: DarkroomController) {
         val outline = selected?.let { id -> outlineLocked(e, forms.first { it.id == id }) }
         // a module chosen meanwhile (its own reload follows) is not overwritten by this older answer
         _state.update { if (it.key != asked) it else it.copy(key = key, module = module, forms = forms, selected = selected, outline = outline) }
+        // brief P3d stage 2b: the parametric channels and the refinement of the same instance
+        c.parametric.readLocked(e, module?.takeIf { it.supported }?.key)
     }
 
     /** The outline of [f] in fractions of the picture shown (null for a group or a form without a drawing). */
@@ -355,7 +357,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     suspend fun setMode(mode: MaskMode) {
         val m = current() ?: return
         if (!mode.available || m.mode == mode) return
-        if (mode != MaskMode.DRAWN) c.setShowMask(null)
+        if (mode != MaskMode.DRAWN && mode != MaskMode.PARAMETRIC) c.setShowMask(null)
         edit { e -> e.blendSet(m.key.op, m.key.priority, mapOf("masks" to JsonPrimitive(mode.engineName))); e.historySeal() }
     }
 
@@ -443,7 +445,7 @@ class Masks internal constructor(private val c: DarkroomController) {
         if (c.state.value.showMask == m.key) { c.setShowMask(null); return }
         val on = c.state.value.modules.firstOrNull { it.key == m.key }?.enabled == true
         if (!on || !displayable(m.engineMode)) {
-            _state.update { it.copy(note = "show mask: the module must be on and have a drawn mask") }
+            _state.update { it.copy(note = "show mask: the module must be on and have a mask") }
             return
         }
         c.setShowMask(m.key)
