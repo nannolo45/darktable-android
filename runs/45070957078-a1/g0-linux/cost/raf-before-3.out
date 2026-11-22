@@ -1,0 +1,298 @@
+darktable 04477d3 [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> DISABLED - GPU acceleration is NOT available
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+RESULT engine 04477d3
+     0.6450 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.7426 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     0.7444 [dev_pixelpipe] took 0.002 secs (0.000 CPU) [export] processed `rawprepare' on CPU
+     0.7450 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     0.7479 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `highlights' on CPU
+     0.7861 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.006 secs (0.021 CPU)
+     0.7876 [dev_pixelpipe] took 0.040 secs (0.134 CPU) [export] processed `demosaic' on CPU
+     0.7915 [dev_pixelpipe] took 0.004 secs (0.014 CPU) [export] processed `lens' on CPU
+     0.7917 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     0.7925 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `colorin' on CPU
+     0.7927 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     0.7940 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `channelmixerrgb' on CPU
+     0.7970 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     0.7979 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.7982 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+RESULT cost preview size 320x213
+DTB_STEP unchanged 320 0
+DTB_STEP unchanged 320 1
+DTB_STEP unchanged 320 2
+DTB_STEP unchanged 320 3
+DTB_STEP unchanged 320 4
+DTB_STEP unchanged 320 5
+DTB_STEP unchanged 320 6
+DTB_STEP unchanged 320 7
+DTB_STEP unchanged 320 8
+RESULT cost unchanged size 320: change 0.00 ms, preview render 0.11 ms (medians of 9; min 0.10 max 0.13)
+DTB_STEP late_drag 320 0
+     0.8318 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     0.8348 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     0.8357 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.8360 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 1
+     0.8665 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `colorbalancergb' on CPU
+     0.8701 [dev_pixelpipe] took 0.004 secs (0.015 CPU) [export] processed `filmicrgb' on CPU
+     0.8709 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.8712 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 2
+     0.9016 [dev_pixelpipe] took 0.006 secs (0.021 CPU) [export] processed `colorbalancergb' on CPU
+     0.9051 [dev_pixelpipe] took 0.003 secs (0.015 CPU) [export] processed `filmicrgb' on CPU
+     0.9059 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.9062 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 3
+     0.9367 [dev_pixelpipe] took 0.006 secs (0.023 CPU) [export] processed `colorbalancergb' on CPU
+     0.9402 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     0.9411 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.9414 [dev_pixelpipe] took 0.001 secs (0.005 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 4
+     0.9719 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     0.9753 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     0.9762 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.9765 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 5
+     1.0068 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `colorbalancergb' on CPU
+     1.0103 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.0112 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.0115 [dev_pixelpipe] took 0.001 secs (0.005 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 6
+     1.0418 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.0453 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.0461 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.0464 [dev_pixelpipe] took 0.001 secs (0.005 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 7
+     1.0770 [dev_pixelpipe] took 0.006 secs (0.021 CPU) [export] processed `colorbalancergb' on CPU
+     1.0805 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.0813 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.0816 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 320 8
+     1.1121 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.1155 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.1164 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.1167 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `colorout' on CPU
+RESULT cost late_drag size 320: change 0.45 ms, preview render 34.62 ms (medians of 9; min 34.33 max 34.76)
+DTB_STEP late_sealed 320 0
+     1.1470 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.1505 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.1514 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.1517 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 1
+     1.1827 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.1862 [dev_pixelpipe] took 0.004 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.1871 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.1874 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 2
+     1.2185 [dev_pixelpipe] took 0.006 secs (0.019 CPU) [export] processed `colorbalancergb' on CPU
+     1.2221 [dev_pixelpipe] took 0.004 secs (0.015 CPU) [export] processed `filmicrgb' on CPU
+     1.2229 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.2233 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 3
+     1.2551 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.2586 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.2595 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.2598 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 4
+     1.2907 [dev_pixelpipe] took 0.006 secs (0.019 CPU) [export] processed `colorbalancergb' on CPU
+     1.2941 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.2950 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.2953 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 5
+     1.3263 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `colorbalancergb' on CPU
+     1.3298 [dev_pixelpipe] took 0.003 secs (0.015 CPU) [export] processed `filmicrgb' on CPU
+     1.3307 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.001 CPU) [colorout]
+     1.3310 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 6
+     1.3621 [dev_pixelpipe] took 0.006 secs (0.018 CPU) [export] processed `colorbalancergb' on CPU
+     1.3655 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `filmicrgb' on CPU
+     1.3664 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.3667 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 7
+     1.3978 [dev_pixelpipe] took 0.006 secs (0.022 CPU) [export] processed `colorbalancergb' on CPU
+     1.4013 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.4021 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.4024 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_sealed 320 8
+     1.4334 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `colorbalancergb' on CPU
+     1.4368 [dev_pixelpipe] took 0.003 secs (0.015 CPU) [export] processed `filmicrgb' on CPU
+     1.4377 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.4380 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+RESULT cost late_sealed size 320: change 1.00 ms, preview render 34.67 ms (medians of 9; min 34.51 max 35.49)
+DTB_STEP early_drag 320 0
+     1.4635 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.4644 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.4645 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.4659 [dev_pixelpipe] took 0.001 secs (0.006 CPU) [export] processed `channelmixerrgb' on CPU
+     1.4716 [dev_pixelpipe] took 0.006 secs (0.021 CPU) [export] processed `colorbalancergb' on CPU
+     1.4750 [dev_pixelpipe] took 0.003 secs (0.014 CPU) [export] processed `filmicrgb' on CPU
+     1.4759 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.4762 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 1
+     1.5020 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.5029 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.5030 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.5044 [dev_pixelpipe] took 0.002 secs (0.004 CPU) [export] processed `channelmixerrgb' on CPU
+     1.5101 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.5135 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.5144 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.5147 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 2
+     1.5397 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.5405 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.5407 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.003 CPU) [channelmixerrgb]
+     1.5420 [dev_pixelpipe] took 0.001 secs (0.007 CPU) [export] processed `channelmixerrgb' on CPU
+     1.5477 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.5513 [dev_pixelpipe] took 0.004 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.5521 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.5524 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 3
+     1.5773 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.5782 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.5783 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.5797 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `channelmixerrgb' on CPU
+     1.5854 [dev_pixelpipe] took 0.006 secs (0.021 CPU) [export] processed `colorbalancergb' on CPU
+     1.5889 [dev_pixelpipe] took 0.003 secs (0.013 CPU) [export] processed `filmicrgb' on CPU
+     1.5897 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.5900 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 4
+     1.6149 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.6158 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.6164 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.6178 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `channelmixerrgb' on CPU
+     1.6233 [dev_pixelpipe] took 0.006 secs (0.021 CPU) [export] processed `colorbalancergb' on CPU
+     1.6272 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.6285 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.003 CPU) [colorout]
+     1.6288 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 5
+     1.6537 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.6547 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorin' on CPU
+     1.6549 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.6561 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `channelmixerrgb' on CPU
+     1.6617 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.6651 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.6659 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.6662 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 6
+     1.6909 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.6917 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.6919 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.6931 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `channelmixerrgb' on CPU
+     1.6987 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.7021 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.7030 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.7032 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 7
+     1.7281 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.7289 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.7291 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.7304 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `channelmixerrgb' on CPU
+     1.7361 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.7395 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.7404 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.7406 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+DTB_STEP early_drag 320 8
+     1.7661 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `exposure' on CPU
+     1.7669 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `colorin' on CPU
+     1.7671 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.000 secs (0.000 CPU) [channelmixerrgb]
+     1.7684 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `channelmixerrgb' on CPU
+     1.7740 [dev_pixelpipe] took 0.006 secs (0.024 CPU) [export] processed `colorbalancergb' on CPU
+     1.7774 [dev_pixelpipe] took 0.003 secs (0.012 CPU) [export] processed `filmicrgb' on CPU
+     1.7783 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.7785 [dev_pixelpipe] took 0.001 secs (0.004 CPU) [export] processed `colorout' on CPU
+RESULT cost early_drag size 320: change 0.43 ms, preview render 37.16 ms (medians of 9; min 36.58 max 38.38)
+DTB_STEP late_drag 1024 0
+     1.8041 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.8058 [dev_pixelpipe] took 0.002 secs (0.005 CPU) [export] processed `rawprepare' on CPU
+     1.8066 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     1.8095 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `highlights' on CPU
+     1.8483 [resample_plain] plan 0.000 secs (0.003 CPU) resample 0.007 secs (0.021 CPU)
+     1.8498 [dev_pixelpipe] took 0.040 secs (0.141 CPU) [export] processed `demosaic' on CPU
+     1.8868 [dev_pixelpipe] took 0.037 secs (0.143 CPU) [export] processed `lens' on CPU
+     1.8883 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `exposure' on CPU
+     1.8967 [dev_pixelpipe] took 0.008 secs (0.031 CPU) [export] processed `colorin' on CPU
+     1.8980 [dt_ioppr_transform_image_colorspace] IOP_CS_LAB-->IOP_CS_RGB took 0.001 secs (0.004 CPU) [channelmixerrgb]
+     1.9116 [dev_pixelpipe] took 0.015 secs (0.047 CPU) [export] processed `channelmixerrgb' on CPU
+     1.9689 [dev_pixelpipe] took 0.057 secs (0.231 CPU) [export] processed `colorbalancergb' on CPU
+     2.0042 [dev_pixelpipe] took 0.035 secs (0.136 CPU) [export] processed `filmicrgb' on CPU
+     2.0130 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.036 CPU) [colorout]
+     2.0158 [dev_pixelpipe] took 0.011 secs (0.045 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 1
+     2.1016 [dev_pixelpipe] took 0.059 secs (0.226 CPU) [export] processed `colorbalancergb' on CPU
+     2.1373 [dev_pixelpipe] took 0.036 secs (0.137 CPU) [export] processed `filmicrgb' on CPU
+     2.1461 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.036 CPU) [colorout]
+     2.1489 [dev_pixelpipe] took 0.012 secs (0.043 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 2
+     2.2341 [dev_pixelpipe] took 0.058 secs (0.226 CPU) [export] processed `colorbalancergb' on CPU
+     2.2696 [dev_pixelpipe] took 0.035 secs (0.133 CPU) [export] processed `filmicrgb' on CPU
+     2.2785 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.033 CPU) [colorout]
+     2.2814 [dev_pixelpipe] took 0.012 secs (0.038 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 3
+     2.3669 [dev_pixelpipe] took 0.058 secs (0.227 CPU) [export] processed `colorbalancergb' on CPU
+     2.4021 [dev_pixelpipe] took 0.035 secs (0.137 CPU) [export] processed `filmicrgb' on CPU
+     2.4108 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.036 CPU) [colorout]
+     2.4137 [dev_pixelpipe] took 0.012 secs (0.046 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 4
+     2.5026 [dev_pixelpipe] took 0.062 secs (0.236 CPU) [export] processed `colorbalancergb' on CPU
+     2.5387 [dev_pixelpipe] took 0.036 secs (0.142 CPU) [export] processed `filmicrgb' on CPU
+     2.5475 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.033 CPU) [colorout]
+     2.5504 [dev_pixelpipe] took 0.012 secs (0.040 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 5
+     2.6357 [dev_pixelpipe] took 0.058 secs (0.228 CPU) [export] processed `colorbalancergb' on CPU
+     2.6709 [dev_pixelpipe] took 0.035 secs (0.140 CPU) [export] processed `filmicrgb' on CPU
+     2.6797 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.033 CPU) [colorout]
+     2.6825 [dev_pixelpipe] took 0.011 secs (0.038 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 6
+     2.7680 [dev_pixelpipe] took 0.058 secs (0.231 CPU) [export] processed `colorbalancergb' on CPU
+     2.8076 [dev_pixelpipe] took 0.040 secs (0.147 CPU) [export] processed `filmicrgb' on CPU
+     2.8164 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.033 CPU) [colorout]
+     2.8193 [dev_pixelpipe] took 0.012 secs (0.042 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 7
+     2.9049 [dev_pixelpipe] took 0.058 secs (0.226 CPU) [export] processed `colorbalancergb' on CPU
+     2.9401 [dev_pixelpipe] took 0.035 secs (0.135 CPU) [export] processed `filmicrgb' on CPU
+     2.9489 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.036 CPU) [colorout]
+     2.9518 [dev_pixelpipe] took 0.012 secs (0.046 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 8
+     3.0371 [dev_pixelpipe] took 0.058 secs (0.228 CPU) [export] processed `colorbalancergb' on CPU
+     3.0723 [dev_pixelpipe] took 0.035 secs (0.137 CPU) [export] processed `filmicrgb' on CPU
+     3.0811 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.009 secs (0.036 CPU) [colorout]
+     3.0839 [dev_pixelpipe] took 0.011 secs (0.044 CPU) [export] processed `colorout' on CPU
+RESULT cost late_drag size 1024: change 0.77 ms, preview render 131.59 ms (medians of 9; min 131.11 max 236.95)
+DTB_STEP unchanged 1024 0
+DTB_STEP unchanged 1024 1
+DTB_STEP unchanged 1024 2
+DTB_STEP unchanged 1024 3
+DTB_STEP unchanged 1024 4
+DTB_STEP unchanged 1024 5
+DTB_STEP unchanged 1024 6
+DTB_STEP unchanged 1024 7
+DTB_STEP unchanged 1024 8
+RESULT cost unchanged size 1024: change 0.00 ms, preview render 0.97 ms (medians of 9; min 0.94 max 1.83)
+RESULT exit 0
