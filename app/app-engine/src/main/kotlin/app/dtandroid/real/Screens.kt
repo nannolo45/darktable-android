@@ -123,6 +123,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
     val lplThumbs by vm.lplThumbs.collectAsState()
     val notes by vm.agent.notes.collectAsState()
     val serverNotes by vm.agent.serverNotes.collectAsState()
+    // brief P2k: the batch LightPhotoLibrary sent to this phone
+    val batches by vm.agent.batches.collectAsState()
     // brief P2i: the "sync automatically" switch
     val autoSync by vm.agent.settings.autoSync.collectAsState()
     val servers = remember(photos, lib) { vm.servers.list() }
@@ -143,6 +145,12 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             empty = "No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".",
             rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl, autoSync).copy(note = notes[r.key]) },
             note = serverNotes[srv.origin],
+            batch = batches[srv.origin]?.let { b ->
+                PhotoList.BatchLine(
+                    label = b.label ?: b.stoppedLine, fraction = if (b.running) b.fraction else null,
+                    onStop = if (b.running) ({ vm.agent.stopBatches() }) else null,
+                )
+            }?.takeIf { it.label != null },
         )
     }
     if (servers.isEmpty()) sections += PhotoList.Section(
@@ -224,7 +232,7 @@ internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: St
     val words = when (r.status) {
         PhotoStatus.DOWNLOADING -> if (p != null) AppHost.progressText("", p.done, p.total).replace("downloading … ", "downloading ")
                                    else "download not complete · continues when you open it"
-        PhotoStatus.OPENING -> "ready to edit"
+        PhotoStatus.OPENING, PhotoStatus.READY -> "ready to edit"
         PhotoStatus.EDITING -> "open in the darkroom"
         // brief P2i: with automatic sync off nothing waits: the edit stays here until "sync now"
         PhotoStatus.DIRTY -> if (autoSync) UserText.WAITING else PhotoList.NOT_SYNCED_HERE

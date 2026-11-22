@@ -232,7 +232,11 @@ class LplAgent(
      * local copy is used. Throws [LplException] when the photo cannot be made ready, and
      * [ServerNotAddedException] for a server not in the list.
      */
-    suspend fun take(origin: ServerOrigin, id: Long, refresh: Boolean = true): PhotoRecord = withContext(Dispatchers.IO) {
+    suspend fun take(
+        origin: ServerOrigin, id: Long, refresh: Boolean = true,
+        /** brief P2k: a batch copy: the photo is `ready` (not opened yet), and [cancelled] is asked between chunks */
+        batch: Boolean = false, cancelled: () -> Boolean = { false }, onBytes: (Long) -> Unit = {},
+    ): PhotoRecord = withContext(Dispatchers.IO) {
         requireAdded(origin)
         lockOf(origin, id).withLock {
             val held = record(origin, id)
@@ -251,7 +255,7 @@ class LplAgent(
                 }
                 return@withLock record(origin, id) ?: held
             }
-            download(origin, id, held)
+            download(origin, id, held, batch, cancelled, onBytes)
         }
     }
 
@@ -277,7 +281,7 @@ class LplAgent(
         return record(r.server, r.id) ?: n
     }
 
-    private suspend fun download(origin: ServerOrigin, id: Long, held: PhotoRecord?): PhotoRecord {
+    private suspend fun download(origin: ServerOrigin, id: Long, held: PhotoRecord?, batch: Boolean = false, cancelled: () -> Boolean = { false }, onBytes: (Long) -> Unit = {}): PhotoRecord {
         val co = try {
             net(origin) { it.checkout(id) }
         } catch (e: LplException) {
@@ -313,13 +317,26 @@ class LplAgent(
                 c.downloadOriginal(id, part, co.size, progress = { d, t ->
                     _progress.update { it + ((origin to id) to Progress(d, t)) }
                     step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
-                })
+                    onBytes(d)
+                }, cancelled = cancelled)
             }
             val raw = work.raw(r)
             if (!part.renameTo(raw)) throw LplException(LplFailure.LOCAL, "cannot move the download into place")
             File(part.path + ".etag").delete()
             raw.setWritable(false, false)
         } catch (e: LplException) {
+            if (e.failure == LplFailure.CANCELLED) {
+                // brief P2k: a stopped file is not resumed: its partial data goes, and so does the half-made
+                // entry (unless an unsynced edit of the photo is in the folder: that is never deleted)
+                val part = work.part(r)
+                part.delete(); File(part.path + ".etag").delete()
+                if (isDirty(r) && work.xmp(r).isFile) put(r.copy(error = "")) else {
+                    synchronized(recordLock(r.key)) { _photos.update { l -> l.filterNot { it.key == r.key } }; unsaved.remove(r.key) }
+                    work.delete(origin, id)
+                    names.remove(origin to id)
+                }
+                throw e
+            }
             val status = if (e.failure == LplFailure.NOT_FOUND) PhotoStatus.ERROR else PhotoStatus.DOWNLOADING
             put(r.copy(status = status, error = e.userText))
             throw e
@@ -328,7 +345,7 @@ class LplAgent(
             step(origin, id, null)
         }
         val ro = runCatching { editor.xmpReadOnly(work.xmp(r)) }.getOrDefault(false)
-        r = r.copy(status = PhotoStatus.OPENING, readOnly = ro, error = if (ro) UserText.NEWER_DARKTABLE else "")
+        r = r.copy(status = if (batch) PhotoStatus.READY else PhotoStatus.OPENING, readOnly = ro, error = if (ro) UserText.NEWER_DARKTABLE else "")
         put(r)
         refreshLastEdit(origin, id)
         return record(origin, id) ?: r
@@ -381,7 +398,7 @@ class LplAgent(
     /** The darkroom left the photo after writing its edit: `dirty` or `synced` (the caller then syncs). */
     fun left(origin: ServerOrigin, id: Long) {
         mutate(origin, id) { r ->
-            r?.takeIf { it.status == PhotoStatus.EDITING || it.status == PhotoStatus.OPENING }?.let { it.copy(status = settledStatus(it)) }
+            r?.takeIf { it.status == PhotoStatus.EDITING || it.status == PhotoStatus.OPENING || it.status == PhotoStatus.READY }?.let { it.copy(status = settledStatus(it)) }
         }
     }
 
@@ -624,20 +641,111 @@ class LplAgent(
      */
     suspend fun heartbeat(): List<Pair<ServerOrigin, Job>> = withContext(Dispatchers.IO) {
         val out = ArrayList<Pair<ServerOrigin, Job>>()
-        for (s in servers.list()) {
-            try {
-                val a = net(s.origin) { it.heartbeat(servers.installId, s.deviceName, state(s.origin)) }
-                for (j in a.jobs) out += s.origin to j
-            } catch (e: LplException) {
-                // shown on the list screen; the next heartbeat tries again
-            } catch (e: IllegalStateException) {
-                // the saved password cannot be read: the list screen asks for it
-            }
-        }
+        synchronized(extraJobs) { out += extraJobs; extraJobs.clear() }
+        for (s in servers.list()) heartbeatTo(s.origin, s.deviceName)?.let { a -> for (j in a.jobs) out += s.origin to j }
         out
     }
 
+    /** One heartbeat to one server; null when it did not answer. Reports the transfers and acts on `cancel` (brief P2k). */
+    private fun heartbeatTo(origin: ServerOrigin, deviceName: String): HeartbeatAnswer? = try {
+        val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin)) }
+        // `cancel` comes only from a server that knows `caps`: only then are edit jobs run as batches
+        if (a.cancel != null) batchServers += origin
+        transfers.applyCancel(origin, a.cancel)
+        if (a.cancel != null) for (j in a.jobs) if (j.kind == "edit") transfers.receive(origin, j.id, j.ids)
+        a
+    } catch (e: LplException) {
+        null // shown on the list screen; the next heartbeat tries again
+    } catch (e: IllegalStateException) {
+        null // the saved password cannot be read: the list screen asks for it
+    }
+
+    // ------------------------------------------------------------------ batches (brief P2k)
+
+    /** Every transfer the device holds for LPL's edit jobs; see [TransferBook]. */
+    val transfers = TransferBook()
+
+    /** For the list: how far each server's batch is, or how it ended when stopped. */
+    val batches: StateFlow<Map<ServerOrigin, BatchView>> get() = transfers.views
+
+    private val batchServers: MutableSet<ServerOrigin> = ConcurrentHashMap.newKeySet()
+    private val extraJobs = ArrayList<Pair<ServerOrigin, Job>>()
+
+    /** Whether the server has shown it knows batches (it sent a `cancel`); an old one gets the old edit job. */
+    fun isBatchServer(origin: ServerOrigin) = origin in batchServers
+
+    /**
+     * Whether an `edit` job is carried out by [runEditJob]: from a batch server, and from any server when the job
+     * says `open: false` (the darkroom must never open for it, whatever the server knows).
+     */
+    fun runsAsBatch(origin: ServerOrigin, job: Job) = job.kind == "edit" && (isBatchServer(origin) || !job.open)
+
+    /** The "stop" button: this phone's running and waiting batch jobs end as `stopped` (what arrived is kept). */
+    fun stopBatches() = transfers.stopAll()
+
+    /** How an edit job ended on this phone: the photos to open (copied or already there), unless stopped. */
+    class EditOutcome(val state: String, val toOpen: List<Long>)
+
+    /**
+     * Carry out an `edit` job from a batch server: copy the photos one by one (each id once), checking for
+     * Stop between files and between chunks; then report the end (a heartbeat at once, then `/done`).
+     * The caller opens the darkroom on [EditOutcome.toOpen] when [Job.open] and the job was not stopped.
+     */
+    suspend fun runEditJob(origin: ServerOrigin, job: Job): EditOutcome = withContext(Dispatchers.IO) {
+        val ids = jobIds(origin, job).distinct()
+        transfers.receive(origin, job.id, ids)
+        if (!transfers.begin(origin, job.id)) { finishJob(origin, job, TransferState.STOPPED); return@withContext EditOutcome(TransferState.STOPPED, emptyList()) }
+        val stop = { transfers.shouldStop(origin, job.id) }
+        for (id in ids) {
+            if (stop()) break
+            if (transfers.shouldSkip(origin, job.id, id)) continue
+            val held = record(origin, id)
+            if (held != null && work.hasRaw(held)) { transfers.mark(origin, job.id, id, TransferBook.Outcome.PRESENT); continue }
+            transfers.current(origin, job.id, id, 0)
+            try {
+                take(origin, id, refresh = false, batch = true,
+                    cancelled = { stop() || transfers.shouldSkip(origin, job.id, id) },
+                    onBytes = { transfers.current(origin, job.id, id, it) })
+                transfers.mark(origin, job.id, id, TransferBook.Outcome.ARRIVED)
+            } catch (e: LplException) {
+                val skipped = e.failure == LplFailure.CANCELLED && !stop() && transfers.shouldSkip(origin, job.id, id)
+                transfers.current(origin, job.id, null)
+                when {
+                    stop() -> break
+                    skipped -> transfers.mark(origin, job.id, id, TransferBook.Outcome.SKIPPED)
+                    else -> transfers.mark(origin, job.id, id, TransferBook.Outcome.FAILED)
+                }
+            } catch (e: ServerNotAddedException) {
+                transfers.mark(origin, job.id, id, TransferBook.Outcome.FAILED)
+            }
+        }
+        val lists = transfers.lists(origin, job.id).orEmpty()
+        val there = lists["arrived"].orEmpty() + lists["present"].orEmpty()
+        val state = when {
+            stop() -> TransferState.STOPPED
+            there.isEmpty() && lists["failed"].orEmpty().isNotEmpty() -> TransferState.FAILED
+            else -> TransferState.DONE
+        }
+        finishJob(origin, job, state)
+        EditOutcome(state, if (state == TransferState.STOPPED) emptyList() else there)
+    }
+
+    /** A job ended: the final state in a heartbeat at once, then `/done` with the lists; held until `/done` is answered. */
+    suspend fun finishJob(origin: ServerOrigin, job: Job, state: String) = withContext(Dispatchers.IO) {
+        transfers.finish(origin, job.id, state)
+        ranJobs.remember(origin, job.id, state == TransferState.DONE)
+        val s = servers.list().firstOrNull { it.origin == origin }
+        if (s != null) heartbeatTo(origin, s.deviceName)?.let { a -> synchronized(extraJobs) { for (j in a.jobs) extraJobs += origin to j } }
+        try {
+            net(origin) { it.jobDone(job.id, state, transfers.lists(origin, job.id)) }
+            transfers.forget(origin, job.id)
+        } catch (e: LplException) { /* still held: the next heartbeat reports the end again; LPL hands it out again (R13) and it is reported, not run */ }
+    }
+
     suspend fun jobDone(origin: ServerOrigin, job: Job, ok: Boolean) = withContext(Dispatchers.IO) {
+        // a batch job whose end could not be reported before: report it again with its lists
+        val held = transfers.state(origin, job.id)?.takeIf { transfers.holds(origin, job.id) && it != TransferState.QUEUED && it != TransferState.RUNNING }
+        if (held != null) { finishJob(origin, job, held); return@withContext }
         ranJobs.remember(origin, job.id, ok)
         try { net(origin) { it.jobDone(job.id, ok) } } catch (e: LplException) { /* LPL hands it out again (R13); it is then reported, not run */ }
     }

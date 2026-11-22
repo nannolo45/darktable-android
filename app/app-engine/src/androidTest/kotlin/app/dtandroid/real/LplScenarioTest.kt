@@ -248,6 +248,30 @@ class LplScenarioTest {
     }
 
     /**
+     * l8 (brief P2k): an edit job with `open: false` from a server that knows batches: both photos are copied
+     * (status `ready`), the job is reported `done` with its lists, and the darkroom stays closed.
+     */
+    @Test
+    fun l8_aBatchJobWithoutOpeningCopiesThePhotosAndLeavesTheDarkroomClosed() {
+        val s = stub()
+        s.batch = true
+        rawPhoto(s, 61); rawPhoto(s, 62, "SECOND.cr2")
+        AppHost.servers.put(s.origin, "Phone", null)
+        val job = s.queueJob(AppHost.servers.installId, "edit", listOf(61, 62), open = false)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        val v = vm()
+        waitFor("the batch job reported", 300_000) { job.status == "done" || job.status == "failed" || job.status == "stopped" }
+        assertEquals("done", job.status)
+        assertTrue(job.doneBody!!.contains("\"arrived\":[61,62]"))
+        assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 61)?.status)
+        assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 62)?.status)
+        // the controller is shared by the scenarios: what an earlier one left open is not this job's doing
+        assertTrue("the darkroom was not opened", v.screen.value != Screen.DARKROOM &&
+            v.controller.state.value.current?.rawPath?.contains(s.origin.key) != true)
+        TestFiles.record(res, "l8", "passed")
+    }
+
+    /**
      * l7 (brief P2i deliverable 7, second point): a thumbnail or last picture stored through the app's store after a
      * `release` job removed the photo does not bring its folder back (the removal wins). Before P2i the store wrote
      * the file with `AtomicFiles.write`, which makes missing folders, so this test failed.

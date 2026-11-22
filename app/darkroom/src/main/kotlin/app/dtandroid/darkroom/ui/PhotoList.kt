@@ -66,7 +66,12 @@ object PhotoList {
         /** the last request from the server and how it went, or null */
         val note: String? = null,
         val rows: List<Row> = emptyList(),
+        /** brief P2k: the batch from LightPhotoLibrary under way (or just stopped), or null */
+        val batch: BatchLine? = null,
     )
+
+    /** What [BatchProgress] shows for a section: [label] ("photo 3 of 12" or "stopped · 5 of 12 arrived"), the share done, a Stop. */
+    data class BatchLine(val label: String?, val fraction: Float?, val onStop: (() -> Unit)? = null)
 
     /** Brief P2i: the header's words while the "sync automatically" switch is off. */
     const val AUTO_SYNC_OFF = "automatic sync is off"
@@ -162,6 +167,7 @@ private fun SectionHeader(sec: PhotoList.Section) {
             sec.action?.let { a -> DtTextButton(a.label, a.run, enabled = a.enabled) }
         }
     }
+    sec.batch?.let { b -> b.label?.let { BatchProgress(it, b.fraction, onCancel = b.onStop) } }
     if (sec.rows.isEmpty() && sec.empty != null) {
         DtText(sec.empty, DtTheme.type.label, c.textMuted,
             Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), maxLines = 6)
