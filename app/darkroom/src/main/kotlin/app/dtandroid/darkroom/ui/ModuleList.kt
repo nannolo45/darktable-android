@@ -159,6 +159,8 @@ private fun ModuleBlock(controller: DarkroomController, s: DarkroomState, live: 
         val menu = s.overlay
         if (tablet && menu is Overlay.Instances && menu.key == m.key) InstancesMenuInline(controller, s, m)
         if (open) ModulePanel(PanelContext(controller, s, live, schema, m, s.readOnly))
+        // brief P3d: the module's mask is edited in the masks tab; its panel ends with the way there
+        if (open) MaskRow(controller, s, m)
     }
 }
 
@@ -194,6 +196,8 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
                 DtText(m.instanceName, DtTheme.type.moduleName, c.textDim, Modifier.padding(start = DtTheme.space.s))
             }
         }
+        // brief P3d: the module has a mask (also when closed); a tap opens the masks tab
+        MaskIndicator(controller, s, m, full)
         if (showIcons) {
             DtIconButton(DtIcon.Instances, "Instances of $full", c.text, enabled = !s.readOnly, onClick = {
                 controller.setOverlay(if (s.overlay == Overlay.Instances(m.key)) null else Overlay.Instances(m.key))
@@ -302,6 +306,7 @@ private fun QuickHeader(controller: DarkroomController, s: DarkroomState, b: Dar
             Spacer(Modifier.width(DtTheme.space.panel))
         }
         DtText(b.moduleName, DtTheme.type.moduleName, if (m?.enabled == true) c.textStrong else c.textDim, Modifier.weight(1f))
+        if (m != null) MaskIndicator(controller, s, m, b.moduleName) // brief P3d
         if (m != null) {
             DtIconButton(DtIcon.Reset, "Reset ${b.moduleName}", c.text, enabled = !s.readOnly && !b.severalInstances,
                 onClick = { controller.launch { reset(m.key) } })

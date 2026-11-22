@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -132,6 +133,12 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val picker = s.picker?.takeIf { !s.before && tool == null }
     val pickerOn = picker != null
     val currentPicker by rememberUpdatedState(picker)
+    // brief P3d: drawing a shape: one finger draws, two fingers pan and zoom (not on "before" nor the crop tool's picture)
+    val ms by controller.masks.state.collectAsState()
+    val drawing = ms.draw?.takeIf { !s.before && tool == null }
+    val drawOn = drawing != null
+    val currentDraw by rememberUpdatedState(drawing)
+    val maskLook = maskLook()
     val pickerLook = PickerLook(c.pickerFrame, c.pickerShadow, DtTheme.sizes.pickerLine, DtTheme.sizes.pickerHandle, DtTheme.sizes.pickerPoint)
     val touch = DtTheme.sizes.touch
     val cropLook = CropLook(
@@ -164,7 +171,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                     val b = lc.boundsInWindow()
                     controller.photoArea = PhotoArea(b.left, b.top, b.width, b.height)
                 }
-                .pointerInput(s.index, twoFingerUndo) {
+                .pointerInput(s.index, twoFingerUndo, drawOn) {
+                    if (drawOn) return@pointerInput // brief P3d: taps place shapes while drawing
                     detectTapGestures(onDoubleTap = { p ->
                         if (zoom > 1.01f) { zoom = 1f; cx = 0.5f; cy = 0.5f } else {
                             // centre 100 % on the tapped point
@@ -178,7 +186,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         clampCenter()
                     })
                 }
-                .pointerInput(s.index, twoFingerUndo, toolOpen, pickerOn) {
+                .pointerInput(s.index, twoFingerUndo, toolOpen, pickerOn, drawOn) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         var maxPointers = 1
@@ -211,11 +219,19 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         // brief P3c: with a picker armed, a touch on its area or point moves or resizes it; one
                         // finger elsewhere draws a new area once it moves (or places a point when it only taps);
                         // a second finger before that is a pinch
+                        // brief P3d: drawing a shape: the first finger draws, a second one turns the touch into a pinch
+                        var draw = false
+                        if (currentDraw != null && currentTool == null) {
+                            val (px, py) = picturePoint(down.position)
+                            controller.masks.touchDown(px.toDouble(), py.toDouble())
+                            down.consume()
+                            draw = true
+                        }
                         var pick = false
                         var pickPending = false
                         var pickMoved = 0f
                         val pickFrom = picturePoint(down.position)
-                        if (currentPicker != null && currentTool == null) {
+                        if (currentPicker != null && currentTool == null && !draw) {
                             val ds = currentFit * zoom
                             val grab = controller.pickerHit(pickFrom.first, pickFrom.second, touch.toPx() / (iw * ds), touch.toPx() / (ih * ds))
                             if (grab != PickerTool.GRAB_NONE) {
@@ -228,6 +244,21 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             val ev = awaitPointerEvent()
                             upTime = ev.changes.maxOf { it.uptimeMillis }
                             val pressed = ev.changes.count { it.pressed }
+                            if (draw) {
+                                if (pressed >= 2) {
+                                    controller.masks.touchCancel()
+                                    draw = false
+                                    maxPointers = max(maxPointers, pressed)
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed && ch.positionChanged()) {
+                                        val (px, py) = picturePoint(ch.position)
+                                        controller.masks.touchMove(px.toDouble(), py.toDouble())
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
                             if (pick) {
                                 if (pressed >= 2 && pickMoved < slop) {
                                     controller.pickerDragCancel()
@@ -311,6 +342,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                 if (z != 1f || (pan != Offset.Zero && zoom > 1f)) ev.changes.forEach { it.consume() }
                             }
                         } while (ev.changes.any { it.pressed })
+                        if (draw) { controller.masks.touchUp(); return@awaitEachGesture }
                         if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
                         if (pick) { controller.pickerDragEnd(); return@awaitEachGesture }
                         if (pickPending) {
@@ -328,7 +360,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             return@awaitEachGesture
                         }
                         val dt = upTime - down.uptimeMillis
-                        if (twoFingerUndo && maxPointers == 2 && moved < slop && abs(zoomed - 1f) < TAP_ZOOM_TOLERANCE && dt < TWO_FINGER_TAP_MS) {
+                        if (twoFingerUndo && currentDraw == null && maxPointers == 2 && moved < slop && abs(zoomed - 1f) < TAP_ZOOM_TOLERANCE && dt < TWO_FINGER_TAP_MS) {
                             controller.launch { undo() }
                         }
                     }
@@ -371,6 +403,9 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
             // brief P3c: the armed picker's area or point
             picker?.selection?.let { sel -> drawPickerSelection(sel, left, top, imgW, imgH, pickerLook) }
+            // brief P3d: the shape being drawn, or the shape tapped in the masks tab
+            if (drawing != null) drawDrawTool(drawing, left, top, imgW, imgH, maskLook)
+            else if (!s.before && tool == null && s.view == app.dtandroid.darkroom.BottomView.MASKS) ms.outline?.let { drawMaskOutline(it, left, top, imgW, imgH, maskLook) }
             tool?.line?.let { l -> drawStraightenLine(left + l[0] * imgW, top + l[1] * imgH, left + l[2] * imgW, top + l[3] * imgH, cropLook) }
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
