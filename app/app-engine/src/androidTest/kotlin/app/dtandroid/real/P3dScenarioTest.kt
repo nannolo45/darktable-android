@@ -24,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.FixMethodOrder
 import org.junit.Test
@@ -324,5 +325,65 @@ class P3dScenarioTest {
         showSheet(c, ex)
         c.masks.openSheet(null)
         TestFiles.record(res, "existing_passed", "true")
+    }
+
+    private fun drawShape(c: DarkroomController, type: ShapeType, n: Int) {
+        runBlocking {
+            c.masks.setMode(MaskMode.DRAWN)
+            c.masks.startDraw(type)
+            c.masks.setDrawValue("size", 0.08)
+            c.masks.touchDown(0.2, 0.5)
+            if (type == ShapeType.BRUSH) { c.masks.touchMove(0.4, 0.45); c.masks.touchMove(0.6, 0.4) }
+            c.masks.touchUp()
+            c.masks.finishDraw()
+        }
+        waitFor("shape in the mask") { c.masks.state.value.module?.members?.size == n && c.masks.state.value.draw == null }
+    }
+
+    private fun otherKey(c: DarkroomController) =
+        c.state.value.modules.first { it.supportsBlending && it.op != "exposure" }.let { InstanceKey(it.op, it.priority) }
+
+    private fun selectModule(c: DarkroomController, k: InstanceKey) {
+        runBlocking { c.masks.select(k) }
+        waitFor("module $k in the tab") { c.masks.state.value.module?.key == k }
+    }
+
+    /** the owner's case: a shape drawn in A, module B selected (no group yet), the shape picked in "use an existing shape" */
+    private fun pickInOther(name: String, type: ShapeType, group: Boolean, showMask: Boolean) {
+        val (c, _) = open(name)
+        drawShape(c, type, 1)
+        val shape = c.masks.state.value.module!!.members[0].id
+        val root = c.masks.state.value.module!!.rootId!!
+        val b = otherKey(c)
+        runBlocking { c.setEnabled(b, true) }
+        selectModule(c, b)
+        assertNull(c.masks.state.value.module!!.rootId)
+        if (showMask) c.masks.toggleShowMask()
+        showSheet(c, app.dtandroid.darkroom.MaskSheet.Existing)
+        val pick = if (group) root else shape
+        assertTrue(pick in app.dtandroid.darkroom.Masks.existingOffers(c.masks.state.value.forms, c.masks.state.value.module!!).map { it.id })
+        runBlocking { c.masks.attach(pick) }
+        waitFor("picked") { c.masks.state.value.module?.members?.any { it.id == pick } == true || c.masks.state.value.note != null }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        Thread.sleep(500)
+        TestFiles.record(res, "${name}_note", c.masks.state.value.note ?: "none")
+        // the engine still answers
+        runBlocking { preview(c) }
+    }
+
+    @Test fun d5a_brushIntoOtherModule() = pickInOther("pick-brush", ShapeType.BRUSH, group = false, showMask = false)
+    @Test fun d5b_circleIntoOtherModule() = pickInOther("pick-circle", ShapeType.CIRCLE, group = false, showMask = false)
+    @Test fun d5c_brushGroupIntoOtherModule() = pickInOther("pick-group", ShapeType.BRUSH, group = true, showMask = false)
+    @Test fun d5d_brushIntoOtherModuleWithShowMask() = pickInOther("pick-show", ShapeType.BRUSH, group = false, showMask = true)
+
+    @Test fun d5e_removedAndAttachedAgain() {
+        val (c, _) = open("reattach")
+        drawShape(c, ShapeType.BRUSH, 1)
+        val shape = c.masks.state.value.module!!.members[0].id
+        runBlocking { c.masks.detach(shape) }
+        waitFor("detached") { c.masks.state.value.module?.members?.isEmpty() == true }
+        runBlocking { c.masks.attach(shape) }
+        waitFor("attached") { c.masks.state.value.module?.members?.any { it.id == shape } == true }
+        runBlocking { preview(c) }
     }
 }
