@@ -45,6 +45,7 @@ import app.dtandroid.darkroom.DrawTool
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.MaskMode
 import app.dtandroid.darkroom.MaskSheet
+import app.dtandroid.darkroom.MaskMemberState
 import app.dtandroid.darkroom.MaskShape
 import app.dtandroid.darkroom.Masks
 import app.dtandroid.darkroom.MasksState
@@ -175,7 +176,19 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         }
         ListControl("blend mode", Masks.blendLabel(m.blendMode), enabled = !ro) { masks.openSheet(MaskSheet.BlendModes) }
     }
-    if (mode != MaskMode.DRAWN) return
+    if (mode == MaskMode.DRAWN) {
+        DrawnShapes(controller, ms, inst, m, ro)
+        ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
+        ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
+    }
+
+// brief P3d fix: no early return or `continue` inside the composables below (a skipped group made the slot table
+// hand a remembered lambda to the wrong call site, a ClassCastException when the shapes of a module changed)
+@Composable
+private fun DrawnShapes(controller: DarkroomController, ms: MasksState, inst: ModuleInstance, m: ModuleMask, ro: Boolean) {
+    val c = DtTheme.colors
+    val sp = DtTheme.space
+    val masks = controller.masks
     val n = m.members.size
     DtText(if (n == 0) "no shapes in this module's mask yet" else "group \"${fullName(inst)}\" · $n ${if (n == 1) "shape" else "shapes"}",
         DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xs))
@@ -196,24 +209,31 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
     DtTextButton("use an existing shape…", { masks.openSheet(MaskSheet.Existing) }, Modifier.fillMaxWidth(), enabled = !ro)
     if (n > 0) ListControl("combine shapes", Masks.combineLabel(m.operator), enabled = !ro) { masks.openSheet(MaskSheet.Combine) }
     for (mem in m.members) {
-        val f = ms.forms.firstOrNull { it.id == mem.id } ?: continue
-        val name = Masks.shapeLabel(f)
-        Row(
-            Modifier.fillMaxWidth().height(DtTheme.sizes.touch).background(if (ms.selected == f.id) c.selected else c.panel)
-                .clickable(role = Role.Button) { controller.launch { masks.selectShape(f.id) } },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DtIconImage(shapeIcon(f.type), null, c.text, DtTheme.sizes.icon, Modifier.padding(end = sp.m))
-            DtText(name, DtTheme.type.label, c.textStrong, Modifier.weight(1f))
-            DtIconButton(DtIcon.Invert, "invert $name", if (mem.inverse) c.textBright else c.textMuted, enabled = !ro,
-                onClick = { controller.launch { masks.setMemberInvert(f.id, !mem.inverse) } },
-                modifier = Modifier.semantics { stateDescription = if (mem.inverse) "on" else "off" })
-            DtIconButton(DtIcon.Remove, "remove $name from this module", c.text, enabled = !ro,
-                onClick = { controller.launch { masks.detach(f.id) } })
-        }
+        val f = ms.forms.firstOrNull { it.id == mem.id }
+        if (f != null) MemberRow(controller, ms, f, mem, ro)
     }
-    ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
-    ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
+}
+
+@Composable
+private fun MemberRow(controller: DarkroomController, ms: MasksState, f: MaskShape, mem: MaskMemberState, ro: Boolean) {
+    val c = DtTheme.colors
+    val sp = DtTheme.space
+    val masks = controller.masks
+    val name = Masks.shapeLabel(f)
+    Row(
+        Modifier.fillMaxWidth().height(DtTheme.sizes.touch).background(if (ms.selected == f.id) c.selected else c.panel)
+            .clickable(role = Role.Button) { controller.launch { masks.selectShape(f.id) } },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DtIconImage(shapeIcon(f.type), null, c.text, DtTheme.sizes.icon, Modifier.padding(end = sp.m))
+        DtText(name, DtTheme.type.label, c.textStrong, Modifier.weight(1f))
+        DtIconButton(DtIcon.Invert, "invert $name", if (mem.inverse) c.textBright else c.textMuted, enabled = !ro,
+            onClick = { controller.launch { masks.setMemberInvert(f.id, !mem.inverse) } },
+            modifier = Modifier.semantics { stateDescription = if (mem.inverse) "on" else "off" })
+        DtIconButton(DtIcon.Remove, "remove $name from this module", c.text, enabled = !ro,
+            onClick = { controller.launch { masks.detach(f.id) } })
+    }
+}
 }
 
 /** A mask mode: the chosen one with a ring in the accent colour (as the mockup), so it shows in both skins. */
@@ -388,7 +408,7 @@ fun BoxScope.MasksOverlays(controller: DarkroomController, s: DarkroomState, ms:
             val m = ms.module ?: return
             val members = m.members.map { it.id }.toSet()
             Sheet("use an existing shape", close, maxW) {
-                val usable = ms.forms.filter { it.id != m.rootId }
+                val usable = Masks.existingOffers(ms.forms, m)
                 if (usable.isEmpty()) SheetSection("no shapes in this photo yet")
                 for (f in usable) {
                     val inIt = f.id in members
