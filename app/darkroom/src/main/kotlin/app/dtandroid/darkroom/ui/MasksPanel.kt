@@ -45,6 +45,7 @@ import app.dtandroid.darkroom.Masks
 import app.dtandroid.darkroom.MasksState
 import app.dtandroid.darkroom.ShapeOutline
 import app.dtandroid.darkroom.ShapeType
+import app.dtandroid.darkroom.key
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.Control
