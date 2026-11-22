@@ -71,6 +71,10 @@ typedef struct dtb_session_t
   // NULL otherwise: history() then reads dev.history.
   GArray *rows;
   int rows_end;
+  // dtb_history_group_begin .. _end (engine-api.md 6.9): open, and whether a
+  // change inside it recorded the undo state it started from
+  gboolean group_open;
+  gboolean group_changed;
 } dtb_session_t;
 
 /* core.c */
@@ -250,6 +254,17 @@ int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args
 
 /* masks.c: desktop's dt_masks_iop_use_same_as on the session's forms (no history) */
 gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src);
+
+/* blend.c: for parametric mask elements (masks.c, engine-api.md 6.9) */
+/* csp: a dt_develop_blend_colorspace_t (develop/blend.h is not included here) */
+int dtb__blend_cst(dt_iop_module_t *m);
+const char *dtb__blend_cst_name(int csp);
+const char *dtb__blendif_name(int csp, int index);
+float dtb__boost_min(int csp, int index);
+
+/* history.c: the open history group (dtb_history_group_begin), if any, is
+ * closed and kept; undo, redo, history_goto and compress call it first */
+void dtb__group_commit(void);
 
 /* actions3.c: module actions that pick (P1b part 2); 1 = no such action there */
 int dtb__module_action3(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);

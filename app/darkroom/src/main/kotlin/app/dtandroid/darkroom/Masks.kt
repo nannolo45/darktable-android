@@ -165,11 +165,24 @@ sealed interface MaskSheet {
     data object Combine : MaskSheet
     /** "use an existing shape…" */
     data object Existing : MaskSheet
-    /** a shape's "more" sheet; [from] the instance whose group the row was in */
-    data class More(val id: Int, val from: InstanceKey?) : MaskSheet
+    /** a shape's "more" sheet; [from] the instance whose group the row was in; [group] the group of the tree row */
+    data class More(val id: Int, val from: InstanceKey?, val group: Int? = null) : MaskSheet
+    /** P3d 2a: a group's operator (engine-api.md 6.9) */
+    data class Operator(val group: Int) : MaskSheet
+    /** P3d 2a: "group together…": [first] and the other members of [group] to choose */
+    data class Together(val group: Int, val first: Int) : MaskSheet
     data class Rename(val id: Int) : MaskSheet
     data class UseIn(val id: Int) : MaskSheet
     data class Delete(val id: Int) : MaskSheet
+}
+
+/**
+ * P3d 2a: one row of a module's mask tree, top first (desktop lists rows bottom-up: the bottom member of a group is
+ * its first). [index] is the member's place in its [group] (0 = bottom) of [count]; [depth] 0 for the module's own
+ * group's members.
+ */
+data class MaskTreeRow(val group: Int, val member: MaskMemberState, val form: MaskShape?, val depth: Int, val index: Int, val count: Int) {
+    val isGroup: Boolean get() = form?.isGroup == true
 }
 
 /** A shape's outline on the photo, in fractions of the picture shown. */
@@ -185,6 +198,8 @@ data class MasksState(
     val outline: ShapeOutline? = null,
     /** folded groups of the manager */
     val folded: Set<Int> = emptySet(),
+    /** P3d 2a: nested groups of the module's tree that are open (collapsed by default) */
+    val expanded: Set<Int> = emptySet(),
     val draw: DrawTool? = null,
     val sheet: MaskSheet? = null,
     /** a sentence for the user about the last action that could not be done */
@@ -317,6 +332,9 @@ class Masks internal constructor(private val c: DarkroomController) {
 
     fun toggleFold(groupId: Int) = _state.update { it.copy(folded = if (groupId in it.folded) it.folded - groupId else it.folded + groupId) }
 
+    /** P3d 2a: open or close a nested group of the module's tree. */
+    fun toggleExpanded(groupId: Int) = _state.update { it.copy(expanded = if (groupId in it.expanded) it.expanded - groupId else it.expanded + groupId) }
+
     /** Tap on a shape in the list: its outline on the photo (tap again: hidden). */
     suspend fun selectShape(id: Int?) {
         val next = if (id == _state.value.selected) null else id
@@ -437,6 +455,64 @@ class Masks internal constructor(private val c: DarkroomController) {
         edit { e -> e.maskDelete(id); e.historySeal() }
     }
 
+    // ------------------------------------------------------------------ P3d 2a: the mask tree (engine-api.md 6.9)
+
+    /** A group's operator ("maximum", "minimum", ...). */
+    suspend fun setGroupOperator(group: Int, op: String) {
+        _state.update { it.copy(sheet = null) }
+        if (OPERATORS.none { it.second == op }) return
+        if (_state.value.forms.firstOrNull { it.id == group }?.geometry?.str("operator") == op) return
+        edit { e -> e.maskGroupSet(group, buildJsonObject { put("operator", op) }); e.historySeal() }
+    }
+
+    /** A group's own invert (after its operator). */
+    suspend fun setGroupInvert(group: Int, on: Boolean) =
+        edit { e -> e.maskGroupSet(group, buildJsonObject { put("invert", on) }); e.historySeal() }
+
+    /** A group's own opacity, 0..1. */
+    suspend fun setGroupOpacity(group: Int, value: Double) =
+        edit { e -> e.maskGroupSet(group, buildJsonObject { put("opacity", value.coerceIn(0.0, 1.0)) }); e.historySeal() }
+
+    /** A member's invert in any group (a member that is a group: the group's own invert). */
+    suspend fun setMemberInvertIn(group: Int, id: Int, on: Boolean) {
+        if (_state.value.forms.firstOrNull { it.id == id }?.isGroup == true) return setGroupInvert(id, on)
+        edit { e -> e.maskMemberUpdate(group, id, MaskMember(inverse = on)); e.historySeal() }
+    }
+
+    /** A member's opacity, 0..1, in any group (a member that is a group: the group's own opacity). */
+    suspend fun setMemberOpacityIn(group: Int, id: Int, value: Double) {
+        if (_state.value.forms.firstOrNull { it.id == id }?.isGroup == true) return setGroupOpacity(id, value)
+        edit { e -> e.maskMemberUpdate(group, id, MaskMember(opacity = value.coerceIn(0.0, 1.0))); e.historySeal() }
+    }
+
+    /** "move up" (towards the top of the group) or "move down"; nothing at either end. */
+    suspend fun moveMember(group: Int, id: Int, up: Boolean) {
+        val members = _state.value.forms.firstOrNull { it.id == group }?.members ?: return
+        val i = members.indexOfFirst { it.id == id }
+        if (i < 0) return
+        val to = if (up) i + 1 else i - 1
+        if (to < 0 || to >= members.size) return
+        edit { e -> e.maskMemberMove(group, id, group, to); e.historySeal() }
+    }
+
+    /** "remove from this group", for any group (the shape stays in the photo). */
+    suspend fun removeFrom(group: Int, id: Int) {
+        _state.update { it.copy(sheet = null) }
+        edit { e -> e.maskMemberRemove(group, id); e.historySeal() }
+    }
+
+    /** "wrap in group": the member goes into a new group at its place; the new group opens. */
+    suspend fun wrapInGroup(group: Int, id: Int) = groupTogether(group, listOf(id))
+
+    /** "group together…": the members (in their order) go into a new group where the topmost of them was. */
+    suspend fun groupTogether(group: Int, ids: List<Int>) {
+        _state.update { it.copy(sheet = null) }
+        if (ids.isEmpty()) return
+        var made: Int? = null
+        edit { e -> made = e.maskGroupWrap(group, ids); e.historySeal() }
+        made?.let { g -> _state.update { it.copy(expanded = it.expanded + g) } }
+    }
+
     /** "show mask": the engine's mask display of the module (only for a drawn mask of a module that is on). */
     fun toggleShowMask() {
         val m = current() ?: return
@@ -531,10 +607,16 @@ class Masks internal constructor(private val c: DarkroomController) {
         try {
             c.engineChange { e ->
                 val forms = geometries(e, d)
-                for (g in forms) {
-                    val id = e.maskCreate(d.type.key, g)
-                    e.maskAttach(d.key.op, d.key.priority, id)
-                    last = id
+                // P3d 2a: each shape is one call and one history item (dtb_mask_add); a brush session's strokes are
+                // one history group, so "done" is one item and one undo step; a failure leaves nothing behind
+                e.historyGroupBegin()
+                var kept = false
+                try {
+                    for (g in forms) last = e.maskAdd(d.key.op, d.key.priority, d.type.key, g)
+                    kept = true
+                } finally {
+                    e.historyGroupEnd(kept)
+                    if (!kept) last = null
                 }
                 e.historySeal()
             }
@@ -672,6 +754,42 @@ class Masks internal constructor(private val c: DarkroomController) {
             forms.filter { f -> f.id != module.rootId && (!f.isGroup || module.rootId == null || !makesCycle(forms, f.id, module.rootId)) }
 
         fun shapeLabel(f: MaskShape) = f.name.ifBlank { "${f.type} #${f.id}" }
+
+        /**
+         * P3d 2a: a group's operators as the tab lists them (engine-api.md 6.9): the plain names first, then the soft
+         * ones, each with desktop's name (blend_gui.c dt_masks_flexi_ops) where it differs.
+         */
+        val OPERATORS = listOf(
+            "union (maximum)" to "maximum", "intersection (minimum)" to "minimum", "difference" to "difference",
+            "exclusion" to "exclusion", "screen (smooth union)" to "screen", "sum (additive union)" to "sum",
+            "product (smooth intersection)" to "product",
+        )
+
+        /** the short label of an operator on a group's row */
+        fun operatorLabel(op: String?): String = when (op ?: "maximum") {
+            "maximum" -> "union"; "minimum" -> "intersection"; else -> op ?: "union"
+        }
+
+        /**
+         * The rows of the tree under [root], top first; the members of a nested group follow its row, one step
+         * deeper, only when the group is in [expanded] (collapsed by default). Cycles and darktable's nesting limit end
+         * the walk.
+         */
+        fun treeRows(forms: List<MaskShape>, root: Int?, expanded: Set<Int>): List<MaskTreeRow> {
+            val byId = forms.associateBy { it.id }
+            val out = ArrayList<MaskTreeRow>()
+            fun walk(g: Int, depth: Int, seen: Set<Int>) {
+                val members = byId[g]?.members ?: return
+                for (i in members.indices.reversed()) {
+                    val m = members[i]
+                    val f = byId[m.id]
+                    out += MaskTreeRow(g, m, f, depth, i, members.size)
+                    if (f != null && f.isGroup && f.id in expanded && f.id !in seen && depth < 8) walk(f.id, depth + 1, seen + f.id)
+                }
+            }
+            if (root != null) walk(root, 0, setOf(root))
+            return out
+        }
     }
 }
 

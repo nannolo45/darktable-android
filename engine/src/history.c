@@ -228,6 +228,18 @@ static void _undo_record(void)
 
 void dtb__change_begin(const dtb_change_t kind, dt_iop_module_t *m)
 {
+  // inside a history group (6.9) only the first change records the state
+  // the group started from and seals; later ones add to the open item of
+  // the same instance (darktable merges an unsealed item of the same module)
+  if(dtb_S.group_open)
+  {
+    if(dtb_S.group_changed) return;
+    dtb_S.group_changed = TRUE;
+    _undo_record();
+    dt_dev_history_seal(&dtb_S.dev, TRUE);
+    dtb_S.merge_module = NULL;
+    return;
+  }
   // a parameter change on the instance whose item is still open merges
   // into it, as a slider drag does on desktop
   if(kind == DTB_CHANGE_PARAMS && m && dtb_S.merge_module == m) return;
@@ -238,6 +250,12 @@ void dtb__change_begin(const dtb_change_t kind, dt_iop_module_t *m)
 
 void dtb__change_end(const dtb_change_t kind, dt_iop_module_t *m)
 {
+  if(dtb_S.group_open)
+  {
+    // the item stays open for the group's next change
+    dtb_S.merge_module = NULL;
+    return;
+  }
   if(kind == DTB_CHANGE_PARAMS)
     dtb_S.merge_module = m;
   else
@@ -247,10 +265,58 @@ void dtb__change_end(const dtb_change_t kind, dt_iop_module_t *m)
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* history groups (engine-api.md 6.9)                                 */
+
+static void _group_close(const gboolean keep)
+{
+  const gboolean changed = dtb_S.group_changed;
+  dtb_S.group_open = FALSE;
+  dtb_S.group_changed = FALSE;
+  dtb_S.merge_module = NULL;
+  if(changed && !keep)
+  {
+    // back to the state the group started from; nothing goes to redo
+    dtb_undo_entry_t *e = g_queue_pop_tail(&dtb_S.undo);
+    if(e)
+    {
+      _snapshot_restore(e);
+      _snapshot_free(e);
+    }
+  }
+  dt_dev_history_seal(&dtb_S.dev, TRUE);
+}
+
+void dtb__group_commit(void)
+{
+  if(dtb_S.group_open) _group_close(TRUE);
+}
+
+int dtb_history_group_begin(void)
+{
+  NEED_WRITABLE();
+  if(dtb_S.group_open) return dtb__err(DTB_E_STATE, "a history group is already open");
+  dtb_S.merge_module = NULL;
+  dt_dev_history_seal(&dtb_S.dev, TRUE);
+  dtb_S.group_open = TRUE;
+  dtb_S.group_changed = FALSE;
+  return DTB_OK;
+}
+
+int dtb_history_group_end(int keep)
+{
+  NEED_SESSION();
+  if(!dtb_S.group_open) return dtb__err(DTB_E_STATE, "no history group is open");
+  _group_close(keep != 0);
+  return DTB_OK;
+}
+
 int dtb_history_seal(void)
 {
   NEED_SESSION();
   dtb_S.merge_module = NULL;
+  // inside a history group the group's item stays open until its end
+  if(dtb_S.group_open) return DTB_OK;
   dt_dev_history_seal(&dtb_S.dev, TRUE);
   return DTB_OK;
 }
@@ -336,6 +402,7 @@ int dtb_history_goto(int end)
   // next edit records the state it starts from, with this end, and then
   // discards the items above it, as on desktop.
   NEED_SESSION();
+  dtb__group_commit();
   // positions count the rows history() lists; with unloaded rows (read-only
   // view) the develop object goes to the loaded items below that position
   const int n = dtb_S.rows ? (int)dtb_S.rows->len : (int)g_list_length(dtb_S.dev.history);
@@ -361,6 +428,7 @@ int dtb_history_goto(int end)
 int dtb_history_compress(void)
 {
   NEED_WRITABLE();
+  dtb__group_commit();
   dtb__change_begin(DTB_CHANGE_OTHER, NULL);
   dt_dev_write_history(&dtb_S.dev);
   dt_history_compress_on_image(dtb_S.imgid);
@@ -384,6 +452,7 @@ int dtb_history_compress(void)
 static int _step(GQueue *from, GQueue *to, const char *what)
 {
   NEED_WRITABLE();
+  dtb__group_commit();
   dtb_undo_entry_t *e = g_queue_pop_tail(from);
   if(!e) return dtb__err(DTB_E_STATE, "nothing to %s", what);
   // the current state goes to the other queue, so the step can be reversed

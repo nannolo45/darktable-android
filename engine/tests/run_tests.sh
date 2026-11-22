@@ -396,6 +396,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     parity C22 masks_drawn; parity C22 masks_duplicate; parity C22 masks_shared; parity C22 masks_edited
   fi
   if want C24; then drv C24 maskshow "mask display overlay"; fi
+  # brief P3d stage 2a (engine-api.md 6.9): one item per shape and brush session, the mask tree, parametric elements
+  if want C26; then
+    drv C26 masktree "mask tree: one-step shapes, history groups, tree editing, parametric elements, reopen"
+    parity C26 masktree_difference; parity C26 masktree_groups; parity C26 masktree_parametric
+  fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
