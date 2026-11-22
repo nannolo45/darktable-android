@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package app.dtandroid.real
+
+import android.graphics.BitmapFactory
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import app.dtandroid.darkroom.BottomView
+import app.dtandroid.darkroom.DarkroomController
+import app.dtandroid.darkroom.InstanceKey
+import app.dtandroid.darkroom.MaskMode
+import app.dtandroid.darkroom.Series
+import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.ShapeType
+import app.dtandroid.engine.api.ExportOptions
+import app.dtandroid.engine.api.ExportProfile
+import app.dtandroid.engine.api.InstanceRef
+import app.dtandroid.engine.api.RenderOptions
+import app.dtandroid.engine.api.RenderedImage
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.FixMethodOrder
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.MethodSorters
+import java.io.File
+import kotlin.math.abs
+import kotlin.math.min
+
+/**
+ * Brief P3d stage 1 on the emulator, with the real engine and the public test RAW (darktable's default edit, exposure
+ * raised by 1.5 EV so its mask shows). Results go to files/p2b-test/p3d-results.txt; each scenario's XMP and the
+ * app's export of it as p3d-<name>.xmp / .jpg, which the workflow renders with darktable-cli and compares.
+ *
+ * d1: a circle added to exposure through the masks tab: the preview differs from the unmasked one, "show mask"
+ * renders the engine's mask display (yellow where the mask is), the XMP written and reopened holds the circle in
+ * exposure's mask.
+ * d2: a brush stroke painted with one finger by touch events injected into the system; the same checks.
+ */
+@RunWith(AndroidJUnit4::class)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+class P3dScenarioTest {
+    private val res = "p3d-results.txt"
+    private val exposure = InstanceKey("exposure", 0)
+    private var scenario: ActivityScenario<MainActivity>? = null
+
+    @get:org.junit.Rule val guard = HangGuard.rule(12)
+
+    @After fun tearDown() {
+        runBlocking { runCatching { AppHost.controller.closePhoto() } }
+        scenario?.close()
+    }
+
+    private fun waitFor(what: String, ms: Long = 180_000, cond: () -> Boolean) {
+        val end = System.currentTimeMillis() + ms
+        while (!runCatching(cond).getOrDefault(false)) {
+            if (System.currentTimeMillis() > end) throw AssertionError("timed out: $what; masks ${AppHost.controller.masks.state.value}, message ${AppHost.controller.state.value.message}")
+            Thread.sleep(10)
+        }
+    }
+
+    private fun open(name: String): Pair<DarkroomController, SeriesItem> = runBlocking {
+        TestFiles.engine()
+        val dir = File(TestFiles.ctx.filesDir, "p3d-$name").apply { deleteRecursively(); mkdirs() }
+        val raw = File(dir, TestFiles.raw.name).also { TestFiles.raw.copyTo(it); it.setWritable(false, false) }
+        val item = SeriesItem(raw.name, raw.path, File(dir, raw.name + ".xmp").path)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        scenario!!.onActivity { it.vm.show(Screen.DARKROOM) }
+        val c = AppHost.controller
+        c.start(Series("p3d $name", listOf(item)), 0, filmstrip = false, thumbnails = false)
+        waitFor("preview") { c.state.value.preview != null }
+        c.setEnabled(exposure, true)
+        c.setParam(exposure, "exposure", JsonPrimitive(1.5))
+        c.setView(BottomView.MASKS)
+        c.masks.select(exposure)
+        waitFor("exposure in the masks tab") { c.masks.state.value.module?.key == exposure }
+        c to item
+    }
+
+    private suspend fun preview(c: DarkroomController, options: RenderOptions = RenderOptions.NONE): RenderedImage =
+        c.withEngine { e -> if (options.isNone) e.renderPreview(800) else e.renderPreview(800, options) }
+
+    /** mean absolute difference of two pictures of the same size, 0..255 */
+    private fun diff(a: RenderedImage, b: RenderedImage): Double {
+        assertEquals(a.width, b.width)
+        var sum = 0L
+        for (i in a.rgba.indices) if (i % 4 != 3) sum += abs((a.rgba[i].toInt() and 255) - (b.rgba[i].toInt() and 255))
+        return sum.toDouble() / (a.width * a.height * 3)
+    }
+
+    /** share of pixels the mask display paints yellow (red and green clearly above blue) */
+    private fun yellow(a: RenderedImage): Double {
+        var n = 0
+        for (p in 0 until a.width * a.height) {
+            val r = a.rgba[p * 4].toInt() and 255
+            val g = a.rgba[p * 4 + 1].toInt() and 255
+            val b = a.rgba[p * 4 + 2].toInt() and 255
+            if (r > b + 40 && g > b + 40) n++
+        }
+        return n.toDouble() / (a.width * a.height)
+    }
+
+    /** The checks both scenarios share, after their shape was added to exposure's mask. */
+    private fun checkMasked(c: DarkroomController, item: SeriesItem, name: String, unmasked: RenderedImage, type: String) = runBlocking {
+        val s = c.masks.state.value
+        val shapes = s.module!!.members.mapNotNull { m -> s.forms.firstOrNull { it.id == m.id } }
+        TestFiles.record(res, "${name}_shapes", shapes.map { "${it.type} ${it.name} ${it.geometry}" })
+        TestFiles.record(res, "${name}_history", c.state.value.history.items.map { it.op })
+        assertTrue(shapes.any { it.type == type })
+        assertEquals(MaskMode.DRAWN, s.module!!.mode)
+        val masked = preview(c)
+        val d = diff(unmasked, masked)
+        TestFiles.record(res, "${name}_diff_unmasked", d)
+        assertTrue("the masked picture differs from the unmasked one: $d", d > 1.0)
+        // show mask: through the tab, then the same render read directly
+        c.masks.toggleShowMask()
+        assertEquals(exposure, c.state.value.showMask)
+        val shown = preview(c, RenderOptions(showMask = InstanceRef("exposure", 0)))
+        val y = yellow(shown)
+        val yPlain = yellow(masked)
+        TestFiles.record(res, "${name}_show_mask_yellow", "$y (plain picture $yPlain)")
+        assertTrue("show mask paints the mask: $y vs $yPlain", y > yPlain + 0.005)
+        c.masks.toggleShowMask()
+        // written and reopened: the same masks
+        val before = shapes.map { it.type to it.geometry.toString() }
+        c.save()
+        val xmp = File(TestFiles.out, "p3d-$name.xmp")
+        File(item.xmpPath).copyTo(xmp, overwrite = true)
+        c.closePhoto()
+        c.start(Series("p3d $name again", listOf(item)), 0, filmstrip = false, thumbnails = false)
+        waitFor("preview again") { c.state.value.preview != null }
+        c.setView(BottomView.MASKS)
+        c.masks.select(exposure)
+        waitFor("mask read again") { c.masks.state.value.module?.key == exposure }
+        val s2 = c.masks.state.value
+        val after = s2.module!!.members.mapNotNull { m -> s2.forms.firstOrNull { it.id == m.id } }.map { it.type to it.geometry.toString() }
+        TestFiles.record(res, "${name}_reopened", after)
+        assertEquals("the XMP reopens with the same masks", before.map { it.first }, after.map { it.first })
+        assertEquals(before.size, after.size)
+        val again = preview(c)
+        val d2 = diff(masked, again)
+        TestFiles.record(res, "${name}_diff_reopened", d2)
+        assertTrue("reopened, the same picture: $d2", d2 < 0.5)
+        // the export of that XMP, for the workflow's darktable-cli comparison
+        c.closePhoto()
+        val jpg = File(TestFiles.out, "p3d-$name.jpg").apply { delete() }
+        c.withEngine { e ->
+            runCatching { e.close() }
+            e.open(item.rawPath, xmp.path)
+            try { e.export(jpg.path, ExportOptions(quality = 95, profile = ExportProfile.IMAGE)) } finally { runCatching { e.close() } }
+        }
+        val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(jpg.path, o)
+        TestFiles.record(res, "${name}_export", "${o.outWidth}x${o.outHeight}")
+        assertTrue(o.outWidth > 0)
+        TestFiles.record(res, "${name}_passed", "true")
+    }
+
+    @Test
+    fun d1_circleOnExposure() {
+        val (c, item) = open("circle")
+        val unmasked = runBlocking { preview(c) }
+        runBlocking {
+            c.masks.setMode(MaskMode.DRAWN)
+            c.masks.startDraw(ShapeType.CIRCLE)
+            c.masks.setDrawValue("size", 0.15)
+            c.masks.touchDown(0.4, 0.45)
+            c.masks.touchUp()
+            c.masks.finishDraw()
+        }
+        waitFor("circle in the mask") { c.masks.state.value.module?.members?.size == 1 && c.masks.state.value.draw == null }
+        checkMasked(c, item, "circle", unmasked, "circle")
+    }
+
+    /** The screen position (pixels) of a point of the picture given as fractions, at fit. */
+    private fun onScreen(c: DarkroomController, px: Float, py: Float): Pair<Float, Float> {
+        val a = c.photoArea!!
+        val info = c.state.value.info!!
+        val win = IntArray(2)
+        scenario!!.onActivity { it.window.decorView.getLocationOnScreen(win) }
+        val fit = min(a.width / info.width, a.height / info.height)
+        val left = a.left + a.width / 2f - 0.5f * info.width * fit
+        val top = a.top + a.height / 2f - 0.5f * info.height * fit
+        return (win[0] + left + px * info.width * fit) to (win[1] + top + py * info.height * fit)
+    }
+
+    private fun swipe(from: Pair<Float, Float>, to: Pair<Float, Float>, steps: Int = 16) {
+        val ui = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val t0 = SystemClock.uptimeMillis()
+        fun send(action: Int, x: Float, y: Float) {
+            val e = MotionEvent.obtain(t0, SystemClock.uptimeMillis(), action, x, y, 0)
+            e.source = InputDevice.SOURCE_TOUCHSCREEN
+            assertTrue("event injected", ui.injectInputEvent(e, true))
+            e.recycle()
+        }
+        send(MotionEvent.ACTION_DOWN, from.first, from.second)
+        for (i in 1..steps) {
+            Thread.sleep(16)
+            val f = i.toFloat() / steps
+            send(MotionEvent.ACTION_MOVE, from.first + (to.first - from.first) * f, from.second + (to.second - from.second) * f)
+        }
+        send(MotionEvent.ACTION_UP, to.first, to.second)
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        Thread.sleep(200)
+    }
+
+    @Test
+    fun d2_brushStrokeByTouch() {
+        val (c, item) = open("brush")
+        val unmasked = runBlocking { preview(c) }
+        runBlocking { c.masks.setMode(MaskMode.DRAWN) }
+        c.masks.startDraw(ShapeType.BRUSH)
+        c.masks.setDrawValue("size", 0.08)
+        waitFor("photo on the screen") { c.photoArea != null && c.currentViewport != null }
+        swipe(onScreen(c, 0.2f, 0.5f), onScreen(c, 0.75f, 0.35f))
+        waitFor("stroke") { c.masks.state.value.draw?.strokes?.size == 1 }
+        TestFiles.record(res, "brush_samples", c.masks.state.value.draw!!.strokes[0].points.size)
+        runBlocking { c.masks.finishDraw() }
+        waitFor("brush in the mask") { c.masks.state.value.module?.members?.size == 1 && c.masks.state.value.draw == null }
+        checkMasked(c, item, "brush", unmasked, "brush")
+    }
+}
