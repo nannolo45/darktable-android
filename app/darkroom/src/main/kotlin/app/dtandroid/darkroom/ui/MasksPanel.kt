@@ -82,7 +82,7 @@ fun shapeIcon(type: String): DtIcon = when (type) {
 private fun moduleOf(s: DarkroomState, key: InstanceKey?): ModuleInstance? = key?.let { k -> s.modules.firstOrNull { it.key == k } }
 
 /** A mask slider of the tab or the tool panel: [factor] turns the value into what is shown (0.05 -> "5 %"). */
-private fun maskSlider(id: Int, label: String, min: Double, max: Double, default: Double, factor: Double, digits: Int, unit: String) =
+internal fun maskSlider(id: Int, label: String, min: Double, max: Double, default: Double, factor: Double, digits: Int, unit: String) =
     Control.Slider(
         id = id, label = label, tooltip = null, hiddenByDefault = false, binding = Binding.Param("mask.$label"),
         softMin = min, softMax = max, hardMin = min, hardMax = max, default = default, step = 1.0 / factor,
@@ -91,7 +91,7 @@ private fun maskSlider(id: Int, label: String, min: Double, max: Double, default
 
 /** A slider that keeps its value while the finger moves and gives it at the end ([onSet]; one history item). */
 @Composable
-private fun MaskSlider(slider: Control.Slider, value: Double, enabled: Boolean, live: Boolean, onSet: (Double) -> Unit) {
+internal fun MaskSlider(slider: Control.Slider, value: Double, enabled: Boolean, live: Boolean, onSet: (Double) -> Unit) {
     var moving by remember(slider.id) { mutableStateOf<Double?>(null) }
     SliderControl(
         slider.label ?: "", slider, moving ?: value, enabled,
@@ -209,11 +209,8 @@ private fun DrawnShapes(controller: DarkroomController, ms: MasksState, inst: Mo
     }
     Spacer(Modifier.height(sp.xs))
     DtTextButton("use an existing shape…", { masks.openSheet(MaskSheet.Existing) }, Modifier.fillMaxWidth(), enabled = !ro)
-    if (n > 0) ListControl("combine shapes", Masks.combineLabel(m.operator), enabled = !ro) { masks.openSheet(MaskSheet.Combine) }
-    for (mem in m.members) {
-        val f = ms.forms.firstOrNull { it.id == mem.id }
-        if (f != null) MemberRow(controller, ms, f, mem, ro)
-    }
+    // P3d 2a: the mask as a tree (MaskTree.kt) replaces stage 1's single "combine shapes" row and flat member rows
+    MaskTree(controller, ms, m, ro)
 }
 
 @Composable
@@ -426,7 +423,14 @@ fun BoxScope.MasksOverlays(controller: DarkroomController, s: DarkroomState, ms:
                 SheetItem("rename", !ro) { masks.openSheet(MaskSheet.Rename(f.id)) }
                 SheetItem("use in another module…", !ro) { masks.openSheet(MaskSheet.UseIn(f.id)) }
                 if (!f.isGroup) SheetItem("duplicate", !ro) { controller.launch { masks.duplicate(f.id, sheet.from) } }
+                // P3d 2a: tree rows know their group: wrap, group together, remove from any group
+                val g = sheet.group
+                if (g != null) {
+                    SheetItem("wrap in group", !ro) { controller.launch { masks.wrapInGroup(g, f.id) } }
+                    SheetItem("group together…", !ro && (form(g)?.members?.size ?: 0) > 1) { masks.openSheet(MaskSheet.Together(g, f.id)) }
+                }
                 if (sheet.from != null) SheetItem("remove from this group", !ro) { controller.launch { masks.detach(f.id, sheet.from) } }
+                else if (g != null) SheetItem("remove from this group", !ro) { controller.launch { masks.removeFrom(g, f.id) } }
                 SheetItem("delete shape", !ro && f.rootOf == null) { masks.openSheet(MaskSheet.Delete(f.id)) }
             }
         }
@@ -447,6 +451,7 @@ fun BoxScope.MasksOverlays(controller: DarkroomController, s: DarkroomState, ms:
                 }
             }
         }
+        is MaskSheet.Operator, is MaskSheet.Together -> MaskTreeSheets(controller, ms, sheet, maxW, ro)
         is MaskSheet.Delete -> {
             val f = form(sheet.id) ?: return
             Sheet("delete \"${Masks.shapeLabel(f)}\" everywhere?", close, maxW) {
