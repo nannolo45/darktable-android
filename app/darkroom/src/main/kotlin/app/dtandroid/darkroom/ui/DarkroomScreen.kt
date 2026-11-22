@@ -76,10 +76,16 @@ fun DarkroomScreen(
             null -> maxWidth >= DtTheme.sizes.tabletMinWidth && maxHeight >= DtTheme.sizes.tabletMinHeight
             else -> layout == DarkroomLayout.TABLET
         }
+        // brief PUI3a: the l1 skin has its own phone layout (upright and sideways); the tablet layout stays
+        val l1 = !tablet && DtTheme.l1.layout
         // brief P3b: the photo menu always has "styles…"
-        if (tablet) TabletLayout(controller, s, live, onBack, onDone, menu = true, importFiles) else PhoneLayout(controller, s, live, onBack, onDone, menu = true)
+        when {
+            tablet -> TabletLayout(controller, s, live, onBack, onDone, menu = true, importFiles)
+            l1 -> app.dtandroid.darkroom.ui.l1.L1Darkroom(controller, s, live, onBack, actions, importFiles, sideways = maxWidth > maxHeight)
+            else -> PhoneLayout(controller, s, live, onBack, onDone, menu = true)
+        }
         Overlays(controller, s, tablet, actions)
-        StylesOverlays(controller, s, tablet, importFiles)
+        StylesOverlays(controller, s, tablet, importFiles, stylesInPanel = tablet || l1)
         // brief P3d: the masks tab's sheets
         val ms by controller.masks.state.collectAsState()
         MasksOverlays(controller, s, ms, tablet)
@@ -192,7 +198,7 @@ private fun BottomTabs(controller: DarkroomController, s: DarkroomState) {
 
 /** The read-only banner and the last engine error. */
 @Composable
-private fun Notices(s: DarkroomState) {
+internal fun Notices(s: DarkroomState) {
     val c = DtTheme.colors
     s.readOnlyReason?.let {
         Box(Modifier.fillMaxWidth().background(c.banner).padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m)
@@ -216,7 +222,7 @@ private fun Notices(s: DarkroomState) {
 
 /** Brief P2f (R15): the last edit as LightPhotoLibrary reports it, on the phone under the info line. */
 @Composable
-private fun LastEditLine(s: DarkroomState) {
+internal fun LastEditLine(s: DarkroomState) {
     s.lastEdit?.let {
         Box(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel), contentAlignment = Alignment.Center) {
             DtText(it, DtTheme.type.small, DtTheme.colors.textMuted)
