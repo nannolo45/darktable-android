@@ -181,7 +181,7 @@ sealed interface MaskSheet {
  * its first). [index] is the member's place in its [group] (0 = bottom) of [count]; [depth] 0 for the module's own
  * group's members.
  */
-data class TreeRow(val group: Int, val member: MaskMemberState, val form: MaskShape?, val depth: Int, val index: Int, val count: Int) {
+data class MaskTreeRow(val group: Int, val member: MaskMemberState, val form: MaskShape?, val depth: Int, val index: Int, val count: Int) {
     val isGroup: Boolean get() = form?.isGroup == true
 }
 
@@ -775,15 +775,15 @@ class Masks internal constructor(private val c: DarkroomController) {
          * deeper, only when the group is in [expanded] (collapsed by default). Cycles and darktable's nesting limit end
          * the walk.
          */
-        fun treeRows(forms: List<MaskShape>, root: Int?, expanded: Set<Int>): List<TreeRow> {
+        fun treeRows(forms: List<MaskShape>, root: Int?, expanded: Set<Int>): List<MaskTreeRow> {
             val byId = forms.associateBy { it.id }
-            val out = ArrayList<TreeRow>()
+            val out = ArrayList<MaskTreeRow>()
             fun walk(g: Int, depth: Int, seen: Set<Int>) {
                 val members = byId[g]?.members ?: return
                 for (i in members.indices.reversed()) {
                     val m = members[i]
                     val f = byId[m.id]
-                    out += TreeRow(g, m, f, depth, i, members.size)
+                    out += MaskTreeRow(g, m, f, depth, i, members.size)
                     if (f != null && f.isGroup && f.id in expanded && f.id !in seen && depth < 8) walk(f.id, depth + 1, seen + f.id)
                 }
             }

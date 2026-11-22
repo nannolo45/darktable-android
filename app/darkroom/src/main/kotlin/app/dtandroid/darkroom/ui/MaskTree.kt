@@ -28,7 +28,7 @@ import app.dtandroid.darkroom.MaskSheet
 import app.dtandroid.darkroom.Masks
 import app.dtandroid.darkroom.MasksState
 import app.dtandroid.darkroom.ModuleMask
-import app.dtandroid.darkroom.TreeRow
+import app.dtandroid.darkroom.MaskTreeRow
 import app.dtandroid.ui.icons.DtIcon
 import app.dtandroid.ui.icons.DtIconImage
 import app.dtandroid.ui.theme.DtTheme
@@ -72,7 +72,7 @@ internal fun MaskTree(controller: DarkroomController, ms: MasksState, m: ModuleM
 }
 
 @Composable
-private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: ModuleMask, row: TreeRow, ro: Boolean) {
+private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: ModuleMask, row: MaskTreeRow, ro: Boolean) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val masks = controller.masks
