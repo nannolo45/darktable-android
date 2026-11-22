@@ -192,7 +192,7 @@ private fun DrawnShapes(controller: DarkroomController, ms: MasksState, inst: Mo
     val sp = DtTheme.space
     val masks = controller.masks
     val n = m.members.size
-    DtText(if (n == 0) "no shapes in this module's mask yet" else "group \"${fullName(inst)}\" · $n ${if (n == 1) "shape" else "shapes"}",
+    DtText(if (n == 0) "no shapes in this module's mask yet" else "group \"${fullName(inst)}\" · $n ${if (n == 1) "member" else "members"}",
         DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xs))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
         for (t in ShapeType.entries) {
