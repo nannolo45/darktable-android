@@ -20,6 +20,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -89,7 +91,7 @@ private fun TabFace(icon: DtIcon, name: String, description: String, col: androi
 
 /** "search modules by name or tag": shown when the layout has "show search line" on. */
 @Composable
-private fun SearchLine(controller: DarkroomController, s: DarkroomState) {
+internal fun SearchLine(controller: DarkroomController, s: DarkroomState) {
     val c = DtTheme.colors
     Row(
         Modifier.fillMaxWidth().height(DtTheme.sizes.touch).background(c.bg).padding(start = DtTheme.space.panel),
@@ -113,9 +115,14 @@ private fun SearchLine(controller: DarkroomController, s: DarkroomState) {
     Divider()
 }
 
-/** The scrolling module list of the current group, or the quick panel. */
+/**
+ * The scrolling module list of the current group, or the quick panel. Brief PUI3a: [l1] is the l1 layout's panel:
+ * no background of its own (the panel has one), a chevron at the end of each row, the quick access panel as a flat
+ * list of controls, and in "active" a row opens its module in its group.
+ */
 @Composable
-fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, tablet: Boolean, modifier: Modifier = Modifier) {
+fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, tablet: Boolean, modifier: Modifier = Modifier,
+               l1: Boolean = false) {
     val mods = controller.visibleModules(s)
     val listState = rememberLazyListState()
     // bring a module that was just expanded to the top of the list
@@ -123,10 +130,10 @@ fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<
         val i = mods.indexOfFirst { it.key == s.expanded }
         if (i >= 0) listState.animateScrollToItem(i + 1)
     }
-    LazyColumn(modifier.fillMaxSize().background(DtTheme.colors.bg), state = listState) {
+    LazyColumn((if (l1) modifier.fillMaxSize() else modifier.fillMaxSize().background(DtTheme.colors.bg)), state = listState) {
         item { Spacer(Modifier.height(DtTheme.space.xxs)) }
         if (s.group == GroupTab.Quick && s.search.isEmpty() && s.forceShow == null) {
-            item { QuickPanel(controller, s, live) }
+            item { QuickPanel(controller, s, live, flat = l1) }
         } else {
             if (mods.isEmpty()) item {
                 DtText(
@@ -141,7 +148,7 @@ fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<
                 )
             }
             items(mods, key = { "${it.op}/${it.priority}" }) { m ->
-                ModuleBlock(controller, s, live, m, tablet)
+                ModuleBlock(controller, s, live, m, tablet, l1)
             }
         }
         item { Spacer(Modifier.height(DtTheme.space.xxl)) }
@@ -149,28 +156,43 @@ fun ModuleList(controller: DarkroomController, s: DarkroomState, live: Map<Pair<
 }
 
 @Composable
-private fun ModuleBlock(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, m: ModuleInstance, tablet: Boolean) {
+private fun ModuleBlock(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>, m: ModuleInstance, tablet: Boolean,
+                        l1: Boolean = false) {
     val schema = controller.schema.modules[m.op] ?: return
     val open = s.expanded == m.key
+    // brief PUI3a: in the l1 layout the headers fade while a slider is dragged
+    val fade = dragFade() ?: 1f
+    val faded = if (l1) Modifier.alpha(fade) else Modifier
     Column(Modifier.fillMaxWidth().padding(bottom = DtTheme.sizes.moduleGap)) {
         // brief PUI2a: the modern skin has no gap but a hairline between modules (tokens)
-        if (DtTheme.sizes.moduleSeparator > DtTheme.space.none) Box(Modifier.fillMaxWidth().height(DtTheme.sizes.moduleSeparator).background(DtTheme.colors.border))
-        ModuleHeader(controller, s, m, open, showIcons = tablet || open)
+        if (DtTheme.sizes.moduleSeparator > DtTheme.space.none) Box(faded.fillMaxWidth().height(DtTheme.sizes.moduleSeparator).background(DtTheme.colors.border))
+        // brief PUI3a: in "active" an l1 row opens its module in its group
+        val inActive = l1 && s.group == GroupTab.Active && s.forceShow == null
+        ModuleHeader(controller, s, m, open, showIcons = tablet || open, chevron = l1,
+            onOpen = if (inActive) ({ controller.goToModule(m.key) }) else null,
+            modifier = faded)
         val menu = s.overlay
         if (tablet && menu is Overlay.Instances && menu.key == m.key) InstancesMenuInline(controller, s, m)
         if (open) ModulePanel(PanelContext(controller, s, live, schema, m, s.readOnly))
         // brief P3d: the module's mask is edited in the masks tab; its panel ends with the way there
-        if (open) MaskRow(controller, s, m)
+        if (open) {
+            if (l1) Box(faded) { MaskRow(controller, s, m) } else MaskRow(controller, s, m)
+        }
     }
 }
 
 /** Header bar: power icon (only where `can_switch`), name, instance label, and the three icon buttons. */
 @Composable
-fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInstance, open: Boolean, showIcons: Boolean) {
+fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInstance, open: Boolean, showIcons: Boolean,
+                 /** brief PUI3a: a chevron at the end (the l1 layout's rows) */
+                 chevron: Boolean = false,
+                 /** brief PUI3a: what a tap on the name does; null: open or close the module here */
+                 onOpen: (() -> Unit)? = null,
+                 modifier: Modifier = Modifier) {
     val c = DtTheme.colors
     val full = fullName(m)
     Row(
-        Modifier.fillMaxWidth().height(DtTheme.sizes.moduleHeader).background(if (open) c.raised else c.header),
+        modifier.fillMaxWidth().height(DtTheme.sizes.moduleHeader).background(if (open) c.raised else c.header),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (m.canSwitch) {
@@ -187,7 +209,7 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
         }
         Row(
             Modifier.weight(1f).height(DtTheme.sizes.moduleHeader)
-                .clickable(role = Role.Button) { controller.toggleExpanded(m.key) }
+                .clickable(role = Role.Button) { if (onOpen != null) onOpen() else controller.toggleExpanded(m.key) }
                 .semantics { contentDescription = full; stateDescription = if (open) "expanded" else "collapsed" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -205,8 +227,15 @@ fun ModuleHeader(controller: DarkroomController, s: DarkroomState, m: ModuleInst
             DtIconButton(DtIcon.Reset, "Reset $full", c.text, enabled = !s.readOnly, onClick = { controller.launch { reset(m.key) } })
             DtIconButton(DtIcon.Presets, "Presets for $full", c.text, onClick = { controller.setOverlay(Overlay.Presets(m.key)) })
         }
+        if (chevron) {
+            DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
+                Modifier.padding(start = DtTheme.space.xs, end = DtTheme.space.panel).rotate(if (open) CHEVRON_OPEN else CHEVRON_CLOSED))
+        }
     }
 }
+
+private const val CHEVRON_OPEN = 180f
+private const val CHEVRON_CLOSED = -90f
 
 fun fullName(m: ModuleInstance) = if (m.instanceName.isEmpty()) m.name else "${m.name} ${m.instanceName}"
 
@@ -255,7 +284,9 @@ private fun InstancesMenuInline(controller: DarkroomController, s: DarkroomState
  * widgets disabled, as on desktop. Entries the app cannot use are shown greyed with their name.
  */
 @Composable
-private fun QuickPanel(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>) {
+private fun QuickPanel(controller: DarkroomController, s: DarkroomState, live: Map<Pair<InstanceKey, Int>, Double>,
+                       /** brief PUI3a: the l1 layout's flat list: no module headers, the module's name small and dim before each control */
+                       flat: Boolean = false) {
     val sp = DtTheme.space
     val blocks = controller.quickPanel(s)
     Column(Modifier.fillMaxWidth()) {
@@ -264,8 +295,9 @@ private fun QuickPanel(controller: DarkroomController, s: DarkroomState, live: M
             DtTheme.type.label, DtTheme.colors.textMuted, Modifier.padding(horizontal = sp.xxl, vertical = sp.xxxl), maxLines = 4,
         )
         for (b in blocks) {
-            QuickHeader(controller, s, b)
-            Column(Modifier.fillMaxWidth().background(DtTheme.colors.panel).padding(start = sp.panel, end = sp.panel, top = sp.xs, bottom = sp.s)) {
+            if (!flat) QuickHeader(controller, s, b)
+            val bg = if (flat) Modifier else Modifier.background(DtTheme.colors.panel)
+            Column(Modifier.fillMaxWidth().then(bg).padding(start = sp.panel, end = sp.panel, top = sp.xs, bottom = sp.s)) {
                 if (b.severalInstances) DtText(
                     "this quick access widget is disabled as there are multiple instances of this module present. Please use the full module to access this widget...",
                     DtTheme.type.tiny, DtTheme.colors.textMuted, Modifier.padding(vertical = sp.xs), maxLines = 3,
@@ -279,6 +311,7 @@ private fun QuickPanel(controller: DarkroomController, s: DarkroomState, live: M
                         continue
                     }
                     if (!controller.quickVisible(m, e)) continue
+                    if (flat) DtText(b.moduleName, DtTheme.type.tiny, DtTheme.colors.textDim, Modifier.alpha(dragFade() ?: 1f).padding(top = sp.xs))
                     SingleControl(c, PanelContext(controller, s, live, ms, m, s.readOnly), e.label, disabled = b.severalInstances)
                 }
             }

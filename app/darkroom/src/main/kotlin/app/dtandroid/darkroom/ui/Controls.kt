@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -85,8 +86,11 @@ class PanelContext(
 @Composable
 fun ModulePanel(ctx: PanelContext, modifier: Modifier = Modifier) {
     val sp = DtTheme.space
+    // brief PUI3a: in the l1 layout the panel's colour fades while a slider is dragged
+    val fade = dragFade()
+    val bg = DtTheme.colors.panel.let { if (fade == null) it else it.copy(alpha = it.alpha * fade) }
     Column(
-        modifier.fillMaxWidth().background(DtTheme.colors.panel)
+        modifier.fillMaxWidth().background(bg)
             .padding(start = sp.panel, end = sp.panel, top = sp.xs, bottom = sp.m),
     ) {
         if (ctx.module.editableCount == 0) {
@@ -112,6 +116,22 @@ private fun Controls(controls: List<Control>, ctx: PanelContext) {
 
 @Composable
 private fun ControlView(c: Control, ctx: PanelContext) {
+    when (c) {
+        // containers: their children fade one by one (the dragged slider may be one of them)
+        is Control.Stack, is Control.Page, is Control.Group, is Control.Collapsible, is Control.Tabs -> ControlBody(c, ctx)
+        else -> Fading(ctx, c.id) { ControlBody(c, ctx) }
+    }
+}
+
+/** Brief PUI3a: in the l1 layout every control but the dragged slider fades while a slider is dragged. */
+@Composable
+private fun Fading(ctx: PanelContext, controlId: Int, content: @Composable () -> Unit) {
+    val f = dragFade { it.key == ctx.key && it.controlId == controlId }
+    if (f == null) content() else Box(Modifier.alpha(f)) { content() }
+}
+
+@Composable
+private fun ControlBody(c: Control, ctx: PanelContext) {
     val sensitive = Rules.isSensitive(ctx.module, c, ctx.inputs)
     when (c) {
         is Control.Slider -> GeneratedSlider(c, ctx, sensitive)
@@ -139,11 +159,13 @@ private fun ControlView(c: Control, ctx: PanelContext) {
 @Composable
 fun SingleControl(c: Control, ctx: PanelContext, label: String, disabled: Boolean) {
     val sensitive = !disabled && Rules.isSensitive(ctx.module, c, ctx.inputs)
-    when (c) {
-        is Control.Slider -> GeneratedSlider(c, ctx, sensitive, label)
-        is Control.ComboBox -> GeneratedList(c, ctx, sensitive, label)
-        is Control.Toggle -> GeneratedToggle(c, ctx, sensitive, label)
-        else -> UnavailableControl(label, null)
+    Fading(ctx, c.id) {
+        when (c) {
+            is Control.Slider -> GeneratedSlider(c, ctx, sensitive, label)
+            is Control.ComboBox -> GeneratedList(c, ctx, sensitive, label)
+            is Control.Toggle -> GeneratedToggle(c, ctx, sensitive, label)
+            else -> UnavailableControl(label, null)
+        }
     }
 }
 
@@ -186,13 +208,21 @@ private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boo
 
 @Composable
 private fun GeneratedSliderBody(c: Control.Slider, ctx: PanelContext, enabled: Boolean, value: Double, label: String?) {
+    // brief PUI3a: the l1 layout watches drags (null elsewhere)
+    val watch = LocalSliderDrag.current
     SliderControl(
         label = label ?: c.label ?: "",
         slider = c,
         value = value,
         enabled = enabled,
-        onDrag = { v -> ctx.controller.drag(ctx.key, c.id, c.binding, v, c.integer) },
-        onDragEnd = { ctx.controller.endDrag(ctx.key, c.id, c.binding, c.integer) },
+        onDrag = { v ->
+            ctx.controller.drag(ctx.key, c.id, c.binding, v, c.integer)
+            watch?.moved(SliderDrag(ctx.key, c.id, fullName(ctx.instance), label ?: c.label ?: "", ValueFormat.text(c, v)))
+        },
+        onDragEnd = {
+            ctx.controller.endDrag(ctx.key, c.id, c.binding, c.integer)
+            watch?.ended()
+        },
         onReset = { ctx.controller.launch { setSlider(ctx.key, c.binding, c.default, c.integer, c.id) } },
         onExact = { ctx.controller.setOverlay(Overlay.NumberEntry(ctx.key, c.id)) },
     )
