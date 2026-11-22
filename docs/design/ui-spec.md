@@ -105,3 +105,41 @@ Debug builds also read an optional token override file from the app's own folder
   mean, and for an area the min and max.
 - The picker's settings that desktop keeps outside the edit (exposure's area mode and target lightness, color
   calibration's area mapping) are the app's, for the app's run; changing a target in "correction" mode picks again.
+
+## 8. Masks and blending (brief P3d, stage 1)
+
+Mockup: `docs/design/mockups/P3d-Masks.html`, with the owner's changes: the mask controls are not inside the module.
+
+- **Indicator.** A module whose mask mode is not `off` shows a small mask icon (`DtIcon.Mask`, `size.maskIndicator`)
+  in its header, also when closed, in the `active` group and in the quick access panel. Tapping it opens the masks
+  tab with that module chosen. An open module that has blending ends with a row `mask…` showing its mode; it opens
+  the masks tab the same way.
+- **Masks tab.** Phone: the third bottom tab (`modules`, `masks`, `history · n`). Tablet: a second tab beside
+  `history` in the left panel. From top to bottom:
+  - `module`: the instance whose mask is edited; it opens a sheet with the photo's instances that have blending
+    (those with a mask are marked `· mask`).
+  - the five modes `off`, `uniform`, `drawn`, `parametric`, `drawn & parametric`; the parametric ones are disabled
+    with the line `parametric masks: coming next` (stage 2). Then `opacity` (one history item when the finger lifts)
+    and `blend mode` (a sheet with desktop's modes for the module's blend colour space).
+  - for `drawn`: the line naming the module's group and its number of shapes; the add buttons `brush`, `circle`,
+    `ellipse`, `gradient`, `path` (`size.shapeButton`); `use an existing shape…`; `combine shapes` (union,
+    intersection, difference, exclusion: the operator of the module's mask group, so it applies to all its shapes);
+    one row per shape with `invert` and `remove`; `show mask` (the engine's mask display: picture in grey, mask in
+    yellow, until switched off, the tab is left or the mask is no longer drawn); `invert mask`.
+  - the manager: every group of the photo (titled after the module whose mask it is), foldable, with its shapes;
+    then `shapes not in a group`. A tap on a shape shows its outline on the photo (`color.maskLine` over
+    `color.maskShadow`, `size.maskLine`). Its `more` sheet: `rename`, `use in another module…`, `duplicate`,
+    `remove from this group` (rows under a module's group), `delete shape` (asks once), and how many modules use it.
+- **Drawing mode.** An add button replaces the bottom panel (phone) or the left panel (tablet) with the tool panel:
+  title `<module> · <shape>`, a hint, the shape's sliders, `cancel` and `done`.
+  - brush: one finger paints strokes (each stroke one shape, as desktop's brush tool); `size`, `hardness`,
+    `opacity`, `undo stroke`, `show mask` (strokes filled in `color.maskOverlay` or drawn as thin lines);
+  - circle and ellipse: a tap places it, a drag moves it; `size`, `feather`, ellipse also `rotation`, `flatness`;
+  - gradient: a tap places the line, a drag moves it; `rotation`, `compression`; the tinted side is below the line;
+  - path: each lifted finger adds a point (a drag before lifting places it); `remove last point`, `close path`;
+    `done` needs three points.
+  - Two fingers pan and zoom the photo while drawing; a second finger cancels what the first one began. Double tap
+    and the two-finger-tap undo are off while drawing. Android's back cancels the drawing.
+  - Sizes are fractions of the picture's shorter side. On `done` the shape goes to the engine in original-image
+    coordinates (coords_transform), joins the module's mask, and the tab shows it selected.
+- A read-only photo shows its masks; every control that would change them is disabled.

@@ -45,6 +45,9 @@ class DtColors(t: TokenSource) {
     /** brief P3c, colour picker on the photo: its area or point, drawn light over a dark outline (desktop: dashed) */
     val pickerFrame = t.color("color.pickerFrame")
     val pickerShadow = t.color("color.pickerShadow")
+    /** brief P3d, masks on the photo: a shape's outline (light over a dark edge); the fill is `maskOverlay` */
+    val maskLine = t.color("color.maskLine")
+    val maskShadow = t.color("color.maskShadow")
     /** brief PUI2a: the accent and where it is used; the darktable skin sets each to today's colour of that use */
     val accent = t.color("color.accent")
     val accentPower = t.color("color.accentPower")
@@ -111,6 +114,11 @@ class DtSizes(t: TokenSource) {
     val pickerLine = t.dp("size.pickerLine")
     val pickerHandle = t.dp("size.pickerHandle")
     val pickerPoint = t.dp("size.pickerPoint")
+    /** brief P3d: a shape's outline on the photo, its point handles, the mask indicator in a module header, an add-shape button */
+    val maskLine = t.dp("size.maskLine")
+    val maskHandle = t.dp("size.maskHandle")
+    val maskIndicator = t.dp("size.maskIndicator")
+    val shapeButton = t.dp("size.shapeButton")
     /** brief PUI2a: gap between modules (a bar in the page colour), the hairline between them, the round slider thumb */
     val moduleGap = t.dp("size.moduleGap")
     val moduleSeparator = t.dp("size.moduleSeparator")
@@ -158,6 +166,8 @@ class DtAlpha(t: TokenSource) {
     val dimmed: Float = t.number("alpha.dimmed").toFloat()
     /** colour stops of a slider's track: desktop paints them at 0.4 (bauhaus.c, _draw_baseline) */
     val sliderGradient: Float = t.number("alpha.sliderGradient").toFloat()
+    /** brief P3d: the mask colour over the photo while a shape is drawn or shown (the mockup's 0.45) */
+    val maskFill: Float = t.number("alpha.maskFill").toFloat()
 }
 
 /** All tokens of one palette. */

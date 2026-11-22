@@ -530,14 +530,29 @@ jobs:
             echo "p3c picks: no p3c-picks.txt from the emulator or no dtb_pickref" | tee -a /tmp/ci-out/compare.txt; p3c=bad
           fi
           echo "p3c=$p3c" >> "$GITHUB_OUTPUT"
+          # brief P3d: a circle and a brush stroke in exposure's mask, drawn on the emulator and written to the XMP:
+          # darktable-cli's render of each XMP against the app's export of it
+          p3d=ok
+          for name in circle brush; do
+            if [ ! -f "$A/p3d-$name.xmp" ] || [ ! -f "$A/p3d-$name.jpg" ]; then
+              echo "p3d $name: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt; p3d=bad; continue
+            fi
+            /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/p3d-$name.xmp" "/tmp/cli-p3d-$name.jpg" \
+              --core --configdir "/tmp/cli-config-p3d-$name" --cachedir "/tmp/cli-cache-p3d-$name" \
+              --conf plugins/imageio/format/jpeg/quality=95 > "/tmp/ci-out/cli-p3d-$name.log" 2>&1 || true
+            r=$(check "$A/p3d-$name.jpg" "/tmp/cli-p3d-$name.jpg" "p3d mask $name: app export vs darktable-cli of the app's XMP" | tail -1)
+            [ "$r" = ok ] || p3d=bad
+            cp "$A/p3d-$name.xmp" /tmp/ci-out/ 2>/dev/null || true
+          done
+          echo "p3d=$p3d" >> "$GITHUB_OUTPUT"
           cp "$A/app-edit.xmp" /tmp/ci-out/ 2>/dev/null || true
 
       - name: Push logs to ci-logs branch
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}-p3b${{ steps.c.outputs.p3b }}-p3c${{ steps.c.outputs.p3c }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}-p3b${{ steps.c.outputs.p3b }}-p3c${{ steps.c.outputs.p3c }}-p3d${{ steps.c.outputs.p3d }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok' || steps.c.outputs.p3b != 'ok' || steps.c.outputs.p3c != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok' || steps.c.outputs.p3b != 'ok' || steps.c.outputs.p3c != 'ok' || steps.c.outputs.p3d != 'ok'
         run: exit 1

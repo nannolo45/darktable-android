@@ -150,6 +150,9 @@ class MainActivity : ComponentActivity() {
             Screen.LIBRARY -> finish()
             Screen.DARKROOM ->
                 if (vm.controller.state.value.layoutEditor) vm.controller.launch { closeLayoutEditor() }
+                // brief P3d: a drawing is cancelled, a masks sheet closed, before the darkroom is left
+                else if (vm.controller.masks.state.value.draw != null) vm.controller.masks.cancelDraw()
+                else if (vm.controller.masks.state.value.sheet != null) vm.controller.masks.openSheet(null)
                 // brief P3b: a page of the presets or styles sheet goes back to its list first
                 else if (vm.controller.state.value.overlay != null) { if (!vm.controller.stylesPresets.back()) vm.controller.setOverlay(null) }
                 else vm.leaveDarkroom()

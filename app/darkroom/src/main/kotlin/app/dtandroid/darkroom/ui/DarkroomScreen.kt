@@ -80,6 +80,9 @@ fun DarkroomScreen(
         if (tablet) TabletLayout(controller, s, live, onBack, onDone, menu = true, importFiles) else PhoneLayout(controller, s, live, onBack, onDone, menu = true)
         Overlays(controller, s, tablet, actions)
         StylesOverlays(controller, s, tablet, importFiles)
+        // brief P3d: the masks tab's sheets
+        val ms by controller.masks.state.collectAsState()
+        MasksOverlays(controller, s, ms, tablet)
     }
 }
 
@@ -96,6 +99,13 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
         LastEditLine(s)
         if (s.filmstrip) Filmstrip(controller, s, DtTheme.sizes.filmstripPhone, DtTheme.sizes.thumbPhoneWidth, DtTheme.sizes.thumbPhoneHeight, centered = false)
         Notices(s)
+        // brief P3d: while a shape is drawn the tool panel replaces the bottom panel and its tabs
+        val ms by controller.masks.state.collectAsState()
+        val draw = ms.draw
+        if (draw != null) {
+            DrawPanel(controller, s, draw, Modifier.weight(1f))
+            return@Column
+        }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (s.view) {
                 BottomView.MODULES -> Column(Modifier.fillMaxSize()) {
@@ -105,6 +115,7 @@ private fun PhoneLayout(controller: DarkroomController, s: DarkroomState, live: 
                 BottomView.HISTORY -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     HistoryView(controller, s)
                 }
+                BottomView.MASKS -> MasksTab(controller, s, ms, Modifier.fillMaxSize())
             }
         }
         BottomTabs(controller, s)
@@ -166,7 +177,7 @@ private fun BottomTabs(controller: DarkroomController, s: DarkroomState) {
     Column(Modifier.fillMaxWidth()) {
         Divider()
         Row(Modifier.fillMaxWidth().height(DtTheme.sizes.bottomTabs)) {
-            for ((v, label) in listOf(BottomView.MODULES to "modules", BottomView.HISTORY to "history · ${s.history.end}")) {
+            for ((v, label) in listOf(BottomView.MODULES to "modules", BottomView.MASKS to "masks", BottomView.HISTORY to "history · ${s.history.end}")) {
                 val sel = s.view == v
                 Column(Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Tab) { controller.setView(v) }) {
                     Box(Modifier.fillMaxWidth().height(DtTheme.sizes.tabIndicator).background(if (sel) DtTheme.colors.accentTab else DtTheme.colors.bg))
@@ -223,12 +234,26 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
         TabletTopBar(controller, s, onBack, onDone, menu)
         Divider()
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            Column(Modifier.width(DtTheme.sizes.tabletLeftPanel).fillMaxHeight().verticalScroll(rememberScrollState())) {
-                PanelHeading("history")
-                HistoryRows(controller, s)
-                HistoryActions(controller, s, withUndo = false)
-                PanelHeading("image information")
-                ImageInformation(s)
+            // brief P3d: the left panel holds the history and, in a second tab, the masks; the tool panel while drawing
+            val ms by controller.masks.state.collectAsState()
+            val draw = ms.draw
+            Column(Modifier.width(DtTheme.sizes.tabletLeftPanel).fillMaxHeight()) {
+                if (draw != null) DrawPanel(controller, s, draw, Modifier.weight(1f))
+                else {
+                    val masksShown = s.view == BottomView.MASKS
+                    DtTabRow(listOf(BottomView.HISTORY, BottomView.MASKS), if (masksShown) BottomView.MASKS else BottomView.HISTORY,
+                        { controller.setView(it) }, DtTheme.sizes.groupTabs) { v, sel ->
+                        DtText(if (v == BottomView.MASKS) "masks" else "history · ${s.history.end}", DtTheme.type.label,
+                            if (sel) DtTheme.colors.textBright else DtTheme.colors.textDim)
+                    }
+                    if (masksShown) MasksTab(controller, s, ms, Modifier.weight(1f))
+                    else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        HistoryRows(controller, s)
+                        HistoryActions(controller, s, withUndo = false)
+                        PanelHeading("image information")
+                        ImageInformation(s)
+                    }
+                }
             }
             VerticalDivider(Modifier.fillMaxHeight())
             Column(Modifier.weight(1f).fillMaxHeight()) {

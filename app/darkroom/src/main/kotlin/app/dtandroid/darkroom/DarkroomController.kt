@@ -425,8 +425,9 @@ class DarkroomController(
         _state.update {
             it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
                 expanded = null, overlay = null, message = null, readOnlyReason = null, info = null, syncStep = null, syncProgress = null, lastEdit = null,
-                cropTool = null, picker = null)
+                cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
         }
+        masksOrNull?.reset() // brief P3d: another photo: no drawing, no sheet, no module chosen
         // told after the state says no photo is open, so the source sees the photo as closed
         if (left != null) source?.left(left)
     }
@@ -482,8 +483,9 @@ class DarkroomController(
             _state.update {
                 it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
                     expanded = null, overlay = null, readOnlyReason = null, loading = false, placeholder = null, working = null, workingProgress = null,
-                    cropTool = null, picker = null)
+                    cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
             }
+            masksOrNull?.reset()
             if (left != null) source?.left(left)
         }
     }
@@ -548,11 +550,20 @@ class DarkroomController(
                 if (answer != null) lists[m.key to id] = answer
             }
         }
+        // brief P3d: the mask mode of every instance that can have one, for the mask indicator in the module headers
+        // (an instance not in the history has darktable's default blending: no mask)
+        val maskModes = HashMap<InstanceKey, String>()
+        for (m in modules) if (m.supportsBlending && m.inHistory) {
+            runCatching { Masks.modeName(engine.blendGet(m.op, m.priority)) }.getOrNull()?.let { maskModes[m.key] = it }
+        }
         val info = engine.imageInfo()
         livePatched.clear()
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
-            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists)
+            // brief P3d: "show mask" ends when its instance is gone, off, or has no drawn or parametric mask any more
+            val shown = s.showMask?.takeIf { k -> modules.any { it.key == k && it.enabled } && Masks.displayable(maskModes[k]) }
+            s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists,
+                maskModes = maskModes, showMask = shown)
         }
     }
 
@@ -578,6 +589,8 @@ class DarkroomController(
             reopenCropLocked(before)
             // brief P3c: the armed picker's selection follows the geometry; its values are read again
             pickerAfterChangeLocked(before)
+            // brief P3d: the masks tab reads its module's blending and the photo's shapes again (undo and redo too)
+            masksOrNull?.afterChangeLocked(engine)
         }
         requestRender()
     }
@@ -1630,7 +1643,9 @@ class DarkroomController(
             lastPreviewAsk = size
             Timeline.mark("darkroom: preview render start ($size px)")
             val t0 = System.nanoTime()
-            wanted { engine.renderPreview(size) }.also {
+            // brief P3d: with "show mask" on, the engine's mask display of that instance (engine-api.md 6.8)
+            val opts = maskRenderOptions()
+            wanted { if (opts.isNone) engine.renderPreview(size) else engine.renderPreview(size, opts) }.also {
                 val ns = System.nanoTime() - t0
                 dragPicture.record(it.width * it.height, ns)
                 _times.update { t -> t.copy(previewMs = ns / 1e6, previewPx = max(it.width, it.height)) }
@@ -1641,6 +1656,7 @@ class DarkroomController(
         val info = _state.value.info ?: return
         _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null, placeholder = null, working = null, workingProgress = null) }
         Timeline.mark("darkroom: preview shown")
+        if (_state.value.showMask != null) return // brief P3d: the mask display is no picture for the filmstrip
         // the filmstrip keeps a small copy, not the preview itself (a 1024 px preview is about 3 MB)
         val thumb = Thumbnails.downscale(img, thumbnailSize)
         val i = _state.value.index
@@ -1678,7 +1694,7 @@ class DarkroomController(
                     val vp = viewport?.takeIf { zoomedIn(it) } ?: return@wanted null
                     val info = _state.value.info ?: return@wanted null
                     val tool = _state.value.cropTool
-                    val options = tool?.options ?: RenderOptions.NONE
+                    val options = tool?.options ?: maskRenderOptions()
                     val r = (if (tool != null) regionFor(vp, tool.inW, tool.inH) else regionFor(vp, info.width, info.height)) ?: return@wanted null
                     val size = sizeWith(r.scale, options)
                     val x = r.x.coerceIn(0, size.w - 1)
@@ -2022,7 +2038,13 @@ class DarkroomController(
         launch { syncCropTool() } // brief P3a: opening crop's panel opens the tool; closing it or opening another leaves it
     }
 
-    fun setView(v: BottomView) = _state.update { it.copy(view = v, overlay = null) }
+    fun setView(v: BottomView) {
+        val was = _state.value.view
+        _state.update { it.copy(view = v, overlay = null) }
+        // brief P3d: leaving the masks tab ends "show mask"; opening it reads the chosen module's mask again
+        if (was == BottomView.MASKS && v != BottomView.MASKS) setShowMask(null)
+        if (v == BottomView.MASKS && was != v) launch { masks.reload() }
+    }
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
     fun setOverlay(o: Overlay?) {
         val was = _state.value.overlay
@@ -2051,6 +2073,32 @@ class DarkroomController(
 
     /** A change of the edit through [block], as every change: render cancelled, state read again, rendered again. */
     internal suspend fun engineChange(block: suspend (DarktableEngine) -> Unit) = change { block(engine) }
+
+    // ------------------------------------------------------------------ brief P3d: masks
+
+    /** made once, whichever thread asks first (the screen, a launched reload, a test) */
+    private val masksLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Masks(this) }
+    private val masksOrNull: Masks? get() = if (masksLazy.isInitialized()) masksLazy.value else null
+
+    /** The masks tab and the drawing tools (Masks.kt). */
+    val masks: Masks get() = masksLazy.value
+
+    /** The render options of "show mask": none unless it is on for an instance. */
+    private fun maskRenderOptions(): RenderOptions =
+        _state.value.showMask?.let { RenderOptions(showMask = app.dtandroid.engine.api.InstanceRef(it.op, it.priority)) } ?: RenderOptions.NONE
+
+    /** Brief P3d: "show mask" on for [key] or off (null); renders again. */
+    fun setShowMask(key: InstanceKey?) {
+        if (_state.value.showMask == key) return
+        _state.update { it.copy(showMask = key) }
+        requestRender()
+    }
+
+    /** Brief P3d: the masks tab with [key]'s mask (from the mask indicator or a module's "mask…" row). */
+    fun openMasks(key: InstanceKey) {
+        _state.update { it.copy(view = BottomView.MASKS, overlay = null) }
+        launch { masks.select(key) }
+    }
 
     // ------------------------------------------------------------------ helpers for screens
 

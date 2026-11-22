@@ -14,3 +14,10 @@ One exception to the stroke style: `sliderMarker.svg`, the small filled triangle
 
 Second exception: `favoriteOn.svg`, the filled star of a favourite style (brief P3b), next to the outlined
 `favorite.svg`, so the two states differ in shape and not only in tint.
+
+Third exception: `invert.svg` (brief P3d), a circle with its left half filled, darktable's sign for an inverted
+mask or shape.
+
+Brief P3d added `mask.svg` (the mask indicator in a module's header) and the five shape icons `maskBrush.svg`,
+`maskCircle.svg`, `maskEllipse.svg`, `maskGradient.svg`, `maskPath.svg`, drawn after the approved mockup
+(docs/design/mockups/P3d-Masks.html).

@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>P3d masks and blending, darkroom</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#e8e8e8}a:hover{color:#f5f5f5}
+.hs::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; border-radius: 36px; background: #161616; color: #c4c4c4; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; display: flex; flex-direction: column; box-shadow: 0 0 0 1px #333333">
+
+  <sc-if value="{{notDraw}}" hint-placeholder-val="{{true}}">
+    <div style="flex: 0 0 auto; padding: 18px 8px 4px 4px; display: flex; align-items: center; gap: 4px">
+      <button onClick="{{goBack}}" aria-label="Back to the working set" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #c4c4c4; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button>
+      <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0 4px">
+        <span style="color: #e8e8e8; font-size: 15px; font-weight: 500">harbour at dusk</span>
+        <span style="color: #a3a3a3; font-size: 12px">4 of 12</span>
+      </span>
+      <button onClick="{{goDone}}" style="flex: 0 0 auto; height: 44px; padding: 0 14px; border: 0; border-radius: 8px; background: #e8e8e8; color: #161616; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer">done</button>
+    </div>
+  </sc-if>
+
+  <div style="flex: 0 0 auto; height: {{areaH}}; box-sizing: border-box; padding: 8px; background: #737373; display: flex; align-items: center; justify-content: center">
+    <div onPointerDown="{{pDown}}" onPointerMove="{{pMove}}" onPointerUp="{{pUp}}" onPointerCancel="{{pUp}}" style="position: relative; width: {{phW}}; height: {{phHt}}; max-width: 100%; aspect-ratio: 3 / 2; overflow: hidden; background: #000000; touch-action: {{ta}}; user-select: none">
+      <div style="position: absolute; inset: 0; filter: {{photoFilter}}; background: {{sky}}"></div>
+      <svg viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none">
+        <sc-for list="{{ov}}" as="s" hint-placeholder-count="3">
+          <path d="{{s.d}}" fill="{{s.fill}}" stroke="{{s.stroke}}" stroke-width="{{s.sw}}" opacity="{{s.op}}" stroke-dasharray="{{s.dash}}" fill-rule="{{s.fr}}" stroke-linecap="round" stroke-linejoin="round"></path>
+        </sc-for>
+      </svg>
+      <sc-if value="{{brushPrev}}" hint-placeholder-val="{{false}}">
+        <div aria-hidden="true" style="position: absolute; right: 8px; top: 8px; width: 56px; height: 56px; border-radius: 8px; background: rgba(22,22,22,.7); display: flex; align-items: center; justify-content: center; pointer-events: none">
+          <span style="width: {{bpD}}; height: {{bpD}}; border-radius: 50%; background: #ffe000; opacity: {{bpOp}}; box-shadow: 0 0 {{bpBlur}} {{bpBlur}} #ffe000"></span>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{notDraw}}" hint-placeholder-val="{{true}}">
+    <div role="status" style="flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 12px; font-variant-numeric: tabular-nums">1/250 s · f/5.6 · 35 mm · ISO 400</div>
+  </sc-if>
+
+  <sc-if value="{{isModules}}" hint-placeholder-val="{{true}}">
+    <div class="hs" style="flex: 0 0 auto; height: 45px; box-sizing: border-box; display: flex; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid #333333; padding: 0 4px">
+      <sc-for list="{{groupTabs}}" as="g" hint-placeholder-count="7">
+        <button onClick="{{g.pick}}" aria-pressed="{{g.sel}}" aria-label="{{g.aria}}" style="flex: 0 0 auto; position: relative; min-width: 44px; height: 44px; padding: 0 12px; border: 0; background: transparent; color: {{g.color}}; font-family: inherit; font-size: 14px; font-weight: {{g.fw}}; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap">
+          <sc-if value="{{g.isPower}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></sc-if>
+          {{g.label}}
+          <span style="position: absolute; left: 12px; right: 12px; bottom: 0; height: 2px; border-radius: 1px; background: {{g.bar}}"></span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto">
+      <div style="border-bottom: 1px solid #333333">
+        <div style="display: flex; align-items: center; height: 48px; padding-right: 4px; background: #262626">
+          <span aria-hidden="true" style="flex: 0 0 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: {{accent}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></span>
+          <button onClick="{{toggleOpen}}" aria-expanded="{{open}}" style="flex: 1 1 auto; min-width: 0; height: 48px; padding: 0; border: 0; background: transparent; color: #e8e8e8; font-family: inherit; font-size: 15px; font-weight: 500; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap">
+            <span>exposure</span><span style="color: #a3a3a3; font-size: 13px; font-weight: 400">1 · dodge</span>
+          </button>
+        </div>
+        <sc-if value="{{open}}" hint-placeholder-val="{{true}}">
+          <div style="background: #1e1e1e; padding: 0 16px 12px; display: flex; flex-direction: column">
+            <sc-for list="{{mainSl}}" as="p" hint-placeholder-count="2">
+              <div style="position: relative; flex: 0 0 auto; height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px"><label for="{{p.id}}" style="color: #c4c4c4; white-space: nowrap">{{p.l}}</label><span style="color: #e8e8e8; font-variant-numeric: tabular-nums; white-space: nowrap">{{p.txt}}</span></div>
+                <div style="position: relative; height: 4px; border-radius: 2px; background: #3a3a3a"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; border-radius: 2px; background: #8c8c8c"></span><span style="position: absolute; left: {{p.pos}}; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: {{p.accent}}; box-shadow: 0 0 0 2px #1e1e1e"></span></div>
+                <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" onDoubleClick="{{p.reset}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+              </div>
+            </sc-for>
+
+            <div style="flex: 0 0 auto; height: 40px; display: flex; align-items: flex-end; padding-bottom: 6px; box-sizing: border-box; border-bottom: 1px solid #333333; color: #a3a3a3; font-size: 12px; font-weight: 500; letter-spacing: .02em">mask</div>
+            <div style="flex: 0 0 auto; display: flex; gap: 4px; padding: 10px 0 4px">
+              <sc-for list="{{modes}}" as="m" hint-placeholder-count="5">
+                <button onClick="{{m.pick}}" aria-pressed="{{m.sel}}" style="flex: 1 1 0; min-width: 0; height: 60px; padding: 0 2px; border: 1px solid {{m.ring}}; border-radius: 8px; background: {{m.bg}}; color: {{m.color}}; font-family: inherit; font-size: 11px; line-height: 1.15; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{m.icon}}"></path></svg>
+                  <span>{{m.label}}</span>
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{notOff}}" hint-placeholder-val="{{false}}">
+              <sc-for list="{{opSl}}" as="p" hint-placeholder-count="1">
+                <div style="position: relative; flex: 0 0 auto; height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px"><label for="{{p.id}}" style="color: #c4c4c4; white-space: nowrap">{{p.l}}</label><span style="color: #e8e8e8; font-variant-numeric: tabular-nums; white-space: nowrap">{{p.txt}}</span></div>
+                  <div style="position: relative; height: 4px; border-radius: 2px; background: #3a3a3a"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; border-radius: 2px; background: #8c8c8c"></span><span style="position: absolute; left: {{p.pos}}; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: {{p.accent}}; box-shadow: 0 0 0 2px #1e1e1e"></span></div>
+                  <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" onDoubleClick="{{p.reset}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+                </div>
+              </sc-for>
+              <button onClick="{{openBlend}}" aria-haspopup="dialog" aria-label="{{blendAria}}" style="flex: 0 0 auto; height: 48px; padding: 0; border: 0; background: transparent; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left">
+                <span style="color: #c4c4c4; font-size: 13px">blend mode</span>
+                <span style="height: 32px; padding: 0 8px 0 12px; border-radius: 8px; background: #262626; color: #e8e8e8; font-size: 13px; display: flex; align-items: center; gap: 4px"><span>{{blend}}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+              </button>
+            </sc-if>
+
+            <sc-if value="{{hasDrawn}}" hint-placeholder-val="{{false}}">
+              <div style="flex: 0 0 auto; padding: 10px 0 8px; color: #a3a3a3; font-size: 13px; line-height: 1.4">{{usedLine}}</div>
+              <div style="flex: 0 0 auto; display: flex; gap: 4px">
+                <sc-for list="{{addBtns}}" as="a" hint-placeholder-count="5">
+                  <button onClick="{{a.run}}" style="flex: 1 1 0; min-width: 0; height: 60px; padding: 0 2px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{a.icon}}"></path></svg>
+                    <span>{{a.label}}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <button onClick="{{openExisting}}" aria-haspopup="dialog" style="flex: 0 0 auto; margin-top: 8px; height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 13px; cursor: pointer; text-align: left">use an existing shape…</button>
+              <div style="flex: 0 0 auto; display: flex; flex-direction: column; margin-top: 4px">
+                <sc-for list="{{dRows}}" as="r" hint-placeholder-count="2">
+                  <div style="display: flex; align-items: center; gap: 4px; min-height: 52px; border-top: 1px solid #333333">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a3a3a3" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 20px"><path d="{{r.icon}}"></path></svg>
+                    <span style="flex: 1 1 auto; min-width: 0; padding-left: 6px; color: #e8e8e8; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+                    <button onClick="{{r.cycle}}" aria-label="{{r.combAria}}" style="flex: 0 0 auto; min-width: 44px; height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 12px; cursor: pointer">{{r.comb}}</button>
+                    <button onClick="{{r.toggleInv}}" aria-pressed="{{r.inv}}" aria-label="{{r.invAria}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: {{r.invBg}}; color: {{r.invColor}}; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v12M3 12l4 4 4-4M17 20V8M13 12l4-4 4 4"></path></svg></button>
+                    <button onClick="{{r.remove}}" aria-label="{{r.rmAria}}" style="flex: 0 0 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #c4c4c4; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{hasParam}}" hint-placeholder-val="{{false}}">
+              <div class="hs" style="flex: 0 0 auto; display: flex; overflow-x: auto; scrollbar-width: none; margin-top: 8px; border-bottom: 1px solid #333333">
+                <sc-for list="{{chTabs}}" as="t" hint-placeholder-count="7">
+                  <button onClick="{{t.pick}}" aria-pressed="{{t.sel}}" style="flex: 1 1 0; position: relative; min-width: 44px; height: 44px; padding: 0 6px; border: 0; background: transparent; color: {{t.color}}; font-family: inherit; font-size: 13px; font-weight: {{t.fw}}; cursor: pointer">
+                    {{t.label}}
+                    <span style="position: absolute; left: 6px; right: 6px; bottom: 0; height: 2px; border-radius: 1px; background: {{t.bar}}"></span>
+                  </button>
+                </sc-for>
+              </div>
+              <sc-for list="{{ranges}}" as="r" hint-placeholder-count="2">
+                <div style="position: relative; flex: 0 0 auto; height: 60px; display: flex; flex-direction: column; justify-content: center; gap: 12px">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px"><label for="{{r.idLo}}" style="color: #c4c4c4">{{r.l}}</label><span style="color: #e8e8e8; font-variant-numeric: tabular-nums; white-space: nowrap">{{r.txt}}</span></div>
+                  <div style="position: relative; height: 6px; border-radius: 3px; background: #3a3a3a">
+                    <span style="position: absolute; left: {{r.lp}}; width: {{r.wp}}; top: 0; bottom: 0; background: #8c8c8c"></span>
+                    <span style="position: absolute; left: {{r.lp}}; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: {{accent}}; box-shadow: 0 0 0 2px #1e1e1e"></span>
+                    <span style="position: absolute; left: {{r.hp}}; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: {{accent}}; box-shadow: 0 0 0 2px #1e1e1e"></span>
+                  </div>
+                  <input id="{{r.idLo}}" type="range" aria-label="{{r.ariaLo}}" min="0" max="{{r.midV}}" step="1" value="{{r.lo}}" onChange="{{r.setLo}}" style="position: absolute; left: 0; top: 0; width: {{r.midW}}; height: 100%; margin: 0; opacity: 0">
+                  <input id="{{r.idHi}}" type="range" aria-label="{{r.ariaHi}}" min="{{r.midV}}" max="{{r.mx}}" step="1" value="{{r.hi}}" onChange="{{r.setHi}}" style="position: absolute; left: {{r.midW}}; top: 0; width: {{r.restW}}; height: 100%; margin: 0; opacity: 0">
+                </div>
+              </sc-for>
+              <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px">
+                <span style="color: #a3a3a3; font-size: 12px; line-height: 1.4">fall-off markers are set by long press on a value</span>
+                <button onClick="{{resetCh}}" aria-label="{{resetAria}}" style="flex: 0 0 auto; height: 44px; padding: 0 14px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 13px; cursor: pointer">reset</button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{hasMask}}" hint-placeholder-val="{{false}}">
+              <label style="position: relative; flex: 0 0 auto; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #c4c4c4; cursor: pointer; margin-top: 4px; border-top: 1px solid #333333">
+                <span>show mask</span>
+                <span aria-hidden="true" style="flex: 0 0 auto; width: 20px; height: 20px; box-sizing: border-box; border-radius: 6px; border: 1.5px solid {{showBorder}}; background: {{showBg}}; display: flex; align-items: center; justify-content: center"><sc-if value="{{showMask}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#161616" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if></span>
+                <input type="checkbox" checked="{{showMask}}" onChange="{{toggleShow}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer">
+              </label>
+              <label style="position: relative; flex: 0 0 auto; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #c4c4c4; cursor: pointer">
+                <span>invert mask</span>
+                <span aria-hidden="true" style="flex: 0 0 auto; width: 20px; height: 20px; box-sizing: border-box; border-radius: 6px; border: 1.5px solid {{invBorder}}; background: {{invBg}}; display: flex; align-items: center; justify-content: center"><sc-if value="{{invMask}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#161616" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if></span>
+                <input type="checkbox" checked="{{invMask}}" onChange="{{toggleInv}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer">
+              </label>
+              <button onClick="{{toggleRef}}" aria-expanded="{{refOpen}}" style="flex: 0 0 auto; height: 44px; padding: 0; border: 0; border-top: 1px solid #333333; background: transparent; color: #a3a3a3; font-family: inherit; font-size: 12px; font-weight: 500; letter-spacing: .02em; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between"><span>mask refinement</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{refRot}})"><path d="M6 9l6 6 6-6"></path></svg></button>
+              <sc-if value="{{refOpen}}" hint-placeholder-val="{{false}}">
+                <sc-for list="{{refSl}}" as="p" hint-placeholder-count="4">
+                  <div style="position: relative; flex: 0 0 auto; height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px"><label for="{{p.id}}" style="color: #c4c4c4; white-space: nowrap">{{p.l}}</label><span style="color: #e8e8e8; font-variant-numeric: tabular-nums; white-space: nowrap">{{p.txt}}</span></div>
+                    <div style="position: relative; height: 4px; border-radius: 2px; background: #3a3a3a"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; border-radius: 2px; background: #8c8c8c"></span><span style="position: absolute; left: {{p.pos}}; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: {{p.accent}}; box-shadow: 0 0 0 2px #1e1e1e"></span></div>
+                    <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" onDoubleClick="{{p.reset}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+                  </div>
+                </sc-for>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+      <sc-for list="{{otherMods}}" as="m" hint-placeholder-count="2">
+        <div style="display: flex; align-items: center; height: 48px; border-bottom: 1px solid #333333; color: #a3a3a3">
+          <span aria-hidden="true" style="flex: 0 0 48px; display: flex; align-items: center; justify-content: center; color: #8f8f8f"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v8"></path><path d="M7.5 6.5a7 7 0 1 0 9 0"></path></svg></span>
+          <span style="font-size: 15px; font-weight: 500">{{m.name}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isMasks}}" hint-placeholder-val="{{false}}">
+    <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto">
+      <div style="padding: 12px 16px 10px; color: #a3a3a3; font-size: 13px">shapes and groups of this photo</div>
+      <sc-for list="{{mgroups}}" as="g" hint-placeholder-count="2">
+        <div style="border-top: 1px solid #333333">
+          <button onClick="{{g.toggle}}" aria-expanded="{{g.open}}" style="width: 100%; height: 48px; padding: 0 12px 0 16px; border: 0; background: #1e1e1e; color: #e8e8e8; font-family: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px">
+            <span style="flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{g.title}}</span>
+            <span style="flex: 0 0 auto; color: #a3a3a3; font-size: 12px; font-weight: 400">{{g.count}}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a3a3a3" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 auto; transform: rotate({{g.rot}})"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <sc-if value="{{g.open}}" hint-placeholder-val="{{true}}">
+            <sc-if value="{{g.empty}}" hint-placeholder-val="{{false}}">
+              <div style="padding: 12px 16px; color: #a3a3a3; font-size: 13px; border-top: 1px solid #333333">empty until shapes are drawn</div>
+            </sc-if>
+            <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="1">
+              <div style="display: flex; align-items: center; min-height: 56px; background: {{r.bg}}; border-top: 1px solid #333333">
+                <button onClick="{{r.pick}}" aria-pressed="{{r.sel}}" style="flex: 1 1 auto; min-width: 0; min-height: 56px; padding: 0 0 0 16px; border: 0; background: transparent; color: #e8e8e8; font-family: inherit; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c4c4c4" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 20px"><path d="{{r.icon}}"></path></svg>
+                  <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px">{{r.name}}</span><sc-if value="{{r.hasSub}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: #a3a3a3">{{r.sub}}</span></sc-if></span>
+                  <sc-if value="{{r.hasComb}}" hint-placeholder-val="{{true}}"><span style="flex: 0 0 auto; font-size: 12px; color: #a3a3a3">{{r.comb}}</span></sc-if>
+                  <sc-if value="{{r.inv}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-label="inverted" role="img" style="flex: 0 0 18px"><path d="M7 4v12M3 12l4 4 4-4M17 20V8M13 12l4-4 4 4"></path></svg></sc-if>
+                </button>
+                <button onClick="{{r.more}}" aria-label="{{r.moreAria}}" aria-haspopup="dialog" style="flex: 0 0 48px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #c4c4c4; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg></button>
+              </div>
+            </sc-for>
+          </sc-if>
+        </div>
+      </sc-for>
+      <div style="border-top: 1px solid #333333">
+        <div style="height: 48px; padding: 0 16px; background: #1e1e1e; color: #e8e8e8; font-size: 14px; font-weight: 500; display: flex; align-items: center">shapes not in a group</div>
+        <sc-if value="{{looseEmpty}}" hint-placeholder-val="{{false}}">
+          <div style="padding: 12px 16px; color: #a3a3a3; font-size: 13px; border-top: 1px solid #333333">every shape is in a group</div>
+        </sc-if>
+        <sc-for list="{{looseRows}}" as="r" hint-placeholder-count="1">
+          <div style="display: flex; align-items: center; min-height: 56px; background: {{r.bg}}; border-top: 1px solid #333333">
+            <button onClick="{{r.pick}}" aria-pressed="{{r.sel}}" style="flex: 1 1 auto; min-width: 0; min-height: 56px; padding: 0 0 0 16px; border: 0; background: transparent; color: #e8e8e8; font-family: inherit; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c4c4c4" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: 0 0 20px"><path d="{{r.icon}}"></path></svg>
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px">{{r.name}}</span><sc-if value="{{r.hasSub}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: #a3a3a3">{{r.sub}}</span></sc-if></span>
+            </button>
+            <button onClick="{{r.more}}" aria-label="{{r.moreAria}}" aria-haspopup="dialog" style="flex: 0 0 48px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #c4c4c4; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isHistory}}" hint-placeholder-val="{{false}}">
+    <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto">
+      <sc-for list="{{histRows}}" as="h" hint-placeholder-count="8">
+        <div style="display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; border-bottom: 1px solid #333333; color: #c4c4c4; font-size: 14px">
+          <span style="flex: 0 0 22px; font-size: 13px; font-variant-numeric: tabular-nums; color: #a3a3a3">{{h.n}}</span>
+          <span style="flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.name}}</span>
+          <span style="flex: 0 0 auto; font-size: 12px; color: #a3a3a3">{{h.note}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isDraw}}" hint-placeholder-val="{{false}}">
+    <div style="flex: 0 0 auto; padding: 10px 16px; border-bottom: 1px solid #333333; color: #e8e8e8; font-size: 14px; font-weight: 500">{{drawTitle}}</div>
+    <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 16px 8px; display: flex; flex-direction: column">
+      <div style="flex: 0 0 auto; padding: 8px 0 2px; color: #a3a3a3; font-size: 13px; line-height: 1.4">{{drawHint}}</div>
+      <sc-for list="{{drawSl}}" as="p" hint-placeholder-count="3">
+        <div style="position: relative; flex: 0 0 auto; height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px"><label for="{{p.id}}" style="color: #c4c4c4; white-space: nowrap">{{p.l}}</label><span style="color: #e8e8e8; font-variant-numeric: tabular-nums; white-space: nowrap">{{p.txt}}</span></div>
+          <div style="position: relative; height: 4px; border-radius: 2px; background: #3a3a3a"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pos}}; border-radius: 2px; background: #8c8c8c"></span><span style="position: absolute; left: {{p.pos}}; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: {{p.accent}}; box-shadow: 0 0 0 2px #161616"></span></div>
+          <input id="{{p.id}}" type="range" min="{{p.min}}" max="{{p.max}}" step="{{p.step}}" value="{{p.v}}" onChange="{{p.set}}" onDoubleClick="{{p.reset}}" style="position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize">
+        </div>
+      </sc-for>
+      <div style="flex: 0 0 auto; display: flex; gap: 8px; padding-top: 6px">
+        <sc-for list="{{dBtns}}" as="b" hint-placeholder-count="2">
+          <button onClick="{{b.run}}" disabled="{{b.dis}}" style="flex: 1 1 0; height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: #262626; color: {{b.color}}; font-family: inherit; font-size: 13px; cursor: pointer">{{b.label}}</button>
+        </sc-for>
+        <sc-if value="{{isBrush}}" hint-placeholder-val="{{false}}">
+          <button onClick="{{toggleDShow}}" aria-pressed="{{dShow}}" style="flex: 1 1 0; height: 44px; padding: 0 8px; border: 0; border-radius: 8px; background: {{dShowBg}}; color: {{dShowColor}}; font-family: inherit; font-size: 13px; cursor: pointer">show mask</button>
+        </sc-if>
+      </div>
+      <div style="flex: 0 0 auto; padding-top: 12px; color: #a3a3a3; font-size: 12px">two fingers move and zoom the photo</div>
+    </div>
+    <div style="flex: 0 0 auto; display: flex; gap: 8px; padding: 8px 16px 24px; border-top: 1px solid #333333">
+      <button onClick="{{cancelDraw}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 14px; cursor: pointer">cancel</button>
+      <button onClick="{{doneDraw}}" disabled="{{dDis}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: {{dBg}}; color: {{dColor}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">done</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notDraw}}" hint-placeholder-val="{{true}}">
+    <div style="flex: 0 0 auto; height: 60px; padding-bottom: 10px; box-sizing: border-box; border-top: 1px solid #333333; display: flex">
+      <sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+        <button onClick="{{v.pick}}" aria-pressed="{{v.sel}}" style="flex: 1 1 0; position: relative; border: 0; background: transparent; color: {{v.color}}; font-family: inherit; font-size: 14px; font-weight: {{v.fw}}; cursor: pointer; display: flex; align-items: center; justify-content: center">
+          {{v.label}}
+          <span style="position: absolute; left: 50%; top: 0; width: 32px; margin-left: -16px; height: 2px; border-radius: 1px; background: {{v.bar}}"></span>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{toastOn}}" hint-placeholder-val="{{false}}">
+    <div role="status" style="position: absolute; left: 16px; right: 16px; bottom: 72px; padding: 12px 14px; border-radius: 8px; background: #262626; box-shadow: 0 0 0 1px #333333; color: #e8e8e8; font-size: 13px; line-height: 1.4">{{toast}}</div>
+  </sc-if>
+
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <button onClick="{{closeSheet}}" aria-label="Close menu" style="position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: rgba(0,0,0,.55); cursor: pointer"></button>
+    <div role="dialog" aria-label="{{sheetTitle}}" style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 640px; box-sizing: border-box; padding: 8px 16px 28px; border-radius: 8px 8px 0 0; background: #1e1e1e; box-shadow: 0 -1px 0 #333333; display: flex; flex-direction: column">
+      <span aria-hidden="true" style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: #4a4a4a"></span>
+      <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px">
+        <span style="color: #e8e8e8; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{sheetTitle}}</span>
+        <button onClick="{{closeSheet}}" style="flex: 0 0 auto; height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: #c4c4c4; font-family: inherit; font-size: 13px; cursor: pointer">close</button>
+      </div>
+      <sc-if value="{{isList}}" hint-placeholder-val="{{true}}">
+        <div style="flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column">
+          <sc-for list="{{sheetItems}}" as="it" hint-placeholder-count="6">
+            <button onClick="{{it.run}}" disabled="{{it.dis}}" style="flex: 0 0 auto; height: 48px; padding: 0 2px; border: 0; border-top: 1px solid #333333; background: transparent; color: {{it.color}}; font-family: inherit; font-size: 15px; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+              <span>{{it.label}}</span>
+              <sc-if value="{{it.check}}" hint-placeholder-val="{{false}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="selected"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{isRename}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+          <label for="rename-field" style="color: #c4c4c4; font-size: 13px">name of this shape</label>
+          <input id="rename-field" type="text" value="{{renVal}}" onChange="{{renInput}}" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #333333; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 15px">
+          <div style="display: flex; gap: 8px; padding-top: 8px">
+            <button onClick="{{closeSheet}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 14px; cursor: pointer">cancel</button>
+            <button onClick="{{saveRename}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: #e8e8e8; color: #161616; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">rename</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{isConfirm}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; gap: 8px; padding-top: 8px">
+          <button onClick="{{closeSheet}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: #262626; color: #e8e8e8; font-family: inherit; font-size: 14px; cursor: pointer">cancel</button>
+          <button onClick="{{doDelete}}" style="flex: 1 1 0; height: 48px; border: 0; border-radius: 8px; background: #e8e8e8; color: #161616; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">delete</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#d08a3c","options":["#d08a3c","#7aa2c8","#bdbdbd"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var blank = { x: 150, y: 100, size: 30, feather: 14, rot: 0, flat: 60, comp: 25, pts: [], closed: false, strokes: [] };
+    this.state = {
+      view: 'modules', open: true, mode: 'off', ev: 0.7, blk: 0, opac: 100, blend: 'normal',
+      showMask: false, invMask: false, refOpen: false, ref: { fe: 0, bl: 0, mo: 0, co: 0 }, ptab: 'g', par: {},
+      shapes: [Object.assign({}, blank, { id: 1, type: 'gradient', name: 'gradient #1', y: 120 }), Object.assign({}, blank, { id: 2, type: 'circle', name: 'circle #1', x: 210, y: 70 })],
+      groups: [{ mod: 'dodge', fold: false, members: [] }, { mod: 'cb', fold: false, members: [{ sid: 1, comb: 'union', inv: false }] }],
+      counters: { brush: 0, circle: 1, ellipse: 0, gradient: 1, path: 0 }, nextId: 3, sel: null, draw: null, sheet: null, ren: '', toast: ''
+    };
+  }
+  componentWillUnmount() { clearTimeout(this._tt); }
+  toastMsg(m) {
+    var self = this;
+    clearTimeout(this._tt);
+    this.setState({ toast: m });
+    this._tt = setTimeout(function () { self.setState({ toast: '' }); }, 2400);
+  }
+  renderVals() {
+    var self = this, S = this.state, accent = this.props.accent ?? '#d08a3c';
+    var set = function (o) { self.setState(o); };
+    var D = S.draw;
+    var byId = {};
+    S.shapes.forEach(function (s) { byId[s.id] = s; });
+    var grp = function (mod) { return S.groups.filter(function (g) { return g.mod === mod; })[0]; };
+    var editGroup = function (mod, fn) {
+      var found = false;
+      var gs = self.state.groups.map(function (g) {
+        if (g.mod !== mod) return g;
+        found = true;
+        return Object.assign({}, g, { members: fn(g.members.slice()) });
+      });
+      if (!found) gs = gs.concat([{ mod: mod, fold: false, members: fn([]) }]);
+      return gs;
+    };
+    var addTo = function (mod, sid) {
+      return editGroup(mod, function (m) {
+        if (!m.some(function (x) { return x.sid === sid; })) m.push({ sid: sid, comb: 'union', inv: false });
+        return m;
+      });
+    };
+    var slider = function (id, l, min, max, step, v, txt, onSet, dflt) {
+      return {
+        id: id, l: l, min: min, max: max, step: step, v: v, txt: txt, accent: accent,
+        pos: Math.max(0, Math.min(100, (v - min) / (max - min) * 100)).toFixed(1) + '%',
+        set: function (e) { onSet(parseFloat(e.target.value)); },
+        reset: function () { onSet(dflt); }
+      };
+    };
+    var MODN = { dodge: 'exposure 1 · dodge', exposure: 'exposure', cb: 'color balance rgb' };
+    var dg = grp('dodge'), dm = dg ? dg.members : [];
+    var hasD = S.mode === 'drawn' || S.mode === 'both', hasP = S.mode === 'parametric' || S.mode === 'both';
+    var hasMask = hasD || hasP;
+
+    var CH = ['g', 'R', 'G', 'B', 'Jz', 'Cz', 'hz'];
+    var mxOf = function (ch) { return ch === 'hz' ? 360 : 100; };
+    var gp = function (st, ch) { return st.par[ch] || { i: [0, mxOf(ch)], o: [0, mxOf(ch)] }; };
+    var setP = function (ch, k, idx, v) {
+      var par = Object.assign({}, self.state.par), cur = gp(self.state, ch);
+      var q = { i: cur.i.slice(), o: cur.o.slice() };
+      q[k][idx] = v;
+      par[ch] = q;
+      set({ par: par });
+    };
+
+    var ov = [];
+    if (D) {
+      var ds = Object.assign({}, D, { strokes: D.cur ? D.strokes.concat([{ pts: D.cur, size: D.size, hard: D.hard, op: D.op }]) : D.strokes });
+      if (D.type === 'brush' || D.placed) ov = shapeItems(ds, true, D.type === 'brush' && !D.show);
+    } else if (S.view === 'modules' && S.showMask && hasMask) {
+      var list = hasD ? dm.map(function (m) { return byId[m.sid]; }).filter(Boolean) : [];
+      if (S.invMask) {
+        var dd = 'M0 0H300V200H0Z';
+        list.forEach(function (s) { if (s.type !== 'brush') dd += shapePoly(s); });
+        ov.push(item(dd, YEL, 'none', 0, 0.45, 'none', 'evenodd'));
+      } else {
+        list.forEach(function (s) { ov = ov.concat(shapeItems(s, false, false)); });
+      }
+      if (hasP) {
+        var pg = gp(S, 'g').i;
+        ov.push(item('M0 ' + (200 * (1 - pg[1] / 100)).toFixed(1) + 'H300V' + (200 * (1 - pg[0] / 100)).toFixed(1) + 'H0Z', YEL, 'none', 0, 0.45));
+      }
+    } else if (S.view === 'masks' && S.sel && byId[S.sel]) {
+      ov = shapeItems(byId[S.sel], false, false);
+    }
+
+    // module section
+    var COMB = ['union', 'intersection', 'difference', 'exclusion'];
+    var modes = [['off', 'off', 'M7 7l10 10M17 7L7 17'], ['uniform', 'uniform', 'M5 5h14v14H5z'], ['drawn', 'drawn', ICON.brush], ['parametric', 'parametric', 'M3 18c4 0 5-12 9-12s5 12 9 12'], ['both', 'drawn & parametric', 'M3 18c3 0 4-10 8-10s3 6 6 6M17 20l4-4']].map(function (m) {
+      var sel = S.mode === m[0];
+      return { label: m[1], icon: m[2], sel: sel, bg: sel ? '#303030' : '#262626', ring: sel ? accent : 'transparent', color: sel ? '#f5f5f5' : '#c4c4c4', pick: function () { set({ mode: m[0] }); } };
+    });
+    var dRows = dm.map(function (m, i) {
+      var s = byId[m.sid];
+      return {
+        icon: ICON[s.type], name: s.name, comb: m.comb, combAria: 'Combine ' + s.name + ' by ' + m.comb + '. Change',
+        cycle: function () { set({ groups: editGroup('dodge', function (a) { a[i] = Object.assign({}, a[i], { comb: COMB[(COMB.indexOf(a[i].comb) + 1) % 4] }); return a; }) }); },
+        inv: m.inv, invBg: m.inv ? '#3a3a3a' : 'transparent', invColor: m.inv ? '#f5f5f5' : '#c4c4c4', invAria: 'Invert ' + s.name,
+        toggleInv: function () { set({ groups: editGroup('dodge', function (a) { a[i] = Object.assign({}, a[i], { inv: !a[i].inv }); return a; }) }); },
+        rmAria: 'Remove ' + s.name + ' from this module',
+        remove: function () { set({ groups: editGroup('dodge', function (a) { a.splice(i, 1); return a; }) }); }
+      };
+    });
+    var startDraw = function (type) {
+      set({ draw: { type: type, strokes: [], cur: null, size: type === 'brush' ? 12 : 30, hard: 60, op: 100, feather: 14, rot: 0, flat: 60, comp: 25, x: 150, y: 100, placed: false, pts: [], closed: false, show: true } });
+    };
+    var addBtns = ['brush', 'circle', 'ellipse', 'gradient', 'path'].map(function (t) { return { label: t, icon: ICON[t], run: function () { startDraw(t); } }; });
+    var par = gp(S, S.ptab), mx = mxOf(S.ptab);
+    var ranges = [['i', 'input'], ['o', 'output']].map(function (k) {
+      var lo = par[k[0]][0], hi = par[k[0]][1], mid = Math.round((lo + hi) / 2), u = S.ptab === 'hz' ? '°' : '';
+      return {
+        l: k[1], txt: lo + u + ' – ' + hi + u, idLo: 'pr-' + k[0] + '-lo', idHi: 'pr-' + k[0] + '-hi',
+        ariaLo: k[1] + ' low value', ariaHi: k[1] + ' high value', mx: mx, midV: mid, lo: lo, hi: hi,
+        lp: (lo / mx * 100).toFixed(1) + '%', hp: (hi / mx * 100).toFixed(1) + '%', wp: ((hi - lo) / mx * 100).toFixed(1) + '%',
+        midW: (mid / mx * 100).toFixed(1) + '%', restW: (100 - mid / mx * 100).toFixed(1) + '%',
+        setLo: function (e) { setP(S.ptab, k[0], 0, Math.min(parseFloat(e.target.value), hi)); },
+        setHi: function (e) { setP(S.ptab, k[0], 1, Math.max(parseFloat(e.target.value), lo)); }
+      };
+    });
+    var rf = S.ref;
+    var setRef = function (key) { return function (v) { var r = Object.assign({}, self.state.ref); r[key] = v; set({ ref: r }); }; };
+
+    // mask manager
+    var usedBy = function (id) { var n = 0; S.groups.forEach(function (g) { if (g.members.some(function (m) { return m.sid === id; })) n++; }); return n; };
+    var mkRow = function (s, m, mod) {
+      var n = usedBy(s.id), sel = S.sel === s.id;
+      return {
+        sel: sel, bg: sel ? '#303030' : 'transparent', icon: ICON[s.type], name: s.name, hasSub: n > 1, sub: 'used by ' + n + ' modules',
+        hasComb: !!m, comb: m ? m.comb : '', inv: !!(m && m.inv),
+        pick: function () { set({ sel: s.id }); },
+        more: function () { set({ sheet: { kind: 'more', sid: s.id, mod: mod } }); }, moreAria: 'more, ' + s.name
+      };
+    };
+    var mgroups = S.groups.map(function (g) {
+      var rows = g.members.filter(function (m) { return byId[m.sid]; }).map(function (m) { return mkRow(byId[m.sid], m, g.mod); });
+      return {
+        title: 'group "' + MODN[g.mod] + '"', count: rows.length + (rows.length === 1 ? ' shape' : ' shapes'), open: !g.fold, rot: g.fold ? '0deg' : '180deg',
+        empty: rows.length === 0, rows: rows,
+        toggle: function () { set({ groups: self.state.groups.map(function (x) { return x.mod === g.mod ? Object.assign({}, x, { fold: !x.fold }) : x; }) }); }
+      };
+    });
+    var looseRows = S.shapes.filter(function (s) { return usedBy(s.id) === 0; }).map(function (s) { return mkRow(s, null, null); });
+
+    // sheets
+    var sh = S.sheet, kind = sh ? sh.kind : '', sS = sh && sh.sid ? byId[sh.sid] : null;
+    var mk = function (label, dis, run, check) { return { label: label, dis: !!dis, color: dis ? '#8f8f8f' : '#e8e8e8', run: run, check: !!check }; };
+    var sheetTitle = '', sheetItems = [];
+    var inMod = function (mod, id) { var g = grp(mod); return !!g && g.members.some(function (m) { return m.sid === id; }); };
+    if (kind === 'blend') {
+      sheetTitle = 'blend mode';
+      sheetItems = BLENDS.map(function (b) { return mk(b, false, function () { set({ blend: b, sheet: null }); }, S.blend === b); });
+    }
+    if (kind === 'existing') {
+      sheetTitle = 'use an existing shape';
+      sheetItems = S.shapes.map(function (s) { return mk(s.name, inMod('dodge', s.id), function () { set({ groups: addTo('dodge', s.id), sheet: null }); }, inMod('dodge', s.id)); });
+    }
+    if (kind === 'more' && sS) {
+      sheetTitle = sS.name;
+      sheetItems = [
+        mk('rename', false, function () { set({ sheet: { kind: 'rename', sid: sS.id }, ren: sS.name }); }),
+        mk('use in another module…', false, function () { set({ sheet: { kind: 'usein', sid: sS.id } }); }),
+        mk('duplicate', false, function () {
+          var st = self.state, n = st.counters[sS.type] + 1, id = st.nextId, c = Object.assign({}, st.counters);
+          c[sS.type] = n;
+          var ns = Object.assign({}, sS, { id: id, name: sS.type + ' #' + n, x: Math.min(290, sS.x + 12), y: Math.min(190, sS.y + 12) });
+          set({ shapes: st.shapes.concat([ns]), groups: sh.mod ? addTo(sh.mod, id) : st.groups, counters: c, nextId: id + 1, sheet: null, sel: id });
+        })
+      ];
+      if (sh.mod) sheetItems.push(mk('remove from this group', false, function () { set({ groups: editGroup(sh.mod, function (a) { return a.filter(function (m) { return m.sid !== sS.id; }); }), sheet: null }); }));
+      sheetItems.push(mk('delete shape', false, function () { set({ sheet: { kind: 'delete', sid: sS.id } }); }));
+    }
+    if (kind === 'usein' && sS) {
+      sheetTitle = 'use ' + sS.name + ' in';
+      sheetItems = ['dodge', 'exposure', 'cb'].map(function (mod) {
+        return mk(MODN[mod], inMod(mod, sS.id), function () { set({ groups: addTo(mod, sS.id), sheet: null }); self.toastMsg('added to group "' + MODN[mod] + '"'); }, inMod(mod, sS.id));
+      });
+    }
+    if (kind === 'rename' && sS) sheetTitle = 'rename ' + sS.name;
+    if (kind === 'delete' && sS) sheetTitle = 'delete "' + sS.name + '" everywhere?';
+    var sheetOpen = kind === 'blend' || kind === 'existing' || !!sS;
+
+    // drawing mode
+    var DDEF = { brush: [['size', 2, 40, 'px'], ['hard', 0, 100, '%'], ['op', 0, 100, '%']], circle: [['size', 5, 80, 'px'], ['feather', 0, 60, 'px']], ellipse: [['size', 5, 80, 'px'], ['feather', 0, 60, 'px'], ['rot', 0, 180, '°'], ['flat', 10, 100, '%']], gradient: [['rot', -90, 90, '°'], ['comp', 0, 60, 'px']], path: [] };
+    var DLAB = { size: 'size', hard: 'hardness', op: 'opacity', feather: 'feather', rot: 'rotation', flat: 'flatness', comp: 'compression' };
+    var dflt = function (k) { return { size: D.type === 'brush' ? 12 : 30, hard: 60, op: 100, feather: 14, rot: 0, flat: 60, comp: 25 }[k]; };
+    var setD = function (o) { set({ draw: Object.assign({}, self.state.draw, o) }); };
+    var drawSl = D ? DDEF[D.type].map(function (d) {
+      return slider('d-' + d[0], DLAB[d[0]], d[1], d[2], 1, D[d[0]], Math.round(D[d[0]]) + ' ' + d[3], function (v) { var o = {}; o[d[0]] = v; setD(o); }, dflt(d[0]));
+    }) : [];
+    var dBtn = function (label, dis, run) { return { label: label, dis: dis, color: dis ? '#8f8f8f' : '#e8e8e8', run: run }; };
+    var dBtns = [];
+    if (D && D.type === 'brush') dBtns = [dBtn('undo stroke', D.strokes.length === 0, function () { setD({ strokes: self.state.draw.strokes.slice(0, -1) }); })];
+    if (D && D.type === 'path') dBtns = [
+      dBtn('remove last point', D.pts.length === 0, function () { setD({ pts: self.state.draw.pts.slice(0, -1), closed: false }); }),
+      dBtn('close path', D.pts.length < 3 || D.closed, function () { setD({ closed: true }); })
+    ];
+    var canDone = !!D && (D.type === 'brush' ? D.strokes.length > 0 : D.type === 'path' ? D.pts.length >= 3 : D.placed);
+    var HINTS = { brush: 'drag on the photo to paint the mask', circle: 'tap the photo to place the circle, drag to move it', ellipse: 'tap the photo to place the ellipse, drag to move it', gradient: 'tap the photo to place the line, drag to move it; the tinted side is below', path: 'tap the photo to add a point' };
+    var pt = function (e) {
+      var el = e.currentTarget, r = el.getBoundingClientRect(), k = r.width ? el.offsetWidth / r.width : 1;
+      var x = (e.clientX - r.left) * k * 300 / el.offsetWidth, y = (e.clientY - r.top) * k * 200 / el.offsetHeight;
+      return [Math.max(0, Math.min(300, x)), Math.max(0, Math.min(200, y))];
+    };
+    var shown = [['modules', 'modules'], ['masks', 'masks'], ['history', 'history · 7']];
+
+    return {
+      accent: accent, notDraw: !D, isDraw: !!D, isModules: !D && S.view === 'modules', isMasks: !D && S.view === 'masks', isHistory: !D && S.view === 'history',
+      areaH: D ? '300px' : '250px', phW: D ? '100%' : 'auto', phHt: D ? 'auto' : '100%', ta: D ? 'none' : 'auto',
+      sky: sky(), photoFilter: 'brightness(' + (1 + S.ev * 0.22).toFixed(3) + ') contrast(1.1)', ov: ov,
+      brushPrev: !!D && D.type === 'brush', bpD: D ? (D.size * 1.25).toFixed(0) + 'px' : '0px', bpOp: D ? (0.35 + 0.5 * D.op / 100).toFixed(2) : '0', bpBlur: D ? ((100 - D.hard) / 100 * D.size * 0.25).toFixed(1) + 'px' : '0px',
+      goBack: function () { self.toastMsg('back goes to the working set (not part of this mockup).'); },
+      goDone: function () { self.toastMsg('done saves the edit and goes back (not part of this mockup).'); },
+      pDown: function (e) {
+        var d = self.state.draw; if (!d) return;
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+        var p = pt(e);
+        if (d.type === 'brush') { self._drag = true; setD({ cur: [p] }); }
+        else if (d.type === 'path') { if (!d.closed) setD({ pts: d.pts.concat([p]), placed: true }); }
+        else { self._drag = true; setD({ x: p[0], y: p[1], placed: true }); }
+      },
+      pMove: function (e) {
+        var d = self.state.draw; if (!d || !self._drag) return;
+        var p = pt(e);
+        if (d.type === 'brush') { if (d.cur) setD({ cur: d.cur.concat([p]) }); }
+        else setD({ x: p[0], y: p[1] });
+      },
+      pUp: function () {
+        var d = self.state.draw; if (!self._drag) return;
+        self._drag = false;
+        if (d && d.type === 'brush' && d.cur) setD({ strokes: d.strokes.concat([{ pts: d.cur, size: d.size, hard: d.hard, op: d.op }]), cur: null });
+      },
+      groupTabs: ['active', 'quick', 'base', 'tone', 'color', 'correct', 'effect'].map(function (g) {
+        var sel = g === 'active';
+        return { label: g, isPower: sel, sel: sel, aria: sel ? 'active modules' : 'module group ' + g, color: sel ? '#f5f5f5' : '#a3a3a3', fw: sel ? 500 : 400, bar: sel ? accent : 'transparent', pick: function () { if (!sel) self.toastMsg('only the active group works in this mockup.'); } };
+      }),
+      open: S.open, toggleOpen: function () { set({ open: !self.state.open }); },
+      otherMods: [{ name: 'exposure' }, { name: 'color balance rgb' }],
+      mainSl: [
+        slider('m-ev', 'exposure', -3, 4, 0.01, S.ev, (S.ev > 0 ? '+' : '') + S.ev.toFixed(2) + ' EV', function (v) { set({ ev: v }); }, 0),
+        slider('m-blk', 'black level correction', -0.1, 0.1, 0.0001, S.blk, (S.blk > 0 ? '+' : '') + S.blk.toFixed(4), function (v) { set({ blk: v }); }, 0)
+      ],
+      modes: modes, notOff: S.mode !== 'off',
+      opSl: [slider('m-op', 'opacity', 0, 100, 1, S.opac, Math.round(S.opac) + ' %', function (v) { set({ opac: v }); }, 100)],
+      blend: S.blend, blendAria: 'blend mode: ' + S.blend + '. Change', openBlend: function () { set({ sheet: { kind: 'blend' } }); },
+      hasDrawn: hasD, hasParam: hasP, hasMask: hasMask,
+      usedLine: dm.length ? 'group "exposure 1 · dodge" · ' + dm.length + (dm.length === 1 ? ' shape' : ' shapes') : 'no mask used',
+      addBtns: addBtns, openExisting: function () { set({ sheet: { kind: 'existing' } }); }, dRows: dRows,
+      chTabs: CH.map(function (c) { var sel = c === S.ptab; return { label: c, sel: sel, color: sel ? '#f5f5f5' : '#a3a3a3', fw: sel ? 500 : 400, bar: sel ? accent : 'transparent', pick: function () { set({ ptab: c }); } }; }),
+      ranges: ranges, resetAria: 'Reset channel ' + S.ptab,
+      resetCh: function () { var p = Object.assign({}, self.state.par); delete p[self.state.ptab]; set({ par: p }); },
+      showMask: S.showMask, showBg: S.showMask ? '#e8e8e8' : 'transparent', showBorder: S.showMask ? '#e8e8e8' : '#8f8f8f', toggleShow: function () { set({ showMask: !self.state.showMask }); },
+      invMask: S.invMask, invBg: S.invMask ? '#e8e8e8' : 'transparent', invBorder: S.invMask ? '#e8e8e8' : '#8f8f8f', toggleInv: function () { set({ invMask: !self.state.invMask }); },
+      refOpen: S.refOpen, refRot: S.refOpen ? '180deg' : '0deg', toggleRef: function () { set({ refOpen: !self.state.refOpen }); },
+      refSl: [
+        slider('r-fe', 'feathering radius', 0, 100, 0.1, rf.fe, rf.fe.toFixed(1) + ' px', setRef('fe'), 0),
+        slider('r-bl', 'blurring radius', 0, 100, 0.1, rf.bl, rf.bl.toFixed(1) + ' px', setRef('bl'), 0),
+        slider('r-mo', 'mask opacity', -100, 100, 1, rf.mo, Math.round(rf.mo) + ' %', setRef('mo'), 0),
+        slider('r-co', 'mask contrast', -100, 100, 1, rf.co, Math.round(rf.co) + ' %', setRef('co'), 0)
+      ],
+      mgroups: mgroups, looseRows: looseRows, looseEmpty: looseRows.length === 0,
+      histRows: [['7', 'exposure 1 · dodge', 'mask'], ['6', 'color balance rgb', 'on'], ['5', 'sigmoid', 'on'], ['4', 'exposure', 'on'], ['3', 'color calibration', 'on'], ['2', 'denoise (profiled)', 'on'], ['1', 'lens correction', 'on'], ['0', 'original', '']].map(function (h) { return { n: h[0], name: h[1], note: h[2] }; }),
+      views: shown.map(function (v) {
+        var sel = S.view === v[0];
+        return { label: v[1], sel: sel, color: sel ? '#f5f5f5' : '#a3a3a3', fw: sel ? 500 : 400, bar: sel ? accent : 'transparent', pick: function () { set({ view: v[0], sheet: null }); } };
+      }),
+      drawTitle: D ? MODN.dodge + ' · ' + D.type : '', drawHint: D ? HINTS[D.type] : '', drawSl: drawSl, dBtns: dBtns,
+      isBrush: !!D && D.type === 'brush', dShow: !!D && D.show, dShowBg: D && D.show ? '#3a3a3a' : '#262626', dShowColor: D && D.show ? '#f5f5f5' : '#e8e8e8',
+      toggleDShow: function () { setD({ show: !self.state.draw.show }); },
+      cancelDraw: function () { self._drag = false; set({ draw: null }); },
+      dDis: !canDone, dBg: canDone ? '#e8e8e8' : '#262626', dColor: canDone ? '#161616' : '#8f8f8f',
+      doneDraw: function () {
+        var st = self.state, d = st.draw; if (!d) return;
+        var n = st.counters[d.type] + 1, id = st.nextId, c = Object.assign({}, st.counters);
+        c[d.type] = n;
+        var ns = { id: id, type: d.type, name: d.type + ' #' + n, x: d.x, y: d.y, size: d.size, feather: d.feather, rot: d.rot, flat: d.flat, comp: d.comp, pts: d.pts, closed: d.type === 'path', strokes: d.strokes };
+        set({ shapes: st.shapes.concat([ns]), groups: addTo('dodge', id), counters: c, nextId: id + 1, draw: null, view: 'modules', open: true, mode: st.mode === 'drawn' || st.mode === 'both' ? st.mode : 'drawn' });
+      },
+      toastOn: !!S.toast, toast: S.toast,
+      sheetOpen: sheetOpen, sheetTitle: sheetTitle, sheetItems: sheetItems, closeSheet: function () { set({ sheet: null }); },
+      isList: sheetOpen && kind !== 'rename' && kind !== 'delete', isRename: sheetOpen && kind === 'rename', isConfirm: sheetOpen && kind === 'delete',
+      renVal: S.ren, renInput: function (e) { set({ ren: e.target.value }); },
+      saveRename: function () {
+        var st = self.state, name = (st.ren || '').trim(); if (!name || !sh) { set({ sheet: null }); return; }
+        set({ shapes: st.shapes.map(function (s) { return s.id === sh.sid ? Object.assign({}, s, { name: name }) : s; }), sheet: null });
+      },
+      doDelete: function () {
+        var st = self.state, id = sh.sid;
+        set({
+          shapes: st.shapes.filter(function (s) { return s.id !== id; }),
+          groups: st.groups.map(function (g) { return Object.assign({}, g, { members: g.members.filter(function (m) { return m.sid !== id; }) }); }),
+          sel: st.sel === id ? null : st.sel, sheet: null
+        });
+      }
+    };
+  }
+}
+
+var YEL = '#ffe000', WHT = '#f1f1f1';
+var BLENDS = ['normal', 'average', 'difference', 'multiply', 'divide', 'addition', 'subtraction', 'screen', 'overlay', 'softlight', 'hardlight', 'lightness', 'chromaticity'];
+var ICON = {
+  brush: 'M4 20c3.5 0 5-1.5 5-4l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2.5 0-2 4-2 7z',
+  circle: 'M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0',
+  ellipse: 'M3 12a9 5 0 1 0 18 0a9 5 0 1 0-18 0',
+  gradient: 'M4 5h16v14H4zM4 12h16',
+  path: 'M5 17l3-10 9 3 2 8z'
+};
+function f1(n) { return (Math.round(n * 10) / 10).toString(); }
+function item(d, fill, stroke, sw, op, dash, fr) { return { d: d, fill: fill, stroke: stroke, sw: sw, op: op, dash: dash || 'none', fr: fr || 'nonzero' }; }
+function lineD(pts, close) {
+  if (!pts.length) return '';
+  return pts.map(function (p, i) { return (i ? 'L' : 'M') + f1(p[0]) + ' ' + f1(p[1]); }).join('') + (close ? 'Z' : '');
+}
+function ellD(cx, cy, rx, ry, rot) {
+  var a = rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), pts = [];
+  for (var i = 0; i < 36; i++) {
+    var t = i / 36 * 2 * Math.PI, x = rx * Math.cos(t), y = ry * Math.sin(t);
+    pts.push([cx + x * c - y * s, cy + x * s + y * c]);
+  }
+  return lineD(pts, true);
+}
+function gradDir(s) { var a = s.rot * Math.PI / 180; return [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a)]; }
+function gradPoly(s) {
+  var g = gradDir(s), L = 500;
+  return lineD([[s.x - g[0] * L, s.y - g[1] * L], [s.x + g[0] * L, s.y + g[1] * L], [s.x + g[0] * L + g[2] * L, s.y + g[1] * L + g[3] * L], [s.x - g[0] * L + g[2] * L, s.y - g[1] * L + g[3] * L]], true);
+}
+function gradLine(s, off) {
+  var g = gradDir(s), L = 500, ox = g[2] * off, oy = g[3] * off;
+  return lineD([[s.x - g[0] * L + ox, s.y - g[1] * L + oy], [s.x + g[0] * L + ox, s.y + g[1] * L + oy]], false);
+}
+function shapePoly(s) {
+  if (s.type === 'circle') return ellD(s.x, s.y, s.size, s.size, 0);
+  if (s.type === 'ellipse') return ellD(s.x, s.y, s.size, s.size * s.flat / 100, s.rot);
+  if (s.type === 'gradient') return gradPoly(s);
+  if (s.type === 'path' && s.pts.length > 2) return lineD(s.pts, true);
+  return '';
+}
+function shapeItems(s, edit, outlineOnly) {
+  var out = [], t = s.type;
+  if (t === 'brush') {
+    (s.strokes || []).forEach(function (k) {
+      var pts = k.pts.length === 1 ? [k.pts[0], [k.pts[0][0] + 0.1, k.pts[0][1]]] : k.pts;
+      out.push(outlineOnly ? item(lineD(pts), 'none', WHT, 1.5, 0.9) : item(lineD(pts), 'none', YEL, k.size, (0.15 + 0.3 * k.hard / 100) * k.op / 100));
+    });
+    return out;
+  }
+  if (t === 'path' && !s.closed) {
+    if (s.pts.length > 1) out.push(item(lineD(s.pts), 'none', WHT, 1.5, 0.95));
+    out.push(item(s.pts.map(function (p) { return 'M' + f1(p[0] - 3) + ' ' + f1(p[1]) + 'a3 3 0 1 0 6 0a3 3 0 1 0 -6 0'; }).join(''), WHT, 'none', 0, 1));
+    return out;
+  }
+  out.push(item(shapePoly(s), YEL, 'none', 0, 0.45));
+  if (edit) {
+    if (t === 'circle' || t === 'ellipse') {
+      var rx = s.size, ry = t === 'circle' ? s.size : s.size * s.flat / 100, rot = t === 'circle' ? 0 : s.rot;
+      out.push(item(ellD(s.x, s.y, rx, ry, rot), 'none', WHT, 1.2, 0.95));
+      out.push(item(ellD(s.x, s.y, rx + s.feather, ry + s.feather, rot), 'none', WHT, 1.2, 0.95, '4 3'));
+    } else if (t === 'gradient') {
+      out.push(item(gradLine(s, 0), 'none', WHT, 1.2, 0.95));
+      out.push(item(gradLine(s, -s.comp), 'none', WHT, 1.2, 0.95, '4 3'));
+      out.push(item(gradLine(s, s.comp), 'none', WHT, 1.2, 0.95, '4 3'));
+    } else {
+      out.push(item(shapePoly(s), 'none', WHT, 1.2, 0.95));
+    }
+  }
+  return out;
+}
+function sky() {
+  return 'radial-gradient(circle at 70% 34%, #e9d3a6 0%, #c9a878 7%, rgba(201,168,120,0) 24%), linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 8%, #2a2c33 8%, #2a2c33 24%, rgba(0,0,0,0) 24%, rgba(0,0,0,0) 30%, #23252c 30%, #23252c 49%, rgba(0,0,0,0) 49%, rgba(0,0,0,0) 56%, #2d2f37 56%, #2d2f37 78%, rgba(0,0,0,0) 78%) bottom / 100% 42% no-repeat, linear-gradient(90deg, rgba(0,0,0,0) 36%, #1f2127 36%, #1f2127 44%, rgba(0,0,0,0) 44%) bottom / 100% 58% no-repeat, linear-gradient(180deg, #b9a58c 0%, #a88a74 38%, #6b7279 70%, #3a4046 100%)';
+}
+</script>
+</body>
+</html>

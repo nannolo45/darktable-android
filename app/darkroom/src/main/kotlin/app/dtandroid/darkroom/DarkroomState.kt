@@ -63,7 +63,8 @@ sealed interface GroupTab {
     data class Group(val index: Int) : GroupTab
 }
 
-enum class BottomView { MODULES, HISTORY }
+/** Brief P3d: MASKS is the masks tab (phone: the third bottom tab; tablet: beside the history). */
+enum class BottomView { MODULES, HISTORY, MASKS }
 
 /** A menu or sheet over the screen. */
 sealed interface Overlay {
@@ -156,6 +157,10 @@ data class DarkroomState(
     val actionLists: Map<Pair<InstanceKey, Int>, kotlinx.serialization.json.JsonElement> = emptyMap(),
     /** Brief P3c: the page chosen in a module's tabs, by instance and tabs control (a picker reads its channel there) */
     val tabs: Map<Pair<InstanceKey, Int>, Int> = emptyMap(),
+    /** Brief P3d: each instance's mask mode as blend_get names it ("off", "uniform", "drawn", "flexi", ...), for the indicator */
+    val maskModes: Map<InstanceKey, String> = emptyMap(),
+    /** Brief P3d: "show mask" is on for this instance: the photo is the engine's mask display (engine-api.md 6.8) */
+    val showMask: InstanceKey? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true
