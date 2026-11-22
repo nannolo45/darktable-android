@@ -18,6 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -154,7 +157,7 @@ private fun BoostSlider(spec: ChannelSpec, value: Double, default: Double, enabl
         softMin = -18.0, softMax = 18.0, hardMin = -18.0, hardMax = 18.0, default = default, step = 0.1,
         digits = 1, factor = 1.0, offset = 0.0, format = " EV", textDefault = null, integer = false,
     )
-    var moving by androidx.compose.runtime.remember(spec.base) { androidx.compose.runtime.mutableStateOf<Double?>(null) }
+    var moving by remember(spec.base) { mutableStateOf<Double?>(null) }
     SliderControl(slider.label ?: "", slider, moving ?: value, enabled,
         onDrag = { moving = it }, onDragEnd = { moving?.let(onSet); moving = null }, onReset = { onSet(default) }, onExact = {})
 }
