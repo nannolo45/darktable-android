@@ -1604,7 +1604,11 @@ class FakeEngine(
             })
             blend["mask_id"] = JsonPrimitive(gid)
         }
-        blend["masks"] = JsonPrimitive("flexi"); blend["mask_mode_flags"] = JsonArray(listOf("enabled", "flexi").map { JsonPrimitive(it) })
+        // as the bridge (dtb_mask_attach, desktop's _blendop_mask_enable): ENABLED | FLEXI added to the mode's flags; a
+        // combination blend_get has no name for is "other" (drawn mode with a shape: drawn + flexi)
+        val flags = (((blend["mask_mode_flags"] as? JsonArray)?.map { it.jsonPrimitive.content } ?: emptyList()) + listOf("enabled", "flexi")).distinct()
+        blend["masks"] = JsonPrimitive(maskModes.entries.firstOrNull { it.value.toSet() == flags.toSet() }?.key ?: "other")
+        blend["mask_mode_flags"] = JsonArray(listOf("enabled", "drawn", "parametric", "raster", "flexi").filter { it in flags }.map { JsonPrimitive(it) })
         s.forms = s.forms.map { if (it.id == rid) it.copy(geometry = JsonObject(it.geometry + ("members" to JsonArray((it.geometry["members"] as JsonArray) + m)))) else it }
         s.addItem(op, priority, true, cur.params, JsonObject(blend))
     }

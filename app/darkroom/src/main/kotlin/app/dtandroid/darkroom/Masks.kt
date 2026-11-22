@@ -248,7 +248,7 @@ class Masks internal constructor(private val c: DarkroomController) {
             else {
                 val b = e.blendGet(k.op, k.priority)
                 val root = b.maskId?.let { id -> forms.firstOrNull { it.id == id } }
-                ModuleMask(k, b.supported, b.masks, b.opacity ?: 100.0, b.mode ?: "normal", b.effectiveColorspace ?: b.colorspace ?: "",
+                ModuleMask(k, b.supported, modeName(b), b.opacity ?: 100.0, b.mode ?: "normal", b.effectiveColorspace ?: b.colorspace ?: "",
                     b.combineInvert, root?.id, root?.geometry?.str("operator"), root?.members ?: emptyList())
             }
         }
@@ -609,6 +609,24 @@ class Masks internal constructor(private val c: DarkroomController) {
         val COMBINE = listOf("union" to "maximum", "intersection" to "minimum", "difference" to "difference", "exclusion" to "exclusion")
 
         fun combineLabel(operator: String?): String = COMBINE.firstOrNull { it.second == operator }?.first ?: (operator ?: "union")
+
+        /**
+         * blend_get's mode, with the combinations it names "other" read from its flags: a shape attached to an instance
+         * in desktop's drawn mode adds FLEXI to DRAWN (dtb_mask_attach does as desktop's _blendop_mask_enable), which
+         * is still the drawn mode for the tab; with PARAMETRIC too it is drawn & parametric.
+         */
+        fun modeName(b: app.dtandroid.engine.api.Blend): String? {
+            val m = b.masks
+            if (m != "other") return m
+            val flags = (b.json["mask_mode_flags"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }?.toSet() ?: return m
+            val drawn = "drawn" in flags || "flexi" in flags
+            return when {
+                drawn && "parametric" in flags -> "drawn_parametric"
+                drawn -> "flexi"
+                "raster" in flags -> "raster"
+                else -> m
+            }
+        }
 
         /** whether the engine can show the mask of an instance in this mode (engine-api.md 6.8: not off, not uniform) */
         fun displayable(engineMode: String?): Boolean = engineMode != null && engineMode != "off" && engineMode != "uniform"

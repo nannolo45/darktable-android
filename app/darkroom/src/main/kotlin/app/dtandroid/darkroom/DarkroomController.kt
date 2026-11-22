@@ -554,7 +554,7 @@ class DarkroomController(
         // (an instance not in the history has darktable's default blending: no mask)
         val maskModes = HashMap<InstanceKey, String>()
         for (m in modules) if (m.supportsBlending && m.inHistory) {
-            runCatching { engine.blendGet(m.op, m.priority).masks }.getOrNull()?.let { maskModes[m.key] = it }
+            runCatching { Masks.modeName(engine.blendGet(m.op, m.priority)) }.getOrNull()?.let { maskModes[m.key] = it }
         }
         val info = engine.imageInfo()
         livePatched.clear()
