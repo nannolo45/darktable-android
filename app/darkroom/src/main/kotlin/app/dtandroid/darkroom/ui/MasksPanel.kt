@@ -169,7 +169,7 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
             }
         }
     }
-    if (mode == MaskMode.BOTH) Note("drawn & parametric: not built yet")
+    if (mode == MaskMode.BOTH) Note("drawn & parametric: shown as the tree of its elements")
     if (mode == null) Note("this mask (${m.engineMode}) is not edited here yet")
     if (mode != null && mode != MaskMode.OFF) {
         MaskSlider(maskSlider(1, "opacity", 0.0, 100.0, 100.0, 1.0, 0, " %"), m.opacity, !ro, live = false) {
@@ -183,7 +183,7 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }
     // brief P3d stage 2b: the parametric mode and the refinement
-    if (mode == MaskMode.PARAMETRIC || mode == MaskMode.DRAWN) ParametricSection(controller, s, ro)
+    if (mode == MaskMode.PARAMETRIC || mode == MaskMode.DRAWN || mode == MaskMode.BOTH) ParametricSection(controller, s, ro)
     if (mode == MaskMode.PARAMETRIC) {
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }

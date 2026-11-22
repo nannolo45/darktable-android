@@ -295,8 +295,11 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
         val st = _state.value
         val root = st.root ?: return
         edit { e ->
-            e.maskMemberRemove(root, id)
-            try { e.maskDelete(id) } catch (x: EngineException) { /* still used elsewhere: it stays */ }
+            e.historyGroupBegin() // the removal and the delete are one undo step
+            try {
+                e.maskMemberRemove(root, id)
+                try { e.maskDelete(id) } catch (x: EngineException) { /* still used elsewhere: it stays */ }
+            } finally { e.historyGroupEnd(true) }
             e.historySeal()
         }
     }
@@ -339,16 +342,19 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
         _state.update { it.copy(sheet = null) }
         val k = _state.value.key ?: return
         edit { e ->
-            e.blendSet(k.op, k.priority, mapOf("colorspace" to JsonPrimitive(sh.space)))
-            val b = e.blendGet(k.op, k.priority)
-            val root = b.maskId
-            if (root != null) {
-                val space = b.effectiveColorspace ?: b.colorspace ?: ""
-                for (el in elementsOf(e.masks(), root)) if (el.space != space) {
-                    e.maskMemberRemove(root, el.id)
-                    try { e.maskDelete(el.id) } catch (x: EngineException) { /* stays */ }
+            e.historyGroupBegin() // the colour space and the removed elements are one undo step
+            try {
+                e.blendSet(k.op, k.priority, mapOf("colorspace" to JsonPrimitive(sh.space)))
+                val b = e.blendGet(k.op, k.priority)
+                val root = b.maskId
+                if (root != null) {
+                    val space = b.effectiveColorspace ?: b.colorspace ?: ""
+                    for (el in elementsOf(e.masks(), root)) if (el.space != space) {
+                        e.maskMemberRemove(root, el.id)
+                        try { e.maskDelete(el.id) } catch (x: EngineException) { /* stays */ }
+                    }
                 }
-            }
+            } finally { e.historyGroupEnd(true) }
             e.historySeal()
         }
     }
