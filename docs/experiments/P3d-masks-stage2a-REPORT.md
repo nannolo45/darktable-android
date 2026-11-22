@@ -63,7 +63,16 @@ active; a parametric element in a nested group. C22 (6.7, unchanged calls) still
 App JVM (run 45060569452 and later): 337 tests, 0 failures, `P3dMaskTreeTest` 2/2, `P3dMasksTest` 9/9 (stage 1,
 unchanged), `PhoneMaskTreeScreenshots` 2/2, `FakeMaskTreeTest` 2/2.
 
-Emulator and compare: see the CI table at the end.
+Emulator (x86_64 emulator, API 33, run 45070957074, 83 instrumented tests OK):
+
+| scenario | result |
+|---|---|
+| d6 circle on exposure | history `..., exposure` +1 item; one undo removes it, redo brings it back |
+| d6 brush, three strokes by injected touch | +1 item (`..., exposure, exposure`), one undo removes all three |
+| d7 difference of a big and a small circle, order swapped by `move down` | preview mean abs. diff 10.24 (0..255); the move is one item |
+| d7 wrap the big circle in a group | preview diff 0.0 (a group of one with union changes nothing) |
+| d7 XMP written and reopened | tree rows `[0:group, 1:circle, 0:circle]` both times; picture diff 0.0 |
+| compare: darktable-cli of `p3d-tree.xmp` vs the app's export | PSNR 45.26 dB (circle 45.06, brush 45.05; bound 40), as the other app-XMP cases |
 
 ## 4. Upstream behaviour worth knowing; where the app differs
 
@@ -115,6 +124,17 @@ Emulator and compare: see the CI table at the end.
 - The parametric screens (other package) can use `maskAdd(type = "parametric")`, `maskUpdate` and the tree; they
   need nothing more from the engine for elements.
 
+## CI
+
+Last code commit `12b44a1c` (app and engine); `f7556ae8` changes only the p2b workflow's cache key (4 below) and is
+the commit the final runs built:
+
+| workflow | run | result |
+|---|---|---|
+| p2a-app | 45068138347 (`12b44a1c`) | success: 337 JVM tests, 0 failures (P3dMaskTreeTest 2/2, PhoneMaskTreeScreenshots 2/2, FakeMaskTreeTest 2/2) |
+| p2b-real-engine | 45070957074 (`f7556ae8`) | success: apk, emulator 83/83, compare all ok (`p3d=ok`, tree PSNR 45.26 dB) |
+| g0-app (bridge tests; engine.yml is called from here and from p2b) | 45070957078 (`f7556ae8`) | g0-linux: 359 PASS, 0 FAIL (C26 on cr2, raf, arw); engine builds ok; see the reply for the g0 emulator job |
+
 ## Running log
 
 - 22 Nov: read CLAUDE.md, brief, notes, engine-api 6.6-6.8, stage 1 report; upstream read with grep (develop.c
@@ -127,3 +147,8 @@ Emulator and compare: see the CI table at the end.
 - p2b run 45060569454: the apk job failed fetching a Robolectric artefact (`nativeruntime-dist-compat-1.0.18`
   transform), infrastructure; the workspace cannot rerun jobs (`gh` not signed in), so a small real change
   (`12b44a1`: the group line counts members) started the workflows again.
+- p2b run 45068138293 (`12b44a1`): apk and emulator green (d6, d7 pass), compare failed at "Restore Linux build":
+  the linux job had logged "Cache not found" and then "Unable to reserve cache ... another job may be creating this
+  cache", so nothing was saved; a rerun of the failed job missed again. Fix (`f7556ae8`): the cache key now also
+  hashes `dtb_test_p1b2.c` and `dtb_test_p3d.c`, which `dtb_test.c` includes (correct anyway), giving a fresh key.
+- p2b run 45070957074 and g0 run 45070957078 on `f7556ae8`: green.
