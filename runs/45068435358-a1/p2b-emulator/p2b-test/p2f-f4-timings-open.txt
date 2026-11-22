@@ -1,0 +1,42 @@
+what: dt-android timings (briefs P2b, P2f); numbers measured on this device
+app: test
+engine package: 7527ed1a852bbef0
+darktable: 04477d3
+engine api: 1
+threads: 4 of 4 at start; pinned to CPUs none
+cores: 4 CPUs, max clocks 0.00 GHz
+pinning: not pinned: all CPUs are equally fast; the engine uses every CPU it may
+engine thread CPUs at start: 0-3
+last return to the foreground: the engine was not pinned; the app may use CPUs 0-3; now not pinned: all CPUs are equally fast; the engine uses every CPU it may
+android api: 33
+photo: 15 MB RAW, CR2
+photo source: LightPhotoLibrary (a copy downloaded to this phone)
+edit: 15 history items (current position 15)
+modules on (19): rawprepare, temperature, highlights, demosaic, demosaicscale, denoiseprofile, flip _builtin_auto, exposure _builtin_scene-referred default, colorin, channelmixerrgb _builtin_scene-referred default, diffuse, sharpen, sigmoid _builtin_scene-referred default, bilat, finalscale, colorout, overexposed, rawoverexposed, gamma
+open ms: 154.3
+image info (loads the full image) ms: 80.4
+image: 3908 x 2602 processed, 3944 x 2622 sensor, bayer
+per module, first preview, every module (ms, slowest first): sum 549.7 ms over 13 modules: denoiseprofile 221.9; diffuse 118.1; bilat 56.1; demosaic 48.3; channelmixerrgb 32.2; sigmoid 30.4; highlights 20.4; colorout 5.6; colorin 4.7; rawprepare 4.5; sharpen 4.2; temperature 1.9; 1 others 1.6
+first preview 1024x681 ms: 660.2
+image info again ms (the darkroom reads it after every change): 0.3
+preview again, nothing changed ms: 6.4
+preview after a late module change (color balance rgb) ms: 370.1
+per module, preview after an exposure change (ms, slowest first): sum 371.8 ms over 9 modules: colorbalancergb 117.8; diffuse 113.2; bilat 55.2; channelmixerrgb 32.6; sigmoid 30.3; colorin 9.3; colorout 5.4; exposure 4.3; sharpen 3.7
+preview after an early module change (exposure) ms: 403.6
+per module, preview at the darkroom's fit size after an exposure change (ms, slowest first): sum 584.1 ms over 9 modules: diffuse 199.4; colorbalancergb 143.7; sigmoid 81.7; bilat 75.8; channelmixerrgb 67.2; colorout 5.9; colorin 4.9; sharpen 3.9; exposure 1.6
+preview at the darkroom's fit size (asked 1024 px, got 1024x681, view 304x250) after an exposure change ms: 622.6
+per module, drag picture 320 px after an exposure step (ms, slowest first): sum 132.7 ms over 12 modules: demosaic 49.0; highlights 27.3; denoiseprofile 22.1; diffuse 11.8; colorbalancergb 10.4; bilat 4.5; sigmoid 3.0; channelmixerrgb 2.9; colorin 0.6; colorout 0.6; sharpen 0.4; exposure 0.2
+drag picture (chosen size 320 px), 6 steps: median ms: 133.0 (min 41.3, max 164.5)
+drag picture by size, median of 3 after an exposure step (ms): 256 px 39.1; 384 px 90.0; 512 px 208.1; 640 px 217.9; 768 px 461.1; 1024 px 410.5
+drag picture chosen now: fit: 113.5 ms fixed + 840.2 ns per pixel; drag picture 320 px for a 50 ms target
+per module, sharp region at fit after an exposure change (ms, slowest first): sum 850.2 ms over 13 modules: denoiseprofile 239.4; demosaic 231.3; diffuse 110.5; bilat 64.8; sigmoid 60.9; highlights 56.5; rawprepare 31.9; channelmixerrgb 31.0; temperature 6.9; colorout 5.6; colorin 5.2; sharpen 4.4; 1 others 1.7
+sharp region at fit 1080x719 after a change ms: 875.5
+per module, sharp region at 100 % after an exposure change (ms, slowest first): sum 2920.0 ms over 12 modules: denoiseprofile 1369.0; diffuse 810.1; bilat 279.6; sigmoid 140.2; channelmixerrgb 136.0; colorout 45.4; highlights 44.3; demosaic 34.3; sharpen 25.5; colorin 21.2; finalscale 7.4; exposure 7.0
+sharp region at 100 % 1080x1500 after a change ms: 3091.2
+region rendered in place (no JNI copy): true
+modules() size bytes: 185306
+modules() bridge call ms (median of 5): 15.7
+modules() JNI string ms (median of 5): 1.2
+modules() Kotlin parse ms (median of 5): 14.0
+export full-size JPEG ms: 12279.5
+export size bytes: 4927327
