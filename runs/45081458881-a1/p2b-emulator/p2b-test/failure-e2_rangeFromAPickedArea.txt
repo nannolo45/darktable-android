@@ -1,0 +1,620 @@
+e2_rangeFromAPickedArea(app.dtandroid.real.P3dParametricScenarioTest): java.lang.AssertionError: timed out: picker armed; parametric ParametricState(key=InstanceKey(op=exposure, priority=0), blend=Blend(json={"supported":true,"masks":"other","mask_mode_flags":["enabled","parametric","flexi"],"colorspace":"rgb_scene","effective_colorspace":"rgb_scene","mode":"normal","reverse":false,"parameter":0.0,"opacity":100.0,"combine":{"invert":false,"mode":"exclusive"},"feathering_radius":0.0,"feathering_guide":"input_after_blur","blur_radius":0.0,"contrast":0.0,"brightness":0.0,"details":0.0,"parametric":{"g_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"R_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"G_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"B_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"Jz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"Cz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"hz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"g_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"R_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"G_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"B_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"Jz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"Cz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"hz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0}},"raster":null,"mask_id":1795390041,"mask_lock":false}), root=1795390041, elements=[ParamElement(id=1795390040, base=g, space=rgb_scene, inRange=[0.0, 0.0, 1.0, 1.0], outRange=[0.0, 0.0, 1.0, 1.0], inverse=false, disabled=false, boostSupported=true, boost=0.0, showOutput=false, whole=true)], refineOpen=false, sheet=null, note=null), message null
+
+## darkroom scheduler
+lock free, interactive 0, background idle, dragging false, quiet false, photo mire1.cr2 open false, loading false, fetching false, working null
+
+## timeline
++0 ms	darkroom: engine open start
++123 ms	darkroom: engine open end
++147 ms	darkroom: preview render start (1024 px)
++265 ms	darkroom: preview rendered 1024x681 in 118 ms
++266 ms	darkroom: preview shown
++272 ms	darkroom: open JUNK_F8.CR2 asked
++286 ms	darkroom: JUNK_F8.CR2 remembered as having no picture, tried again (the user opened it)
++286 ms	darkroom: engine open start
++287 ms	darkroom: JUNK_F8.CR2 has no picture (open answered IO: cannot decode /data/user/0/app.dtandroid/files/p2h/JUNK_F8.CR2: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)), not opened
++320 ms	darkroom: open mire1.cr2 asked
++322 ms	darkroom: stored picture shown
++322 ms	darkroom: engine open start
++523 ms	darkroom: engine open end
++556 ms	darkroom: preview render start (1024 px)
++696 ms	darkroom: preview render start (1024 px)
++761 ms	darkroom: preview render start (1024 px)
++865 ms	darkroom: preview rendered 1024x681 in 103 ms
++865 ms	darkroom: preview shown
++1097 ms	darkroom: preview render start (1024 px)
++2552 ms	darkroom: open mire1.cr2 asked
++2553 ms	darkroom: stored picture shown
++2553 ms	darkroom: engine open start
++2736 ms	darkroom: engine open end
++2760 ms	darkroom: preview render start (1024 px)
++2929 ms	darkroom: preview render start (1024 px)
++15702 ms	darkroom: open mire1.cr2 asked
++15704 ms	darkroom: stored picture shown
++15704 ms	darkroom: engine open start
++15890 ms	darkroom: engine open end
++15914 ms	darkroom: preview render start (1024 px)
++16034 ms	darkroom: preview render start (1024 px)
++16061 ms	darkroom: preview render start (1024 px)
++17802 ms	darkroom: open mire1.cr2 asked
++17804 ms	darkroom: stored picture shown
++17804 ms	darkroom: engine open start
++18002 ms	darkroom: engine open end
++18036 ms	darkroom: preview render start (1024 px)
++18272 ms	darkroom: preview rendered 1024x681 in 236 ms
++18272 ms	darkroom: preview shown
++18346 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
++18434 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
++20514 ms	darkroom: crop tool: frame written (cx,cy,cw,ch)
++20537 ms	darkroom: preview render start (1024 px)
++21524 ms	darkroom: open mire1.cr2 asked
++21525 ms	darkroom: stored picture shown
++21526 ms	darkroom: engine open start
++21723 ms	darkroom: engine open end
++21750 ms	darkroom: preview render start (1024 px)
++21950 ms	darkroom: preview rendered 1024x681 in 199 ms
++21950 ms	darkroom: preview shown
++22009 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
++22085 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
++22914 ms	darkroom: preview render start (1024 px)
++23026 ms	darkroom: preview rendered 892x893 in 111 ms
++23026 ms	darkroom: preview shown
++23686 ms	darkroom: open mire1.cr2 asked
++23688 ms	darkroom: stored picture shown
++23689 ms	darkroom: engine open start
++23889 ms	darkroom: engine open end
++23916 ms	darkroom: preview render start (1024 px)
++24116 ms	darkroom: preview rendered 1024x681 in 200 ms
++24116 ms	darkroom: preview shown
++24160 ms	darkroom: preview render start (1024 px)
++24173 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
++24274 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
++25919 ms	darkroom: crop tool: straighten by -2.7228258°
++25943 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
++26078 ms	darkroom: crop tool: open on 4027x2784, picture 1024x708 (photo 2681x2784)
++26637 ms	darkroom: open mire1.cr2 asked
++26693 ms	darkroom: stored picture shown
++26798 ms	thumbnail pass: 81/mire1.cr2 render start
++26875 ms	background: thumbnail mire1.cr2 put back for interactive work
++26875 ms	darkroom: engine open start
++27078 ms	darkroom: engine open end
++27115 ms	darkroom: preview render start (1024 px)
++27312 ms	darkroom: preview rendered 1024x681 in 196 ms
++27312 ms	darkroom: preview shown
++27410 ms	styles: 534 read in 88 ms
++28185 ms	darkroom: open mire1.cr2 asked
++28187 ms	darkroom: stored picture shown
++28187 ms	darkroom: engine open start
++28382 ms	darkroom: engine open end
++28421 ms	darkroom: preview render start (1024 px)
++28617 ms	darkroom: preview rendered 1024x681 in 196 ms
++28617 ms	darkroom: preview shown
++28837 ms	styles: 539 read in 53 ms
++28857 ms	darkroom: preview render start (1024 px)
++29555 ms	darkroom: preview render start (1024 px)
++29666 ms	darkroom: preview render start (1024 px)
++33116 ms	darkroom: open mire1.cr2 asked
++33118 ms	darkroom: stored picture shown
++33119 ms	darkroom: engine open start
++33311 ms	darkroom: engine open end
++33355 ms	darkroom: preview render start (1024 px)
++33587 ms	darkroom: preview rendered 1024x681 in 231 ms
++33587 ms	darkroom: preview shown
++33630 ms	darkroom: preview render start (1024 px)
++33640 ms	darkroom: preview rendered 1024x681 in 9 ms
++33640 ms	darkroom: preview shown
++33869 ms	darkroom: preview render start (1024 px)
++34006 ms	darkroom: preview rendered 1024x681 in 137 ms
++34006 ms	darkroom: preview shown
++34385 ms	darkroom: open mire1.cr2 asked
++34387 ms	darkroom: stored picture shown
++34387 ms	darkroom: engine open start
++34580 ms	darkroom: engine open end
++34606 ms	darkroom: preview render start (1024 px)
++34825 ms	darkroom: preview rendered 1024x681 in 218 ms
++34825 ms	darkroom: preview shown
++35002 ms	darkroom: preview render start (1024 px)
++35086 ms	darkroom: preview render start (1024 px)
++35437 ms	darkroom: open mire1.cr2 asked
++35553 ms	darkroom: stored picture shown
++35632 ms	thumbnail pass: 81/mire1.cr2 render start
++35697 ms	background: thumbnail mire1.cr2 put back for interactive work
++35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
++35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
++35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
++35697 ms	darkroom: engine open start
++35898 ms	darkroom: engine open end
++35942 ms	darkroom: preview render start (1024 px)
++36137 ms	darkroom: preview rendered 1024x681 in 194 ms
++36137 ms	darkroom: preview shown
++36148 ms	darkroom: picker armed on temperature 0 control 4
++36152 ms	darkroom: picker temperature wb_from_area {"area":[0.02,0.02,0.98,0.98]}
++36629 ms	darkroom: preview render start (1024 px)
++36751 ms	darkroom: preview rendered 1024x681 in 122 ms
++36751 ms	darkroom: preview shown
++37536 ms	darkroom: picker temperature wb_from_area {"area":[0.3960000076144934,0.41599993824958803,0.98,0.98]}
++38093 ms	darkroom: preview render start (1024 px)
++38199 ms	darkroom: picker temperature wb_from_area {"area":[0.24599991224706175,0.33599995493888857,0.8299999046325683,0.9000000166893005]}
++38640 ms	darkroom: preview render start (1024 px)
++38755 ms	darkroom: preview rendered 1024x681 in 114 ms
++38755 ms	darkroom: preview shown
++39111 ms	darkroom: preview render start (1024 px)
++40867 ms	darkroom: open mire1.cr2 asked
++40868 ms	darkroom: stored picture shown
++40869 ms	darkroom: engine open start
++41071 ms	darkroom: engine open end
++41096 ms	darkroom: preview render start (1024 px)
++41283 ms	darkroom: preview rendered 1024x681 in 187 ms
++41283 ms	darkroom: preview shown
++41288 ms	darkroom: picker armed on exposure 0 control 5
++41291 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.02,0.02,0.98,0.98]}
++41734 ms	darkroom: preview render start (1024 px)
++41824 ms	darkroom: preview rendered 1024x681 in 90 ms
++41824 ms	darkroom: preview shown
++42653 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.44600001953542234,0.3960000467300415,0.98,0.98]}
++43152 ms	darkroom: preview render start (1024 px)
++43247 ms	darkroom: preview rendered 1024x681 in 94 ms
++43247 ms	darkroom: preview shown
++43303 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.2460000314563513,0.2960000824928284,0.7800000119209289,0.8800000357627868]}
++43718 ms	darkroom: preview render start (1024 px)
++43807 ms	darkroom: preview rendered 1024x681 in 88 ms
++43807 ms	darkroom: preview shown
++44037 ms	darkroom: picker exposure spot {"mode":"measure","lightness":40.0,"area":[0.2460000314563513,0.2960000824928284,0.7800000119209289,0.8800000357627868]}
++44211 ms	darkroom: preview render start (1024 px)
++45916 ms	darkroom: open mire1.cr2 asked
++45918 ms	darkroom: stored picture shown
++45920 ms	darkroom: engine open start
++46121 ms	darkroom: engine open end
++46146 ms	darkroom: preview render start (1024 px)
++46338 ms	darkroom: preview rendered 1024x681 in 191 ms
++46338 ms	darkroom: preview shown
++47901 ms	darkroom: open mire1.cr2 asked
++47903 ms	darkroom: stored picture shown
++47903 ms	darkroom: engine open start
++48099 ms	darkroom: engine open end
++48125 ms	darkroom: preview render start (1024 px)
++48331 ms	darkroom: preview rendered 1024x681 in 205 ms
++48331 ms	darkroom: preview shown
++48424 ms	darkroom: preview render start (1024 px)
++48535 ms	darkroom: preview rendered 1024x681 in 110 ms
++48535 ms	darkroom: preview shown
++48732 ms	darkroom: preview render start (1024 px)
++48913 ms	darkroom: preview render start (1024 px)
++49076 ms	darkroom: preview rendered 1024x681 in 162 ms
++49076 ms	darkroom: preview shown
++49181 ms	darkroom: preview render start (1024 px)
++49282 ms	darkroom: preview render start (1024 px)
++49308 ms	darkroom: preview render start (1024 px)
++49411 ms	darkroom: open mire1.cr2 asked
++49412 ms	darkroom: stored picture shown
++49413 ms	darkroom: engine open start
++49519 ms	darkroom: engine open end
++49556 ms	darkroom: preview render start (1024 px)
++49740 ms	darkroom: preview rendered 1024x681 in 183 ms
++49740 ms	darkroom: preview shown
++49897 ms	darkroom: preview render start (1024 px)
++51636 ms	darkroom: open mire1.cr2 asked
++51637 ms	darkroom: stored picture shown
++51638 ms	darkroom: engine open start
++51834 ms	darkroom: engine open end
++51860 ms	darkroom: preview render start (1024 px)
++52035 ms	darkroom: preview rendered 1024x681 in 174 ms
++52035 ms	darkroom: preview shown
++52249 ms	darkroom: preview render start (1024 px)
++52397 ms	darkroom: preview rendered 1024x681 in 148 ms
++52397 ms	darkroom: preview shown
++53337 ms	darkroom: preview render start (1024 px)
++53494 ms	darkroom: preview rendered 1024x681 in 157 ms
++53494 ms	darkroom: preview shown
++53618 ms	darkroom: preview render start (1024 px)
++53618 ms	darkroom: preview render start (1024 px)
++53723 ms	darkroom: preview render start (1024 px)
++53729 ms	darkroom: preview render start (1024 px)
++53776 ms	darkroom: open mire1.cr2 asked
++53777 ms	darkroom: stored picture shown
++53778 ms	darkroom: engine open start
++53873 ms	darkroom: engine open end
++53899 ms	darkroom: preview render start (1024 px)
++54072 ms	darkroom: preview rendered 1024x681 in 173 ms
++54072 ms	darkroom: preview shown
++54247 ms	darkroom: preview render start (1024 px)
++56000 ms	darkroom: open mire1.cr2 asked
++56002 ms	darkroom: stored picture shown
++56002 ms	darkroom: engine open start
++56192 ms	darkroom: engine open end
++56218 ms	darkroom: preview render start (1024 px)
++56402 ms	darkroom: preview rendered 1024x681 in 183 ms
++56402 ms	darkroom: preview shown
++56487 ms	darkroom: preview render start (1024 px)
++56576 ms	darkroom: preview rendered 1024x681 in 88 ms
++56576 ms	darkroom: preview shown
++57032 ms	darkroom: preview render start (1024 px)
++57291 ms	darkroom: preview render start (1024 px)
++57427 ms	darkroom: preview rendered 1024x681 in 135 ms
++57427 ms	darkroom: preview shown
++57899 ms	darkroom: preview render start (1024 px)
++58060 ms	darkroom: preview rendered 1024x681 in 160 ms
++58060 ms	darkroom: preview shown
++58475 ms	darkroom: preview render start (1024 px)
++58480 ms	darkroom: preview rendered 1024x681 in 4 ms
++58480 ms	darkroom: preview shown
++58520 ms	darkroom: preview render start (1024 px)
++58627 ms	darkroom: preview render start (1024 px)
++58819 ms	darkroom: preview rendered 1024x681 in 192 ms
++58820 ms	darkroom: preview shown
++59431 ms	darkroom: preview render start (1024 px)
++59612 ms	darkroom: preview rendered 1024x681 in 181 ms
++59612 ms	darkroom: preview shown
++60521 ms	darkroom: open mire1.cr2 asked
++60523 ms	darkroom: stored picture shown
++60523 ms	darkroom: engine open start
++60617 ms	darkroom: engine open end
++60642 ms	darkroom: preview render start (1024 px)
++60815 ms	darkroom: preview rendered 1024x681 in 172 ms
++60815 ms	darkroom: preview shown
++61632 ms	darkroom: open mire1.cr2 asked
++61634 ms	darkroom: stored picture shown
++61635 ms	darkroom: engine open start
++61841 ms	darkroom: engine open end
++61867 ms	darkroom: preview render start (1024 px)
++62048 ms	darkroom: preview rendered 1024x681 in 180 ms
++62048 ms	darkroom: preview shown
++62082 ms	darkroom: preview render start (1024 px)
++62157 ms	darkroom: preview render start (1024 px)
++62302 ms	darkroom: preview render start (1024 px)
++62454 ms	darkroom: preview rendered 1024x681 in 151 ms
++62454 ms	darkroom: preview shown
++62897 ms	darkroom: preview render start (1024 px)
++63093 ms	darkroom: preview rendered 1024x681 in 195 ms
++63093 ms	darkroom: preview shown
++63883 ms	darkroom: open mire1.cr2 asked
++63885 ms	darkroom: stored picture shown
++63886 ms	darkroom: engine open start
++64085 ms	darkroom: engine open end
++64112 ms	darkroom: preview render start (1024 px)
++64305 ms	darkroom: preview rendered 1024x681 in 192 ms
++64305 ms	darkroom: preview shown
++64352 ms	darkroom: preview render start (1024 px)
++64383 ms	darkroom: preview render start (1024 px)
++64460 ms	darkroom: preview rendered 1024x681 in 77 ms
++64460 ms	darkroom: preview shown
++64630 ms	darkroom: preview render start (1024 px)
++64779 ms	darkroom: preview rendered 1024x681 in 148 ms
++64779 ms	darkroom: preview shown
++65252 ms	darkroom: preview render start (1024 px)
++65474 ms	darkroom: preview rendered 1024x681 in 221 ms
++65474 ms	darkroom: preview shown
++66190 ms	darkroom: open mire1.cr2 asked
++66191 ms	darkroom: stored picture shown
++66192 ms	darkroom: engine open start
++66391 ms	darkroom: engine open end
++66418 ms	darkroom: preview render start (1024 px)
++66602 ms	darkroom: preview rendered 1024x681 in 184 ms
++66602 ms	darkroom: preview shown
++66645 ms	darkroom: preview render start (1024 px)
++66681 ms	darkroom: preview render start (1024 px)
++66763 ms	darkroom: preview rendered 1024x681 in 81 ms
++66763 ms	darkroom: preview shown
++66808 ms	darkroom: preview render start (1024 px)
++66906 ms	darkroom: preview render start (1024 px)
++67071 ms	darkroom: preview rendered 1024x681 in 165 ms
++67071 ms	darkroom: preview shown
++67106 ms	darkroom: preview render start (1024 px)
++67111 ms	darkroom: preview rendered 1024x681 in 4 ms
++67111 ms	darkroom: preview shown
++67724 ms	darkroom: preview render start (1024 px)
++67904 ms	darkroom: preview rendered 1024x681 in 180 ms
++67905 ms	darkroom: preview shown
++68684 ms	darkroom: open mire1.cr2 asked
++68685 ms	darkroom: stored picture shown
++68686 ms	darkroom: engine open start
++68876 ms	darkroom: engine open end
++68904 ms	darkroom: preview render start (1024 px)
++69110 ms	darkroom: preview rendered 1024x681 in 206 ms
++69110 ms	darkroom: preview shown
++69230 ms	darkroom: preview render start (1024 px)
++69335 ms	darkroom: preview render start (1024 px)
++69365 ms	darkroom: preview render start (1024 px)
++69501 ms	darkroom: preview rendered 1024x681 in 136 ms
++69501 ms	darkroom: preview shown
++69966 ms	darkroom: preview render start (1024 px)
++70160 ms	darkroom: preview rendered 1024x681 in 193 ms
++70160 ms	darkroom: preview shown
++70952 ms	darkroom: open mire1.cr2 asked
++70954 ms	darkroom: stored picture shown
++70954 ms	darkroom: engine open start
++71154 ms	darkroom: engine open end
++71218 ms	darkroom: preview render start (1024 px)
++71398 ms	darkroom: preview rendered 1024x681 in 180 ms
++71399 ms	darkroom: preview shown
++71513 ms	darkroom: preview render start (1024 px)
++71606 ms	darkroom: preview rendered 1024x681 in 93 ms
++71606 ms	darkroom: preview shown
++71655 ms	darkroom: preview render start (1024 px)
++71759 ms	darkroom: preview render start (1024 px)
++71902 ms	darkroom: preview rendered 1024x681 in 142 ms
++71902 ms	darkroom: preview shown
++72005 ms	darkroom: preview render start (1024 px)
++72618 ms	darkroom: open mire1.cr2 asked
++72620 ms	darkroom: stored picture shown
++72620 ms	darkroom: engine open start
++72811 ms	darkroom: engine open end
++72837 ms	darkroom: preview render start (1024 px)
++73014 ms	darkroom: preview rendered 1024x681 in 176 ms
++73014 ms	darkroom: preview shown
++73079 ms	darkroom: preview render start (1024 px)
++73182 ms	darkroom: preview rendered 1024x681 in 102 ms
++73182 ms	darkroom: preview shown
++73562 ms	darkroom: preview render start (1024 px)
++73780 ms	darkroom: preview rendered 1024x681 in 217 ms
++73780 ms	darkroom: preview shown
++75969 ms	darkroom: preview render start (1024 px)
++76123 ms	darkroom: preview rendered 1024x681 in 153 ms
++76123 ms	darkroom: preview shown
++76274 ms	darkroom: preview render start (1024 px)
++76650 ms	darkroom: open mire1.cr2 asked
++76653 ms	darkroom: stored picture shown
++76654 ms	darkroom: engine open start
++76850 ms	darkroom: engine open end
++76876 ms	darkroom: preview render start (1024 px)
++77070 ms	darkroom: preview rendered 1024x681 in 193 ms
++77070 ms	darkroom: preview shown
++77134 ms	darkroom: preview render start (1024 px)
++77217 ms	darkroom: preview rendered 1024x681 in 83 ms
++77217 ms	darkroom: preview shown
++77963 ms	darkroom: preview render start (1024 px)
++78234 ms	darkroom: preview render start (1024 px)
++78283 ms	darkroom: open mire1.cr2 asked
++78285 ms	darkroom: stored picture shown
++78286 ms	darkroom: engine open start
++78390 ms	darkroom: engine open end
++78417 ms	darkroom: preview render start (1024 px)
++78596 ms	darkroom: preview rendered 1024x681 in 179 ms
++78596 ms	darkroom: preview shown
++78759 ms	darkroom: preview render start (1024 px)
++80553 ms	darkroom: open mire1.cr2 asked
++80555 ms	darkroom: stored picture shown
++80555 ms	darkroom: engine open start
++80750 ms	darkroom: engine open end
++80778 ms	darkroom: preview render start (1024 px)
++80969 ms	darkroom: preview rendered 1024x681 in 190 ms
++80969 ms	darkroom: preview shown
++81030 ms	darkroom: preview render start (1024 px)
++81478 ms	darkroom: preview render start (1024 px)
++81809 ms	darkroom: preview render start (1024 px)
++81809 ms	darkroom: preview render start (1024 px)
++81920 ms	darkroom: open mire1.cr2 asked
++81922 ms	darkroom: stored picture shown
++81922 ms	darkroom: engine open start
++82021 ms	darkroom: engine open end
++82049 ms	darkroom: preview render start (1024 px)
++82222 ms	darkroom: preview rendered 1024x681 in 172 ms
++82222 ms	darkroom: preview shown
++82403 ms	darkroom: preview render start (1024 px)
++84155 ms	darkroom: open mire1.cr2 asked
++84156 ms	darkroom: stored picture shown
++84157 ms	darkroom: engine open start
++84354 ms	darkroom: engine open end
++84392 ms	darkroom: preview render start (1024 px)
++84582 ms	darkroom: preview rendered 1024x681 in 190 ms
++84582 ms	darkroom: preview shown
++84659 ms	darkroom: preview render start (1024 px)
++84739 ms	darkroom: preview rendered 1024x681 in 79 ms
++84739 ms	darkroom: preview shown
++84889 ms	darkroom: preview render start (1024 px)
++85029 ms	darkroom: preview rendered 1024x681 in 140 ms
++85029 ms	darkroom: preview shown
+
+## threads
+"Signal Catcher" WAITING
+"HeapTaskDaemon" WAITING
+"Jit thread pool worker thread 0" RUNNABLE
+"ReferenceQueueDaemon" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.Object.wait(Object.java:568)
+    at java.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"FinalizerDaemon" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)
+    at java.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"FinalizerWatchdogDaemon" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.Object.wait(Object.java:568)
+    at java.lang.Daemons$FinalizerWatchdogDaemon.sleepUntilNeeded(Daemons.java:385)
+    at java.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:365)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"Profile Saver" RUNNABLE
+"main" RUNNABLE
+    at android.os.BinderProxy.transactNative(Native Method)
+    at android.os.BinderProxy.transact(BinderProxy.java:584)
+    at android.view.IWindowSession$Stub$Proxy.remove(IWindowSession.java:1356)
+    at android.view.ViewRootImpl.dispatchDetachedFromWindow(ViewRootImpl.java:5409)
+    at android.view.ViewRootImpl.doDie(ViewRootImpl.java:8815)
+    at android.view.ViewRootImpl.die(ViewRootImpl.java:8791)
+    at android.view.WindowManagerGlobal.removeViewLocked(WindowManagerGlobal.java:506)
+    at android.view.WindowManagerGlobal.removeView(WindowManagerGlobal.java:447)
+    at android.view.WindowManagerImpl.removeViewImmediate(WindowManagerImpl.java:206)
+    at android.app.ActivityThread.handleDestroyActivity(ActivityThread.java:5483)
+    at android.app.servertransaction.DestroyActivityItem.execute(DestroyActivityItem.java:47)
+    at android.app.servertransaction.ActivityTransactionItem.execute(ActivityTransactionItem.java:45)
+    at android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:179)
+    at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)
+    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2307)
+    at android.os.Handler.dispatchMessage(Handler.java:106)
+    at android.os.Looper.loopOnce(Looper.java:201)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.app.ActivityThread.main(ActivityThread.java:7924)
+    at java.lang.reflect.Method.invoke(Native Method)
+    at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+"binder:3695_1" RUNNABLE
+"binder:3695_2" RUNNABLE
+"binder:3695_3" RUNNABLE
+"Instr: androidx.test.runner.AndroidJUnitRunner" RUNNABLE
+    at dalvik.system.VMStack.getThreadStackTrace(Native Method)
+    at java.lang.Thread.getStackTrace(Thread.java:1841)
+    at app.dtandroid.real.HangGuard$rule$1.failed(HangGuard.kt:32)
+    at org.junit.rules.TestWatcher.failedQuietly(TestWatcher.java:90)
+    at org.junit.rules.TestWatcher.access$300(TestWatcher.java:52)
+    at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:68)
+    at org.junit.rules.RunRules.evaluate(RunRules.java:20)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+    at org.junit.runners.Suite.runChild(Suite.java:128)
+    at org.junit.runners.Suite.runChild(Suite.java:27)
+    at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+    at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+    at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+    at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+    at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:467)
+    at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2361)
+"DefaultDispatcher-worker-1" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"InstrumentationConnectionThread" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"dt-engine" WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.park(LockSupport.java:194)
+    at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2081)
+    at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:433)
+    at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:85)
+    at app.dtandroid.engine.Engine.$r8$lambda$oDRF5EH_LtHKI5kZ_J83oB6ZCGc(Unknown Source:0)
+    at app.dtandroid.engine.Engine$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+    at java.lang.Thread.run(Thread.java:1012)
+"binder:3695_4" RUNNABLE
+"RenderThread" RUNNABLE
+"hwuiTask0" RUNNABLE
+"hwuiTask1" RUNNABLE
+"binder:3695_5" RUNNABLE
+"queued-work-looper" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"DefaultDispatcher-worker-2" RUNNABLE
+    at kotlinx.serialization.json.JsonElementKt.JsonPrimitive(JsonElement.kt:60)
+    at app.dtandroid.lpl.ModelKt.plain(Model.kt:107)
+    at app.dtandroid.lpl.AgentState.toJson(Model.kt:91)
+    at app.dtandroid.lpl.LplClient.buildBody(LplClient.kt:78)
+    at app.dtandroid.lpl.LplClient.heartbeat(LplClient.kt:57)
+    at app.dtandroid.lpl.LplAgent.heartbeatTo$lambda$0(LplAgent.kt:651)
+    at app.dtandroid.lpl.LplAgent.$r8$lambda$MvEYgdCJMkoLw8yP3_xCFMlHBbU(Unknown Source:0)
+    at app.dtandroid.lpl.LplAgent$$ExternalSyntheticLambda19.invoke(D8$$SyntheticClass:0)
+    at app.dtandroid.lpl.LplAgent.net(LplAgent.kt:219)
+    at app.dtandroid.lpl.LplAgent.heartbeatTo(LplAgent.kt:651)
+    at app.dtandroid.lpl.LplAgent.access$heartbeatTo(LplAgent.kt:68)
+    at app.dtandroid.lpl.LplAgent$heartbeat$2.invokeSuspend(LplAgent.kt:645)
+    at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+    at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+    at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+    at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"OkHttp ConnectionPool" TIMED_WAITING
+    at java.lang.Object.wait(Native Method)
+    at com.android.okhttp.ConnectionPool$1.run(ConnectionPool.java:106)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+    at java.lang.Thread.run(Thread.java:1012)
+"Okio Watchdog" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.Object.wait(Object.java:568)
+    at com.android.okhttp.okio.AsyncTimeout.awaitTimeout(AsyncTimeout.java:313)
+    at com.android.okhttp.okio.AsyncTimeout.access$000(AsyncTimeout.java:42)
+    at com.android.okhttp.okio.AsyncTimeout$Watchdog.run(AsyncTimeout.java:288)
+"binder:3695_6" RUNNABLE
+"binder:3695_7" RUNNABLE
+"binder:3695_8" RUNNABLE
+"DefaultDispatcher-worker-4" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"DefaultDispatcher-worker-3" RUNNABLE
+    at java.net.InetSocketAddress.<init>(InetSocketAddress.java:197)
+    at com.android.okhttp.internal.http.RouteSelector.resetNextInetSocketAddress(RouteSelector.java:181)
+    at com.android.okhttp.internal.http.RouteSelector.nextProxy(RouteSelector.java:144)
+    at com.android.okhttp.internal.http.RouteSelector.next(RouteSelector.java:86)
+    at com.android.okhttp.internal.http.StreamAllocation.findConnection(StreamAllocation.java:176)
+    at com.android.okhttp.internal.http.StreamAllocation.findHealthyConnection(StreamAllocation.java:128)
+    at com.android.okhttp.internal.http.StreamAllocation.newStream(StreamAllocation.java:97)
+    at com.android.okhttp.internal.http.HttpEngine.connect(HttpEngine.java:289)
+    at com.android.okhttp.internal.http.HttpEngine.sendRequest(HttpEngine.java:232)
+    at com.android.okhttp.internal.huc.HttpURLConnectionImpl.execute(HttpURLConnectionImpl.java:465)
+    at com.android.okhttp.internal.huc.HttpURLConnectionImpl.connect(HttpURLConnectionImpl.java:131)
+    at com.android.okhttp.internal.huc.HttpURLConnectionImpl.getOutputStream(HttpURLConnectionImpl.java:262)
+    at app.dtandroid.lpl.UrlConnectionTransport.exchange(Http.kt:57)
+    at app.dtandroid.lpl.LplClient.callOnce(LplClient.kt:357)
+    at app.dtandroid.lpl.LplClient.call(LplClient.kt:339)
+    at app.dtandroid.lpl.LplClient.call$default(LplClient.kt:331)
+    at app.dtandroid.lpl.LplClient.callJson$lpl(LplClient.kt:320)
+    at app.dtandroid.lpl.LplClient.callJson$lpl$default(LplClient.kt:317)
+    at app.dtandroid.lpl.LplClient.heartbeat(LplClient.kt:58)
+    at app.dtandroid.lpl.LplAgent.heartbeatTo$lambda$0(LplAgent.kt:651)
+    at app.dtandroid.lpl.LplAgent.$r8$lambda$MvEYgdCJMkoLw8yP3_xCFMlHBbU(Unknown Source:0)
+    at app.dtandroid.lpl.LplAgent$$ExternalSyntheticLambda19.invoke(D8$$SyntheticClass:0)
+    at app.dtandroid.lpl.LplAgent.net(LplAgent.kt:219)
+    at app.dtandroid.lpl.LplAgent.heartbeatTo(LplAgent.kt:651)
+    at app.dtandroid.lpl.LplAgent.access$heartbeatTo(LplAgent.kt:68)
+    at app.dtandroid.lpl.LplAgent$heartbeat$2.invokeSuspend(LplAgent.kt:645)
+    at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+    at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+    at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+    at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"UiAutomation" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"kotlinx.coroutines.DefaultExecutor" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)
+    at kotlinx.coroutines.DefaultExecutor.run(DefaultExecutor.kt:118)
+    at java.lang.Thread.run(Thread.java:1012)

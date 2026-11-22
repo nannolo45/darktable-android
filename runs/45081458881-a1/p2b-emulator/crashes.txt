@@ -1,0 +1,544 @@
+11-22 23:26:06.835  3695  3882 E dt-android-test: e2_rangeFromAPickedArea(app.dtandroid.real.P3dParametricScenarioTest): java.lang.AssertionError: timed out: picker armed; parametric ParametricState(key=InstanceKey(op=exposure, priority=0), blend=Blend(json={"supported":true,"masks":"other","mask_mode_flags":["enabled","parametric","flexi"],"colorspace":"rgb_scene","effective_colorspace":"rgb_scene","mode":"normal","reverse":false,"parameter":0.0,"opacity":100.0,"combine":{"invert":false,"mode":"exclusive"},"feathering_radius":0.0,"feathering_guide":"input_after_blur","blur_radius":0.0,"contrast":0.0,"brightness":0.0,"details":0.0,"parametric":{"g_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"R_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"G_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"B_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"Jz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"Cz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"hz_in":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"g_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"R_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"G_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"B_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0},"Jz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"Cz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":-6.6438560485839844},"hz_out":{"active":false,"invert":false,"range":[0.0,0.0,1.0,1.0],"boost":0.0}},"raster":null,"mask_id":1795390041,"mask_lock":false}), root=1795390041, elements=[ParamElement(id=1795390040, base=g, space=rgb_scene, inRange=[0.0, 0.0, 1.0, 1.0], outRange=[0.0, 0.0, 1.0, 1.0], inverse=false, disabled=false, boostSupported=true, boost=0.0, showOutput=false, whole=true)], refineOpen=false, sheet=null, note=null), message null
+11-22 23:26:06.835  3695  3882 E dt-android-test: 
+11-22 23:26:06.835  3695  3882 E dt-android-test: ## darkroom scheduler
+11-22 23:26:06.835  3695  3882 E dt-android-test: lock free, interactive 0, background idle, dragging false, quiet false, photo mire1.cr2 open false, loading false, fetching false, working null
+11-22 23:26:06.835  3695  3882 E dt-android-test: 
+11-22 23:26:06.835  3695  3882 E dt-android-test: ## timeline
+11-22 23:26:06.835  3695  3882 E dt-android-test: +0 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +123 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +147 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +265 ms	darkroom: preview rendered 1024x681 in 118 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +266 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +272 ms	darkroom: open JUNK_F8.CR2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +286 ms	darkroom: JUNK_F8.CR2 remembered as having no picture, tried again (the user opened it)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +286 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +287 ms	darkroom: JUNK_F8.CR2 has no picture (open answered IO: cannot decode /data/user/0/app.dtandroid/files/p2h/JUNK_F8.CR2: no loader could decode it (unsupported format, or a truncated or corrupt file) (load status 3)), not opened
+11-22 23:26:06.835  3695  3882 E dt-android-test: +320 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +322 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +322 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +523 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +556 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +696 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +761 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +865 ms	darkroom: preview rendered 1024x681 in 103 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +865 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +1097 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2552 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2553 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2553 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2736 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2760 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +2929 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +15702 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +15704 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +15704 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +15890 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +15914 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +16034 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +16061 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +17802 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +17804 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +17804 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18002 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18036 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18272 ms	darkroom: preview rendered 1024x681 in 236 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18272 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18346 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +18434 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +20514 ms	darkroom: crop tool: frame written (cx,cy,cw,ch)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +20537 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21524 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21525 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21526 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21723 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21750 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21950 ms	darkroom: preview rendered 1024x681 in 199 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +21950 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +22009 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +22085 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +22914 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23026 ms	darkroom: preview rendered 892x893 in 111 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23026 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23686 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23688 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23689 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23889 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +23916 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +24116 ms	darkroom: preview rendered 1024x681 in 200 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +24116 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +24160 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +24173 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +24274 ms	darkroom: crop tool: open on 3908x2602, picture 1024x681 (photo 2602x2602)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +25919 ms	darkroom: crop tool: straighten by -2.7228258°
+11-22 23:26:06.835  3695  3882 E dt-android-test: +25943 ms	darkroom: crop tool: uncropped picture start (crop on, left out of the render)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26078 ms	darkroom: crop tool: open on 4027x2784, picture 1024x708 (photo 2681x2784)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26637 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26693 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26798 ms	thumbnail pass: 81/mire1.cr2 render start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26875 ms	background: thumbnail mire1.cr2 put back for interactive work
+11-22 23:26:06.835  3695  3882 E dt-android-test: +26875 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +27078 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +27115 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +27312 ms	darkroom: preview rendered 1024x681 in 196 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +27312 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +27410 ms	styles: 534 read in 88 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28185 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28187 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28187 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28382 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28421 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28617 ms	darkroom: preview rendered 1024x681 in 196 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28617 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28837 ms	styles: 539 read in 53 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +28857 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +29555 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +29666 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33116 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33118 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33119 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33311 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33355 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33587 ms	darkroom: preview rendered 1024x681 in 231 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33587 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33630 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33640 ms	darkroom: preview rendered 1024x681 in 9 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33640 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +33869 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34006 ms	darkroom: preview rendered 1024x681 in 137 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34006 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34385 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34387 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34387 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34580 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34606 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34825 ms	darkroom: preview rendered 1024x681 in 218 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +34825 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35002 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35086 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35437 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35553 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35632 ms	thumbnail pass: 81/mire1.cr2 render start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35697 ms	background: thumbnail mire1.cr2 put back for interactive work
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35697 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35697 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35898 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +35942 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36137 ms	darkroom: preview rendered 1024x681 in 194 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36137 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36148 ms	darkroom: picker armed on temperature 0 control 4
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36152 ms	darkroom: picker temperature wb_from_area {"area":[0.02,0.02,0.98,0.98]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36629 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36751 ms	darkroom: preview rendered 1024x681 in 122 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +36751 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +37536 ms	darkroom: picker temperature wb_from_area {"area":[0.3960000076144934,0.41599993824958803,0.98,0.98]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +38093 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +38199 ms	darkroom: picker temperature wb_from_area {"area":[0.24599991224706175,0.33599995493888857,0.8299999046325683,0.9000000166893005]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +38640 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +38755 ms	darkroom: preview rendered 1024x681 in 114 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +38755 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +39111 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +40867 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +40868 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +40869 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41071 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41096 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41283 ms	darkroom: preview rendered 1024x681 in 187 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41283 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41288 ms	darkroom: picker armed on exposure 0 control 5
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41291 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.02,0.02,0.98,0.98]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41734 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41824 ms	darkroom: preview rendered 1024x681 in 90 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +41824 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +42653 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.44600001953542234,0.3960000467300415,0.98,0.98]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43152 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43247 ms	darkroom: preview rendered 1024x681 in 94 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43247 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43303 ms	darkroom: picker exposure spot {"mode":"correction","lightness":40.0,"area":[0.2460000314563513,0.2960000824928284,0.7800000119209289,0.8800000357627868]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43718 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43807 ms	darkroom: preview rendered 1024x681 in 88 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +43807 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +44037 ms	darkroom: picker exposure spot {"mode":"measure","lightness":40.0,"area":[0.2460000314563513,0.2960000824928284,0.7800000119209289,0.8800000357627868]}
+11-22 23:26:06.835  3695  3882 E dt-android-test: +44211 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +45916 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +45918 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +45920 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +46121 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +46146 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +46338 ms	darkroom: preview rendered 1024x681 in 191 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +46338 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +47901 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +47903 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +47903 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48099 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48125 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48331 ms	darkroom: preview rendered 1024x681 in 205 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48331 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48424 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48535 ms	darkroom: preview rendered 1024x681 in 110 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48535 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48732 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +48913 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49076 ms	darkroom: preview rendered 1024x681 in 162 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49076 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49181 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49282 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49308 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49411 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49412 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49413 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49519 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49556 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49740 ms	darkroom: preview rendered 1024x681 in 183 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49740 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +49897 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +51636 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +51637 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +51638 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +51834 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +51860 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +52035 ms	darkroom: preview rendered 1024x681 in 174 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +52035 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +52249 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +52397 ms	darkroom: preview rendered 1024x681 in 148 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +52397 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53337 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53494 ms	darkroom: preview rendered 1024x681 in 157 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53494 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53618 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53618 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53723 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53729 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53776 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53777 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53778 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53873 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +53899 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +54072 ms	darkroom: preview rendered 1024x681 in 173 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +54072 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +54247 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56000 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56002 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56002 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56192 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56218 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56402 ms	darkroom: preview rendered 1024x681 in 183 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56402 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56487 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56576 ms	darkroom: preview rendered 1024x681 in 88 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +56576 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +57032 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +57291 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +57427 ms	darkroom: preview rendered 1024x681 in 135 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +57427 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +57899 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58060 ms	darkroom: preview rendered 1024x681 in 160 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58060 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58475 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58480 ms	darkroom: preview rendered 1024x681 in 4 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58480 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58520 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58627 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58819 ms	darkroom: preview rendered 1024x681 in 192 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +58820 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +59431 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +59612 ms	darkroom: preview rendered 1024x681 in 181 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +59612 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60521 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60523 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60523 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60617 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60642 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60815 ms	darkroom: preview rendered 1024x681 in 172 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +60815 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +61632 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +61634 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +61635 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +61841 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +61867 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62048 ms	darkroom: preview rendered 1024x681 in 180 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62048 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62082 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62157 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62302 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62454 ms	darkroom: preview rendered 1024x681 in 151 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62454 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +62897 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +63093 ms	darkroom: preview rendered 1024x681 in 195 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +63093 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +63883 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.835  3695  3882 E dt-android-test: +63885 ms	darkroom: stored picture shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +63886 ms	darkroom: engine open start
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64085 ms	darkroom: engine open end
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64112 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64305 ms	darkroom: preview rendered 1024x681 in 192 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64305 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64352 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64383 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64460 ms	darkroom: preview rendered 1024x681 in 77 ms
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64460 ms	darkroom: preview shown
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64630 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.835  3695  3882 E dt-android-test: +64779 ms	darkroom: preview rendered 1024x681 in 148 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +64779 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +65252 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +65474 ms	darkroom: preview rendered 1024x681 in 221 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +65474 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66190 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66191 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66192 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66391 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66418 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66602 ms	darkroom: preview rendered 1024x681 in 184 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66602 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66645 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66681 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66763 ms	darkroom: preview rendered 1024x681 in 81 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66763 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66808 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +66906 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67071 ms	darkroom: preview rendered 1024x681 in 165 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67071 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67106 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67111 ms	darkroom: preview rendered 1024x681 in 4 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67111 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67724 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67904 ms	darkroom: preview rendered 1024x681 in 180 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +67905 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +68684 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +68685 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +68686 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +68876 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +68904 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69110 ms	darkroom: preview rendered 1024x681 in 206 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69110 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69230 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69335 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69365 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69501 ms	darkroom: preview rendered 1024x681 in 136 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69501 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +69966 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +70160 ms	darkroom: preview rendered 1024x681 in 193 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +70160 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +70952 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +70954 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +70954 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71154 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71218 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71398 ms	darkroom: preview rendered 1024x681 in 180 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71399 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71513 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71606 ms	darkroom: preview rendered 1024x681 in 93 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71606 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71655 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71759 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71902 ms	darkroom: preview rendered 1024x681 in 142 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +71902 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72005 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72618 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72620 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72620 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72811 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +72837 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73014 ms	darkroom: preview rendered 1024x681 in 176 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73014 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73079 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73182 ms	darkroom: preview rendered 1024x681 in 102 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73182 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73562 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73780 ms	darkroom: preview rendered 1024x681 in 217 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +73780 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +75969 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76123 ms	darkroom: preview rendered 1024x681 in 153 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76123 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76274 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76650 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76653 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76654 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76850 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +76876 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77070 ms	darkroom: preview rendered 1024x681 in 193 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77070 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77134 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77217 ms	darkroom: preview rendered 1024x681 in 83 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77217 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +77963 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78234 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78283 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78285 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78286 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78390 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78417 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78596 ms	darkroom: preview rendered 1024x681 in 179 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78596 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +78759 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80553 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80555 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80555 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80750 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80778 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80969 ms	darkroom: preview rendered 1024x681 in 190 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +80969 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81030 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81478 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81809 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81809 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81920 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81922 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +81922 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +82021 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +82049 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +82222 ms	darkroom: preview rendered 1024x681 in 172 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +82222 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +82403 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84155 ms	darkroom: open mire1.cr2 asked
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84156 ms	darkroom: stored picture shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84157 ms	darkroom: engine open start
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84354 ms	darkroom: engine open end
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84392 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84582 ms	darkroom: preview rendered 1024x681 in 190 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84582 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84659 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84739 ms	darkroom: preview rendered 1024x681 in 79 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84739 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: +84889 ms	darkroom: preview render start (1024 px)
+11-22 23:26:06.836  3695  3882 E dt-android-test: +85029 ms	darkroom: preview rendered 1024x681 in 140 ms
+11-22 23:26:06.836  3695  3882 E dt-android-test: +85029 ms	darkroom: preview shown
+11-22 23:26:06.836  3695  3882 E dt-android-test: 
+11-22 23:26:06.836  3695  3882 E dt-android-test: ## threads
+11-22 23:26:06.836  3695  3882 E dt-android-test: "Signal Catcher" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test: "HeapTaskDaemon" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test: "Jit thread pool worker thread 0" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "ReferenceQueueDaemon" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Object.java:568)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "FinalizerDaemon" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "FinalizerWatchdogDaemon" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Object.java:442)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Object.wait(Object.java:568)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$FinalizerWatchdogDaemon.sleepUntilNeeded(Daemons.java:385)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:365)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Daemons$Daemon.run(Daemons.java:140)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "Profile Saver" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "main" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.BinderProxy.transactNative(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.BinderProxy.transact(BinderProxy.java:584)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.IWindowSession$Stub$Proxy.remove(IWindowSession.java:1356)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.ViewRootImpl.dispatchDetachedFromWindow(ViewRootImpl.java:5409)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.ViewRootImpl.doDie(ViewRootImpl.java:8815)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.ViewRootImpl.die(ViewRootImpl.java:8791)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.WindowManagerGlobal.removeViewLocked(WindowManagerGlobal.java:506)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.WindowManagerGlobal.removeView(WindowManagerGlobal.java:447)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.view.WindowManagerImpl.removeViewImmediate(WindowManagerImpl.java:206)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.ActivityThread.handleDestroyActivity(ActivityThread.java:5483)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.servertransaction.DestroyActivityItem.execute(DestroyActivityItem.java:47)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.servertransaction.ActivityTransactionItem.execute(ActivityTransactionItem.java:45)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.servertransaction.TransactionExecutor.executeLifecycleState(TransactionExecutor.java:179)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:97)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2307)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Handler.dispatchMessage(Handler.java:106)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:201)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.ActivityThread.main(ActivityThread.java:7924)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.reflect.Method.invoke(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "binder:3695_1" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "binder:3695_2" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "binder:3695_3" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "Instr: androidx.test.runner.AndroidJUnitRunner" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at dalvik.system.VMStack.getThreadStackTrace(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Thread.getStackTrace(Thread.java:1841)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.real.HangGuard$rule$1.failed(HangGuard.kt:32)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.rules.TestWatcher.failedQuietly(TestWatcher.java:90)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.rules.TestWatcher.access$300(TestWatcher.java:52)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:68)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.rules.RunRules.evaluate(RunRules.java:20)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.Suite.runChild(Suite.java:128)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.Suite.runChild(Suite.java:27)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:467)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2361)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "DefaultDispatcher-worker-1" TIMED_WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "InstrumentationConnectionThread" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.HandlerThread.run(HandlerThread.java:67)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "dt-engine" WAITING
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at jdk.internal.misc.Unsafe.park(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.util.concurrent.locks.LockSupport.park(LockSupport.java:194)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2081)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.util.concurrent.LinkedBlockingQueue.take(LinkedBlockingQueue.java:433)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:85)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.engine.Engine.$r8$lambda$oDRF5EH_LtHKI5kZ_J83oB6ZCGc(Unknown Source:0)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.engine.Engine$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at java.lang.Thread.run(Thread.java:1012)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "binder:3695_4" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "RenderThread" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "hwuiTask0" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "hwuiTask1" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "binder:3695_5" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test: "queued-work-looper" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.MessageQueue.nativePollOnce(Native Method)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.MessageQueue.next(MessageQueue.java:335)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loopOnce(Looper.java:161)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.Looper.loop(Looper.java:288)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at android.os.HandlerThread.run(HandlerThread.java:67)
+11-22 23:26:06.836  3695  3882 E dt-android-test: "DefaultDispatcher-worker-2" RUNNABLE
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlinx.serialization.json.JsonElementKt.JsonPrimitive(JsonElement.kt:60)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.ModelKt.plain(Model.kt:107)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.AgentState.toJson(Model.kt:91)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplClient.buildBody(LplClient.kt:78)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplClient.heartbeat(LplClient.kt:57)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent.heartbeatTo$lambda$0(LplAgent.kt:651)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent.$r8$lambda$MvEYgdCJMkoLw8yP3_xCFMlHBbU(Unknown Source:0)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent$$ExternalSyntheticLambda19.invoke(D8$$SyntheticClass:0)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent.net(LplAgent.kt:219)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent.heartbeatTo(LplAgent.kt:651)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent.access$heartbeatTo(LplAgent.kt:68)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at app.dtandroid.lpl.LplAgent$heartbeat$2.invokeSuspend(LplAgent.kt:645)
+11-22 23:26:06.836  3695  3882 E dt-android-test:     at kotlin.coroutines.jvm.inter
