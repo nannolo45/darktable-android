@@ -2,6 +2,7 @@
 package app.dtandroid.lpl
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import java.io.File
 import java.io.IOException
@@ -52,8 +53,8 @@ class LplClient(
     // ------------------------------------------------------------------ calls of PLAN.md 4.1
 
     /** `POST /api/agents/heartbeat`. Not repeated: the next heartbeat follows anyway. */
-    fun heartbeat(installId: String, deviceName: String, state: AgentState): HeartbeatAnswer {
-        val body = buildBody(installId, deviceName, state)
+    fun heartbeat(installId: String, deviceName: String, state: AgentState, transfers: JsonArray = JsonArray(emptyList())): HeartbeatAnswer {
+        val body = buildBody(installId, deviceName, state, transfers)
         val o = callJson("POST", "/api/agents/heartbeat", body, retries = 0, readTimeoutMs = settings.heartbeatTimeoutMs)
         val jobs = o["jobs"].arr()?.mapNotNull { e ->
             val j = e as? JsonObject ?: return@mapNotNull null
@@ -61,18 +62,23 @@ class LplClient(
             val kind = j["kind"].str() ?: return@mapNotNull null
             val payload = j["payload"] as? JsonObject
             val ids = payload?.get("ids").arr()?.mapNotNull { it.long() ?: it.str()?.toLongOrNull() } ?: emptyList()
-            Job(id, kind, ids, payload?.get("all").bool() == true)
+            Job(id, kind, ids, payload?.get("all").bool() == true, payload?.get("open").bool() != false)
         } ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/agents/heartbeat: no job list in the answer")
-        return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0)
+        val c = o["cancel"] as? JsonObject
+        val cancel = c?.let { Cancel(it["jobs"].arr().orEmpty().mapNotNull { x -> x.long() }.toSet(), it["photos"].arr().orEmpty().mapNotNull { x -> x.long() }.toSet()) }
+        return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0, cancel)
     }
 
-    private fun buildBody(installId: String, deviceName: String, state: AgentState): ByteArray =
+    private fun buildBody(installId: String, deviceName: String, state: AgentState, transfers: JsonArray): ByteArray =
         JsonObject(mapOf(
             "id" to kotlinx.serialization.json.JsonPrimitive(installId),
             "name" to kotlinx.serialization.json.JsonPrimitive(deviceName),
             // exactly "android": that keeps jobs meant for a PC away from the phone (LPL hand-off notes, R3)
             "os" to kotlinx.serialization.json.JsonPrimitive("android"),
             "state" to state.toJson(),
+            // brief P2k: what this device can do besides the old exchange; an old server ignores both
+            "caps" to kotlinx.serialization.json.buildJsonArray { for (c in CAPS) add(kotlinx.serialization.json.JsonPrimitive(c)) },
+            "transfers" to transfers,
         )).toString().toByteArray()
 
     /** `GET /api/photos/{id}/checkout`: file name, size and the server's time, which becomes `checkout_ts`. */
@@ -135,8 +141,17 @@ class LplClient(
     }
 
     /** `POST /api/jobs/{id}/done` with `done` or `failed`. */
-    fun jobDone(jobId: Long, ok: Boolean) {
-        val body = """{"status":"${if (ok) "done" else "failed"}"}""".toByteArray()
+    fun jobDone(jobId: Long, ok: Boolean) = jobDone(jobId, if (ok) "done" else "failed")
+
+    /**
+     * `POST /api/jobs/{id}/done` with `done`, `failed` or `stopped` (brief P2k), and for a batch job the four
+     * lists of photo ids (`arrived`, `present`, `failed`, `skipped`).
+     */
+    fun jobDone(jobId: Long, status: String, lists: Map<String, List<Long>>? = null) {
+        val body = JsonObject(buildMap {
+            put("status", kotlinx.serialization.json.JsonPrimitive(status))
+            lists?.forEach { (k, v) -> put(k, kotlinx.serialization.json.buildJsonArray { v.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) } }) }
+        }).toString().toByteArray()
         callJson("POST", "/api/jobs/$jobId/done", body)
     }
 
@@ -371,6 +386,9 @@ class LplClient(
 
     companion object {
         /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
+        /** `caps` of every heartbeat (brief P2k): `batch` = reports transfers, `cancel` = acts on Stop, `open` = honours `payload.open` */
+        val CAPS = listOf("batch", "cancel", "open")
+
         fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
     }
 }

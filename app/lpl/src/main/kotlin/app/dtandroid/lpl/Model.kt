@@ -13,6 +13,8 @@ import kotlinx.serialization.json.put
 enum class PhotoStatus(val word: String) {
     DOWNLOADING("downloading"),
     OPENING("opening"),
+    /** copied by a batch job, not opened yet (the same word LPL's PC agent uses) */
+    READY("ready"),
     EDITING("editing"),
     DIRTY("dirty"),
     SYNCING("syncing"),
@@ -34,9 +36,14 @@ data class Checkout(
 )
 
 /** A job from the heartbeat's answer. [ids] empty with [all] = every photo this device holds. */
-data class Job(val id: Long, val kind: String, val ids: List<Long>, val all: Boolean)
+data class Job(
+    val id: Long, val kind: String, val ids: List<Long>, val all: Boolean,
+    /** `payload.open` of an edit job: false = copy the photos, do not open the darkroom */
+    val open: Boolean = true,
+)
 
-data class HeartbeatAnswer(val jobs: List<Job>, val serverTime: Double)
+/** [cancel] is null for a server that sends none (an old one): then nothing changes. */
+data class HeartbeatAnswer(val jobs: List<Job>, val serverTime: Double, val cancel: Cancel? = null)
 
 /** R16: a step of a download or a sync, with the share done when known. */
 data class Step(val step: String, val progress: Double? = null) {

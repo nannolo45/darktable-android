@@ -43,8 +43,10 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val edits: MutableList<String> = Collections.synchronizedList(ArrayList()),
     )
 
-    class JobRec(val id: Long, val agentId: String?, val kind: String, val ids: List<Long>, val all: Boolean = false) {
+    class JobRec(val id: Long, val agentId: String?, val kind: String, val ids: List<Long>, val all: Boolean = false, val open: Boolean? = null) {
         @Volatile var status = "queued"
+        /** brief P2k: the body of the `done` call that ended it */
+        @Volatile var doneBody: String? = null
     }
 
     /** One request as the stub saw it: method, path with query, status, and the headers the tests check. */
@@ -61,6 +63,21 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var r15: Boolean = false
     /** brief P2f: answer `GET /api/auth/token` (R14); off = 404 as an older server */
     @Volatile var r14: Boolean = false
+
+    /** brief P2k: answer as a server with batches (R17): a `cancel` in every heartbeat answer; off = an older server, no `cancel` */
+    @Volatile var batch: Boolean = false
+    /** brief P2k: what the next answers ask the device to stop (the whole list every time) */
+    val cancelJobs: MutableSet<Long> = Collections.synchronizedSet(LinkedHashSet())
+    val cancelPhotos: MutableSet<Long> = Collections.synchronizedSet(LinkedHashSet())
+    /** brief P2k: an original stops after [stallAfter] bytes (not for a resumed one) until the gate is opened (or 10 s) */
+    @Volatile var stallAfter: Long = -1
+    /** only for this photo (-1 = any) */
+    @Volatile var stallPhoto: Long = -1
+    @Volatile var stallGate: java.util.concurrent.CountDownLatch? = null
+    /** brief P2k: every heartbeat body in order, with the time it came (ms) */
+    val heartbeatLog: MutableList<String> = Collections.synchronizedList(ArrayList())
+    /** brief P2k: what the server saw in order: `hb`, or `done <job> <status>` */
+    val events: MutableList<String> = Collections.synchronizedList(ArrayList())
 
     val photos = Collections.synchronizedMap(LinkedHashMap<Long, Photo>())
     val jobs = Collections.synchronizedList(ArrayList<JobRec>())
@@ -103,8 +120,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
 
     fun add(p: Photo): Photo { photos[p.id] = p; return p }
 
-    fun queueJob(agentId: String?, kind: String, ids: List<Long>, all: Boolean = false): JobRec =
-        JobRec(jobSeq.incrementAndGet(), agentId, kind, ids, all).also { jobs += it }
+    fun queueJob(agentId: String?, kind: String, ids: List<Long>, all: Boolean = false, open: Boolean? = null): JobRec =
+        JobRec(jobSeq.incrementAndGet(), agentId, kind, ids, all, open).also { jobs += it }
 
     fun seen(method: String, prefix: String) = synchronized(seen) { seen.filter { it.method == method && it.path.startsWith(prefix) } }
 
@@ -151,7 +168,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             req.method == "POST" && Regex("^/api/jobs/\\d+/done$").matches(p) -> {
                 val id = p.split('/')[3].toLong()
                 val st = Regex("\"status\"\\s*:\\s*\"(\\w+)\"").find(req.body.decodeToString())?.groupValues?.get(1) ?: "done"
-                synchronized(jobs) { jobs.firstOrNull { it.id == id } }?.status = st
+                synchronized(jobs) { jobs.firstOrNull { it.id == id } }?.let { it.status = st; it.doneBody = req.body.decodeToString() }
+                events += "done $id $st"
                 record(200); json(out, 200, """{"ok":true}""")
             }
             m != null -> {
@@ -201,16 +219,19 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val id = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1) ?: ""
         val os = Regex("\"os\"\\s*:\\s*\"([^\"]*)\"").find(body)?.groupValues?.get(1)
         heartbeats[id] = body
+        heartbeatLog += body
+        events += "hb"
         heartbeatCount.incrementAndGet()
         // as LPL: an android agent only takes jobs addressed to it
         val mine = synchronized(jobs) {
             jobs.filter { it.status == "queued" && (it.agentId == id || (os != "android" && it.agentId == null)) }.onEach { it.status = "taken" }
         }
         val js = mine.joinToString(",") { j ->
-            val payload = if (j.all) """{"all":true}""" else """{"ids":[${j.ids.joinToString(",")}]}"""
+            val payload = if (j.all) """{"all":true}""" else """{"ids":[${j.ids.joinToString(",")}]${j.open?.let { ",\"open\":$it" } ?: ""}}"""
             """{"id":${j.id},"kind":"${j.kind}","payload":$payload}"""
         }
-        json(out, 200, """{"jobs":[$js],"server_time":${now()}}""")
+        val cancel = if (batch) ""","cancel":{"jobs":[${synchronized(cancelJobs) { cancelJobs.joinToString(",") }}],"photos":[${synchronized(cancelPhotos) { cancelPhotos.joinToString(",") }}]}""" else ""
+        json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel}""")
     }
 
     private fun original(out: OutputStream, req: Req, ph: Photo, record: (Int) -> Unit) {
@@ -244,6 +265,17 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             // announce the whole length, send part of it, close: a connection that breaks off
             head(out, if (partial) 206 else 200, "application/octet-stream", slice.size.toLong(), headers)
             out.write(slice, 0, minOf(drop.toInt(), slice.size))
+            out.flush()
+            return
+        }
+        if (stallAfter in 0 until slice.size && !partial && (stallPhoto < 0 || stallPhoto == ph.id)) {
+            head(out, 200, "application/octet-stream", slice.size.toLong(), headers)
+            val n = stallAfter.toInt()
+            stallAfter = -1
+            out.write(slice, 0, n)
+            out.flush()
+            stallGate?.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            out.write(slice, n, slice.size - n)
             out.flush()
             return
         }

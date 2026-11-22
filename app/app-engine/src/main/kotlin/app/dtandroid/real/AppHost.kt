@@ -386,7 +386,7 @@ object AppHost {
     @Synchronized
     private fun keepJob(origin: ServerOrigin, job: Job) {
         keptJobs.parentFile?.mkdirs()
-        keptJobs.appendText("${origin.url} ${job.id} ${job.kind} ${if (job.all) "all" else job.ids.joinToString(",")}\n")
+        keptJobs.appendText("${origin.url} ${job.id} ${job.kind} ${if (job.all) "all" else job.ids.joinToString(",")} ${if (job.open) "open" else "closed"}\n")
     }
 
     /** Jobs kept from the last heartbeat before the app left the foreground. */
@@ -396,11 +396,11 @@ object AppHost {
         if (!f.isFile) return emptyList()
         val out = f.readLines().mapNotNull { l ->
             val p = l.split(' ')
-            if (p.size != 4) return@mapNotNull null
+            if (p.size != 4 && p.size != 5) return@mapNotNull null
             val o = ServerOrigin.parseExact(p[0]) ?: return@mapNotNull null
             val id = p[1].toLongOrNull() ?: return@mapNotNull null
             val all = p[3] == "all"
-            o to Job(id, p[2], if (all) emptyList() else p[3].split(',').mapNotNull { it.toLongOrNull() }, all)
+            o to Job(id, p[2], if (all) emptyList() else p[3].split(',').mapNotNull { it.toLongOrNull() }, all, open = p.getOrNull(4) != "closed")
         }
         f.delete()
         return out
@@ -413,16 +413,26 @@ object AppHost {
         agent.ranBefore(origin, job)?.let { agent.jobDone(origin, job, it); return }
         val ok = when (job.kind) {
             "sync", "release" -> agent.runSyncOrRelease(origin, job)
-            "edit", "open" -> {
-                val ids = agent.jobIds(origin, job)
-                if (ids.isEmpty()) true else {
-                    val r = OpenRequest(origin, ids, job.kind == "edit", CompletableDeferred())
-                    if (_openRequests.tryEmit(r)) withTimeoutOrNull(30 * 60_000L) { r.done.await() } ?: false else false
+            "edit" -> if (agent.isBatchServer(origin)) {
+                // brief P2k: copy first (progress, Stop), then open; the job is reported when the copying ends
+                val r = agent.runEditJob(origin, job)
+                if (job.open && r.toOpen.isNotEmpty()) {
+                    // not awaited: the job is reported already, and the next job must not wait for the user's editing
+                    _openRequests.tryEmit(OpenRequest(origin, r.toOpen, true, CompletableDeferred()))
                 }
-            }
+                return
+            } else openOrEdit(origin, job)
+            "open" -> openOrEdit(origin, job)
             else -> false
         }
         agent.jobDone(origin, job, ok)
+    }
+
+    private suspend fun openOrEdit(origin: ServerOrigin, job: Job): Boolean {
+        val ids = agent.jobIds(origin, job)
+        if (ids.isEmpty()) return true
+        val r = OpenRequest(origin, ids, job.kind == "edit", CompletableDeferred())
+        return if (_openRequests.tryEmit(r)) withTimeoutOrNull(30 * 60_000L) { r.done.await() } ?: false else false
     }
 
     /** Run jobs kept from the last heartbeat (called when the app is in the foreground again). */
