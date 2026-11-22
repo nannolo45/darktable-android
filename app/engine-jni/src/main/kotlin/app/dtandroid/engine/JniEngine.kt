@@ -470,4 +470,37 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun maskGroupSet(id: Int, settings: JsonObject) = onEngine {
         p1b2(NativeBridge.MASK_GROUP_SET, s2 = settings.toString(), n2 = id); Unit
     }
+
+    // 6.9 (P3d stage 2a)
+    private fun p3d(what: Int, s1: String? = null, s2: String? = null, n1: Int = 0, n2: Int = 0, n3: Int = 0, n4: Int = 0): JsonElement {
+        requireInit()
+        val st = IntArray(1)
+        return json(NativeBridge.p3d(what, s1, s2, n1, n2, n3, n4, st), st)
+    }
+
+    override suspend fun historyGroupBegin() = onEngine { p3d(NativeBridge.P3D_GROUP_BEGIN); Unit }
+    override suspend fun historyGroupEnd(keep: Boolean) = onEngine { p3d(NativeBridge.P3D_GROUP_END, n1 = if (keep) 1 else 0); Unit }
+
+    override suspend fun maskAdd(op: String, priority: Int, type: String, geometry: JsonObject, name: String?, group: Int?, member: MaskMember): Int = onEngine {
+        val req = kotlinx.serialization.json.buildJsonObject {
+            put("type", JsonPrimitive(type)); put("geometry", geometry)
+            name?.let { put("name", JsonPrimitive(it)) }; group?.let { put("group", JsonPrimitive(it)) }
+            put("member", member.toJson())
+        }
+        idOf(p3d(NativeBridge.P3D_MASK_ADD, op, req.toString(), n1 = priority))
+    }
+
+    override suspend fun maskMemberMove(group: Int, id: Int, toGroup: Int, position: Int) = onEngine {
+        p3d(NativeBridge.P3D_MEMBER_MOVE, n1 = group, n2 = id, n3 = toGroup, n4 = position); Unit
+    }
+
+    override suspend fun maskMemberRemove(group: Int, id: Int) = onEngine { p3d(NativeBridge.P3D_MEMBER_REMOVE, n1 = group, n2 = id); Unit }
+
+    override suspend fun maskMemberUpdate(group: Int, id: Int, member: MaskMember) = onEngine {
+        p3d(NativeBridge.P3D_MEMBER_UPDATE, s2 = member.toJson().toString(), n1 = group, n2 = id); Unit
+    }
+
+    override suspend fun maskGroupWrap(group: Int, ids: List<Int>, operator: String?): Int = onEngine {
+        idOf(p3d(NativeBridge.P3D_GROUP_WRAP, operator, kotlinx.serialization.json.JsonArray(ids.map { JsonPrimitive(it) }).toString(), n1 = group))
+    }
 }

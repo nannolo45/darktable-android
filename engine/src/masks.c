@@ -147,6 +147,71 @@ static void _num(JsonBuilder *b, const char *k, const double v)
   json_builder_add_double_value(b, v);
 }
 
+/* ---- parametric elements (6.9): one channel of a blend colour space ---- */
+
+/* the channel table of the element's colour space and its number of entries */
+static const dt_iop_gui_blendif_channel_t *_param_table(const int csp, int *n)
+{
+  const dt_iop_gui_blendif_channel_t *t = dt_develop_blendif_channels_for_csp(csp);
+  *n = 0;
+  while(t && t[*n].label) (*n)++;
+  return t;
+}
+
+/* "L", "Jz", ...: the input channel's bridge name (blend_get) without "_in" */
+static gchar *_param_channel_name(const int csp, const dt_iop_gui_blendif_channel_t *c)
+{
+  const char *in = dtb__blendif_name(csp, c->param_channels[0]);
+  if(!in) return g_strdup("?");
+  const char *u = strrchr(in, '_');
+  return g_strndup(in, u ? (gsize)(u - in) : strlen(in));
+}
+
+static void _range4(JsonBuilder *b, const char *k, const float *v)
+{
+  json_builder_set_member_name(b, k);
+  json_builder_begin_array(b);
+  for(int j = 0; j < 4; j++) json_builder_add_double_value(b, v[j]);
+  json_builder_end_array(b);
+}
+
+static void _param_geometry(JsonBuilder *b, const dt_masks_form_t *f)
+{
+  const dt_masks_point_parametric_t *p = f->points->data;
+  int n = 0;
+  const dt_iop_gui_blendif_channel_t *t = _param_table((int)p->colorspace, &n);
+  const char *cs = dtb__blend_cst_name((int)p->colorspace);
+  json_builder_set_member_name(b, "colorspace");
+  json_builder_add_string_value(b, cs ? cs : "unknown");
+  if(!t || (int)p->channel >= n) return;
+  const dt_iop_gui_blendif_channel_t *c = &t[p->channel];
+  gchar *name = _param_channel_name((int)p->colorspace, c);
+  json_builder_set_member_name(b, "channel");
+  json_builder_add_string_value(b, name);
+  g_free(name);
+  const int ci = c->param_channels[0], co = c->param_channels[1];
+  _range4(b, "in", &p->blendif_parameters[4 * ci]);
+  _range4(b, "out", &p->blendif_parameters[4 * co]);
+  json_builder_set_member_name(b, "in_active");
+  json_builder_add_boolean_value(b, (p->blendif & (1u << ci)) && !(p->disabled & 1));
+  json_builder_set_member_name(b, "out_active");
+  json_builder_add_boolean_value(b, (p->blendif & (1u << co)) && !(p->disabled & 2));
+  // the stored polarity bits (desktop's row never sets them; migrated edits may)
+  json_builder_set_member_name(b, "polarity");
+  json_builder_begin_array(b);
+  json_builder_add_boolean_value(b, (p->blendif & (1u << (ci + 16))) != 0);
+  json_builder_add_boolean_value(b, (p->blendif & (1u << (co + 16))) != 0);
+  json_builder_end_array(b);
+  json_builder_set_member_name(b, "boost_supported");
+  json_builder_add_boolean_value(b, c->boost_factor_enabled);
+  _num(b, "boost", c->boost_factor_enabled ? p->blendif_boost_factors[ci] - c->boost_factor_offset : 0.0);
+  json_builder_set_member_name(b, "show_output");
+  json_builder_add_boolean_value(b, dt_masks_param_get_view(p) >= DT_MASKS_PARAM_VIEW_OUTPUT);
+  // a whole-range element restricts nothing (desktop's warning badge)
+  json_builder_set_member_name(b, "whole_range");
+  json_builder_add_boolean_value(b, dt_masks_parametric_is_noop(f, FALSE));
+}
+
 static void _geometry(JsonBuilder *b, const dt_masks_form_t *f)
 {
   json_builder_begin_object(b);
@@ -208,6 +273,8 @@ static void _geometry(JsonBuilder *b, const dt_masks_form_t *f)
     }
     json_builder_end_array(b);
   }
+  else if((f->type & DT_MASKS_PARAMETRIC) && f->points)
+    _param_geometry(b, f);
   else if(f->type & DT_MASKS_GROUP)
   {
     const dt_masks_point_group_t *mk = dt_masks_group_marker(f);
@@ -718,6 +785,25 @@ static void _init_ctrl(dt_masks_form_t *f)
 /* ------------------------------------------------------------------ */
 /* calls                                                              */
 
+/* a new form of type t holding pts in the session's forms; no history */
+static dt_masks_form_t *_form_new(const dt_masks_type_t t, GList *pts, const char *name)
+{
+  dt_masks_form_t *form = dt_masks_create(t);
+  while(_id_used(form->formid)) form->formid++;
+  form->points = pts;
+  _init_ctrl(form);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  if(name && *name)
+    g_strlcpy(form->name, name, sizeof(form->name));
+  else
+    dt_masks_assign_unique_name(&dtb_S.dev, form);
+  dtb_S.dev.forms = g_list_append(dtb_S.dev.forms, form);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  return form;
+}
+
+static int _param_apply(JsonObject *g, dt_masks_point_parametric_t *p, const gboolean create);
+
 int dtb_mask_create(const char *type, const char *geometry_json, const char *name, char **json)
 {
   if(json) *json = NULL;
@@ -740,17 +826,7 @@ int dtb_mask_create(const char *type, const char *geometry_json, const char *nam
   json_node_unref(root);
   if(r) return r;
   dtb__change_begin(DTB_CHANGE_OTHER, NULL);
-  dt_masks_form_t *form = dt_masks_create(t);
-  while(_id_used(form->formid)) form->formid++;
-  form->points = pts;
-  _init_ctrl(form);
-  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
-  if(name && *name)
-    g_strlcpy(form->name, name, sizeof(form->name));
-  else
-    dt_masks_assign_unique_name(&dtb_S.dev, form);
-  dtb_S.dev.forms = g_list_append(dtb_S.dev.forms, form);
-  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  dt_masks_form_t *form = _form_new(t, pts, name);
   _record(NULL, FALSE);
   dtb__change_end(DTB_CHANGE_OTHER, NULL);
   if(json)
@@ -771,6 +847,9 @@ int dtb_mask_update(int id, const char *geometry_json)
   dt_masks_form_t *f = _form(id);
   if(!f) return dtb__err(DTB_E_NOT_FOUND, "no form %d", id);
   if(f->type & DT_MASKS_GROUP) return dtb__err(DTB_E_ARG, "form %d is a group: use dtb_mask_group_set", id);
+  if(!(f->type & (DT_MASKS_CIRCLE | DT_MASKS_ELLIPSE | DT_MASKS_GRADIENT | DT_MASKS_PATH | DT_MASKS_BRUSH
+                  | DT_MASKS_PARAMETRIC)) || (f->type & DT_MASKS_CLONE))
+    return dtb__err(DTB_E_ARG, "form %d: the bridge does not edit this type", id);
   JsonNode *root = dtb__json_parse(geometry_json ? geometry_json : "");
   if(!root) return DTB_E_ARG;
   if(!JSON_NODE_HOLDS_OBJECT(root))
@@ -779,6 +858,27 @@ int dtb_mask_update(int id, const char *geometry_json)
     return dtb__err(DTB_E_ARG, "geometry must be an object");
   }
   int r = DTB_OK;
+  if(f->type & DT_MASKS_PARAMETRIC)
+  {
+    // 6.9: in, out, boost, show_output of a parametric element
+    if(!f->points)
+    {
+      json_node_unref(root);
+      return dtb__err(DTB_E_ARG, "form %d has no parametric settings", id);
+    }
+    dt_masks_point_parametric_t np = *(dt_masks_point_parametric_t *)f->points->data;
+    r = _param_apply(json_node_get_object(root), &np, FALSE);
+    json_node_unref(root);
+    if(r) return r;
+    dt_iop_module_t *user = _first_user(id);
+    dtb__change_begin(DTB_CHANGE_OTHER, user);
+    dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+    *(dt_masks_point_parametric_t *)f->points->data = np;
+    dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+    _record(user, TRUE);
+    dtb__change_end(DTB_CHANGE_OTHER, user);
+    return DTB_OK;
+  }
   GList *pts = _points_from(f->type, json_node_get_object(root), &r);
   json_node_unref(root);
   if(r) return r;
@@ -1145,4 +1245,493 @@ gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src)
   dtb_S.dev.forms = darktable.develop->forms;
   darktable.develop->forms = global;
   return TRUE;
+}
+
+/* ------------------------------------------------------------------ */
+/* 6.9: parametric elements, one-step shapes, tree editing (P3d 2a)   */
+
+/* [a, b, c, d] in 0..1 and in order */
+static int _range_of(JsonObject *g, const char *k, float *v)
+{
+  JsonNode *n = json_object_get_member(g, k);
+  JsonArray *a = JSON_NODE_HOLDS_ARRAY(n) ? json_node_get_array(n) : NULL;
+  if(!a || json_array_get_length(a) != 4) return dtb__err(DTB_E_TYPE, "\"%s\" takes [a, b, c, d]", k);
+  for(int j = 0; j < 4; j++)
+  {
+    JsonNode *e = json_array_get_element(a, j);
+    if(!JSON_NODE_HOLDS_VALUE(e) || (json_node_get_value_type(e) != G_TYPE_DOUBLE && json_node_get_value_type(e) != G_TYPE_INT64))
+      return dtb__err(DTB_E_TYPE, "\"%s\" takes numbers", k);
+    const double d = json_node_get_double(e);
+    if(!isfinite(d) || d < 0.0 || d > 1.0) return dtb__err(DTB_E_RANGE, "\"%s\": %g outside 0..1", k, d);
+    v[j] = (float)d;
+  }
+  if(!(v[0] <= v[1] && v[1] <= v[2] && v[2] <= v[3]))
+    return dtb__err(DTB_E_RANGE, "\"%s\": the points must be in order (a <= b <= c <= d)", k);
+  return DTB_OK;
+}
+
+/* settings of a parametric element onto p (a copy; the caller stores it):
+ * "channel" (needed when creating, fixed afterwards), "in", "out" ([a, b, c,
+ * d], 0..1), "boost" (EV 0..18, channels that have one), "show_output" */
+static int _param_apply(JsonObject *g, dt_masks_point_parametric_t *p, const gboolean create)
+{
+  int n = 0;
+  const dt_iop_gui_blendif_channel_t *t = _param_table((int)p->colorspace, &n);
+  if(!t || !n) return dtb__err(DTB_E_ARG, "no parametric channels in this blend colour space");
+  if(json_object_has_member(g, "channel"))
+  {
+    JsonNode *cn = json_object_get_member(g, "channel");
+    const char *want = JSON_NODE_HOLDS_VALUE(cn) && json_node_get_value_type(cn) == G_TYPE_STRING ? json_node_get_string(cn) : NULL;
+    if(!want) return dtb__err(DTB_E_TYPE, "\"channel\" takes a name");
+    int k = -1;
+    GString *names = g_string_new(NULL);
+    for(int i = 0; i < n; i++)
+    {
+      gchar *nm = _param_channel_name((int)p->colorspace, &t[i]);
+      if(!strcmp(nm, want)) k = i;
+      g_string_append_printf(names, "%s%s", i ? ", " : "", nm);
+      g_free(nm);
+    }
+    if(k < 0)
+    {
+      const int r = dtb__err(DTB_E_ARG, "channel '%s': one of %s", want, names->str);
+      g_string_free(names, TRUE);
+      return r;
+    }
+    g_string_free(names, TRUE);
+    if(!create && (uint32_t)k != p->channel) return dtb__err(DTB_E_ARG, "an element's channel cannot change");
+    p->channel = (uint32_t)k;
+  }
+  else if(create)
+    return dtb__err(DTB_E_ARG, "geometry: \"channel\" missing");
+  if((int)p->channel >= n) return dtb__err(DTB_E_ARG, "the element's channel is not in its colour space");
+  const dt_iop_gui_blendif_channel_t *c = &t[p->channel];
+
+  GList *keys = json_object_get_members(g);
+  int r = DTB_OK;
+  for(GList *l = keys; l && !r; l = g_list_next(l))
+    if(strcmp(l->data, "channel") && strcmp(l->data, "in") && strcmp(l->data, "out") && strcmp(l->data, "boost")
+       && strcmp(l->data, "show_output"))
+      r = dtb__err(DTB_E_NOT_FOUND, "no parametric setting '%s' (channel, in, out, boost, show_output)", (char *)l->data);
+  g_list_free(keys);
+  if(r) return r;
+
+  // the boost first: it rescales the ranges as desktop's slider does
+  // (blend_gui.c _param_boost_apply); ranges given in the same call win
+  if(json_object_has_member(g, "boost"))
+  {
+    float v = 0.0f;
+    if((r = _g_num(g, "boost", &v, TRUE, 0.0, 18.0))) return r;
+    if(!c->boost_factor_enabled && v != 0.0f) return dtb__err(DTB_E_ARG, "this channel has no boost factor");
+    if(c->boost_factor_enabled)
+      for(int in_out = 1; in_out >= 0; in_out--)
+      {
+        const int ch = c->param_channels[in_out];
+        float off = 0.0f;
+        if(p->colorspace == DEVELOP_BLEND_CS_LAB
+           && (ch == DEVELOP_BLENDIF_A_in || ch == DEVELOP_BLENDIF_A_out || ch == DEVELOP_BLENDIF_B_in
+               || ch == DEVELOP_BLENDIF_B_out))
+          off = 0.5f;
+        const float nv = v + c->boost_factor_offset;
+        const float factor = exp2f(p->blendif_boost_factors[ch]) / exp2f(nv);
+        float *q = &p->blendif_parameters[4 * ch];
+        if(q[0] > 0.0f) q[0] = CLIP((q[0] - off) * factor + off);
+        if(q[1] > 0.0f) q[1] = CLIP((q[1] - off) * factor + off);
+        if(q[2] < 1.0f) q[2] = CLIP((q[2] - off) * factor + off);
+        if(q[3] < 1.0f) q[3] = CLIP((q[3] - off) * factor + off);
+        if(q[1] == 0.0f && q[2] == 1.0f) p->blendif &= ~(1u << ch);
+        p->blendif_boost_factors[ch] = nv;
+      }
+  }
+  for(int in_out = 0; in_out < 2; in_out++)
+  {
+    const char *k = in_out ? "out" : "in";
+    if(!json_object_has_member(g, k)) continue;
+    float v[4];
+    if((r = _range_of(g, k, v))) return r;
+    const int ch = c->param_channels[in_out];
+    for(int j = 0; j < 4; j++) p->blendif_parameters[4 * ch + j] = v[j];
+    // a range that restricts something makes the channel take part, as
+    // desktop's markers do; the whole range takes it out again
+    const gboolean full = v[0] == 0.0f && v[1] == 0.0f && v[2] == 1.0f && v[3] == 1.0f;
+    p->blendif = full ? (p->blendif & ~(1u << ch)) : (p->blendif | (1u << ch));
+    p->disabled &= ~(1u << in_out);
+  }
+  if(json_object_has_member(g, "show_output"))
+  {
+    JsonNode *sn = json_object_get_member(g, "show_output");
+    if(!JSON_NODE_HOLDS_VALUE(sn) || json_node_get_value_type(sn) != G_TYPE_BOOLEAN)
+      return dtb__err(DTB_E_TYPE, "\"show_output\" takes true or false");
+    dt_masks_param_set_view(p, json_node_get_boolean(sn) ? DT_MASKS_PARAM_VIEW_BOTH : DT_MASKS_PARAM_VIEW_AUTO);
+  }
+  return DTB_OK;
+}
+
+/* the flexi group `id` */
+static int _flexi_group(const int id, dt_masks_form_t **out)
+{
+  dt_masks_form_t *g = _form(id);
+  if(!g) return dtb__err(DTB_E_NOT_FOUND, "no form %d", id);
+  if(!(g->type & DT_MASKS_GROUP) || (g->type & DT_MASKS_CLONE) || !dt_masks_group_marker(g))
+    return dtb__err(DTB_E_ARG, "form %d is not a flexi group", id);
+  *out = g;
+  return DTB_OK;
+}
+
+/* the list link of member `id` in group g, NULL if none */
+static GList *_member_link(dt_masks_form_t *g, const dt_mask_id_t id)
+{
+  for(GList *l = g->points; l; l = g_list_next(l))
+  {
+    const dt_masks_point_group_t *pt = l->data;
+    if(!dt_masks_point_is_marker(pt) && pt->formid == id) return l;
+  }
+  return NULL;
+}
+
+static int _members_n(const dt_masks_form_t *g)
+{
+  int n = 0;
+  for(GList *l = g->points; l; l = g_list_next(l))
+    if(!dt_masks_point_is_marker(l->data)) n++;
+  return n;
+}
+
+/* 0 for an element, 1 + its deepest member for a group */
+static int _height(const dt_masks_form_t *f, const int guard)
+{
+  if(!f || !(f->type & DT_MASKS_GROUP) || guard > DT_MASKS_NESTING_MAX + 1) return 0;
+  int h = 0;
+  for(GList *l = f->points; l; l = g_list_next(l))
+  {
+    const dt_masks_point_group_t *pt = l->data;
+    if(!dt_masks_point_is_marker(pt)) h = MAX(h, _height(_form(pt->formid), guard + 1));
+  }
+  return 1 + h;
+}
+
+/* how deep group `id` sits: 0 when no group holds it, else 1 + its deepest holder */
+static int _depth(const dt_mask_id_t id, const int guard)
+{
+  if(guard > DT_MASKS_NESTING_MAX + 1) return guard;
+  int d = 0;
+  for(GList *l = dtb_S.dev.forms; l; l = g_list_next(l))
+  {
+    dt_masks_form_t *h = l->data;
+    if((h->type & DT_MASKS_GROUP) && h->formid != id && _member_link(h, id))
+      d = MAX(d, 1 + _depth(h->formid, guard + 1));
+  }
+  return d;
+}
+
+/* the instance whose mask holds group g (history item), else the mask manager's */
+static dt_iop_module_t *_user_of(const dt_mask_id_t a, const dt_mask_id_t b)
+{
+  dt_iop_module_t *m = _first_user(a);
+  return m ? m : _first_user(b);
+}
+
+int dtb_mask_add(const char *op, int priority, const char *request_json, char **json)
+{
+  if(json) *json = NULL;
+  NEED_WRITABLE();
+  dt_iop_module_t *m = NULL;
+  int r = _instance_for_masks(op, priority, &m);
+  if(r) return r;
+  JsonNode *keep = NULL;
+  JsonObject *q = _opts(request_json, &keep, &r);
+  if(!r && !q) r = dtb__err(DTB_E_ARG, "no request");
+  const char *type = NULL, *name = NULL;
+  JsonObject *g = NULL, *mo = NULL;
+  int group = 0;
+  if(!r)
+  {
+    GList *keys = json_object_get_members(q);
+    for(GList *l = keys; l && !r; l = g_list_next(l))
+    {
+      const char *k = l->data;
+      JsonNode *n = json_object_get_member(q, k);
+      const gboolean str = JSON_NODE_HOLDS_VALUE(n) && json_node_get_value_type(n) == G_TYPE_STRING;
+      if(!strcmp(k, "type"))
+        type = str ? json_node_get_string(n) : NULL, r = str ? DTB_OK : dtb__err(DTB_E_TYPE, "type: a name");
+      else if(!strcmp(k, "name"))
+        name = str ? json_node_get_string(n) : NULL, r = str || JSON_NODE_HOLDS_NULL(n) ? DTB_OK : dtb__err(DTB_E_TYPE, "name: a string");
+      else if(!strcmp(k, "geometry"))
+        g = JSON_NODE_HOLDS_OBJECT(n) ? json_node_get_object(n) : NULL, r = g ? DTB_OK : dtb__err(DTB_E_TYPE, "geometry: an object");
+      else if(!strcmp(k, "member"))
+        mo = JSON_NODE_HOLDS_OBJECT(n) ? json_node_get_object(n) : NULL, r = mo ? DTB_OK : dtb__err(DTB_E_TYPE, "member: an object");
+      else if(!strcmp(k, "group"))
+      {
+        if(JSON_NODE_HOLDS_VALUE(n) && json_node_get_value_type(n) == G_TYPE_INT64) group = (int)json_node_get_int(n);
+        else if(!JSON_NODE_HOLDS_NULL(n)) r = dtb__err(DTB_E_TYPE, "group: a form id");
+      }
+      else
+        r = dtb__err(DTB_E_NOT_FOUND, "no request field '%s' (type, geometry, name, group, member)", k);
+    }
+    g_list_free(keys);
+  }
+  dt_masks_type_t t = 0;
+  for(size_t k = 0; !r && type && k < G_N_ELEMENTS(_types); k++)
+    if(!strcmp(type, _types[k].name)) t = _types[k].type;
+  if(!r && !(t & (DT_MASKS_CIRCLE | DT_MASKS_ELLIPSE | DT_MASKS_GRADIENT | DT_MASKS_PATH | DT_MASKS_BRUSH
+                  | DT_MASKS_PARAMETRIC)))
+    r = dtb__err(DTB_E_ARG, "type is circle, ellipse, gradient, path, brush or parametric");
+  if(!r && !g) r = dtb__err(DTB_E_ARG, "geometry missing");
+  if(!r && name && strlen(name) >= sizeof(((dt_masks_form_t *)0)->name)) r = dtb__err(DTB_E_RANGE, "name too long");
+  dt_masks_form_t *target = NULL;
+  if(!r && group > 0)
+  {
+    r = _flexi_group(group, &target);
+    if(!r && !_tree_has(_root(m), group, 0))
+      r = dtb__err(DTB_E_ARG, "group %d is not in %s %d's mask", group, m->op, m->multi_priority);
+  }
+  dt_masks_point_group_t probe = { 0 };
+  if(!r) r = _member_opts(mo, &probe, FALSE);
+  GList *pts = NULL;
+  if(!r && (t & DT_MASKS_PARAMETRIC))
+  {
+    // as desktop's _add_parametric_channel: the module's default blendif
+    // settings, the module's blend colour space, polarity bits clear
+    dt_masks_point_parametric_t *p = calloc(1, sizeof(*p));
+    const dt_develop_blend_params_t *dp = m->default_blendop_params ? m->default_blendop_params : m->blend_params;
+    memcpy(p->blendif_parameters, dp->blendif_parameters, sizeof(p->blendif_parameters));
+    memcpy(p->blendif_boost_factors, dp->blendif_boost_factors, sizeof(p->blendif_boost_factors));
+    p->colorspace = (uint32_t)dtb__blend_cst(m);
+    r = _param_apply(g, p, TRUE);
+    if(r) free(p);
+    else pts = g_list_append(NULL, p);
+  }
+  else if(!r)
+    pts = _points_from(t, g, &r);
+  if(r)
+  {
+    if(keep) json_node_unref(keep);
+    return r;
+  }
+  dtb__change_begin(DTB_CHANGE_OTHER, m);
+  dt_masks_form_t *form = _form_new(t, pts, name);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  dt_masks_point_group_t *pt;
+  if(target)
+  {
+    // on top of the chosen group, as desktop's panel adds to its target group
+    pt = calloc(1, sizeof(*pt));
+    pt->formid = form->formid;
+    pt->parentid = target->formid;
+    pt->state = DT_MASKS_STATE_SHOW | DT_MASKS_STATE_USE;
+    pt->group_opacity = 1.0f;
+    target->points = g_list_append(target->points, pt);
+  }
+  else
+    pt = dt_masks_group_insert_point(&dtb_S.dev, m, form);
+  pt->opacity = 1.0f;
+  _member_opts(mo, pt, TRUE);
+  m->blend_params->mask_mode |= DEVELOP_MASK_ENABLED | DEVELOP_MASK_FLEXI;
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  _record(m, TRUE);
+  dtb__change_end(DTB_CHANGE_OTHER, m);
+  if(keep) json_node_unref(keep);
+  if(json)
+  {
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "id");
+    json_builder_add_int_value(b, form->formid);
+    json_builder_end_object(b);
+    *json = dtb__json_finish(b);
+  }
+  return DTB_OK;
+}
+
+int dtb_mask_member_move(int group, int id, int to_group, int position)
+{
+  NEED_WRITABLE();
+  dt_masks_form_t *g = NULL, *t = NULL;
+  int r = _flexi_group(group, &g);
+  if(!r) r = _flexi_group(to_group, &t);
+  if(r) return r;
+  GList *l = _member_link(g, id);
+  if(!l) return dtb__err(DTB_E_NOT_FOUND, "form %d is not a member of group %d", id, group);
+  if(t != g)
+  {
+    if(_member_link(t, id)) return dtb__err(DTB_E_ARG, "form %d is already a member of group %d", id, to_group);
+    const dt_masks_form_t *x = _form(id);
+    if(x && (x->type & DT_MASKS_GROUP) && (id == to_group || _tree_has(x, to_group, 0)))
+      return dtb__err(DTB_E_ARG, "a group cannot go into itself");
+    // blend_gui.c _may_move_into: no deeper than darktable walks, or no deeper than before
+    const int hx = _height(x, 0), dt = _depth(to_group, 0) + hx;
+    if(dt > DT_MASKS_NESTING_MAX && dt > _depth(group, 0) + hx)
+      return dtb__err(DTB_E_ARG, "groups nest at most %d deep", DT_MASKS_NESTING_MAX);
+  }
+  const int n = _members_n(t) - (t == g ? 1 : 0);
+  if(position < -1 || position > n) return dtb__err(DTB_E_RANGE, "position %d outside -1..%d", position, n);
+  const int pos = position < 0 ? n : position;
+  // the same place: nothing to do
+  if(t == g && g_list_position(g->points, l) == pos + 1) return DTB_OK;
+  dt_iop_module_t *user = _user_of(group, to_group);
+  dtb__change_begin(DTB_CHANGE_OTHER, user);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  dt_masks_point_group_t *pt = l->data;
+  g->points = g_list_delete_link(g->points, l);
+  pt->parentid = t->formid;
+  // after the marker and `pos` members
+  t->points = g_list_insert(t->points, pt, pos + 1);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  _record(user, TRUE);
+  dtb__change_end(DTB_CHANGE_OTHER, user);
+  return DTB_OK;
+}
+
+int dtb_mask_member_remove(int group, int id)
+{
+  NEED_WRITABLE();
+  dt_masks_form_t *g = NULL;
+  int r = _flexi_group(group, &g);
+  if(r) return r;
+  GList *l = _member_link(g, id);
+  if(!l) return dtb__err(DTB_E_NOT_FOUND, "form %d is not a member of group %d", id, group);
+  dt_iop_module_t *user = _first_user(group);
+  dtb__change_begin(DTB_CHANGE_OTHER, user);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  free(l->data);
+  g->points = g_list_delete_link(g->points, l);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  _record(user, TRUE);
+  dtb__change_end(DTB_CHANGE_OTHER, user);
+  return DTB_OK;
+}
+
+int dtb_mask_member_update(int group, int id, const char *options_json)
+{
+  NEED_WRITABLE();
+  dt_masks_form_t *g = NULL;
+  int r = _flexi_group(group, &g);
+  if(r) return r;
+  GList *l = _member_link(g, id);
+  if(!l) return dtb__err(DTB_E_NOT_FOUND, "form %d is not a member of group %d", id, group);
+  JsonNode *keep = NULL;
+  JsonObject *o = _opts(options_json, &keep, &r);
+  if(!r && !o) r = dtb__err(DTB_E_ARG, "no settings");
+  const dt_masks_form_t *x = _form(id);
+  if(!r && x && (x->type & DT_MASKS_GROUP)
+     && (json_object_has_member(o, "inverse") || json_object_has_member(o, "opacity")))
+    r = dtb__err(DTB_E_ARG, "form %d is a group: its invert and opacity are its own (dtb_mask_group_set)", id);
+  if(!r) r = _member_opts(o, l->data, FALSE);
+  if(!r)
+  {
+    dt_iop_module_t *user = _first_user(group);
+    dtb__change_begin(DTB_CHANGE_OTHER, user);
+    _member_opts(o, l->data, TRUE);
+    _record(user, TRUE);
+    dtb__change_end(DTB_CHANGE_OTHER, user);
+  }
+  if(keep) json_node_unref(keep);
+  return r;
+}
+
+int dtb_mask_group_wrap(int group, const char *member_ids_json, const char *op, char **json)
+{
+  if(json) *json = NULL;
+  NEED_WRITABLE();
+  dt_masks_form_t *g = NULL;
+  int r = _flexi_group(group, &g);
+  if(r) return r;
+  int bit = -1;
+  if(!op || !*op) bit = 0;
+  for(size_t k = 0; op && *op && k < G_N_ELEMENTS(_operators); k++)
+    if(!strcmp(op, _operators[k].name)) bit = _operators[k].bit;
+  if(bit < 0) return dtb__err(DTB_E_ARG, "operator: maximum, screen, minimum, product, sum, difference or exclusion");
+  JsonNode *root = dtb__json_parse(member_ids_json ? member_ids_json : "");
+  if(!root) return DTB_E_ARG;
+  JsonArray *a = JSON_NODE_HOLDS_ARRAY(root) ? json_node_get_array(root) : NULL;
+  const guint na = a ? json_array_get_length(a) : 0;
+  r = na ? DTB_OK : dtb__err(DTB_E_ARG, "members: a non-empty array of form ids");
+  int below = 0;
+  for(guint i = 0; !r && i < na; i++)
+  {
+    JsonNode *e = json_array_get_element(a, i);
+    if(!JSON_NODE_HOLDS_VALUE(e) || json_node_get_value_type(e) != G_TYPE_INT64)
+      r = dtb__err(DTB_E_TYPE, "members: integers");
+    else
+    {
+      const int id = (int)json_node_get_int(e);
+      if(!_member_link(g, id)) r = dtb__err(DTB_E_NOT_FOUND, "form %d is not a member of group %d", id, group);
+      for(guint j = 0; !r && j < i; j++)
+        if(json_array_get_int_element(a, j) == id) r = dtb__err(DTB_E_ARG, "form %d is listed twice", id);
+      below = MAX(below, _height(_form(id), 0));
+    }
+  }
+  // blend_gui.c dt_masks_model_group_points
+  if(!r && _depth(group, 0) + 1 + MAX(1, below) > DT_MASKS_NESTING_MAX)
+    r = dtb__err(DTB_E_ARG, "groups nest at most %d deep", DT_MASKS_NESTING_MAX);
+  if(r)
+  {
+    json_node_unref(root);
+    return r;
+  }
+  dt_iop_module_t *user = _first_user(group);
+  dtb__change_begin(DTB_CHANGE_OTHER, user);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  // a new group with its marker, named as desktop's panel names one
+  // (blend_gui.c _new_nested_group, _new_empty_nested_group)
+  dt_masks_form_t *sub = dt_masks_create(DT_MASKS_GROUP);
+  while(_id_used(sub->formid)) sub->formid++;
+  int nb = 0;
+  for(GList *l = dtb_S.dev.forms; l; l = g_list_next(l))
+    if(((dt_masks_form_t *)l->data)->type == DT_MASKS_GROUP) nb++;
+  gboolean taken;
+  do
+  {
+    taken = FALSE;
+    snprintf(sub->name, sizeof(sub->name), _("group #%d"), ++nb);
+    for(GList *l = dtb_S.dev.forms; l && !taken; l = g_list_next(l))
+      taken = !strcmp(((dt_masks_form_t *)l->data)->name, sub->name);
+  } while(taken);
+  dtb_S.dev.forms = g_list_append(dtb_S.dev.forms, sub);
+  sub->points = g_list_append(NULL, dt_masks_marker_new(dtb_S.dev.forms, sub, bit & DT_MASKS_STATE_FLEXI_OP));
+  // the members in the order the group holds them (blend_gui.c
+  // dt_masks_model_group_points), the new group in the place of the topmost
+  GList *order = NULL;
+  for(GList *l = g->points; l; l = g_list_next(l))
+  {
+    const dt_masks_point_group_t *pt = l->data;
+    if(dt_masks_point_is_marker(pt)) continue;
+    for(guint i = 0; i < na; i++)
+      if(json_array_get_int_element(a, i) == pt->formid)
+      {
+        order = g_list_append(order, l);
+        break;
+      }
+  }
+  dt_masks_point_group_t *ref = calloc(1, sizeof(*ref));
+  ref->formid = sub->formid;
+  ref->parentid = g->formid;
+  ref->state = DT_MASKS_STATE_SHOW | DT_MASKS_STATE_USE | DT_MASKS_STATE_UNION;
+  ref->opacity = 1.0f;
+  ref->group_opacity = 1.0f;
+  GList *top = g_list_last(order)->data;
+  g->points = g_list_insert_before(g->points, top->next, ref);
+  for(GList *o = order; o; o = g_list_next(o))
+  {
+    GList *node = o->data;
+    dt_masks_point_group_t *pt = node->data;
+    g->points = g_list_delete_link(g->points, node);
+    pt->parentid = sub->formid;
+    sub->points = g_list_append(sub->points, pt);
+  }
+  g_list_free(order);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  _record(user, TRUE);
+  dtb__change_end(DTB_CHANGE_OTHER, user);
+  json_node_unref(root);
+  if(json)
+  {
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "id");
+    json_builder_add_int_value(b, sub->formid);
+    json_builder_end_object(b);
+    *json = dtb__json_finish(b);
+  }
+  return DTB_OK;
 }

@@ -386,4 +386,103 @@ class P3dScenarioTest {
         waitFor("attached") { c.masks.state.value.module?.members?.any { it.id == shape } == true }
         runBlocking { preview(c) }
     }
+
+    // ---- P3d stage 2a: one history item per shape and brush session; the mask tree (engine-api.md 6.9)
+
+    @Test fun d6_oneItemPerShapeAndPerBrushSession() {
+        val (c, _) = open("items")
+        runBlocking { c.masks.setMode(MaskMode.DRAWN) }
+        val n0 = c.state.value.history.items.size
+        drawCircle(c, 0.4, 1)
+        val n1 = c.state.value.history.items.size
+        TestFiles.record(res, "items_circle_history", c.state.value.history.items.map { it.op })
+        assertEquals("a circle is one history item", n0 + 1, n1)
+        runBlocking { c.undo() }
+        waitFor("one undo takes the circle") { c.masks.state.value.module?.members?.isEmpty() == true }
+        runBlocking { c.redo() }
+        waitFor("redo") { c.masks.state.value.module?.members?.size == 1 }
+        // three strokes by touch, then done
+        c.masks.startDraw(ShapeType.BRUSH)
+        c.masks.setDrawValue("size", 0.05)
+        waitFor("photo on the screen") { c.photoArea != null && c.currentViewport != null }
+        for (k in 0 until 3) {
+            swipe(onScreen(c, 0.2f, 0.3f + 0.2f * k), onScreen(c, 0.7f, 0.35f + 0.2f * k))
+            waitFor("stroke ${k + 1}") { c.masks.state.value.draw?.strokes?.size == k + 1 }
+        }
+        runBlocking { c.masks.finishDraw() }
+        waitFor("strokes in the mask") { c.masks.state.value.module?.members?.size == 4 && c.masks.state.value.draw == null }
+        val n2 = c.state.value.history.items.size
+        TestFiles.record(res, "items_brush_history", c.state.value.history.items.map { it.op })
+        assertEquals("a brush session of three strokes is one history item", n1 + 1, n2)
+        runBlocking { c.undo() }
+        waitFor("one undo takes the three strokes") { c.masks.state.value.module?.members?.size == 1 }
+        TestFiles.record(res, "items_passed", "true")
+    }
+
+    @Test fun d7_differenceOrderAndTree() {
+        val (c, item) = open("tree")
+        runBlocking {
+            c.masks.setMode(MaskMode.DRAWN)
+            for ((size, n) in listOf(0.3 to 1, 0.1 to 2)) {
+                c.masks.startDraw(ShapeType.CIRCLE)
+                c.masks.setDrawValue("size", size)
+                c.masks.touchDown(0.5, 0.5); c.masks.touchUp()
+                c.masks.finishDraw()
+                waitFor("circle $n") { c.masks.state.value.module?.members?.size == n && c.masks.state.value.draw == null }
+            }
+        }
+        val root = c.masks.state.value.module!!.rootId!!
+        val (big, small) = c.masks.state.value.module!!.members.map { it.id }
+        runBlocking { c.masks.setGroupOperator(root, "difference") }
+        waitFor("difference") { c.masks.state.value.module?.operator == "difference" }
+        val ring = runBlocking { preview(c) }
+        val n0 = c.state.value.history.items.size
+        runBlocking { c.masks.moveMember(root, small, up = false) }
+        waitFor("swapped") { c.masks.state.value.module?.members?.map { it.id } == listOf(small, big) }
+        assertEquals("a move is one history item", n0 + 1, c.state.value.history.items.size)
+        val swapped = runBlocking { preview(c) }
+        val d = diff(ring, swapped)
+        TestFiles.record(res, "tree_difference_swap_diff", d)
+        assertTrue("difference changes with the order of its members: $d", d > 1.0)
+        // wrap the big circle in a group: the same picture (a group of one with union)
+        runBlocking { c.masks.wrapInGroup(root, big) }
+        waitFor("wrapped") { c.masks.state.value.forms.count { it.isGroup } >= 2 }
+        val wrapped = runBlocking { preview(c) }
+        TestFiles.record(res, "tree_wrap_diff", diff(swapped, wrapped))
+        // written and reopened: the same tree and picture
+        fun shape(cc: DarkroomController): List<String> {
+            val s = cc.masks.state.value
+            return app.dtandroid.darkroom.Masks.treeRows(s.forms, s.module?.rootId, s.forms.filter { it.isGroup }.map { it.id }.toSet())
+                .map { "${it.depth}:${it.form?.type}:${it.member.inverse}" }
+        }
+        val before = shape(c)
+        TestFiles.record(res, "tree_rows", before)
+        runBlocking {
+            c.save()
+            val xmp = File(TestFiles.out, "p3d-tree.xmp")
+            File(item.xmpPath).copyTo(xmp, overwrite = true)
+            c.closePhoto()
+            c.start(Series("p3d tree again", listOf(item)), 0, filmstrip = false, thumbnails = false)
+            waitFor("preview again") { c.state.value.preview != null }
+            c.setView(BottomView.MASKS)
+            c.masks.select(exposure)
+            waitFor("mask read again") { c.masks.state.value.module?.key == exposure && c.masks.state.value.forms.isNotEmpty() }
+            val after = shape(c)
+            TestFiles.record(res, "tree_rows_reopened", after)
+            assertEquals("the XMP reopens with the same tree", before, after)
+            val again = preview(c)
+            val d2 = diff(wrapped, again)
+            TestFiles.record(res, "tree_diff_reopened", d2)
+            assertTrue("reopened, the same picture: $d2", d2 < 0.5)
+            c.closePhoto()
+            val jpg = File(TestFiles.out, "p3d-tree.jpg").apply { delete() }
+            c.withEngine { e ->
+                runCatching { e.close() }
+                e.open(item.rawPath, xmp.path)
+                try { e.export(jpg.path, ExportOptions(quality = 95, profile = ExportProfile.IMAGE)) } finally { runCatching { e.close() } }
+            }
+            assertTrue(jpg.length() > 0)
+        }
+        TestFiles.record(res, "tree_passed", "true")
+    }
 }

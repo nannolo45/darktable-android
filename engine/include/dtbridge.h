@@ -514,6 +514,43 @@ int dtb_mask_group_create(const char *member_ids_json, const char *name, char **
  * (blend_get "mask_id"). */
 int dtb_mask_group_set(int id, const char *options_json);
 
+/* ---------------------------------------------------------------------- */
+/* 6.9 mask tree editing, history groups, parametric elements (P3d stage   */
+/* 2a; engine-api.md 6.9 has the JSON)                                     */
+
+/* [M] Start a history group: every change until dtb_history_group_end is one
+ * undo step, and changes of one instance merge into one history item (a
+ * brush session of several strokes). DTB_E_STATE if one is open. */
+int dtb_history_group_begin(void);
+/* End the open group: keep != 0 keeps its changes (one undo step, none if
+ * nothing changed); keep == 0 restores the state it started from (cancel:
+ * no history item, nothing to redo). DTB_E_STATE when none is open. Undo,
+ * redo, history_goto and history_compress end an open group, keeping it. */
+int dtb_history_group_end(int keep);
+/* [M] A new element in an instance's mask as one history item of that
+ * instance (dtb_mask_create + dtb_mask_attach in one step). request:
+ * { "type": "circle" | "ellipse" | "gradient" | "path" | "brush" | "parametric",
+ *   "geometry": {...}, "name"?: s, "group"?: id (a flexi group in the
+ *   instance's tree; default its own group, created if needed),
+ *   "member"?: { "inverse", "opacity", "disabled" } } -> { "id": n }. */
+int dtb_mask_add(const char *op, int priority, const char *request_json, char **json);
+/* [M] Move member `id` of flexi group `group` to `position` (0 = bottom,
+ * -1 = top) of flexi group `to_group` (may be `group`). Settings go with it.
+ * DTB_E_ARG: a group into itself or its own tree, deeper than darktable's
+ * nesting limit, already a member of to_group; DTB_E_RANGE: position. */
+int dtb_mask_member_move(int group, int id, int to_group, int position);
+/* [M] Remove member `id` from flexi group `group` (any group; the form stays). */
+int dtb_mask_member_remove(int group, int id);
+/* [M] A member's "inverse", "opacity", "disabled" in any flexi group. For a
+ * member that is a group only "disabled" (its invert and opacity are its
+ * marker's: dtb_mask_group_set), else DTB_E_ARG. */
+int dtb_mask_member_update(int group, int id, const char *options_json);
+/* [M] "wrap in group" (one id) and "group together" (several): the members
+ * `[id, ...]` of flexi group `group` go, in their order, into a new flexi
+ * group (operator `op`, NULL = maximum) in the place of the topmost of them.
+ * -> { "id": the new group }. */
+int dtb_mask_group_wrap(int group, const char *member_ids_json, const char *op, char **json);
+
 #ifdef __cplusplus
 }
 #endif

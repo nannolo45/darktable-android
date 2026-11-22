@@ -870,3 +870,35 @@ Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, 
   if(r == DTB_OK && !s) s = strdup("{}");
   return _json_status(env, r, s, status);
 }
+
+/* P3d stage 2a (engine-api.md 6.9): one entry point, as p1b2 with four ints */
+#define DTJ3_GROUP_BEGIN 0
+#define DTJ3_GROUP_END 1
+#define DTJ3_MASK_ADD 2
+#define DTJ3_MEMBER_MOVE 3
+#define DTJ3_MEMBER_REMOVE 4
+#define DTJ3_MEMBER_UPDATE 5
+#define DTJ3_GROUP_WRAP 6
+
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_p3d(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
+                                           jint n1, jint n2, jint n3, jint n4, jintArray status)
+{
+  jstr_t a = _str(env, js1), b = _str(env, js2);
+  char *s = NULL;
+  int r = DTB_E_ARG;
+  switch(what)
+  {
+    case DTJ3_GROUP_BEGIN: r = dtb_history_group_begin(); break;
+    case DTJ3_GROUP_END: r = dtb_history_group_end(n1); break;
+    case DTJ3_MASK_ADD: r = dtb_mask_add(a.s, n1, b.s, &s); break;
+    case DTJ3_MEMBER_MOVE: r = dtb_mask_member_move(n1, n2, n3, n4); break;
+    case DTJ3_MEMBER_REMOVE: r = dtb_mask_member_remove(n1, n2); break;
+    case DTJ3_MEMBER_UPDATE: r = dtb_mask_member_update(n1, n2, b.s); break;
+    case DTJ3_GROUP_WRAP: r = dtb_mask_group_wrap(n1, b.s, a.s, &s); break;
+    default: break;
+  }
+  _str_free(&a); _str_free(&b);
+  if(r == DTB_OK && !s) s = strdup("{}");
+  return _json_status(env, r, s, status);
+}

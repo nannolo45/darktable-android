@@ -221,4 +221,31 @@ interface DarktableEngine {
 
     /** A flexi group's settings: operator, invert, bypass, opacity, name (engine-api.md 6.7). */
     suspend fun maskGroupSet(id: Int, settings: JsonObject)
+
+    // ---- 6.9 (P3d stage 2a): history groups, one-step shapes, tree editing, parametric elements
+
+    /** Start a history group: changes until [historyGroupEnd] are one undo step, one item per instance. */
+    suspend fun historyGroupBegin()
+
+    /** End the open group: keep its changes, or (keep = false) go back to where it started (cancel). */
+    suspend fun historyGroupEnd(keep: Boolean)
+
+    /**
+     * A new element in the instance's mask as one history item: [type] circle, ellipse, gradient, path, brush or
+     * parametric; [group] a flexi group in the instance's tree, null = its own group. Returns the form id.
+     */
+    suspend fun maskAdd(op: String, priority: Int, type: String, geometry: JsonObject, name: String? = null,
+                        group: Int? = null, member: MaskMember = MaskMember()): Int
+
+    /** Move member [id] of [group] to [position] (0 = bottom, -1 = top) of [toGroup]. */
+    suspend fun maskMemberMove(group: Int, id: Int, toGroup: Int, position: Int)
+
+    /** Remove member [id] from any flexi [group] (the form stays). */
+    suspend fun maskMemberRemove(group: Int, id: Int)
+
+    /** A member's inverse, opacity, disabled in any flexi group (a group member: disabled only). */
+    suspend fun maskMemberUpdate(group: Int, id: Int, member: MaskMember)
+
+    /** Wrap in group (one id) / group together (several): a new flexi group in the place of the topmost; its id. */
+    suspend fun maskGroupWrap(group: Int, ids: List<Int>, operator: String? = null): Int
 }

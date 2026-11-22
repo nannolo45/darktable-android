@@ -513,3 +513,74 @@ channel (colorout, and colorin's blue-mapping path): while a mask is shown the b
 every module after the shown one whose input and output windows coincide, as desktop's modules do with
 `dt_iop_alpha_copy`. `ARG` when the instance's mask mode is off or uniform (desktop shows no mask then), or the
 instance is off. The stand-in engine (`FakeEngine`) answers with its picture in grey (it draws no masks).
+
+### 6.9 Mask tree, history groups, parametric elements (P3d stage 2a, 22 Nov 2026)
+
+What desktop does at the pinned commit: a module's mask is always a flexi tree. Desktop's mask panel has no mode
+buttons any more, only on/off (`blend_gui.c` `_blendop_mask_enable` sets ENABLED | FLEXI); "drawn & parametric"
+(`DEVELOP_MASK_MASK_CONDITIONAL`) survives only as a name of legacy edits, which `masks/migrate_legacy.c`
+`_migrate_drawn_and_parametric` converts into a tree whose parametric channels are **parametric elements**
+(`DT_MASKS_PARAMETRIC` forms, `dt_masks_point_parametric_t`, one channel each, `blend_gui.c`
+`_add_parametric_channel`). So the bridge adds parametric elements to the tree; `blend_set`'s classic `parametric.*`
+paths stay as they are (6.6).
+
+```
+int dtb_history_group_begin(void);                                   // [M]
+int dtb_history_group_end(int keep);
+int dtb_mask_add(const char *op, int priority, const char *request_json, char **json);   // [M]
+int dtb_mask_member_move(int group, int id, int to_group, int position);                 // [M]
+int dtb_mask_member_remove(int group, int id);                                           // [M]
+int dtb_mask_member_update(int group, int id, const char *options_json);                 // [M]
+int dtb_mask_group_wrap(int group, const char *member_ids_json, const char *op, char **json);  // [M]
+```
+
+**One history item per shape.** `mask_add(op, priority, {type, geometry, name?, group?, member?})` creates the form
+and adds it to the instance's mask (its own group, created as `mask_attach` does, or `group`, a flexi group in the
+instance's tree, on top of it), as one masks history item of the instance → `{ "id" }`. `type` is `circle`,
+`ellipse`, `gradient`, `path`, `brush` (geometry as 6.7) or `parametric`. `member`: `{inverse, opacity, disabled}`.
+The mask is switched on as `mask_attach` does. Errors as 6.7; `ARG` for a `group` not in the instance's tree.
+
+**History groups.** Smallest sound design for "a brush session of n strokes is one item": the bridge's own undo
+already records one state per change (`dtb__change_begin`); `group_begin` makes only the first change inside the
+group record it and seal, later changes neither record nor seal, so darktable's `_dev_add_history_item_ext` merges
+the masks items of the same instance into its open item (it starts a new item only for another module or after a
+seal). `history_seal` inside a group does nothing (the group's item stays open). `group_end(1)`: one undo step
+(none if nothing changed); `group_end(0)` (cancel): back to the state the group started from, no item, nothing to
+redo. Undo, redo, `history_goto` and `history_compress` end an open group, keeping it. `STATE`: a group already open
+(begin) or none open (end). Changes of different instances inside one group stay separate items but one undo step.
+
+**Tree editing** (each one history item: of the first instance whose mask holds `group`, else the mask manager's).
+`group` and `to_group` are flexi groups (`ARG` otherwise: not a group, a classic or clone group); a module's own
+group is `blend_get(...).mask_id`. Member lists are bottom first, as desktop folds them (6.7).
+- `member_move(group, id, to_group, position)`: position 0 = bottom, -1 = top, of `to_group` after the member left
+  `group` (may be the same group: a reorder). The member's settings go with it. `ARG`: a group into itself or into
+  its own tree; already a member of `to_group`; deeper than desktop allows (`_may_move_into`: the depth of
+  `to_group` plus the height of the member at most `DT_MASKS_NESTING_MAX`, or no deeper than before). `RANGE`:
+  position. The same place: nothing happens, no item.
+- `member_remove(group, id)`: from any group; the form stays in the session.
+- `member_update(group, id, {inverse, opacity, disabled})`: in any group. For a member that is a group only
+  `disabled` (`ARG` otherwise): desktop keeps a group's invert and opacity on its marker (`mask_group_set`); the
+  reference stays neutral (`dt_masks_group_insert_point`).
+- `group_wrap(group, [id, ...], op)`: "wrap in group" (one id) and "group together" (several), as desktop's
+  `dt_masks_model_group_points`: a new flexi group (operator `op`, NULL = maximum; named "group #n" as
+  `_new_nested_group`) in the place of the topmost of the members, which move into it in their order with their
+  settings; the reference to it is neutral. `NOT_FOUND`: an id that is not a member of `group`; `ARG`: empty or
+  repeated ids, unknown operator, nesting (`depth(group) + 1 + max(1, height) > DT_MASKS_NESTING_MAX`).
+
+**Parametric elements.** Geometry for `mask_add` / `mask_update` (same rules, a channel fixed after creation):
+`{ "channel": s, "in": [a, b, c, d], "out": [a, b, c, d], "boost": EV 0..18, "show_output": bool }`. Channels of
+the instance's blend colour space, named as `blend_get` names them without `_in`: lab `L a b C h`, display RGB
+`g R G B H S l`, scene RGB `g R G B Jz Cz hz`. A new element starts from the module's default blendif settings
+with the polarity bits clear (as `_add_parametric_channel`). A range other than the whole `[0, 0, 1, 1]` makes its
+channel take part (the active bit), the whole range takes it out. `boost` rescales the ranges as desktop's slider
+does (`_param_boost_apply`); only for channels with a boost factor (`ARG` otherwise for a value other than 0).
+Invert and opacity are the member's (`member_update`), as on desktop's element row. `dtb_masks` reads it back:
+```
+parametric: { "colorspace": s, "channel": s, "in": [4], "out": [4], "in_active": bool, "out_active": bool,
+              "polarity": [in, out], "boost_supported": bool, "boost": EV, "show_output": bool,
+              "whole_range": bool }   // whole_range: dt_masks_parametric_is_noop, desktop's warning badge
+```
+Kotlin: `historyGroupBegin()`, `historyGroupEnd(keep)`, `maskAdd(op, priority, type, geometry, name, group, member)`,
+`maskMemberMove`, `maskMemberRemove`, `maskMemberUpdate`, `maskGroupWrap(group, ids, operator)`; JNI entry
+`NativeBridge.p3d`. The stand-in engine keeps them as data (it merges a group's items of one instance as the bridge
+does). Bridge test C26 (`engine/tests/dtb_test_p3d.c`).
