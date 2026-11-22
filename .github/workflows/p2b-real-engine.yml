@@ -533,7 +533,7 @@ jobs:
           # brief P3d: a circle and a brush stroke in exposure's mask, drawn on the emulator and written to the XMP:
           # darktable-cli's render of each XMP against the app's export of it
           p3d=ok
-          for name in circle brush; do
+          for name in circle brush parametric; do
             if [ ! -f "$A/p3d-$name.xmp" ] || [ ! -f "$A/p3d-$name.jpg" ]; then
               echo "p3d $name: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt; p3d=bad; continue
             fi
