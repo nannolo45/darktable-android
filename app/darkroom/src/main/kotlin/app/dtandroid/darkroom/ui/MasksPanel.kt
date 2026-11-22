@@ -183,8 +183,8 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }
     // brief P3d stage 2b: the parametric mode and the refinement
+    if (mode == MaskMode.PARAMETRIC || mode == MaskMode.DRAWN) ParametricSection(controller, s, ro)
     if (mode == MaskMode.PARAMETRIC) {
-        ParametricSection(controller, s, ro)
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }

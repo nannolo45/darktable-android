@@ -33,12 +33,14 @@ abstract class P3dParametricScreens : ScreenshotBase() {
         masks.setMode(MaskMode.PARAMETRIC)
         val specs = ParamChannels.of(parametric.state.value.space)
         parametric.addChannel(specs.first { it.base == "g" })
-        parametric.setRange("g_in", listOf(0.2, 0.3, 0.7, 0.85))
+        parametric.setRange(parametric.state.value.elements.first { it.base == "g" }.id, false, listOf(0.2, 0.3, 0.7, 0.85))
         parametric.addChannel(specs.first { it.base == "R" })
-        parametric.setRange("R_in", listOf(0.0, 0.0, 0.5, 0.6))
-        parametric.setInvert("R_in", true)
-        parametric.toggleOutput("g")
-        parametric.setRange("g_out", listOf(0.1, 0.1, 0.9, 1.0))
+        val r = parametric.state.value.elements.first { it.base == "R" }.id
+        parametric.setRange(r, false, listOf(0.0, 0.0, 0.5, 0.6))
+        parametric.setInvert(r, true)
+        val g = parametric.state.value.elements.first { it.base == "g" }.id
+        parametric.setRange(g, true, listOf(0.1, 0.1, 0.9, 1.0))
+        parametric.setShowOutput(g, true)
         parametric.toggleRefine()
         parametric.setRefine("feathering_radius", 20.0)
         parametric.setRefine("blur_radius", 5.0)
@@ -46,7 +48,7 @@ abstract class P3dParametricScreens : ScreenshotBase() {
 
     protected fun parametricSection(name: String, modern: Boolean) {
         val c = show(tokens = tokens(modern)) { withRanges() }
-        waitUntil("ranges") { c.parametric.state.value.blend?.parametric?.get("R_in")?.invert == true }
+        waitUntil("ranges") { c.parametric.state.value.elements.any { it.base == "R" && it.inverse } }
         compose.onNodeWithContentDescription("R input range").performScrollTo()
         settle(c)
         capture("$name-p3d2b-01-parametric-${skin(modern)}")

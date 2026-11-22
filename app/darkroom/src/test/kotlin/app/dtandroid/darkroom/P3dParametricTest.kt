@@ -48,7 +48,8 @@ class P3dParametricTest {
     }
 
     private fun items(c: DarkroomController) = c.state.value.history.items.size
-    private fun ch(c: DarkroomController, n: String) = c.parametric.state.value.blend!!.parametric[n]!!
+    private fun els(c: DarkroomController) = c.parametric.state.value.elements
+    private fun el(c: DarkroomController, base: String) = els(c).first { it.base == base }
 
     @Test fun markersKeepTheirOrder() {
         val r = listOf(0.2, 0.4, 0.6, 0.8)
@@ -58,7 +59,7 @@ class P3dParametricTest {
         assertEquals(1.0, RangeMath.move(r, 3, 3.0)[3], 0.0)
         val m = RangeMath.move(RangeMath.move(r, 1, 0.55), 2, 0.5)
         assertTrue(m.zipWithNext().all { (a, b) -> a <= b })
-        // markers that touch: both are candidates, the whole range's markers too
+        // markers that touch: both are candidates; the direction of the first movement decides in the screen
         assertEquals(listOf(0, 1), RangeMath.candidates(RangeMath.FULL, 0.0, 0.05))
         assertTrue(RangeMath.candidates(r, 0.5, 0.01).isEmpty())
         assertEquals(listOf(1), RangeMath.candidates(r, 0.41, 0.05))
@@ -66,63 +67,71 @@ class P3dParametricTest {
         assertFalse(RangeMath.isFull(r))
     }
 
-    @Test fun parametricModeChannelsAndOneItemPerDrag() = runBlocking {
+    @Test fun parametricElementsInTheModulesGroupOneItemPerDrag() = runBlocking {
         val c = controller()
         onExposure(c)
         assertTrue(MaskMode.PARAMETRIC.available)
         val n0 = items(c)
         c.masks.setMode(MaskMode.PARAMETRIC)
-        assertEquals(MaskMode.PARAMETRIC, c.masks.state.value.module!!.mode)
         assertEquals(n0 + 1, items(c))
         val spec = ParamChannels.of(c.parametric.state.value.space).first { it.base == "g" }
-        c.parametric.addChannel(spec)
-        assertTrue(ch(c, "g_in").active)
-        assertTrue(RangeMath.isFull(ch(c, "g_in").range)) // a whole-range row: the screen shows the warning
         val n1 = items(c)
-        c.parametric.setRange("g_in", listOf(0.2, 0.3, 0.7, 0.8))
-        assertEquals(listOf(0.2, 0.3, 0.7, 0.8), ch(c, "g_in").range)
+        c.parametric.addChannel(spec)
         assertEquals(n1 + 1, items(c))
-        c.parametric.setRange("g_in", listOf(0.25, 0.3, 0.7, 0.8))
-        assertEquals(n1 + 2, items(c))
+        assertEquals(1, els(c).size)
+        assertTrue(c.parametric.state.value.root != null)
+        val id = el(c, "g").id
+        assertTrue(el(c, "g").whole) // a whole-range element: the screen shows the warning
+        val n2 = items(c)
+        c.parametric.setRange(id, false, listOf(0.2, 0.3, 0.7, 0.8))
+        assertEquals(listOf(0.2, 0.3, 0.7, 0.8), el(c, "g").inRange)
+        assertFalse(el(c, "g").whole)
+        assertEquals(n2 + 1, items(c))
+        c.parametric.setRange(id, false, listOf(0.25, 0.3, 0.7, 0.8))
+        assertEquals(n2 + 2, items(c))
         // a range out of order is put in order, never refused
-        c.parametric.setRange("g_in", listOf(0.5, 0.4, 0.9, 0.8))
-        val r = ch(c, "g_in").range
-        assertTrue(r.zipWithNext().all { (a, b) -> a <= b })
+        c.parametric.setRange(id, false, listOf(0.5, 0.4, 0.9, 0.8))
+        assertTrue(el(c, "g").inRange.zipWithNext().all { (a, b) -> a <= b })
         // double tap: the whole range
-        c.parametric.setRange("g_in", RangeMath.FULL)
-        assertTrue(RangeMath.isFull(ch(c, "g_in").range))
-        c.parametric.setInvert("g_in", true)
-        assertTrue(ch(c, "g_in").invert)
-        c.parametric.setRange("g_out", listOf(0.1, 0.2, 0.3, 0.4))
-        c.parametric.removeChannel(spec)
-        assertFalse(ch(c, "g_in").active)
-        assertFalse(ch(c, "g_in").invert)
-        assertTrue(RangeMath.isFull(ch(c, "g_out").range))
+        c.parametric.setRange(id, false, RangeMath.FULL)
+        assertTrue(RangeMath.isFull(el(c, "g").inRange))
+        c.parametric.setInvert(id, true)
+        assertTrue(el(c, "g").inverse)
+        c.parametric.setRange(id, true, listOf(0.1, 0.2, 0.3, 0.4))
+        c.parametric.setShowOutput(id, true)
+        assertTrue(el(c, "g").showOutput)
+        assertEquals(listOf(0.1, 0.2, 0.3, 0.4), el(c, "g").outRange)
+        // the same channel twice is allowed (manual)
+        c.parametric.addChannel(spec)
+        assertEquals(2, els(c).size)
+        c.parametric.removeChannel(els(c).last().id)
+        assertEquals(1, els(c).size)
+        c.parametric.removeChannel(id)
+        assertTrue(els(c).isEmpty())
         c.undo()
-        assertTrue(ch(c, "g_out").range == listOf(0.1, 0.2, 0.3, 0.4))
+        assertEquals(1, els(c).size)
+        assertEquals(listOf(0.1, 0.2, 0.3, 0.4), el(c, "g").outRange)
     }
 
-    @Test fun colourSpaceAsksFirstAndResets() = runBlocking {
+    @Test fun colourSpaceAsksFirstAndRemovesTheElements() = runBlocking {
         val c = controller()
         onExposure(c)
         c.masks.setMode(MaskMode.PARAMETRIC)
         val g = ParamChannels.of(c.parametric.state.value.space).first { it.base == "g" }
         c.parametric.addChannel(g)
-        c.parametric.setRange("g_in", listOf(0.2, 0.3, 0.7, 0.8))
+        c.parametric.setRange(el(c, "g").id, false, listOf(0.2, 0.3, 0.7, 0.8))
         val n = items(c)
         c.parametric.askSpace("lab")
         assertEquals(ParamSheet.ConfirmSpace("lab"), c.parametric.state.value.sheet)
         assertEquals(n, items(c))
-        assertEquals(listOf(0.2, 0.3, 0.7, 0.8), ch(c, "g_in").range)
+        assertEquals(listOf(0.2, 0.3, 0.7, 0.8), el(c, "g").inRange)
         c.parametric.openSheet(null) // cancel
         assertEquals("rgb_scene", c.parametric.state.value.space)
         c.parametric.askSpace("lab")
         c.parametric.confirmSpace()
         assertNull(c.parametric.state.value.sheet)
         assertEquals("lab", c.parametric.state.value.space)
-        assertEquals(n + 1, items(c))
-        assertTrue(c.parametric.state.value.blend!!.parametric.values.none { it.active })
-        assertTrue(c.parametric.state.value.blend!!.parametric.containsKey("L_in"))
+        assertTrue(els(c).isEmpty())
     }
 
     @Test fun refinementValuesAndReset() = runBlocking {
@@ -144,7 +153,7 @@ class P3dParametricTest {
         assertEquals(0.5, b.details!!, 1e-9)
         assertEquals("output_before_blur", c.parametric.state.value.guide)
         assertEquals(n + 6, items(c))
-        // out of the engine's limits: a note, no change
+        // out of the engine's limits: a message, no change
         c.parametric.setRefine("feathering_radius", 900.0)
         assertEquals(12.5, c.parametric.state.value.blend!!.featheringRadius!!, 1e-9)
         assertTrue(c.state.value.message != null) // the engine refuses it (RANGE); the message line says so
@@ -182,8 +191,10 @@ class P3dParametricTest {
         val c = controller()
         onExposure(c)
         c.masks.setMode(MaskMode.PARAMETRIC)
-        val id = c.parametric.pickerId("R_in")
+        c.parametric.addChannel(ParamChannels.of(c.parametric.state.value.space).first { it.base == "R" })
+        val id = c.parametric.pickerId(el(c, "R").id, false)
         assertTrue(id <= ParametricMasks.PICK_BASE)
+        assertTrue(c.parametric.pickerId(el(c, "R").id, true) < id)
         assertTrue(c.pickerSpec(exposure, id)!!.area)
     }
 }

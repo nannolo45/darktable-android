@@ -32,10 +32,10 @@ import app.dtandroid.darkroom.ChannelSpec
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.ParamChannels
+import app.dtandroid.darkroom.ParamElement
 import app.dtandroid.darkroom.ParamSheet
 import app.dtandroid.darkroom.ParametricMasks
 import app.dtandroid.darkroom.RangeMath
-import app.dtandroid.engine.api.BlendChannel
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.Control
 import app.dtandroid.ui.icons.DtIcon
@@ -56,7 +56,7 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
     val pm = controller.parametric
     val p by pm.state.collectAsState()
     val b = p.blend
-    SheetSection("parametric")
+    SheetSection("parametric elements")
     if (b != null) {
         ListControl("colour space", ParamChannels.spaceLabel(p.space) + if (b.colorspace == "default") " (module's)" else "", enabled = !ro) {
             pm.openSheet(ParamSheet.Space)
@@ -68,17 +68,14 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
         for (rowSpecs in specs.chunked(4)) {
             Row(Modifier.fillMaxWidth().padding(vertical = sp.xxs), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
                 for (spec in rowSpecs) {
-                    val on = b.parametric[spec.inName]?.active == true || b.parametric[spec.outName]?.active == true
-                    ChannelButton(spec.label, on, !ro, Modifier.weight(1f)) { controller.launch { pm.addChannel(spec) } }
+                    val n = p.elements.count { it.base == spec.base }
+                    ChannelButton(spec.label, n > 0, !ro, Modifier.weight(1f)) { controller.launch { pm.addChannel(spec) } }
                 }
                 for (i in rowSpecs.size until 4) Spacer(Modifier.weight(1f))
             }
         }
-        for (spec in specs) {
-            key(spec.base) {
-                val on = b.parametric[spec.inName]?.active == true || b.parametric[spec.outName]?.active == true
-                if (on) ChannelRow(controller, s, spec, ro)
-            }
+        for (el in p.elements) {
+            key(el.id) { ChannelRow(controller, s, el, ro) }
         }
     }
     p.note?.let { DtText(it, DtTheme.type.small, c.textStrong, Modifier.padding(vertical = sp.xs), maxLines = 3) }
@@ -92,7 +89,7 @@ private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier
     if (on) m = m.border(DtTheme.sizes.border, c.accent, shape)
     Box(
         m.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "channel $label"; stateDescription = if (on) "in use" else "not in use" },
+            .semantics { contentDescription = "add channel $label"; stateDescription = if (on) "in use" else "not in use" },
         contentAlignment = Alignment.Center,
     ) {
         DtText(label, DtTheme.type.label, if (!enabled) c.textDisabled else if (on) c.textBright else c.textStrong)
@@ -100,66 +97,58 @@ private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier
 }
 
 @Composable
-private fun ChannelRow(controller: DarkroomController, s: DarkroomState, spec: ChannelSpec, ro: Boolean) {
+private fun ChannelRow(controller: DarkroomController, s: DarkroomState, el: ParamElement, ro: Boolean) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val pm = controller.parametric
-    val p by pm.state.collectAsState()
-    val b = p.blend
-    val chIn = b?.parametric?.get(spec.inName)
-    val chOut = b?.parametric?.get(spec.outName)
-    val outShown = spec.base in p.outputShown
-    val whole = (chIn == null || RangeMath.isFull(chIn.range)) && (chOut == null || RangeMath.isFull(chOut.range))
+    val label = ParamChannels.of(el.space).firstOrNull { it.base == el.base }?.label ?: el.base
     Column(Modifier.fillMaxWidth().padding(top = sp.s)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            DtText(spec.label, DtTheme.type.label, c.textStrong, Modifier.weight(1f))
-            if (whole) {
-                Box(Modifier.semantics { contentDescription = "${spec.label}: the whole range, this restricts nothing" }, contentAlignment = Alignment.Center) {
+            DtText(label, DtTheme.type.label, c.textStrong, Modifier.weight(1f))
+            if (el.whole) {
+                Box(Modifier.semantics { contentDescription = "$label: the whole range, this restricts nothing" }, contentAlignment = Alignment.Center) {
                     DtIconImage(DtIcon.Warning, null, c.textMuted, DtTheme.sizes.icon)
                 }
             }
-            DtTextButton("output range", { pm.toggleOutput(spec.base) }, selected = outShown, compact = true)
-            DtIconButton(DtIcon.Remove, "remove channel ${spec.label}", c.text, enabled = !ro,
-                onClick = { controller.launch { pm.removeChannel(spec) } })
+            DtTextButton("output range", { controller.launch { pm.setShowOutput(el.id, !el.showOutput) } }, selected = el.showOutput, enabled = !ro, compact = true)
+            DtIconButton(DtIcon.Invert, "invert channel $label", if (el.inverse) c.textBright else c.textMuted, enabled = !ro,
+                onClick = { controller.launch { pm.setInvert(el.id, !el.inverse) } })
+            DtIconButton(DtIcon.Remove, "remove channel $label", c.text, enabled = !ro,
+                onClick = { controller.launch { pm.removeChannel(el.id) } })
         }
-        if (chIn != null) SliderLine(controller, s, spec.inName, "${spec.label} input range", chIn, ro)
-        if (outShown && chOut != null) SliderLine(controller, s, spec.outName, "${spec.label} output range", chOut, ro)
-        if (!outShown && chOut != null && !RangeMath.isFull(chOut.range)) {
+        SliderLine(controller, s, el, false, "$label input range", ro)
+        if (el.showOutput) SliderLine(controller, s, el, true, "$label output range", ro)
+        if (!el.showOutput && !RangeMath.isFull(el.outRange)) {
             DtText("an output range is set and still applies", DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xxs), maxLines = 2)
         }
-        if (spec.boost && chIn != null) {
-            val d = ParamChannels.defaultBoost(p.space, spec.base)
-            BoostSlider(spec, chIn.boost, d, !ro) { controller.launch { pm.setBoost(spec.inName, it); if (chOut != null) pm.setBoost(spec.outName, it) } }
-        }
+        if (el.boostSupported) BoostSlider(label, el.id, el.boost, !ro) { controller.launch { pm.setBoost(el.id, it) } }
     }
 }
 
 @Composable
-private fun SliderLine(controller: DarkroomController, s: DarkroomState, name: String, description: String, ch: BlendChannel, ro: Boolean) {
+private fun SliderLine(controller: DarkroomController, s: DarkroomState, el: ParamElement, output: Boolean, description: String, ro: Boolean) {
     val c = DtTheme.colors
     val pm = controller.parametric
     val keyOf = pm.state.value.key
-    val id = pm.pickerId(name)
+    val id = pm.pickerId(el.id, output)
     val armed = keyOf != null && controller.pickerArmed(s, keyOf, id)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        RangeSlider4(ch.range, !ro, description, { r -> controller.launch { pm.setRange(name, r) } }, Modifier.weight(1f))
+        RangeSlider4(if (output) el.outRange else el.inRange, !ro, description, { r -> controller.launch { pm.setRange(el.id, output, r) } }, Modifier.weight(1f))
         DtIconButton(DtIcon.ColorPicker, "pick the range of $description from the photo", if (armed) c.accent else c.text, enabled = !ro && keyOf != null,
             onClick = { if (keyOf != null) controller.launch { controller.togglePicker(keyOf, id) } })
-        DtIconButton(DtIcon.Invert, "invert $description", if (ch.invert) c.textBright else c.textMuted, enabled = !ro,
-            onClick = { controller.launch { pm.setInvert(name, !ch.invert) } })
     }
 }
 
 @Composable
-private fun BoostSlider(spec: ChannelSpec, value: Double, default: Double, enabled: Boolean, onSet: (Double) -> Unit) {
+private fun BoostSlider(label: String, id: Int, value: Double, enabled: Boolean, onSet: (Double) -> Unit) {
     val slider = Control.Slider(
-        id = 2, label = "boost factor ${spec.label}", tooltip = null, hiddenByDefault = false, binding = Binding.Param("mask.boost"),
-        softMin = -18.0, softMax = 18.0, hardMin = -18.0, hardMax = 18.0, default = default, step = 0.1,
+        id = 2, label = "boost factor $label", tooltip = null, hiddenByDefault = false, binding = Binding.Param("mask.boost"),
+        softMin = 0.0, softMax = 18.0, hardMin = 0.0, hardMax = 18.0, default = 0.0, step = 0.1,
         digits = 1, factor = 1.0, offset = 0.0, format = " EV", textDefault = null, integer = false,
     )
-    var moving by remember(spec.base) { mutableStateOf<Double?>(null) }
+    var moving by remember(id) { mutableStateOf<Double?>(null) }
     SliderControl(slider.label ?: "", slider, moving ?: value, enabled,
-        onDrag = { moving = it }, onDragEnd = { moving?.let(onSet); moving = null }, onReset = { onSet(default) }, onExact = {})
+        onDrag = { moving = it }, onDragEnd = { moving?.let(onSet); moving = null }, onReset = { onSet(0.0) }, onExact = {})
 }
 
 /** The sheets of the parametric section: colour space, its confirmation, feathering guide. */
@@ -179,7 +168,7 @@ fun BoxScope.ParametricOverlays(controller: DarkroomController, s: DarkroomState
                 }
             }
         }
-        is ParamSheet.ConfirmSpace -> Sheet("change the colour space? the parametric channels are reset", close, maxW) {
+        is ParamSheet.ConfirmSpace -> Sheet("change the colour space? the parametric elements are removed", close, maxW) {
             SheetItem("change", !ro) { controller.launch { pm.confirmSpace() } }
             SheetItem("cancel", true, onClick = close)
         }

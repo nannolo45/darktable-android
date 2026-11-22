@@ -1557,7 +1557,9 @@ class FakeEngine(
         val s = requireWritable()
         val f = s.form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
         if (f.type == "group") fail(EngineError.ARG, "form $id is a group")
-        val g = checkGeometry(f.type, geometry)
+        // a parametric element: the changed settings on top of its own (a channel stays, engine-api.md 6.9)
+        val g = if (f.type == "parametric") checkParametric(JsonObject(f.geometry.filterKeys { it in listOf("channel", "in", "out", "boost", "show_output") } + geometry))
+            else checkGeometry(f.type, geometry)
         s.beginChange()
         s.forms = s.forms.map { if (it.id == id) it.copy(geometry = g) else it }
         s.recordFor(id)
@@ -1733,6 +1735,7 @@ class FakeEngine(
         fun active(a: JsonArray) = a.map { it.jsonPrimitive.double } != listOf(0.0, 0.0, 1.0, 1.0)
         return buildJsonObject {
             put("colorspace", "rgb_scene"); put("channel", ch); put("in", inR); put("out", outR)
+            put("boost_supported", ch in listOf("g", "R", "G", "B", "Jz", "Cz"))
             put("in_active", active(inR)); put("out_active", active(outR))
             put("boost", (g["boost"] as? JsonPrimitive)?.doubleOrNull ?: 0.0)
             put("show_output", (g["show_output"] as? JsonPrimitive)?.booleanOrNull ?: false)

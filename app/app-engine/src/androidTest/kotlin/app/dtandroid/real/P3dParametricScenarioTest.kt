@@ -85,7 +85,7 @@ class P3dParametricScenarioTest {
 
     private fun px(a: RenderedImage, p: Int, k: Int) = a.rgba[p * 4 + k].toInt() and 255
 
-    private fun g(c: DarkroomController, name: String) = c.parametric.state.value.blend!!.parametric[name]!!
+    private fun g(c: DarkroomController) = c.parametric.state.value.elements.first { it.base == "g" }
 
     @Test
     fun e1_luminanceRangeOnExposure() {
@@ -98,9 +98,9 @@ class P3dParametricScenarioTest {
         runBlocking {
             c.masks.setMode(MaskMode.PARAMETRIC)
             c.parametric.addChannel(ParamChannels.of(c.parametric.state.value.space).first { it.base == "g" })
-            c.parametric.setRange("g_in", listOf(0.0, 0.0, lum.coerceIn(0.01, 0.9), (lum * 1.3).coerceIn(0.02, 1.0)))
+            c.parametric.setRange(g(c).id, false, listOf(0.0, 0.0, lum.coerceIn(0.01, 0.9), (lum * 1.3).coerceIn(0.02, 1.0)))
         }
-        val range = g(c, "g_in").range
+        val range = g(c).inRange
         TestFiles.record(res, "range_set", range)
         val masked = runBlocking { preview(c) }
         c.masks.toggleShowMask()
@@ -132,8 +132,8 @@ class P3dParametricScenarioTest {
         waitFor("preview again") { c.state.value.preview != null }
         c.setView(BottomView.MASKS)
         runBlocking { c.masks.select(exposure) }
-        waitFor("blend read again") { c.parametric.state.value.blend?.parametric?.get("g_in")?.active == true }
-        val again = g(c, "g_in").range
+        waitFor("elements read again") { c.parametric.state.value.elements.any { it.base == "g" } }
+        val again = g(c).inRange
         TestFiles.record(res, "range_reopened", again)
         for (i in 0..3) assertTrue("reopened range marker $i: ${range[i]} vs ${again[i]}", abs(range[i] - again[i]) < 1e-5)
         val d2 = runBlocking { preview(c) }.let { a -> var s = 0L; for (i in a.rgba.indices) if (i % 4 != 3) s += abs(px(a, i / 4, i % 4) - px(masked, i / 4, i % 4)); s.toDouble() / (a.width * a.height * 3) }
@@ -164,19 +164,19 @@ class P3dParametricScenarioTest {
             c.masks.setMode(MaskMode.PARAMETRIC)
             c.parametric.addChannel(ParamChannels.of(c.parametric.state.value.space).first { it.base == "g" })
         }
-        waitFor("channel on") { c.parametric.state.value.blend?.parametric?.get("g_in")?.active == true }
-        val id = c.parametric.pickerId("g_in")
+        waitFor("element added") { c.parametric.state.value.elements.any { it.base == "g" } }
+        val id = c.parametric.pickerId(g(c).id, false)
         runBlocking { c.togglePicker(exposure, id) }
         waitFor("picker armed") { c.state.value.picker?.controlId == id }
         // arming picks at once with the picker's first area (a wide one); the tap's small area comes after it
         c.pickerTap(0.4f, 0.45f, 0.04f, 0.04f)
-        waitFor("range set from the tapped area") { val r = g(c, "g_in").range; !RangeMath.isFull(r) && r[3] - r[0] < 0.9 }
+        waitFor("range set from the tapped area") { val r = g(c).inRange; !RangeMath.isFull(r) && r[3] - r[0] < 0.9 }
         Thread.sleep(500) // a pick of the first area still in flight would land before this one: wait, then read
-        val r = g(c, "g_in").range
+        val r = g(c).inRange
         TestFiles.record(res, "pick_range", r)
         val sel = c.state.value.picker!!.selection!!
         val stats = runBlocking { c.withEngine { e -> e.colorPick("exposure", 0, PickRequest(area = sel.area)).input!! } }
-        val want = PickRange.fromStats(c.parametric.state.value.space, "g", stats, g(c, "g_in").boost)!!
+        val want = PickRange.fromStats(g(c).space, "g", stats, g(c).boost)!!
         TestFiles.record(res, "pick_stats", "${stats.colorspace} min ${stats.min} max ${stats.max}; the range the engine's numbers give: $want")
         assertTrue("in order", r.zipWithNext().all { (a, b) -> a <= b })
         for (i in 0..3) assertTrue("marker $i from the picked area: ${r[i]} vs ${want[i]}", abs(r[i] - want[i]) < 1e-3)
