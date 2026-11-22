@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -245,6 +246,28 @@ class LplScenarioTest {
             // photo 51's own lines (file names repeat across the photos of earlier tests; its folder is named 51)
             TestFiles.record(res, "l4_photo_51", app.dtandroid.darkroom.Timeline.text().lines().filter { "51/" in it }.joinToString(" | "))
         }
+    }
+
+    /**
+     * l8 (brief P2k): an edit job with `open: false` from a server that knows batches: both photos are copied
+     * (status `ready`), the job is reported `done` with its lists, and the darkroom stays closed.
+     */
+    @Test
+    fun l8_aBatchJobWithoutOpeningCopiesThePhotosAndLeavesTheDarkroomClosed() {
+        val s = stub()
+        s.batch = true
+        rawPhoto(s, 61); rawPhoto(s, 62, "SECOND.cr2")
+        AppHost.servers.put(s.origin, "Phone", null)
+        val job = s.queueJob(AppHost.servers.installId, "edit", listOf(61, 62), open = false)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        val v = vm()
+        waitFor("the batch job reported", 300_000) { job.status == "done" || job.status == "failed" || job.status == "stopped" }
+        assertEquals("done", job.status)
+        assertTrue(job.doneBody!!.contains("\"arrived\":[61,62]"))
+        assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 61)?.status)
+        assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 62)?.status)
+        assertNull("the darkroom was not opened", v.controller.state.value.current)
+        TestFiles.record(res, "l8", "passed")
     }
 
     /**
