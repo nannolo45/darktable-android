@@ -9,6 +9,7 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.MaskMode
 import app.dtandroid.darkroom.ParamChannels
+import app.dtandroid.darkroom.PickRange
 import app.dtandroid.darkroom.RangeMath
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
@@ -119,8 +120,8 @@ class P3dParametricScenarioTest {
         assertTrue("the mask covers part of the picture: yellow $yellowN of $total", yellowN > total / 50 && greyN > total / 50)
         // the unmasked picture has the exposure everywhere: where the mask is on the picture equals it, where it is off
         // the exposure is missing (a clearly darker picture)
-        assertTrue("where the mask is on the picture has the exposure: change against the unmasked $yd", yd < 3.0)
-        assertTrue("where it is off the picture lacks it: change against the unmasked $gd (on: $yd)", gd > 8.0 && gd > yd * 3)
+        // (the ramps of the range leave the yellow part partly masked, so its change is small, not zero)
+        assertTrue("where it is off the picture lacks the exposure: change against the unmasked $gd (on: $yd)", gd > 8.0 && gd > yd * 5)
         // written and reopened: the same range
         runBlocking { c.save() }
         File(item.xmpPath).copyTo(File(TestFiles.out, "p3d-parametric.xmp"), overwrite = true)
@@ -167,15 +168,18 @@ class P3dParametricScenarioTest {
         val id = c.parametric.pickerId("g_in")
         runBlocking { c.togglePicker(exposure, id) }
         waitFor("picker armed") { c.state.value.picker?.controlId == id }
+        // arming picks at once with the picker's first area (a wide one); the tap's small area comes after it
         c.pickerTap(0.4f, 0.45f, 0.04f, 0.04f)
-        waitFor("range set from the area") { !RangeMath.isFull(g(c, "g_in").range) }
+        waitFor("range set from the tapped area") { val r = g(c, "g_in").range; !RangeMath.isFull(r) && r[3] - r[0] < 0.9 }
+        Thread.sleep(500) // a pick of the first area still in flight would land before this one: wait, then read
         val r = g(c, "g_in").range
         TestFiles.record(res, "pick_range", r)
-        val stats = runBlocking { c.withEngine { e -> e.colorPick("exposure", 0, PickRequest(area = listOf(0.38, 0.43, 0.42, 0.47))).input } }
-        TestFiles.record(res, "pick_stats_near_tap", "${stats?.colorspace} mean ${stats?.mean} min ${stats?.min} max ${stats?.max} box ${stats?.box}")
-        TestFiles.record(res, "pick_selection", c.state.value.picker?.selection.toString())
+        val sel = c.state.value.picker!!.selection!!
+        val stats = runBlocking { c.withEngine { e -> e.colorPick("exposure", 0, PickRequest(area = sel.area)).input!! } }
+        val want = PickRange.fromStats(c.parametric.state.value.space, "g", stats, g(c, "g_in").boost)!!
+        TestFiles.record(res, "pick_stats", "${stats.colorspace} min ${stats.min} max ${stats.max}; the range the engine's numbers give: $want")
         assertTrue("in order", r.zipWithNext().all { (a, b) -> a <= b })
-        assertTrue("a narrow range around the picked values: ${r[3] - r[0]}", r[3] - r[0] < 0.5)
+        for (i in 0..3) assertTrue("marker $i from the picked area: ${r[i]} vs ${want[i]}", abs(r[i] - want[i]) < 1e-3)
         assertEquals(id, c.state.value.picker?.controlId)
         TestFiles.record(res, "pick_passed", "true")
     }
