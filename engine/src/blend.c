@@ -201,6 +201,31 @@ static float _boost_min(const dt_develop_blend_colorspace_t csp, const int index
   return 0.0f;
 }
 
+/* for masks.c (parametric elements, engine-api.md 6.9) */
+int dtb__blend_cst(dt_iop_module_t *m)
+{
+  return (int)_effective_cst(m, m->blend_params);
+}
+
+const char *dtb__blend_cst_name(const int csp)
+{
+  return _name_of(_colorspaces, (uint32_t)csp);
+}
+
+/* "L_in", "Jz_out", ... for a blendif index in the colour space, NULL if none */
+const char *dtb__blendif_name(const int csp, const int index)
+{
+  const _chan_t *ch = _channels((dt_develop_blend_colorspace_t)csp);
+  for(int k = 0; ch && ch[k].name; k++)
+    if(ch[k].index == index) return ch[k].name;
+  return NULL;
+}
+
+float dtb__boost_min(const int csp, const int index)
+{
+  return _boost_min((dt_develop_blend_colorspace_t)csp, index);
+}
+
 static gboolean _supported(const dt_iop_module_t *m)
 {
   return (m->flags() & IOP_FLAGS_SUPPORTS_BLENDING) && m->blend_params;

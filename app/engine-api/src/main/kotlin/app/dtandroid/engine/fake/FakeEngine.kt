@@ -179,6 +179,9 @@ class FakeEngine(
         var nextFormId = 1000
         /** instance whose param_set calls currently merge into the last history item */
         var openGroup: Pair<String, Int>? = null
+        /** 6.9 history group: open; index of the first item made inside it (-1: no change yet) */
+        var histGroup = false
+        var histGroupFirst = -1
     }
 
     private var initialised = false
@@ -237,6 +240,11 @@ class FakeEngine(
     /** Start a new history group: seal, record the undo state, discard history above `end`. */
     private fun Session.beginChange(truncate: Boolean = true) {
         openGroup = null
+        // 6.9: inside a history group only the first change records the undo state
+        if (histGroup) {
+            if (histGroupFirst >= 0) return
+            histGroupFirst = (if (truncate) minOf(end, items.size) else items.size)
+        }
         undo.addLast(snapshot())
         while (undo.size > UNDO_LIMIT) undo.removeFirst()
         redo.clear()
@@ -246,7 +254,11 @@ class FakeEngine(
     private fun Session.addItem(op: String, priority: Int, enabled: Boolean, params: JsonObject,
                                 blend: JsonObject? = live()[op to priority]?.blend) {
         val name = inst(op, priority).instanceName
-        items = items + Item(op, priority, name, enabled, params, blend = blend)
+        val last = items.lastOrNull()
+        // 6.9: inside a history group the items of one instance merge, as darktable's unsealed item does
+        items = if (histGroup && histGroupFirst in 0 until items.size && last != null && last.op == op && last.priority == priority)
+            items.dropLast(1) + Item(op, priority, name, enabled, params, blend = blend)
+        else items + Item(op, priority, name, enabled, params, blend = blend)
         end = items.size
     }
 
@@ -738,6 +750,7 @@ class FakeEngine(
 
     override suspend fun undo() = onEngine {
         val s = requireWritable()
+        s.histGroup = false; s.histGroupFirst = -1
         s.openGroup = null
         val prev = s.undo.removeLastOrNull() ?: fail(EngineError.STATE, "nothing to undo")
         s.redo.addLast(s.snapshot())
@@ -746,6 +759,7 @@ class FakeEngine(
 
     override suspend fun redo() = onEngine {
         val s = requireWritable()
+        s.histGroup = false; s.histGroupFirst = -1
         s.openGroup = null
         val next = s.redo.removeLastOrNull() ?: fail(EngineError.STATE, "nothing to redo")
         s.undo.addLast(s.snapshot())
@@ -1668,6 +1682,159 @@ class FakeEngine(
         s.beginChange()
         s.forms = s.forms.map { if (it.id == id) it.copy(geometry = JsonObject(geo)) else it }
         s.recordFor(id)
+    }
+
+    // ------------------------------------------------------------ 6.9 (P3d stage 2a), as data
+
+    override suspend fun historyGroupBegin() = onEngine {
+        val s = requireWritable()
+        if (s.histGroup) fail(EngineError.STATE, "a history group is already open")
+        s.openGroup = null
+        s.histGroup = true; s.histGroupFirst = -1
+    }
+
+    override suspend fun historyGroupEnd(keep: Boolean) = onEngine {
+        val s = requireSession()
+        if (!s.histGroup) fail(EngineError.STATE, "no history group is open")
+        val changed = s.histGroupFirst >= 0
+        s.histGroup = false; s.histGroupFirst = -1; s.openGroup = null
+        if (changed && !keep) s.undo.removeLastOrNull()?.let { s.restore(it) }
+    }
+
+    private fun Session.members(g: Int): List<JsonObject> =
+        ((form(g)?.geometry?.get("members")) as? JsonArray)?.map { it as JsonObject } ?: emptyList()
+
+    private fun Session.setMembers(g: Int, m: List<JsonObject>) {
+        forms = forms.map { if (it.id == g) it.copy(geometry = JsonObject(it.geometry + ("members" to JsonArray(m)))) else it }
+    }
+
+    private fun Session.flexiGroup(id: Int): FakeForm {
+        val g = form(id) ?: fail(EngineError.NOT_FOUND, "no form $id")
+        if (g.type != "group") fail(EngineError.ARG, "form $id is not a flexi group")
+        return g
+    }
+
+    private fun idOf(m: JsonObject) = m["id"]!!.jsonPrimitive.int
+
+    /** a history item for the first instance whose mask holds group [g] (none: the mask manager's, not kept here) */
+    private fun Session.recordGroup(g: Int) = recordFor(g)
+
+    private fun checkParametric(g: JsonObject): JsonObject {
+        val ch = (g["channel"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.ARG, "geometry: \"channel\" missing")
+        if (ch !in listOf("g", "R", "G", "B", "Jz", "Cz", "hz", "H", "S", "l", "L", "a", "b", "C", "h")) fail(EngineError.ARG, "channel '$ch'")
+        fun range(k: String): JsonArray {
+            val a = g[k] as? JsonArray ?: return JsonArray(listOf(0.0, 0.0, 1.0, 1.0).map { JsonPrimitive(it) })
+            val v = a.map { (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "\"$k\" takes numbers") }
+            if (v.size != 4) fail(EngineError.TYPE, "\"$k\" takes [a, b, c, d]")
+            if (v.any { it < 0 || it > 1 } || v.zipWithNext().any { (x, y) -> x > y }) fail(EngineError.RANGE, "\"$k\": 0..1 and in order")
+            return a
+        }
+        val inR = range("in"); val outR = range("out")
+        fun active(a: JsonArray) = a.map { it.jsonPrimitive.double } != listOf(0.0, 0.0, 1.0, 1.0)
+        return buildJsonObject {
+            put("colorspace", "rgb_scene"); put("channel", ch); put("in", inR); put("out", outR)
+            put("in_active", active(inR)); put("out_active", active(outR))
+            put("boost", (g["boost"] as? JsonPrimitive)?.doubleOrNull ?: 0.0)
+            put("show_output", (g["show_output"] as? JsonPrimitive)?.booleanOrNull ?: false)
+            put("whole_range", !active(inR) && !active(outR))
+        }
+    }
+
+    override suspend fun maskAdd(op: String, priority: Int, type: String, geometry: JsonObject, name: String?, group: Int?, member: MaskMember): Int = onEngine {
+        val s = requireWritable()
+        val cur = s.maskInstance(op, priority)
+        val g = if (type == "parametric") checkParametric(geometry) else checkGeometry(type, geometry)
+        val root = s.rootOf(op, priority)
+        if (group != null && group > 0) {
+            s.flexiGroup(group)
+            if (!s.treeHas(root, group)) fail(EngineError.ARG, "group $group is not in $op $priority's mask")
+        }
+        val m = memberJson(0, member)
+        s.beginChange()
+        val id = s.nextFormId++
+        val n = name?.takeIf { it.isNotEmpty() } ?: "$type #${s.forms.count { it.type == type } + 1}"
+        s.forms = s.forms + FakeForm(id, type, n, g)
+        val blend = (cur.blend ?: defaultBlend(true)).toMutableMap()
+        val target = if (group != null && group > 0) group else root ?: s.nextFormId++.also { gid ->
+            s.forms = s.forms + FakeForm(gid, "group", "group `$op'", buildJsonObject {
+                put("flexi", true); put("operator", "maximum"); put("invert", false); put("bypass", false); put("opacity", 1.0)
+                put("group_name", ""); put("members", JsonArray(emptyList()))
+            })
+            blend["mask_id"] = JsonPrimitive(gid)
+        }
+        val flags = (((blend["mask_mode_flags"] as? JsonArray)?.map { it.jsonPrimitive.content } ?: emptyList()) + listOf("enabled", "flexi")).distinct()
+        blend["masks"] = JsonPrimitive(maskModes.entries.firstOrNull { it.value.toSet() == flags.toSet() }?.key ?: "other")
+        blend["mask_mode_flags"] = JsonArray(listOf("enabled", "drawn", "parametric", "raster", "flexi").filter { it in flags }.map { JsonPrimitive(it) })
+        s.setMembers(target, s.members(target) + JsonObject(m + ("id" to JsonPrimitive(id))))
+        s.addItem(op, priority, true, cur.params, JsonObject(blend))
+        id
+    }
+
+    override suspend fun maskMemberMove(group: Int, id: Int, toGroup: Int, position: Int) = onEngine {
+        val s = requireWritable()
+        s.flexiGroup(group); s.flexiGroup(toGroup)
+        val m = s.members(group).firstOrNull { idOf(it) == id } ?: fail(EngineError.NOT_FOUND, "form $id is not a member of group $group")
+        if (toGroup != group) {
+            if (s.members(toGroup).any { idOf(it) == id }) fail(EngineError.ARG, "form $id is already a member of group $toGroup")
+            if (id == toGroup || s.treeHas(id, toGroup)) fail(EngineError.ARG, "a group cannot go into itself")
+        }
+        val n = s.members(toGroup).size - (if (toGroup == group) 1 else 0)
+        if (position < -1 || position > n) fail(EngineError.RANGE, "position $position outside -1..$n")
+        val pos = if (position < 0) n else position
+        if (toGroup == group && s.members(group).indexOfFirst { idOf(it) == id } == pos) return@onEngine
+        s.beginChange()
+        s.setMembers(group, s.members(group).filter { idOf(it) != id })
+        s.setMembers(toGroup, s.members(toGroup).toMutableList().also { it.add(pos, m) })
+        s.recordGroup(group)
+    }
+
+    override suspend fun maskMemberRemove(group: Int, id: Int) = onEngine {
+        val s = requireWritable()
+        s.flexiGroup(group)
+        if (s.members(group).none { idOf(it) == id }) fail(EngineError.NOT_FOUND, "form $id is not a member of group $group")
+        s.beginChange()
+        s.recordGroup(group)
+        s.setMembers(group, s.members(group).filter { idOf(it) != id })
+    }
+
+    override suspend fun maskMemberUpdate(group: Int, id: Int, member: MaskMember) = onEngine {
+        val s = requireWritable()
+        s.flexiGroup(group)
+        val old = s.members(group).firstOrNull { idOf(it) == id } ?: fail(EngineError.NOT_FOUND, "form $id is not a member of group $group")
+        if (member.toJson().isEmpty()) fail(EngineError.ARG, "no settings")
+        if (s.form(id)?.type == "group" && (member.inverse != null || member.opacity != null))
+            fail(EngineError.ARG, "form $id is a group: its invert and opacity are its own")
+        val m = memberJson(id, member, old)
+        s.beginChange()
+        s.setMembers(group, s.members(group).map { if (idOf(it) == id) m else it })
+        s.recordGroup(group)
+    }
+
+    override suspend fun maskGroupWrap(group: Int, ids: List<Int>, operator: String?): Int = onEngine {
+        val s = requireWritable()
+        s.flexiGroup(group)
+        val op = operator?.takeIf { it.isNotEmpty() } ?: "maximum"
+        if (op !in listOf("maximum", "screen", "minimum", "product", "sum", "difference", "exclusion")) fail(EngineError.ARG, "operator '$op'")
+        if (ids.isEmpty()) fail(EngineError.ARG, "members: a non-empty array of form ids")
+        if (ids.toSet().size != ids.size) fail(EngineError.ARG, "a form is listed twice")
+        val members = s.members(group)
+        ids.forEach { i -> if (members.none { idOf(it) == i }) fail(EngineError.NOT_FOUND, "form $i is not a member of group $group") }
+        s.beginChange()
+        val gid = s.nextFormId++
+        val picked = members.filter { idOf(it) in ids }
+        s.forms = s.forms + FakeForm(gid, "group", "group #${s.forms.count { it.type == "group" } + 1}", buildJsonObject {
+            put("flexi", true); put("operator", op); put("invert", false); put("bypass", false); put("opacity", 1.0)
+            put("group_name", ""); put("members", JsonArray(picked))
+        })
+        val top = members.indexOfLast { idOf(it) in ids }
+        val out = ArrayList<JsonObject>()
+        members.forEachIndexed { k, m ->
+            if (idOf(m) !in ids) out += m
+            if (k == top) out += memberJson(gid, MaskMember())
+        }
+        s.setMembers(group, out)
+        s.recordGroup(group)
+        gid
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine {

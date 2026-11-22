@@ -163,4 +163,16 @@ object NativeBridge {
     const val MASK_GROUP_CREATE = 13
     const val MASK_GROUP_SET = 14
     @JvmStatic external fun p1b2(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
+
+    // P3d stage 2a (engine-api.md 6.9), as p1b2 with four ints: GROUP_BEGIN; GROUP_END (n1 keep);
+    // MASK_ADD (s1 op, n1 priority, s2 request); MEMBER_MOVE (n1 group, n2 id, n3 to group, n4 position);
+    // MEMBER_REMOVE (n1 group, n2 id); MEMBER_UPDATE (n1 group, n2 id, s2 options); GROUP_WRAP (n1 group, s2 ids, s1 operator).
+    const val P3D_GROUP_BEGIN = 0
+    const val P3D_GROUP_END = 1
+    const val P3D_MASK_ADD = 2
+    const val P3D_MEMBER_MOVE = 3
+    const val P3D_MEMBER_REMOVE = 4
+    const val P3D_MEMBER_UPDATE = 5
+    const val P3D_GROUP_WRAP = 6
+    @JvmStatic external fun p3d(what: Int, s1: String?, s2: String?, n1: Int, n2: Int, n3: Int, n4: Int, status: IntArray): String?
 }
