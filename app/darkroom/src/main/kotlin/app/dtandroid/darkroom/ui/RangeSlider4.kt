@@ -32,7 +32,7 @@ import kotlin.math.abs
  * Brief P3d stage 2b: darktable's range slider with four markers. The two inner markers (filled) bound the full
  * opacity, the two outer ones (open) the zero opacity; the order is fixed: markers may touch, never cross. A drag
  * moves one marker and gives the markers at the finger's lift ([onCommit]: one history item); a double tap gives
- * the whole range ([RangeMath.FULL]). Touching markers: the direction of the first movement picks one of them (the one the finger moves toward).
+ * the whole range ([RangeMath.FULL]). Touching markers: the direction of the first movement picks one of them (the one the finger moves toward; see RangeMath.candidates).
  */
 @Composable
 fun RangeSlider4(
