@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,7 +59,7 @@ internal fun MaskTree(controller: DarkroomController, ms: MasksState, m: ModuleM
     val masks = controller.masks
     val root = m.rootId
     if (root != null && m.members.isNotEmpty()) {
-        ListControl("operator of this module's group", Masks.operatorLabel(m.operator), enabled = !ro) {
+        ListControl("group operator", Masks.operatorLabel(m.operator), enabled = !ro) {
             masks.openSheet(MaskSheet.Operator(root))
         }
         ToggleControl("invert group", groupFlag(ms, root, "invert"), enabled = !ro) {
@@ -95,7 +96,8 @@ private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: Modul
         if (group) {
             DtIconButton(DtIcon.ChevronDown, if (open) "close group $name" else "open group $name", c.textMuted,
                 onClick = { masks.toggleExpanded(id) },
-                modifier = Modifier.semantics { stateDescription = if (open) "expanded" else "collapsed" })
+                // as the expanders of the module panel: pointing up while open
+                modifier = Modifier.rotate(if (open) OPEN_TURN else CLOSED_TURN).semantics { stateDescription = if (open) "expanded" else "collapsed" })
         } else {
             DtIconImage(shapeIcon(f?.type ?: ""), null, c.text, DtTheme.sizes.icon, Modifier.padding(horizontal = sp.s))
         }
@@ -162,3 +164,6 @@ internal fun BoxScope.MaskTreeSheets(controller: DarkroomController, ms: MasksSt
         else -> {}
     }
 }
+
+private const val OPEN_TURN = 180f
+private const val CLOSED_TURN = 0f

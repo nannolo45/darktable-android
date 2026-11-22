@@ -123,7 +123,7 @@ Mockup: `docs/design/mockups/P3d-Masks.html`, with the owner's changes: the mask
     and `blend mode` (a sheet with desktop's modes for the module's blend colour space).
   - for `drawn`: the line naming the module's group and its number of shapes; the add buttons `brush`, `circle`,
     `ellipse`, `gradient`, `path` (`size.shapeButton`); `use an existing shape…`; then (stage 2a) the module's
-    mask as a tree, as the manual's groups and operators: `operator of this module's group` (a sheet `combine with`:
+    mask as a tree, as the manual's groups and operators: `group operator` (a sheet `combine with`:
     union (maximum), intersection (minimum), difference, exclusion, screen (smooth union), sum (additive union),
     product (smooth intersection): plain names first, desktop's names beside them), `invert group`, `group opacity`;
     then one row per member, top first (the bottom member of a group is its first, as desktop lists rows bottom-up):
