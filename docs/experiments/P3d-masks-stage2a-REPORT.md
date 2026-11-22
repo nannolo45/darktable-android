@@ -133,7 +133,7 @@ the commit the final runs built:
 |---|---|---|
 | p2a-app | 45068138347 (`12b44a1c`) | success: 337 JVM tests, 0 failures (P3dMaskTreeTest 2/2, PhoneMaskTreeScreenshots 2/2, FakeMaskTreeTest 2/2) |
 | p2b-real-engine | 45070957074 (`f7556ae8`) | success: apk, emulator 83/83, compare all ok (`p3d=ok`, tree PSNR 45.26 dB) |
-| g0-app (bridge tests; engine.yml is called from here and from p2b) | 45070957078 (`f7556ae8`) | g0-linux: 359 PASS, 0 FAIL (C26 on cr2, raf, arw); engine builds ok; see the reply for the g0 emulator job |
+| g0-app (bridge tests; engine.yml is called from here and from p2b) | 45070957078 (`f7556ae8`) | success: g0-linux 359 PASS, 0 FAIL (C26 on cr2, raf, arw); engine builds, apk, emulator ok |
 
 ## Running log
 
