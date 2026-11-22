@@ -61,6 +61,9 @@ object DtTheme {
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.shapes
     val alpha: DtAlpha
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.alpha
+    /** brief PUI3a: the l1 layout's tokens */
+    val l1: DtL1
+        @Composable @ReadOnlyComposable get() = LocalDtTokens.current.l1
     val type: DtTextStyles
         @Composable @ReadOnlyComposable get() = LocalDtTextStyles.current
 }

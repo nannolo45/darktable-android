@@ -105,7 +105,9 @@ private const val TAP_ZOOM_TOLERANCE = 0.05f
  * from it, or two fingers, pan and zoom as before.
  */
 @Composable
-fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFingerUndo: Boolean, modifier: Modifier = Modifier) {
+fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFingerUndo: Boolean, modifier: Modifier = Modifier,
+              /** brief PUI3a: the colour around the photo; null: darktable's surround (the l1 layout puts the photo on black) */
+              surround: androidx.compose.ui.graphics.Color? = null) {
     val c = DtTheme.colors
     val preview = rememberLayer(s.preview)
     val region = rememberLayer(s.region)
@@ -160,7 +162,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
 
     val slop = LocalViewConfiguration.current.touchSlop
     Box(
-        modifier.background(c.surround).padding(inset)
+        modifier.background(surround ?: c.surround).padding(inset)
             .semantics { contentDescription = "photo" },
         contentAlignment = Alignment.Center,
     ) {

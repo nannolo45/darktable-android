@@ -123,9 +123,12 @@ private fun PanelTitle(title: String, onBack: (() -> Unit)?, onClose: () -> Unit
     }
 }
 
-/** The overlays of brief P3b (phone: everything; tablet: what the panel does not show). */
+/**
+ * The overlays of brief P3b (phone: everything; tablet: what the panel does not show). Brief PUI3a: [stylesInPanel]
+ * when the styles list and a style's content are shown in a panel ([StylesPanel]: the tablet, the l1 layout).
+ */
 @Composable
-fun BoxScope.StylesOverlays(controller: DarkroomController, s: DarkroomState, tablet: Boolean, files: ImportFiles?) {
+fun BoxScope.StylesOverlays(controller: DarkroomController, s: DarkroomState, tablet: Boolean, files: ImportFiles?, stylesInPanel: Boolean = tablet) {
     val sp by controller.stylesPresets.state.collectAsState()
     val o = s.overlay
     val maxW = if (tablet) DtTheme.sizes.tabletRightPanel + DtTheme.sizes.tabletLeftPanel else null
@@ -139,7 +142,7 @@ fun BoxScope.StylesOverlays(controller: DarkroomController, s: DarkroomState, ta
     }
     when (val p = sp.page) {
         null -> if (!tablet) when (o) {
-            Overlay.Styles -> Sheet("styles", close, maxW, scroll = false) {
+            Overlay.Styles -> if (!stylesInPanel) Sheet("styles", close, maxW, scroll = false) {
                 StylesList(controller, s, sp, files, Modifier.heightIn(max = DtTheme.sizes.sheetMaxHeight))
             }
             is Overlay.Presets -> {
@@ -148,7 +151,7 @@ fun BoxScope.StylesOverlays(controller: DarkroomController, s: DarkroomState, ta
             }
             else -> Unit
         }
-        is SpPage.StyleDetail -> if (!tablet) Sheet(DtNames.leaf(p.name), back, maxW) { StyleDetail(controller, s, sp, p.name, tablet = false) }
+        is SpPage.StyleDetail -> if (!stylesInPanel) Sheet(DtNames.leaf(p.name), back, maxW) { StyleDetail(controller, s, sp, p.name, tablet = false) }
         SpPage.StyleCreate -> StyleCreateSheet(controller, s, sp, back, maxW)
         is SpPage.StyleOverwrite -> Confirm("overwrite style?", "style `${DtNames.display(p.name)}' already exists.\ndo you want to overwrite?", "overwrite", sp.note, back, maxW) {
             controller.launch { stylesPresets.createStyle(p.name, p.description, p.items, overwrite = true) }

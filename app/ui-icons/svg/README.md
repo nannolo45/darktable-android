@@ -21,3 +21,6 @@ mask or shape.
 Brief P3d added `mask.svg` (the mask indicator in a module's header) and the five shape icons `maskBrush.svg`,
 `maskCircle.svg`, `maskEllipse.svg`, `maskGradient.svg`, `maskPath.svg`, drawn after the approved mockup
 (docs/design/mockups/P3d-Masks.html).
+
+Brief PUI3a added the l1 layout's icons: `export.svg` (export button in its top bar), `compare.svg` (the
+before/after comparison), and two of its tools: `modules.svg` (sliders) and `styles.svg` (stacked frames).
