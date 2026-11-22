@@ -293,7 +293,7 @@ class P3dScenarioTest {
         showSheet(c, ex) // now "in this module"
         c.masks.openSheet(null)
         // a second module with its own shape: the other's group offered and picked, both ways
-        val other = c.state.value.modules.first { it.supportsBlending && it.key != exposure }.key
+        val other = c.state.value.modules.first { it.supportsBlending && it.op != "exposure" }.let { InstanceKey(it.op, it.priority) }
         runBlocking { c.setEnabled(other, true) }
         runBlocking { c.masks.select(other) }
         waitFor("other in the tab") { c.masks.state.value.module?.key == other }
