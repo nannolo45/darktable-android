@@ -212,14 +212,16 @@ class Masks internal constructor(private val c: DarkroomController) {
     /** Read the module's blending and the photo's shapes again. */
     suspend fun reload() {
         if (c.state.value.info == null) return
-        try { c.engineRead { reloadLocked(it) } } catch (e: EngineException) { _state.update { it.copy(note = e.detail) } }
+        try { c.engineRead { reloadLocked(it) } } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { _state.update { it.copy(note = noteOf(e)) } }
     }
 
     /** After every change of the edit (under the engine lock): only while the tab or a drawing is open. */
     internal suspend fun afterChangeLocked(e: DarktableEngine) {
         if (c.state.value.view != BottomView.MASKS && _state.value.draw == null) return
-        try { reloadLocked(e) } catch (x: EngineException) { _state.update { it.copy(note = x.detail) } }
+        try { reloadLocked(e) } catch (x: kotlinx.coroutines.CancellationException) { throw x } catch (x: Exception) { _state.update { it.copy(note = noteOf(x)) } }
     }
+
+    private fun noteOf(x: Exception): String = (x as? EngineException)?.detail ?: x.message ?: x.javaClass.simpleName
 
     private fun defaultKey(): InstanceKey? {
         val s = c.state.value
@@ -342,7 +344,10 @@ class Masks internal constructor(private val c: DarkroomController) {
     private suspend fun edit(block: suspend (DarktableEngine) -> Unit) {
         if (readOnly) return
         _state.update { it.copy(note = null) }
-        c.engineChange { e -> block(e) }
+        // brief P3d fix: whatever a masks action throws becomes the tab's note, never the end of the app
+        try { c.engineChange { e -> block(e) } }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { _state.update { it.copy(note = noteOf(e)) } }
     }
 
     private fun current(): ModuleMask? = _state.value.module?.takeIf { it.supported }
@@ -397,6 +402,12 @@ class Masks internal constructor(private val c: DarkroomController) {
     suspend fun attach(id: Int, to: InstanceKey? = null) {
         val k = to ?: current()?.key ?: return
         _state.update { it.copy(sheet = null) }
+        // brief P3d fix: a group never goes into itself or into a group that holds it (a cycle)
+        val rootOfTarget = _state.value.forms.firstOrNull { it.rootOf == k }?.id
+        if (rootOfTarget != null && makesCycle(_state.value.forms, id, rootOfTarget)) {
+            _state.update { it.copy(note = "a group cannot be used inside itself") }
+            return
+        }
         edit { e -> e.maskAttach(k.op, k.priority, id); e.historySeal() }
     }
 
@@ -641,6 +652,24 @@ class Masks internal constructor(private val c: DarkroomController) {
 
         /** a blend mode's name as the list shows it */
         fun blendLabel(name: String) = name.replace('_', ' ')
+
+        /** attaching [id] to the group [root] would make a cycle: [id] is [root] or holds it, through any groups */
+        fun makesCycle(forms: List<MaskShape>, id: Int, root: Int): Boolean {
+            if (id == root) return true
+            val byId = forms.associateBy { it.id }
+            val seen = HashSet<Int>()
+            val todo = ArrayDeque(listOf(id))
+            while (todo.isNotEmpty()) {
+                val f = byId[todo.removeFirst()] ?: continue
+                if (!seen.add(f.id)) continue
+                for (m in f.members) { if (m.id == root) return true; todo.addLast(m.id) }
+            }
+            return false
+        }
+
+        /** The forms "use an existing shape…" offers [module]: single shapes, and groups that would not make a cycle. */
+        fun existingOffers(forms: List<MaskShape>, module: ModuleMask): List<MaskShape> =
+            forms.filter { f -> f.id != module.rootId && (!f.isGroup || module.rootId == null || !makesCycle(forms, f.id, module.rootId)) }
 
         fun shapeLabel(f: MaskShape) = f.name.ifBlank { "${f.type} #${f.id}" }
     }

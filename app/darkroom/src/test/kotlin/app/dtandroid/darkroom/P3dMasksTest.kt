@@ -298,4 +298,47 @@ class P3dMasksTest {
         assertNull(c.masks.state.value.key)
         assertNull(c.state.value.showMask)
     }
+
+    @Test fun existingShapeSheetOffersAndRefusesCycles() = runBlocking {
+        val (c, _) = controller()
+        onExposure(c)
+        // no shape in the photo, no group yet
+        c.masks.openSheet(MaskSheet.Existing)
+        assertTrue(Masks.existingOffers(c.masks.state.value.forms, c.masks.state.value.module!!).isEmpty())
+        // one shape, detached: offered; picked: in the module; offered again (now "in this module")
+        val a = drawCircleAt(c, 0.3, 0.3)
+        c.masks.detach(a)
+        assertEquals(listOf(a), Masks.existingOffers(c.masks.state.value.forms, c.masks.state.value.module!!).map { it.id })
+        c.masks.attach(a)
+        assertEquals(listOf(a), c.masks.state.value.module!!.members.map { it.id })
+        // a second module with its own group: its group is offered to exposure and can be picked
+        val other = c.masks.blendingModules().first { it.key != exposure }.key
+        val rootEx = c.masks.state.value.module!!.rootId!!
+        c.masks.select(other)
+        waitFor("other") { c.masks.state.value.module?.key == other }
+        val b = drawCircleAt(c, 0.7, 0.7)
+        val rootOther = c.masks.state.value.module!!.rootId!!
+        assertTrue(rootEx in Masks.existingOffers(c.masks.state.value.forms, c.masks.state.value.module!!).map { it.id })
+        c.masks.attach(rootEx)
+        assertTrue(c.masks.state.value.module!!.members.any { it.id == rootEx })
+        // now other's group holds exposure's: offering it to exposure, or attaching it, would make a cycle
+        c.masks.select(exposure)
+        waitFor("exposure") { c.masks.state.value.module?.key == exposure }
+        val forms = c.masks.state.value.forms
+        assertFalse(rootOther in Masks.existingOffers(forms, c.masks.state.value.module!!).map { it.id })
+        assertTrue(Masks.makesCycle(forms, rootOther, rootEx))
+        assertTrue(Masks.makesCycle(forms, rootEx, rootEx))
+        val n = items(c)
+        c.masks.attach(rootOther)
+        assertEquals("refused, nothing written", n, items(c))
+        assertNotNull(c.masks.state.value.note)
+        assertEquals(listOf(a), c.masks.state.value.module!!.members.map { it.id })
+        // a cyclic photo (desktop data gone wrong) does not hang the check
+        val loop = listOf(
+            MaskShape(1, "group", "", kotlinx.serialization.json.JsonObject(emptyMap()), emptyList(), null, listOf(MaskMemberState(2, false, 1.0, false))),
+            MaskShape(2, "group", "", kotlinx.serialization.json.JsonObject(emptyMap()), emptyList(), null, listOf(MaskMemberState(1, false, 1.0, false))),
+        )
+        assertFalse(Masks.makesCycle(loop, 1, 99))
+        assertTrue(b != a)
+    }
 }
