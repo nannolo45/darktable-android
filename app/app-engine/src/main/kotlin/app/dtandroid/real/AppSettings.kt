@@ -14,8 +14,8 @@ import kotlinx.serialization.json.put
 import java.io.File
 
 /**
- * Brief PUI2a: the app's own settings, today one: `interface`, the skin (`darktable`, the default, or
- * `modern`). Kept in `<file>` as JSON, written whole; [file] null keeps it in memory (tests). An unknown
+ * Brief PUI2a: the app's own settings, today one: `interface`, the skin (`darktable`, the default,
+ * `modern` or, brief PUI3a, `l1`). Kept in `<file>` as JSON, written whole; [file] null keeps it in memory (tests). An unknown
  * or unreadable value means `darktable`.
  */
 class AppSettings(private val file: File?) {

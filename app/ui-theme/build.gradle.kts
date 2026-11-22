@@ -15,6 +15,7 @@ abstract class PackTokens : DefaultTask() {
     @get:InputFile abstract val tokens: RegularFileProperty
     @get:InputFile abstract val altTokens: RegularFileProperty
     @get:InputFile abstract val modernTokens: RegularFileProperty
+    @get:InputFile abstract val l1Tokens: RegularFileProperty
     @get:OutputDirectory abstract val outputDir: DirectoryProperty
 
     @TaskAction
@@ -25,6 +26,8 @@ abstract class PackTokens : DefaultTask() {
         altTokens.get().asFile.copyTo(out.resolve("alt-tokens.json"))
         // the modern skin (brief PUI2a), loaded on top of tokens.json when the setting `interface` is `modern`
         modernTokens.get().asFile.copyTo(out.resolve("modern-tokens.json"))
+        // the l1 skin (brief PUI3a), loaded on top of modern-tokens.json when the setting `interface` is `l1`
+        l1Tokens.get().asFile.copyTo(out.resolve("l1-tokens.json"))
     }
 }
 
@@ -32,6 +35,7 @@ val packTokens = tasks.register<PackTokens>("packTokens") {
     tokens.set(layout.projectDirectory.file("tokens.json"))
     altTokens.set(layout.projectDirectory.file("alt-tokens.json"))
     modernTokens.set(layout.projectDirectory.file("modern-tokens.json"))
+    l1Tokens.set(layout.projectDirectory.file("l1-tokens.json"))
     outputDir.set(layout.buildDirectory.dir("generated/tokens"))
 }
 

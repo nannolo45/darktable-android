@@ -142,4 +142,35 @@ class TokensTest {
             try { DtTokens.load(bad); fail(bad) } catch (e: TokenException) { /* expected */ }
         }
     }
+
+    // brief PUI3a: the l1 skin, l1-tokens.json on top of modern-tokens.json
+    @Test
+    fun l1SkinStacksOnModernAndEveryKeyIsAToken() {
+        assertEquals(emptyList<String>(), (keys(res("l1-tokens.json")) - keys(res("tokens.json"))).toList())
+        val t = DtTokens.load(Skin.L1)
+        assertEquals(emptyList<String>(), t.unknownOverrides)
+        assertEquals(true, t.l1.layout)
+        // the modern skin's values stay: accent, corners, slider thumb
+        val m = DtTokens.load(Skin.MODERN)
+        assertEquals(m.colors.accent, t.colors.accent)
+        assertEquals(m.colors.panel, t.colors.panel)
+        assertEquals(m.sizes.radiusControl, t.sizes.radiusControl)
+        assertEquals(true, t.shapes.sliderThumbRound)
+        assertEquals(0.95f, t.l1.panelAlpha)
+        assertEquals(250, t.l1.fadeOutMs)
+        assertEquals(100, t.l1.fadeInMs)
+        assertTrue(t.l1.toolsRow >= 44.dp && t.l1.sectionsRow >= 44.dp && t.l1.sideColumn >= 44.dp)
+        checkContrast(t)
+        // the other skins keep the panels layout
+        assertEquals(false, m.l1.layout)
+        assertEquals(false, DtTokens.load().l1.layout)
+    }
+
+    @Test
+    fun skinKeysRoundTrip() {
+        for (s in Skin.entries) assertEquals(s, Skin.fromKey(s.key))
+        assertEquals(Skin.L1, Skin.fromKey("l1"))
+        assertEquals(listOf("darktable", "modern", "l1"), Skin.entries.map { it.key })
+        try { DtTokens.load("""{"shape.darkroom": "tabs"}"""); fail() } catch (e: TokenException) { /* expected */ }
+    }
 }
