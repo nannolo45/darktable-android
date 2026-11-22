@@ -86,4 +86,60 @@ class TokensTest {
         }
         assertEquals(listOf("color.nope"), DtTokens.load("""{"color.nope": "#ffffff"}""").unknownOverrides)
     }
+
+    private fun keys(json: String) = kotlinx.serialization.json.Json.parseToJsonElement(json)
+        .let { it as kotlinx.serialization.json.JsonObject }.keys - "comment"
+
+    // brief PUI2a: the modern skin
+    @Test
+    fun modernOverrideParsesAndEveryKeyIsAToken() {
+        val modern = res("modern-tokens.json")
+        assertEquals(emptyList<String>(), (keys(modern) - keys(res("tokens.json"))).toList())
+        val t = DtTokens.load(Skin.MODERN)
+        assertEquals(emptyList<String>(), t.unknownOverrides)
+        assertEquals(Color(0xFF161616), t.colors.bg)
+        assertEquals(Color(0xFF1E1E1E), t.colors.panel)
+        assertEquals(Color(0xFF262626), t.colors.raised)
+        assertEquals(Color(0xFF333333), t.colors.border)
+        assertEquals(Color(0xFFD08A3C), t.colors.accent)
+        assertEquals(Color(0xFFD08A3C), t.colors.sliderFill)
+        assertEquals(8.dp, t.sizes.radiusControl)
+        assertEquals(8.dp, t.sizes.radiusSheet)
+        assertEquals(4.dp, t.sizes.sliderTrack)
+        assertEquals(48.dp, t.sizes.moduleHeader)
+        assertEquals(52.dp, t.sizes.sliderRow)
+        assertEquals(1.dp, t.sizes.moduleSeparator)
+        assertEquals(15f, t.text.moduleName.value)
+        assertEquals(13f, t.text.label.value)
+        checkContrast(t)
+        // the same file as an override on the default tokens gives the same skin
+        assertEquals(t.colors.bg, DtTokens.load(modern).colors.bg)
+    }
+
+    @Test
+    fun darktableSkinKeepsTodaysLooks() {
+        val t = DtTokens.load()
+        assertEquals(Color(0xFFF1F1F1), t.colors.accentPower) // power icon on: textBright
+        assertEquals(t.colors.textBright, t.colors.accentPower)
+        assertEquals(t.colors.text, t.colors.accentTab) // selected tab indicator: text
+        assertEquals(t.colors.header, t.colors.raised)
+        assertEquals(t.text.body, t.text.moduleName)
+        assertEquals(2.dp, t.sizes.moduleGap)
+        assertEquals(0.dp, t.sizes.moduleSeparator)
+        assertEquals(false, t.shapes.sliderThumbRound)
+        assertEquals(false, t.shapes.tabularValues)
+        assertEquals(Skin.DARKTABLE, Skin.fromKey(null))
+        assertEquals(Skin.DARKTABLE, Skin.fromKey("nonsense"))
+        assertEquals(Skin.MODERN, Skin.fromKey("modern"))
+    }
+
+    @Test
+    fun sliderThumbValues() {
+        assertEquals(false, DtTokens.load("""{"shape.sliderThumb": "marker"}""").shapes.sliderThumbRound)
+        assertEquals(true, DtTokens.load("""{"shape.sliderThumb": "round"}""").shapes.sliderThumbRound)
+        assertEquals(true, DtTokens.load(Skin.MODERN).shapes.sliderThumbRound)
+        for (bad in listOf("""{"shape.sliderThumb": "square"}""", """{"shape.sliderThumb": 3}""")) {
+            try { DtTokens.load(bad); fail(bad) } catch (e: TokenException) { /* expected */ }
+        }
+    }
 }

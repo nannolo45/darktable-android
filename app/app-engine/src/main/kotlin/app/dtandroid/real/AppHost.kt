@@ -153,6 +153,9 @@ object AppHost {
 
     // ------------------------------------------------------------------ LightPhotoLibrary
 
+    /** brief PUI2a: the app's own settings (the interface skin) */
+    val settings: AppSettings by lazy { AppSettings(File(app.filesDir, "settings/app.json")) }
+
     val servers: ServerStore by lazy { ServerStore(File(app.filesDir, "lpl"), KeystoreSecretBox()) }
     val work: WorkStore by lazy { WorkStore(File(app.filesDir, "lpl/work")) }
 

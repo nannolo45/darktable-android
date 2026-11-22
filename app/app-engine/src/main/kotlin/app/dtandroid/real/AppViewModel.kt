@@ -419,6 +419,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Brief PUI2a: switch the interface skin (setting `interface`). */
+    fun setSkin(skin: app.dtandroid.ui.theme.Skin) {
+        try { AppHost.settings.setSkin(skin) } catch (e: java.io.IOException) { /* kept for this run only */ }
+    }
+
     fun keep() = _library.update { it.copy(confirmRemove = null) }
 
     /**
