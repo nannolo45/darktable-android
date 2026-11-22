@@ -117,8 +117,10 @@ class P3dParametricScenarioTest {
         val gd = greyD.toDouble() / maxOf(greyN, 1) / 3
         TestFiles.record(res, "range_show_mask", "yellow $yellowN of $total (mean change $yd), grey $greyN (mean change $gd)")
         assertTrue("the mask covers part of the picture: yellow $yellowN of $total", yellowN > total / 50 && greyN > total / 50)
-        assertTrue("where the mask is on the picture changes: $yd", yd > 2.0)
-        assertTrue("where it is off the picture stays: grey $gd vs yellow $yd", gd < yd / 3)
+        // the unmasked picture has the exposure everywhere: where the mask is on the picture equals it, where it is off
+        // the exposure is missing (a clearly darker picture)
+        assertTrue("where the mask is on the picture has the exposure: change against the unmasked $yd", yd < 3.0)
+        assertTrue("where it is off the picture lacks it: change against the unmasked $gd (on: $yd)", gd > 8.0 && gd > yd * 3)
         // written and reopened: the same range
         runBlocking { c.save() }
         File(item.xmpPath).copyTo(File(TestFiles.out, "p3d-parametric.xmp"), overwrite = true)
@@ -169,6 +171,9 @@ class P3dParametricScenarioTest {
         waitFor("range set from the area") { !RangeMath.isFull(g(c, "g_in").range) }
         val r = g(c, "g_in").range
         TestFiles.record(res, "pick_range", r)
+        val stats = runBlocking { c.withEngine { e -> e.colorPick("exposure", 0, PickRequest(area = listOf(0.38, 0.43, 0.42, 0.47))).input } }
+        TestFiles.record(res, "pick_stats_near_tap", "${stats?.colorspace} mean ${stats?.mean} min ${stats?.min} max ${stats?.max} box ${stats?.box}")
+        TestFiles.record(res, "pick_selection", c.state.value.picker?.selection.toString())
         assertTrue("in order", r.zipWithNext().all { (a, b) -> a <= b })
         assertTrue("a narrow range around the picked values: ${r[3] - r[0]}", r[3] - r[0] < 0.5)
         assertEquals(id, c.state.value.picker?.controlId)
