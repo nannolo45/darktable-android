@@ -46,6 +46,7 @@ import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.MaskMode
 import app.dtandroid.darkroom.MaskSheet
 import app.dtandroid.darkroom.MaskMemberState
+import app.dtandroid.darkroom.ModuleMask
 import app.dtandroid.darkroom.MaskShape
 import app.dtandroid.darkroom.Masks
 import app.dtandroid.darkroom.MasksState
@@ -181,6 +182,7 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }
+}
 
 // brief P3d fix: no early return or `continue` inside the composables below (a skipped group made the slot table
 // hand a remembered lambda to the wrong call site, a ClassCastException when the shapes of a module changed)
@@ -233,7 +235,6 @@ private fun MemberRow(controller: DarkroomController, ms: MasksState, f: MaskSha
         DtIconButton(DtIcon.Remove, "remove $name from this module", c.text, enabled = !ro,
             onClick = { controller.launch { masks.detach(f.id) } })
     }
-}
 }
 
 /** A mask mode: the chosen one with a ring in the accent colour (as the mockup), so it shows in both skins. */
