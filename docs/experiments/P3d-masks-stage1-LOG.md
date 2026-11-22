@@ -16,3 +16,9 @@
 - Screenshots looked at (run 45031803747): the modern skin's selected button colour equals its button colour, so
   the chosen mode did not show; it now has a ring in the accent colour (the mockup's ring). Brush strokes showed
   beads where their pieces overlapped; each stroke is now laid over as one layer.
+- Run 45033767124 (emulator): d1 and d2 failed: blend_get said "other" after a shape joined a mask switched to
+  drawn (DRAWN | FLEXI). Fixed in b3271d71/0cadfced (the app reads it as drawn; the stand-in's attach now does as
+  the bridge). The same run showed a finished shape as two history items (mask_manager, exposure).
+- Run 45036342736 (p2a): green (P3dMasksTest 8/8, PhoneMasksScreenshots 7/7, TabletMasksScreenshots 1/1).
+- Run 45036342754 (p2b): the apk job's JVM step failed to fetch Robolectric's native runtime (infra) in the run and
+  in its rerun; the next push (this log and the report) starts it again.
