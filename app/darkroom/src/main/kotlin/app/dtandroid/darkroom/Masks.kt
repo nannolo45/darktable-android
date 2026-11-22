@@ -230,7 +230,8 @@ class Masks internal constructor(private val c: DarkroomController) {
     private suspend fun reloadLocked(e: DarktableEngine) {
         val s = c.state.value
         if (s.info == null) return
-        val key = (_state.value.key ?: defaultKey())?.takeIf { k -> s.modules.any { it.key == k } }
+        val asked = _state.value.key
+        val key = (asked ?: defaultKey())?.takeIf { k -> s.modules.any { it.key == k } }
         val raw = e.masks()
         val forms = raw.map { f ->
             val members = (f.geometry["members"] as? JsonArray)?.mapNotNull { m ->
@@ -253,7 +254,8 @@ class Masks internal constructor(private val c: DarkroomController) {
         }
         val selected = _state.value.selected?.takeIf { id -> forms.any { it.id == id } }
         val outline = selected?.let { id -> outlineLocked(e, forms.first { it.id == id }) }
-        _state.update { it.copy(key = key, module = module, forms = forms, selected = selected, outline = outline) }
+        // a module chosen meanwhile (its own reload follows) is not overwritten by this older answer
+        _state.update { if (it.key != asked) it else it.copy(key = key, module = module, forms = forms, selected = selected, outline = outline) }
     }
 
     /** The outline of [f] in fractions of the picture shown (null for a group or a form without a drawing). */
