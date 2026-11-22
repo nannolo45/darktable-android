@@ -23,7 +23,7 @@ import kotlin.math.sqrt
 /*
  * Brief P3d stage 2b: classic parametric masks (blend_get's `parametric` channels, engine-api.md 6.6) and the mask
  * refinement controls (feathering, blur, brightness, contrast, details). Manual notes: docs/design/manual-notes-masks.md.
- * Screens: ui/ParametricMask.kt, ui/MaskRefinement.kt, ui/RangeSlider4.kt.
+ * Screens: ui/ParametricMask.kt, ui/MaskRefinement.kt, ui/RangeSlider4.kt (the pickers go through the shared P3c tool).
  */
 
 /** One channel button: [base] is the engine's name without `_in` / `_out`, [boost] whether the channel has a boost factor. */
