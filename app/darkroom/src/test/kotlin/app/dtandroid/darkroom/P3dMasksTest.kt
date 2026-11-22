@@ -162,6 +162,8 @@ class P3dMasksTest {
     @Test fun brushStrokesPathEllipseAndGradient() = runBlocking {
         val (c, _) = controller()
         onExposure(c)
+        // desktop's drawn mode first: attaching a shape adds FLEXI to its flags (blend_get then says "other")
+        c.masks.setMode(MaskMode.DRAWN)
         c.masks.startDraw(ShapeType.BRUSH)
         c.masks.touchDown(0.1, 0.1); c.masks.touchMove(0.2, 0.15); c.masks.touchMove(0.3, 0.2); c.masks.touchUp()
         c.masks.touchDown(0.5, 0.5); c.masks.touchCancel() // a pinch: no stroke
@@ -172,6 +174,8 @@ class P3dMasksTest {
         assertEquals(2, c.masks.state.value.draw!!.strokes.size)
         c.masks.finishDraw()
         assertEquals(2, c.masks.state.value.forms.count { it.type == "brush" })
+        assertEquals(MaskMode.DRAWN, c.masks.state.value.module!!.mode)
+        assertEquals("flexi", c.state.value.maskModes[exposure])
         // a path needs three points
         c.masks.startDraw(ShapeType.PATH)
         c.masks.touchDown(0.2, 0.2); c.masks.touchUp()
