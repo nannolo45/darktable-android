@@ -15,7 +15,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.assertNull
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -266,7 +265,9 @@ class LplScenarioTest {
         assertTrue(job.doneBody!!.contains("\"arrived\":[61,62]"))
         assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 61)?.status)
         assertEquals(app.dtandroid.lpl.PhotoStatus.READY, AppHost.agent.record(s.origin, 62)?.status)
-        assertNull("the darkroom was not opened", v.controller.state.value.current)
+        // the controller is shared by the scenarios: what an earlier one left open is not this job's doing
+        assertTrue("the darkroom was not opened", v.screen.value != Screen.DARKROOM &&
+            v.controller.state.value.current?.rawPath?.contains(s.origin.key) != true)
         TestFiles.record(res, "l8", "passed")
     }
 

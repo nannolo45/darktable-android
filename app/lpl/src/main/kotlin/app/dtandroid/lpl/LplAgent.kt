@@ -674,6 +674,12 @@ class LplAgent(
     /** Whether the server has shown it knows batches (it sent a `cancel`); an old one gets the old edit job. */
     fun isBatchServer(origin: ServerOrigin) = origin in batchServers
 
+    /**
+     * Whether an `edit` job is carried out by [runEditJob]: from a batch server, and from any server when the job
+     * says `open: false` (the darkroom must never open for it, whatever the server knows).
+     */
+    fun runsAsBatch(origin: ServerOrigin, job: Job) = job.kind == "edit" && (isBatchServer(origin) || !job.open)
+
     /** The "stop" button: this phone's running and waiting batch jobs end as `stopped` (what arrived is kept). */
     fun stopBatches() = transfers.stopAll()
 

@@ -236,6 +236,19 @@ class P2kBatchesTest {
         assertEquals("""{"status":"done"}""", j.doneBody)
     }
 
+    @Test fun anOldServerThatSendsOpenFalseStillGetsNoDarkroom() = runBlocking {
+        stub.batch = false
+        val job = receive("edit", 11, 12, open = false)
+        assertFalse(agent.isBatchServer(o))
+        assertTrue("copied, not opened", agent.runsAsBatch(o, job))
+        val r = agent.runEditJob(o, job)
+        assertEquals(TransferState.DONE, r.state)
+        assertEquals(PhotoStatus.READY, agent.record(o, 11)!!.status)
+        assertEquals("done", stub.jobs.first { it.id == job.id }.status)
+        // an edit job that opens, from an old server, keeps the old path
+        assertFalse(agent.runsAsBatch(o, receive("edit", 13)))
+    }
+
     @Test fun aBatchCutShortByLeavingTheAppIsListedAgainAndNothingIsReportedDone() = runBlocking {
         val job = receive("edit", 11, 12)               // received; the app leaves the foreground before it runs
         agent.heartbeat(); agent.heartbeat()            // heartbeats of the next foreground

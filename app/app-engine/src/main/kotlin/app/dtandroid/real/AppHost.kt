@@ -413,7 +413,7 @@ object AppHost {
         agent.ranBefore(origin, job)?.let { agent.jobDone(origin, job, it); return }
         val ok = when (job.kind) {
             "sync", "release" -> agent.runSyncOrRelease(origin, job)
-            "edit" -> if (agent.isBatchServer(origin)) {
+            "edit" -> if (agent.runsAsBatch(origin, job)) {
                 // brief P2k: copy first (progress, Stop), then open; the job is reported when the copying ends
                 val r = agent.runEditJob(origin, job)
                 if (job.open && r.toOpen.isNotEmpty()) {
