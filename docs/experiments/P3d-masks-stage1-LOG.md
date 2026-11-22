@@ -22,3 +22,7 @@
 - Run 45036342736 (p2a): green (P3dMasksTest 8/8, PhoneMasksScreenshots 7/7, TabletMasksScreenshots 1/1).
 - Run 45036342754 (p2b): the apk job's JVM step failed to fetch Robolectric's native runtime (infra) in the run and
   in its rerun; the next push (this log and the report) starts it again.
+- Run 45036342754 (third attempt): emulator d1 failed its show-mask check (share of yellowish pixels: the test
+  chart already has 8.7 %); d2 passed, its export matched darktable-cli (PSNR 45.05). The check now looks at a
+  point on the shape (yellow) and one away from it (grey): 896f89f8.
+- Runs 45042969844 (p2a) and 45042969878 (p2b): green on 896f89f8, emulator OK (75 tests), compare ok.

@@ -47,7 +47,15 @@ combination "other") as the bridge does, instead of replacing the mode with "fle
 
 See the table at the end (CI run ids and counts).
 
-Emulator (x86_64, API 33, run 45033767124, before the fix of 4.3): the circle went to the engine at
+Emulator (x86_64 emulator, API 33; run 45042969878, all 75 instrumented tests OK):
+
+| scenario | unmasked vs masked preview (mean abs. diff, 0..255) | show mask: on the shape / away | reopened XMP vs before | app export vs darktable-cli of its XMP |
+|---|---|---|---|---|
+| d1 circle on exposure (+1.5 EV) | 54.5 | [255, 255, 0] / [141, 141, 141] | same shapes, picture diff 0.0 | PSNR 45.06 dB (bound 40) |
+| d2 brush stroke by touch | 52.4 | [255, 255, 0] / [153, 153, 153] | same shapes, picture diff 0.0 | PSNR 45.05 dB |
+
+The PSNR of about 45 dB is the same as the other app-XMP cases of the compare step (p3a 43.8, p3c 43.8 to 45.6): the
+masks add no difference of their own. Earlier run 45033767124: the circle went to the engine at
 `center [0.404, 0.453]`, `radius 0.149` (asked: 15 % of the picture's shorter side), the brush stroke of 17 touch
 samples became 2 brush points after the engine's simplification, as desktop's brush tool does.
 
@@ -85,4 +93,13 @@ samples became 2 brush points after the engine's simplification, as desktop's br
   fields exist; one-item shape creation and member reordering are the gaps.
 
 ## CI
+
+Last code commit `896f89f8`:
+
+| workflow | run | result |
+|---|---|---|
+| p2a-app | 45042969844 | success (P3dMasksTest 8/8, PhoneMasksScreenshots 7/7, TabletMasksScreenshots 1/1, 0 failures in all JVM tests) |
+| p2b-real-engine | 45042969878 | success: apk (JVM tests, screenshots), emulator OK (75 tests, P3dScenarioTest 2/2), compare (p3d circle and brush ok) |
+
+Earlier failures and their causes are in the running log. Two Robolectric/Maven fetch failures were infra (reruns).
 
