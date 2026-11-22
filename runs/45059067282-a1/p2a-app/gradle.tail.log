@@ -1,0 +1,100 @@
+> Task :ui-icons:generateDebugRFile UP-TO-DATE
+> Task :ui-theme:compileDebugLibraryResources UP-TO-DATE
+> Task :ui-theme:parseDebugLocalResources UP-TO-DATE
+> Task :ui-theme:generateDebugRFile UP-TO-DATE
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:compileDebugKotlin UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :ui-icons:javaPreCompileDebug UP-TO-DATE
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:compileDebugKotlin UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug UP-TO-DATE
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:processDebugResources
+> Task :darkroom:javaPreCompileDebug UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugShaders UP-TO-DATE
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugShaders UP-TO-DATE
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugShaders UP-TO-DATE
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :ui-theme:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui-icons:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:desugarDebugFileDependencies
+> Task :ui-icons:processDebugJavaRes UP-TO-DATE
+> Task :ui-theme:packTokens UP-TO-DATE
+> Task :ui-theme:processDebugJavaRes UP-TO-DATE
+> Task :ui-icons:bundleLibRuntimeToDirDebug
+> Task :ui-theme:bundleLibRuntimeToDirDebug
+> Task :app:checkDebugDuplicateClasses
+
+> Task :darkroom:compileDebugKotlin
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/Masks.kt:184:12 Redeclaration:
+interface TreeRow : Any
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:112:18 Redeclaration:
+data class TreeRow : Any
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:5 Function 'fun component1(): String' generated for the data class conflicts with the supertype member 'fun component1(): Int' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:5 Function 'fun component2(): String' generated for the data class conflicts with the supertype member 'fun component2(): MaskMemberState' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:5 Function 'fun component3(): Int' generated for the data class conflicts with the supertype member 'fun component3(): MaskShape?' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:5 Function 'fun component4(): Boolean' generated for the data class conflicts with the supertype member 'fun component4(): Int' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:5 Function 'fun component5(): Int' generated for the data class conflicts with the supertype member 'fun component5(): Int' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'group'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'member'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'form'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'depth'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'index'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:21 No value passed for parameter 'count'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:59 'depth' in 'TreeRow' is final and cannot be overridden.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:107 'count' hides member of supertype 'TreeRow' and needs an 'override' modifier.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:121 This type is final, so it cannot be extended.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:116:121 This type has a constructor, so it must be initialized here.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:5 Function 'fun component1(): String' generated for the data class conflicts with the supertype member 'fun component1(): Int' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:5 Function 'fun component2(): String' generated for the data class conflicts with the supertype member 'fun component2(): MaskMemberState' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:5 Function 'fun component3(): Int' generated for the data class conflicts with the supertype member 'fun component3(): MaskShape?' defined in 'app.dtandroid.darkroom.TreeRow'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'group'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'member'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'form'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'depth'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'index'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:20 No value passed for parameter 'count'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:58 'depth' in 'TreeRow' is final and cannot be overridden.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:85 This type is final, so it cannot be extended.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:119:85 This type has a constructor, so it must be initialized here.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:153:29 Cannot infer type for type parameter 'R'. Specify it explicitly.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:153:50 Unresolved reference 'Leaf'.
+e: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/StylesPresets.kt:157:36 Unresolved reference 'Group'.
+
+> Task :darkroom:compileDebugKotlin FAILED
+> Task :app:mergeExtDexDebug
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':darkroom:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 53s
+82 actionable tasks: 26 executed, 56 up-to-date
