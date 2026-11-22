@@ -96,8 +96,8 @@ class P3dMasksTest {
         c.masks.setMode(MaskMode.DRAWN)
         assertEquals(MaskMode.DRAWN, c.masks.state.value.module!!.mode)
         assertEquals(n0 + 2, items(c))
-        // stage 1: the parametric modes are offered but not built
-        c.masks.setMode(MaskMode.PARAMETRIC)
+        // stage 2b builds parametric; drawn & parametric is still offered but not built (stage 2a finds out what it needs)
+        c.masks.setMode(MaskMode.BOTH)
         assertEquals(MaskMode.DRAWN, c.masks.state.value.module!!.mode)
         assertEquals(n0 + 2, items(c))
         // opacity, blend mode and invert: one item each
