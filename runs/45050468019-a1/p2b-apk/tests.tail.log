@@ -1,0 +1,235 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRulesSelfTest
+self-test: 12 violations found in bad/ (expected 12), 0 in good/ (expected 0)
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:6: literal size: val a = Modifier.padding(16.dp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:7: literal size: val b = TextStyle(fontSize = 13.sp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:8: literal colour: val c = Color(0xFF262626) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:9: literal colour: val d = Color.Red // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:10: literal colour: val e = background("#3b3b3b") // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:11: icon drawn outside ui-icons: val f = Icons.Default.Close // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:12: icon drawn outside ui-icons: val g = painterResource(R.drawable.power) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:13: icon drawn outside ui-icons: val h = drawPath(path, brush) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:14: literal size: val i = Dp(4f) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:15: literal size: val j = x.toFloat().dp // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:16: literal colour: val k = 0xff262626 // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:18: Material component (brings its own colours and sizes): import androidx.compose.material3.Text // VIOLATION
+
+> Task :checkScreenRules UP-TO-DATE
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:compileKotlin UP-TO-DATE
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :engine-api:jar UP-TO-DATE
+> Task :engine-api:compileTestFixturesKotlin UP-TO-DATE
+> Task :engine-api:compileTestFixturesJava NO-SOURCE
+> Task :engine-api:processTestFixturesResources NO-SOURCE
+> Task :engine-api:testFixturesClasses UP-TO-DATE
+> Task :engine-api:testFixturesJar UP-TO-DATE
+> Task :engine-api:compileTestKotlin UP-TO-DATE
+> Task :engine-api:compileTestJava NO-SOURCE
+> Task :engine-api:processTestResources NO-SOURCE
+> Task :engine-api:testClasses UP-TO-DATE
+> Task :engine-api:test UP-TO-DATE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:compileKotlin UP-TO-DATE
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:packSchema UP-TO-DATE
+> Task :schema:processResources UP-TO-DATE
+> Task :schema:classes UP-TO-DATE
+> Task :schema:jar UP-TO-DATE
+> Task :schema:compileTestKotlin UP-TO-DATE
+> Task :schema:compileTestJava NO-SOURCE
+> Task :schema:processTestResources UP-TO-DATE
+> Task :schema:testClasses UP-TO-DATE
+> Task :schema:test UP-TO-DATE
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:generateDebugResValues UP-TO-DATE
+> Task :ui-theme:generateDebugResources UP-TO-DATE
+> Task :ui-theme:packageDebugResources UP-TO-DATE
+> Task :ui-theme:processDebugNavigationResources UP-TO-DATE
+> Task :ui-theme:parseDebugLocalResources UP-TO-DATE
+> Task :ui-theme:generateDebugRFile UP-TO-DATE
+> Task :ui-theme:compileDebugKotlin UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug UP-TO-DATE
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui-theme:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:generateDebugUnitTestStubRFile UP-TO-DATE
+> Task :ui-theme:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:packTokens UP-TO-DATE
+> Task :ui-theme:processDebugJavaRes UP-TO-DATE
+> Task :ui-theme:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :ui-theme:testDebugUnitTest UP-TO-DATE
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :darkroom:preBuild UP-TO-DATE
+> Task :darkroom:preDebugBuild UP-TO-DATE
+> Task :darkroom:generateDebugResValues UP-TO-DATE
+> Task :darkroom:generateDebugResources UP-TO-DATE
+> Task :darkroom:packageDebugResources UP-TO-DATE
+> Task :darkroom:processDebugNavigationResources UP-TO-DATE
+> Task :darkroom:parseDebugLocalResources UP-TO-DATE
+> Task :darkroom:generateDebugRFile UP-TO-DATE
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:convertIcons UP-TO-DATE
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:generateDebugResValues UP-TO-DATE
+> Task :ui-icons:generateDebugResources UP-TO-DATE
+> Task :ui-icons:packageDebugResources UP-TO-DATE
+> Task :ui-icons:processDebugNavigationResources UP-TO-DATE
+> Task :ui-icons:parseDebugLocalResources UP-TO-DATE
+> Task :ui-icons:generateDebugRFile UP-TO-DATE
+> Task :ui-icons:compileDebugKotlin UP-TO-DATE
+> Task :ui-icons:javaPreCompileDebug UP-TO-DATE
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :darkroom:compileDebugKotlin UP-TO-DATE
+> Task :darkroom:javaPreCompileDebug UP-TO-DATE
+> Task :darkroom:compileDebugJavaWithJavac NO-SOURCE
+> Task :darkroom:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :darkroom:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :darkroom:preDebugUnitTestBuild UP-TO-DATE
+> Task :darkroom:writeDebugAarMetadata UP-TO-DATE
+> Task :ui-icons:writeDebugAarMetadata UP-TO-DATE
+> Task :ui-theme:writeDebugAarMetadata UP-TO-DATE
+> Task :darkroom:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :darkroom:compileDebugLibraryResources UP-TO-DATE
+> Task :darkroom:generateDebugUnitTestResValues UP-TO-DATE
+> Task :darkroom:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :darkroom:generateDebugUnitTestResources UP-TO-DATE
+> Task :darkroom:mergeDebugUnitTestResources UP-TO-DATE
+> Task :darkroom:extractDeepLinksDebug UP-TO-DATE
+> Task :darkroom:processDebugManifest UP-TO-DATE
+> Task :ui-icons:extractDeepLinksDebug UP-TO-DATE
+> Task :ui-icons:processDebugManifest UP-TO-DATE
+> Task :ui-theme:extractDeepLinksDebug UP-TO-DATE
+> Task :ui-theme:processDebugManifest UP-TO-DATE
+> Task :darkroom:processDebugUnitTestManifest UP-TO-DATE
+> Task :ui-icons:compileDebugLibraryResources UP-TO-DATE
+> Task :ui-theme:compileDebugLibraryResources UP-TO-DATE
+> Task :darkroom:processDebugUnitTestResources UP-TO-DATE
+> Task :darkroom:compileDebugUnitTestKotlin UP-TO-DATE
+> Task :darkroom:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :darkroom:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :darkroom:generateDebugUnitTestAssets UP-TO-DATE
+> Task :darkroom:mergeDebugShaders UP-TO-DATE
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugShaders UP-TO-DATE
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugShaders UP-TO-DATE
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :darkroom:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :darkroom:generateDebugUnitTestConfig UP-TO-DATE
+> Task :darkroom:processDebugJavaRes UP-TO-DATE
+> Task :darkroom:processDebugUnitTestJavaRes UP-TO-DATE
+> Task :ui-icons:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui-icons:processDebugJavaRes UP-TO-DATE
+> Task :darkroom:testDebugUnitTest FAILED
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:compileKotlin UP-TO-DATE
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:processResources NO-SOURCE
+> Task :lpl:classes UP-TO-DATE
+> Task :lpl:jar UP-TO-DATE
+> Task :lpl:compileTestFixturesKotlin UP-TO-DATE
+> Task :lpl:compileTestFixturesJava NO-SOURCE
+> Task :lpl:processTestFixturesResources NO-SOURCE
+> Task :lpl:testFixturesClasses UP-TO-DATE
+> Task :lpl:testFixturesJar UP-TO-DATE
+> Task :lpl:compileTestKotlin UP-TO-DATE
+> Task :lpl:compileTestJava NO-SOURCE
+> Task :lpl:processTestResources NO-SOURCE
+> Task :lpl:testClasses UP-TO-DATE
+> Task :lpl:test UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :darkroom:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :ui-theme:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :ui-icons:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :darkroom:mergeDebugJniLibFolders UP-TO-DATE
+> Task :darkroom:mergeDebugNativeLibs NO-SOURCE
+> Task :darkroom:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ui-icons:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ui-icons:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-icons:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ui-theme:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ui-theme:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-theme:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageDebug UP-TO-DATE
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug UP-TO-DATE
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':darkroom:testDebugUnitTest'.
+> Could not resolve all files for configuration ':darkroom:debugUnitTestRuntimeClasspath'.
+   > Failed to transform nativeruntime-dist-compat-1.0.18.jar (org.robolectric:nativeruntime-dist-compat:1.0.18) to match attributes {artifactType=android-classes-jar, org.gradle.category=library, org.gradle.libraryelements=jar, org.gradle.status=release, org.gradle.usage=java-runtime}.
+      > Could not download nativeruntime-dist-compat-1.0.18.jar (org.robolectric:nativeruntime-dist-compat:1.0.18)
+         > Could not get resource 'https://repo.maven.apache.org/maven2/org/robolectric/nativeruntime-dist-compat/1.0.18/nativeruntime-dist-compat-1.0.18.jar'.
+            > Could not GET 'https://repo.maven.apache.org/maven2/org/robolectric/nativeruntime-dist-compat/1.0.18/nativeruntime-dist-compat-1.0.18.jar'. Received status code 429 from server: Too Many Requests
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 25s
+141 actionable tasks: 2 executed, 139 up-to-date
