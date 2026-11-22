@@ -122,9 +122,18 @@ Mockup: `docs/design/mockups/P3d-Masks.html`, with the owner's changes: the mask
     with the line `parametric masks: coming next` (stage 2). Then `opacity` (one history item when the finger lifts)
     and `blend mode` (a sheet with desktop's modes for the module's blend colour space).
   - for `drawn`: the line naming the module's group and its number of shapes; the add buttons `brush`, `circle`,
-    `ellipse`, `gradient`, `path` (`size.shapeButton`); `use an existing shape…`; `combine shapes` (union,
-    intersection, difference, exclusion: the operator of the module's mask group, so it applies to all its shapes);
-    one row per shape with `invert` and `remove`; `show mask` (the engine's mask display: picture in grey, mask in
+    `ellipse`, `gradient`, `path` (`size.shapeButton`); `use an existing shape…`; then (stage 2a) the module's
+    mask as a tree, as the manual's groups and operators: `operator of this module's group` (a sheet `combine with`:
+    union (maximum), intersection (minimum), difference, exclusion, screen (smooth union), sum (additive union),
+    product (smooth intersection): plain names first, desktop's names beside them), `invert group`, `group opacity`;
+    then one row per member, top first (the bottom member of a group is its first, as desktop lists rows bottom-up):
+    shape icon or the group's open/close chevron, the name, for a group its operator (tap: the operator sheet) and
+    number of members; `move up`, `move down` (disabled at the ends; order matters for difference), `invert` (a
+    group's own invert for a group), `more`. A nested group's members follow its row one step in (`space.l` per
+    level) and show only while it is open; nested groups are closed until opened (a group just made opens). The
+    selected row shows its `opacity` slider (a group: its own opacity). The `more` sheet of a tree row adds `wrap in
+    group`, `group together…` (a sheet to choose the other members of the same group) and `remove from this group`
+    for any group. This replaces stage 1's `combine shapes` row and flat shape rows. `show mask` (the engine's mask display: picture in grey, mask in
     yellow, until switched off, the tab is left or the mask is no longer drawn); `invert mask`.
   - the manager: every group of the photo (titled after the module whose mask it is), foldable, with its shapes;
     then `shapes not in a group`. A tap on a shape shows its outline on the photo (`color.maskLine` over
@@ -132,6 +141,8 @@ Mockup: `docs/design/mockups/P3d-Masks.html`, with the owner's changes: the mask
     `remove from this group` (rows under a module's group), `delete shape` (asks once), and how many modules use it.
 - **Drawing mode.** An add button replaces the bottom panel (phone) or the left panel (tablet) with the tool panel:
   title `<module> · <shape>`, a hint, the shape's sliders, `cancel` and `done`.
+  - `done` is one history item and one undo step for the shape, or for all strokes of a brush session (stage 2a:
+    `dtb_mask_add` inside a history group); `cancel` leaves nothing.
   - brush: one finger paints strokes (each stroke one shape, as desktop's brush tool); `size`, `hardness`,
     `opacity`, `undo stroke`, `show mask` (strokes filled in `color.maskOverlay` or drawn as thin lines);
   - circle and ellipse: a tap places it, a drag moves it; `size`, `feather`, ellipse also `rotation`, `flatness`;
