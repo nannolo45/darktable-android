@@ -103,3 +103,10 @@ Last code commit `896f89f8`:
 
 Earlier failures and their causes are in the running log. Two Robolectric/Maven fetch failures were infra (reruns).
 
+
+## Fix: the app closed in "use an existing shape" (branch p3d-fix-existing-shape)
+
+- Reproduced on the emulator (real engine, x86_64) by P3dScenarioTest.d4_existingShapeSheet, run 45047642009: java.lang.ClassCastException (a MasksPanelKt lambda cast to Function1) at ControlsKt.ToggleControl via MasksPanel.kt ModuleMaskSection ("show mask" row), after the module's shapes changed through detach/attach. Cause: `if (mode != DRAWN) return` and `continue` inside the composable loop of the member rows left the slot table out of step.
+- Fix: DrawnShapes and MemberRow are separate composables with no early return or continue (MasksPanel.kt). Also: Masks.existingOffers (no group that is, or holds, the module's own group), Masks.makesCycle, attach refuses cycles with a note, Masks.edit and reload turn any non-cancellation exception into the note line.
+- Tests: JVM P3dMasksTest.existingShapeSheetOffersAndRefusesCycles; emulator d4 and d5a-e (brush, circle, group, show mask, remove and attach again in another module). Run 45050468019 (apk job rerun twice after Maven 429): emulator green.
+- No native abort was seen in any case; the bridge was not changed.
