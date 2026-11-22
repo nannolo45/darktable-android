@@ -106,8 +106,27 @@ class P3dScenarioTest {
         return n.toDouble() / (a.width * a.height)
     }
 
-    /** The checks both scenarios share, after their shape was added to exposure's mask. */
-    private fun checkMasked(c: DarkroomController, item: SeriesItem, name: String, unmasked: RenderedImage, type: String) = runBlocking {
+    /** the mean colour of a small square around fractions ([fx], [fy]) of the picture */
+    private fun at(a: RenderedImage, fx: Double, fy: Double): IntArray {
+        val cx = (fx * a.width).toInt()
+        val cy = (fy * a.height).toInt()
+        val sum = IntArray(3)
+        var n = 0
+        for (y in cy - 2..cy + 2) for (x in cx - 2..cx + 2) {
+            if (x !in 0 until a.width || y !in 0 until a.height) continue
+            for (k in 0..2) sum[k] += a.rgba[(y * a.width + x) * 4 + k].toInt() and 255
+            n++
+        }
+        return IntArray(3) { sum[it] / maxOf(n, 1) }
+    }
+
+    /**
+     * The checks both scenarios share, after their shape was added to exposure's mask. [inside] and [outside] are
+     * points of the picture (fractions) on the shape and far from it: with "show mask" the first is yellow (the mask
+     * display's colour), the second grey (the picture without colour, engine-api.md 6.8).
+     */
+    private fun checkMasked(c: DarkroomController, item: SeriesItem, name: String, unmasked: RenderedImage, type: String,
+                            inside: Pair<Double, Double>, outside: Pair<Double, Double>) = runBlocking {
         val s = c.masks.state.value
         val shapes = s.module!!.members.mapNotNull { m -> s.forms.firstOrNull { it.id == m.id } }
         TestFiles.record(res, "${name}_shapes", shapes.map { "${it.type} ${it.name} ${it.geometry}" })
@@ -124,8 +143,14 @@ class P3dScenarioTest {
         val shown = preview(c, RenderOptions(showMask = InstanceRef("exposure", 0)))
         val y = yellow(shown)
         val yPlain = yellow(masked)
-        TestFiles.record(res, "${name}_show_mask_yellow", "$y (plain picture $yPlain)")
-        assertTrue("show mask paints the mask: $y vs $yPlain", y > yPlain + 0.005)
+        val inC = at(shown, inside.first, inside.second)
+        val outC = at(shown, outside.first, outside.second)
+        val dShown = diff(masked, shown)
+        TestFiles.record(res, "${name}_show_mask", "yellow share $y (plain picture $yPlain), on the shape ${inC.toList()}, " +
+            "away ${outC.toList()}, differs from the picture by $dShown")
+        assertTrue("show mask: another picture ($dShown)", dShown > 1.0)
+        assertTrue("show mask: yellow on the shape ${inC.toList()}", inC[0] > inC[2] + 60 && inC[1] > inC[2] + 60)
+        assertTrue("show mask: grey away from it ${outC.toList()}", maxOf(outC[0], outC[1], outC[2]) - minOf(outC[0], outC[1], outC[2]) < 16)
         c.masks.toggleShowMask()
         // written and reopened: the same masks
         val before = shapes.map { it.type to it.geometry.toString() }
@@ -175,7 +200,7 @@ class P3dScenarioTest {
             c.masks.finishDraw()
         }
         waitFor("circle in the mask") { c.masks.state.value.module?.members?.size == 1 && c.masks.state.value.draw == null }
-        checkMasked(c, item, "circle", unmasked, "circle")
+        checkMasked(c, item, "circle", unmasked, "circle", inside = 0.4 to 0.45, outside = 0.9 to 0.9)
     }
 
     /** The screen position (pixels) of a point of the picture given as fractions, at fit. */
@@ -223,6 +248,6 @@ class P3dScenarioTest {
         TestFiles.record(res, "brush_samples", c.masks.state.value.draw!!.strokes[0].points.size)
         runBlocking { c.masks.finishDraw() }
         waitFor("brush in the mask") { c.masks.state.value.module?.members?.size == 1 && c.masks.state.value.draw == null }
-        checkMasked(c, item, "brush", unmasked, "brush")
+        checkMasked(c, item, "brush", unmasked, "brush", inside = 0.475 to 0.425, outside = 0.5 to 0.92)
     }
 }
