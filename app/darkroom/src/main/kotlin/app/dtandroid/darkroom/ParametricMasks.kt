@@ -374,17 +374,21 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
 
     // ------------------------------------------------------------------ picker (the shared picker tool of P3c)
 
-    /** the picker id of an element's slider: below [PICK_BASE], by the element's id and input (0) or output (1) */
-    fun pickerId(id: Int, output: Boolean): Int = PICK_BASE - (id * 2 + if (output) 1 else 0)
+    // form ids are large numbers at the real engine: the picker ids are small numbers handed out here
+    private val pickerIds = HashMap<Pair<Int, Boolean>, Int>()
+    private val pickerOf = HashMap<Int, Pair<Int, Boolean>>()
+
+    /** the picker id of an element's slider: below [PICK_BASE], one per element and input / output */
+    @Synchronized fun pickerId(id: Int, output: Boolean): Int =
+        pickerIds.getOrPut(id to output) { (PICK_BASE - 1 - pickerIds.size).also { pickerOf[it] = id to output } }
 
     /**
      * The armed picker's area picked: the element's range set from it (desktop's "set range" picker), under the
      * engine lock, as one history item. Returns whether the edit changed.
      */
     internal suspend fun pickLocked(e: DarktableEngine, key: InstanceKey, controlId: Int, area: List<Double>?, point: List<Double>?): Boolean {
-        val n = PICK_BASE - controlId
-        val el = element(n / 2) ?: return false
-        val out = n % 2 == 1
+        val (elId, out) = synchronized(this) { pickerOf[controlId] } ?: return false
+        val el = element(elId) ?: return false
         val pick = e.colorPick(key.op, key.priority, PickRequest(area, point))
         val stats = if (out) pick.output else pick.input
         if (stats == null) { _state.update { it.copy(note = "the picked area gives no sample for ${el.base} ${if (out) "output" else "input"}") }; return false }
