@@ -1,0 +1,140 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:processTestFixturesResources NO-SOURCE
+> Task :engine-api:processTestResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :schema:processTestResources
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug
+> Task :ui-theme:javaPreCompileDebugUnitTest
+> Task :ui-theme:packTokens
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:parseDebugLocalResources
+> Task :checkScreenRules UP-TO-DATE
+> Task :darkroom:preBuild UP-TO-DATE
+> Task :darkroom:preDebugBuild UP-TO-DATE
+> Task :darkroom:generateDebugResValues
+> Task :darkroom:generateDebugResources
+> Task :darkroom:packageDebugResources
+> Task :darkroom:processDebugNavigationResources
+> Task :ui-theme:generateDebugRFile
+> Task :darkroom:parseDebugLocalResources
+> Task :darkroom:generateDebugRFile
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:generateDebugUnitTestStubRFile
+> Task :ui-icons:convertIcons
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-icons:javaPreCompileDebug
+> Task :darkroom:javaPreCompileDebug
+> Task :darkroom:preDebugUnitTestBuild UP-TO-DATE
+> Task :darkroom:writeDebugAarMetadata
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-icons:parseDebugLocalResources
+> Task :ui-theme:writeDebugAarMetadata
+> Task :ui-icons:generateDebugRFile
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:189:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:193:82 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :engine-api:compileKotlin
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :darkroom:checkDebugUnitTestAarMetadata
+> Task :engine-api:jar
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :ui-theme:processDebugJavaRes
+> Task :ui-theme:compileDebugUnitTestKotlin
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:processDebugUnitTestJavaRes
+> Task :ui-icons:compileDebugKotlin
+> Task :engine-api:compileTestFixturesKotlin
+> Task :ui-theme:testDebugUnitTest
+> Task :engine-api:compileTestFixturesJava NO-SOURCE
+> Task :engine-api:testFixturesClasses UP-TO-DATE
+> Task :engine-api:testFixturesJar
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :darkroom:generateDebugUnitTestResValues
+> Task :darkroom:compileDebugLibraryResources
+> Task :darkroom:mapDebugUnitTestSourceSetPaths
+> Task :darkroom:generateDebugUnitTestResources
+> Task :darkroom:extractDeepLinksDebug
+> Task :darkroom:mergeDebugUnitTestResources
+> Task :ui-icons:extractDeepLinksDebug
+> Task :darkroom:processDebugManifest
+> Task :ui-theme:extractDeepLinksDebug
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:processDebugManifest
+> Task :ui-icons:compileDebugLibraryResources
+> Task :darkroom:processDebugUnitTestManifest
+> Task :ui-theme:compileDebugLibraryResources
+> Task :darkroom:javaPreCompileDebugUnitTest
+> Task :schema:compileKotlin
+> Task :engine-api:compileTestKotlin
+> Task :engine-api:compileTestJava NO-SOURCE
+> Task :engine-api:testClasses UP-TO-DATE
+> Task :darkroom:processDebugUnitTestResources
+> Task :engine-api:test
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes
+> Task :schema:jar
+> Task :darkroom:generateDebugUnitTestAssets UP-TO-DATE
+> Task :darkroom:mergeDebugShaders
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets
+> Task :ui-icons:mergeDebugShaders
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets
+> Task :ui-theme:mergeDebugShaders
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets
+> Task :darkroom:mergeDebugUnitTestAssets
+> Task :darkroom:packageDebugUnitTestForUnitTest
+> Task :darkroom:generateDebugUnitTestConfig
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :ui-icons:processDebugJavaRes
+> Task :schema:compileTestKotlin
+> Task :schema:compileTestJava NO-SOURCE
+> Task :schema:testClasses
+> Task :schema:test
+
+> Task :darkroom:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/DarkroomController.kt:296:22 Condition is always 'true'.
+
+> Task :darkroom:compileDebugJavaWithJavac NO-SOURCE
+> Task :darkroom:processDebugJavaRes
+> Task :darkroom:bundleLibRuntimeToJarDebug
+> Task :darkroom:bundleLibCompileToJarDebug
+
+> Task :darkroom:compileDebugUnitTestKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/test/kotlin/app/dtandroid/darkroom/PhotoSourceTest.kt:40:13 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/test/kotlin/app/dtandroid/darkroom/PhotoSourceTest.kt:56:55 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+
+> Task :darkroom:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :darkroom:processDebugUnitTestJavaRes
+> Task :darkroom:testDebugUnitTest
+
+BUILD SUCCESSFUL in 4m 30s
+86 actionable tasks: 85 executed, 1 up-to-date
