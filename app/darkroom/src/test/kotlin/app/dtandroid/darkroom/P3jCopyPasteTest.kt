@@ -92,7 +92,7 @@ class P3jCopyPasteTest {
         c.copyPaste.pasteOntoChosen()
         waitFor("the paste ends") { c.copyPaste.state.value.job?.running == false }
         val job = c.copyPaste.state.value.job!!
-        assertEquals(2, job.done)
+        assertEquals(job.message, 2, job.done)
         assertEquals(0, job.failed)
         waitFor("the darkroom's photo is open again") { c.state.value.info != null && c.state.value.index == 1 }
         assertTrue(left.containsAll(listOf(items[0].fileName, items[2].fileName)))

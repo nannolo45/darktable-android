@@ -1327,7 +1327,8 @@ class FakeEngine(
         pasteSelection(c, selection)
         targets.map { t ->
             try {
-                if (!File(t.raw).isFile) fail(EngineError.IO, "cannot read ${t.raw}")
+                // as open: the stand-in decodes nothing, so only an empty file is refused
+                if (File(t.raw).let { it.isFile && it.length() == 0L }) fail(EngineError.IO, "cannot decode ${t.raw}")
                 val insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
                 val name = File(t.raw).name
                 val s = Session(t.raw, false, (name.hashCode() and 0x7fffffff) % 6, samples[name], insts, emptyList(), 0, 0, emptyList())
