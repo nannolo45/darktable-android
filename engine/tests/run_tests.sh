@@ -426,6 +426,17 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     [ -f "$D/p3h_first_before_reload_cli.png" ] && cmp_rec C28 "$C" "$D/p3h_first_after_reload_bridge.ppm" "$D/p3h_first_before_reload_cli.png"
     parity C28 p3h_before_reload; parity C28 p3h_after_reload
   fi
+  # brief P3j (engine-api.md 9): copy and selective paste of the history
+  if want C29; then
+    drv C29 copypaste "copy all/parts, paste append/overwrite onto the open photo and onto XMP files"
+    # targets are byte copies of the RAW, so darktable-cli renders their XMP with the test RAW
+    parity C29 p3j_b_overwrite; parity C29 p3j_c_append
+    # every item copied and pasted with overwrite: the same pixels as the source
+    [ -f "$D/p3j_b2_parts_overwrite_bridge.ppm" ] && cmp_rec C29 "$C" "$D/p3j_b2_parts_overwrite_bridge.ppm" "$D/p3j_a_bridge.ppm"
+    # for information: a plain copy leaves the unsafe modules (white balance ...) at the target's own
+    [ -f "$D/p3j_b_overwrite_bridge.ppm" ] && echo "C29 $C info plain copy vs source: $($CMP "$D/p3j_b_overwrite_bridge.ppm" "$D/p3j_a_bridge.ppm" 2>&1)" >> "$OUT/comparisons.txt"
+    rm -f "$D"/p3j_b.* "$D"/p3j_b2.* "$D"/p3j_c.* "$D"/p3j_d.* 2>/dev/null
+  fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then

@@ -548,6 +548,6 @@ int dtb_history_paste_files(const char *targets_json, const char *options_json, 
   json_builder_end_array(b);
   json_node_unref(t);
   *json = dtb__json_finish(b);
-  dtb__err(DTB_OK, "");
+  dtb__err(DTB_OK, "%s", "");
   return DTB_OK;
 }
