@@ -130,6 +130,21 @@ interface DarktableEngine {
     suspend fun xmpWrite(path: String)
     suspend fun export(path: String, options: ExportOptions)
 
+    /**
+     * P3g (engine-api.md section 7): [export] with progress. [onProgress] is called on the engine thread, in
+     * order: PREPARING, PROCESSING once per module of the export pipe, WRITING, DONE (only on success); it must
+     * return quickly and call nothing of the engine. A cancelled export ([exportCancel]) throws
+     * [EngineError.CANCELLED] and leaves no file at [path]. This default reports only the start and the end.
+     */
+    suspend fun export(path: String, options: ExportOptions, onProgress: (ExportProgress) -> Unit) {
+        onProgress(ExportProgress(ExportStep.PREPARING, 0, 0, 0.0))
+        export(path, options)
+        onProgress(ExportProgress(ExportStep.DONE, 0, 0, 1.0))
+    }
+
+    /** P3g: from any thread, not suspending. The running export throws [EngineError.CANCELLED]; no export running: no effect. */
+    fun exportCancel() {}
+
     // 5 (P1b part 1): presets, styles, render times. docs/design/engine-api.md section 5.
 
     /** Every stored preset of [op], desktop's menu order; fits/active refer to instance ([op], [priority]) of the open image. */

@@ -43,7 +43,12 @@ class DarkroomViewModel(app: Application) : AndroidViewModel(app) {
         builtins.defaultWorkflow, builtins.fallbackLayout,
     )
     private val engine = InterfacePreview.engine(SchemaLoader.schemaTextFromResources())
-    val controller = DarkroomController(engine, schema, builtins, layouts, viewModelScope)
+    val controller = DarkroomController(engine, schema, builtins, layouts, viewModelScope).also { c ->
+        // brief P3g: the stand-in engine writes PNG only, slowly enough to see the progress; files go to the app's folder
+        c.exports.delivery = app.dtandroid.darkroom.FolderExportDelivery(File(app.cacheDir, "export"), File(app.filesDir, "exports"))
+        c.exports.set { it.withFormat(app.dtandroid.engine.api.ExportFormat.PNG) }
+        (engine as? app.dtandroid.engine.fake.FakeEngine)?.exportMsPerModule = 150
+    }
 
     /** The tokens, with the debug override file `theme.json` from the app's folder if there is one. */
     val tokens: DtTokens

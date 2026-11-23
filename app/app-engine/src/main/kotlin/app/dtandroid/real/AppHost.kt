@@ -118,6 +118,8 @@ object AppHost {
             c.source = Source
             // brief P3b: favourite and recently used styles and the apply mode, in the app's settings (not darktable's database)
             c.stylesPresets.settings = FileStyleSettings(File(app.filesDir, "styles/settings.json"))
+            // brief P3g: where the export screen's files go (Pictures/darktable, the share sheet)
+            c.exports.delivery = AppExportDelivery(app)
             // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
             // brief P2f: what a job from LightPhotoLibrary did with the open photo, said in the darkroom once
             AppEngine.scope.launch {

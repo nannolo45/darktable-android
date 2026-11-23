@@ -120,6 +120,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         }
         // brief P3b: the presets list and the styles are StylesOverlays' (StylesSheets.kt)
         is Overlay.Presets, Overlay.Styles -> Unit
+        // brief P3g: the export screen is drawn over the whole darkroom (ExportScreen.kt)
+        Overlay.Export -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return
@@ -230,6 +232,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         Overlay.HostMenu -> Sheet(s.current?.fileName ?: "photo", close, maxW) {
             // brief P3b: the styles, as desktop's quick styles button in the darkroom
             SheetItem("styles…", enabled = s.info != null) { controller.setOverlay(Overlay.Styles) }
+            // brief P3g: the export screen (darktable's export module, with progress)
+            SheetItem("export…", enabled = s.info != null) { controller.setOverlay(Overlay.Export) }
             for (a in actions) SheetItem(a.label, a.enabled) { controller.setOverlay(null); a.run() }
         }
         is Overlay.Rename -> {

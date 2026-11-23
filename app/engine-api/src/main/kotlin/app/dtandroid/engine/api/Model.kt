@@ -408,6 +408,12 @@ enum class ExportFormat(val json: String) { JPEG("jpeg"), PNG("png"), TIFF("tiff
 
 enum class ExportProfile(val json: String) { SRGB("srgb"), ADOBERGB("adobergb"), DISPLAYP3("displayp3"), IMAGE("image") }
 
+/** P3g (engine-api.md section 7): the steps of one export, in order. */
+enum class ExportStep { PREPARING, PROCESSING, WRITING, DONE }
+
+/** P3g: one progress event of an export: [module] of [modules] while PROCESSING; [fraction] 0..1, never back. */
+data class ExportProgress(val step: ExportStep, val module: Int, val modules: Int, val fraction: Double)
+
 /** export() options (engine-api.md 2.8). */
 data class ExportOptions(
     val format: ExportFormat = ExportFormat.JPEG,

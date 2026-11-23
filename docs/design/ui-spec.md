@@ -193,3 +193,37 @@ One component family (`ui/graph/CurveEditor.kt`; logic in `CurveModel.kt` and `T
 - **Rgb levels.** Three handles in the strip under the histogram: black, grey, white. A press chooses the nearest handle; the drag is relative to where it began. Black and white keep the grey handle at its relative place and handles stay 0.05 apart (rgblevels.c `_rgblevels_move_handle`). Per channel with independent channels. Double tap resets the channel. The three pickers stay.
 - **Tone equalizer.** Nine band points (-8 to 0 EV, +2 EV at the top, -2 at the bottom as B3-ToneEq) joined by the curve the module applies (the eight-gaussian fit with `smoothing`, toneequal.c). A vertical drag at a band's column raises or lowers the curve around that exposure exactly as desktop's drag and mouse wheel do (`set_new_params_interactive`, spread `smoothing^2 / 2`), so neighbouring bands follow; the nine values written are read back from the fitted curve. Double tap resets the nine values.
 - **Drag on the photo.** With the tone equalizer's panel open (not zoomed in, no picker armed, no shape drawn, no crop tool), a vertical one-finger drag on the photo reads the exposure at the point where it began (the engine's picker on the module's input, `dtb_color_pick`, with the module's own luminance estimator) and moves the bands around that exposure; the photo's height stands for 4 EV, as the graph's. One history item per drag; the module is switched on by the first step.
+
+## 12. Export (brief P3g)
+
+Mockup `B3-Export`; darktable's export module (manual: utility modules › shared › export) is the reference for the
+options and their defaults. Opened from the darkroom's menu ("export…", every skin) and, in l1, the top bar's
+export button. A screen over the darkroom: back, title "export", the photo's name and the series line.
+
+- **storage options:** target storage (this device: `Pictures/darktable` through MediaStore; share to an app:
+  the Android share sheet once the export is done), images (this image / whole series (N), only with a series), a
+  note on the target. LightPhotoLibrary is not offered: the app has no R5 upload call yet (P3g report).
+- **format options:** file format (JPEG, PNG, TIFF, WebP: what the engine takes; WebP only where the engine was
+  built with it, otherwise the export fails with the engine's message), bit depth where the format has more than
+  one (PNG 8/16, TIFF 8/16/32), quality for JPEG and WebP (a list 100…50; desktop has a slider).
+- **global options:** set size (original size = max size 0 × 0, long edge 2048 px, long edge 3840 px), high quality
+  resampling, profile (image settings, sRGB, Adobe RGB, Display P3). Upscaling is always off.
+- Defaults are darktable's: JPEG, quality 95, 8 bit, no size limit, high quality resampling no, profile image
+  settings (`darktableconfig.xml.in`: `high_quality_processing` false, `icctype` −1).
+- **While exporting** the options are greyed and the screen shows `BatchProgress` (P2k): one photo: "exporting
+  <name>", the bar, the step in plain words with the percent ("preparing", "processing · module 7 of 23",
+  "writing the file", "saving to this device" / "getting it ready to share"; "sending to LightPhotoLibrary" is
+  reserved for R5) and "cancel". A series: "photo n of N" with the overall bar and "k finished · p %", and under
+  it the current photo's own bar and step. The share of one photo: the engine's 0…95 % (its steps, engine-api.md
+  section 7), the hand-off the last 5 %.
+- **After:** "exported to Pictures/darktable on this device" (or the share sheet opens), "cancelled · nothing
+  written" / "cancelled · k of N exported", or the failure with the engine's message; the button reads "export
+  again". Closing the screen forgets an ended export.
+- **Top bar indicator:** while an export runs, or after it ended until the export screen is opened again, the
+  darkroom's top bar (phone, tablet, l1) shows a small text ("export 42 %", "export 5/12 · 38 %", "exported") over
+  a thin bar; tapping it opens the export screen.
+- The export runs in the darkroom's scope: it goes on when the export screen is closed and while another screen of
+  the app is shown. A series opens each photo in the darkroom and comes back to the first one; when the darkroom is
+  left during a series, it stops after the photo under way ("stopped: the darkroom was left"). In the background
+  (app not visible) nothing stops it while Android keeps the process, but there is no foreground service yet
+  (later package): Android may stop the process and with it the export.

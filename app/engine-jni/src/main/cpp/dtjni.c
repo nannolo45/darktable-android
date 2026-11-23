@@ -705,6 +705,47 @@ Java_app_dtandroid_engine_NativeBridge_exportWith(JNIEnv *env, jclass cls, jstri
   return r;
 }
 
+/* P3g (engine-api.md section 7): export with progress. The callback runs on
+ * the calling (engine) thread inside dtb_export_ex, so the env of this call
+ * is the right one. An exception thrown by the listener is cleared and
+ * cancels the export. */
+typedef struct { JNIEnv *env; jobject listener; jmethodID m; } _export_cb_t;
+
+static void _export_progress(int step, int module, int modules, double fraction, void *user)
+{
+  _export_cb_t *c = user;
+  if(!c || !c->listener || !c->m) return;
+  (*c->env)->CallVoidMethod(c->env, c->listener, c->m, (jint)step, (jint)module, (jint)modules, (jdouble)fraction);
+  if((*c->env)->ExceptionCheck(c->env))
+  {
+    (*c->env)->ExceptionClear(c->env);
+    dtb_export_cancel();
+  }
+}
+
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_exportProgress(JNIEnv *env, jclass cls, jstring path, jstring options_json,
+                                                      jobject listener)
+{
+  jstr_t p = _str(env, path), o = _str(env, options_json);
+  _export_cb_t c = { env, listener, NULL };
+  if(listener)
+  {
+    jclass lc = (*env)->GetObjectClass(env, listener);
+    c.m = lc ? (*env)->GetMethodID(env, lc, "onProgress", "(IIID)V") : NULL;
+    if(!c.m) (*env)->ExceptionClear(env);
+  }
+  const int r = dtb_export_ex(p.s, o.s, c.m ? _export_progress : NULL, &c);
+  _str_free(&p); _str_free(&o);
+  return r;
+}
+
+JNIEXPORT void JNICALL
+Java_app_dtandroid_engine_NativeBridge_exportCancel(JNIEnv *env, jclass cls)
+{
+  dtb_export_cancel();
+}
+
 JNIEXPORT jint JNICALL
 Java_app_dtandroid_engine_NativeBridge_historySealCode(JNIEnv *env, jclass cls)
 {

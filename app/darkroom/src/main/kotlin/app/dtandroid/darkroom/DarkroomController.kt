@@ -2037,7 +2037,12 @@ class DarkroomController(
     }
 
     /** Export the open photo through darktable's export (engine-api.md 2.8) to [path]. */
-    suspend fun export(path: String, options: app.dtandroid.engine.api.ExportOptions) {
+    suspend fun export(
+        path: String,
+        options: app.dtandroid.engine.api.ExportOptions,
+        /** brief P3g: progress of the export, on the engine thread (engine-api.md section 7) */
+        onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit = {},
+    ) {
         cancelRenders()
         try {
             fg {
@@ -2045,7 +2050,7 @@ class DarkroomController(
                 // brief P3a: the export shows the frame on the screen: the crop tool's frame is written first
                 commitCropLocked(close = false)
                 refreshLocked()
-                engine.export(path, options)
+                engine.export(path, options, onProgress)
             }
         } finally {
             requestRender()
@@ -2263,6 +2268,14 @@ class DarkroomController(
 
     /** A change of the edit through [block], as every change: render cancelled, state read again, rendered again. */
     internal suspend fun engineChange(block: suspend (DarktableEngine) -> Unit) = change { block(engine) }
+
+    // ------------------------------------------------------------------ brief P3g: export
+
+    /** Stop the export in flight (engine-api.md section 7); from any thread. */
+    internal fun exportCancel() = engine.exportCancel()
+
+    /** The export screen's settings and the export under way (Exports.kt). */
+    val exports: Exports by lazy { Exports(this) }
 
     // ------------------------------------------------------------------ brief P3d: masks
 

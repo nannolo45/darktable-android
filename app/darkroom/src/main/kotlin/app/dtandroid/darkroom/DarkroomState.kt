@@ -81,6 +81,8 @@ sealed interface Overlay {
     data object HostMenu : Overlay
     /** brief P3b: the styles list ("styles…" in the photo menu); its pages are [StylesPresets]' */
     data object Styles : Overlay
+    /** brief P3g: the export screen (mockup B3-Export) */
+    data object Export : Overlay
 }
 
 /** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */

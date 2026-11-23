@@ -90,6 +90,8 @@ fun DarkroomScreen(
         val ms by controller.masks.state.collectAsState()
         MasksOverlays(controller, s, ms, tablet)
         ParametricOverlays(controller, s, tablet) // brief P3d stage 2b
+        // brief P3g: the export screen over the whole darkroom
+        if (s.overlay == Overlay.Export) ExportScreen(controller, s, tablet)
     }
 }
 
@@ -155,6 +157,7 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
             DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
                 Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
         }
+        ExportIndicator(controller, s) // brief P3g
         BeforeButton(controller, s, compact = true)
         if (menu) MoreButton(controller)
         DtTextButton("done", onDone, compact = true)
@@ -312,6 +315,7 @@ private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBac
                     Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
             }
         }
+        ExportIndicator(controller, s) // brief P3g
         DtIconButton(DtIcon.Undo, "undo", c.textStrong, enabled = s.undo.canUndo, onClick = { controller.launch { undo() } })
         DtIconButton(DtIcon.Redo, "redo", c.textStrong, enabled = s.undo.canRedo, onClick = { controller.launch { redo() } })
         BeforeButton(controller, s)
