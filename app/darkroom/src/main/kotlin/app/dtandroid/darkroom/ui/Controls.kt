@@ -43,6 +43,8 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Overlay
+import app.dtandroid.darkroom.ui.graph.BandEditor
+import app.dtandroid.darkroom.ui.graph.BandHost
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.schema.Binding
@@ -108,7 +110,8 @@ fun ModulePanel(ctx: PanelContext, modifier: Modifier = Modifier) {
 @Composable
 private fun Controls(controls: List<Control>, ctx: PanelContext) {
     for (c in controls) {
-        if (!Rules.isVisible(ctx.module, c, ctx.inputs)) continue
+        // brief P3e-b: what the band editor replaces (its notebook, colour zones' own lists) is not built here
+        if (!Rules.isVisible(ctx.module, c, ctx.inputs) || BandHost.hides(ctx.module, c)) continue
         ControlView(c, ctx)
         // brief P2j: a control that waits for a later tool says so in one line
         ctx.module.notes[c.id]?.let { ControlNote(it) }
@@ -141,7 +144,11 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
         is Control.Section -> SectionLabel(c.label ?: "")
         is Control.Collapsible -> Collapsible(c, ctx)
         is Control.Tabs -> TabsBlock(c, ctx)
-        is Control.Stack -> Controls(c.pages, ctx)
+        is Control.Stack -> if (BandHost.pagesFollowTabs(ctx.module.op)) {
+            // brief P3e-b: colour equalizer's sliders of the tab the graph shows
+            val page = c.pages.getOrNull(ctx.controller.tabPage(ctx.state, ctx.key, BandHost.tabsId(ctx.module) ?: -1))
+            if (page != null) for (child in page.children) ControlView(child, ctx)
+        } else Controls(c.pages, ctx)
         is Control.Page -> Controls(c.children, ctx)
         is Control.Group -> Controls(c.children, ctx)
         is Control.Label -> if (!c.label.isNullOrBlank()) {
@@ -149,8 +156,14 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
         }
         is Control.ButtonRow -> ButtonRowView(c, ctx)
         // brief P3c: a picker button that stands alone (white balance's "from image area", levels' black, gray, white)
-        // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
-        is Control.Unsupported -> if (c.id in ctx.module.pickerMarks) PickerButtonRow(c, ctx) else if (c.kind == "graph") CurveEditorHost(c, ctx)
+        is Control.Unsupported -> when {
+            c.id in ctx.module.pickerMarks -> PickerButtonRow(c, ctx)
+            // brief P3e-b: the band editor stands in for desktop's graph of contrast equalizer, colour zones and colour equalizer
+            c.id == BandHost.graphId(ctx.module) -> BandEditor(ctx)
+            // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
+            c.kind == "graph" -> CurveEditorHost(c, ctx)
+            else -> {}
+        }
     }
 }
 

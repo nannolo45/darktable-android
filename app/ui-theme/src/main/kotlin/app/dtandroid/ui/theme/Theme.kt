@@ -64,6 +64,9 @@ object DtTheme {
     /** brief PUI3a: the l1 layout's tokens */
     val l1: DtL1
         @Composable @ReadOnlyComposable get() = LocalDtTokens.current.l1
+    /** brief P3e-b: the band editor's tokens */
+    val band: DtBand
+        @Composable @ReadOnlyComposable get() = LocalDtTokens.current.band
     val type: DtTextStyles
         @Composable @ReadOnlyComposable get() = LocalDtTextStyles.current
 }
