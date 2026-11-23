@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ import app.dtandroid.darkroom.MaskMemberState
 import app.dtandroid.darkroom.ModuleMask
 import app.dtandroid.darkroom.MaskShape
 import app.dtandroid.darkroom.Masks
+import app.dtandroid.darkroom.ParamChannels
 import app.dtandroid.darkroom.MasksState
 import app.dtandroid.darkroom.ShapeOutline
 import app.dtandroid.darkroom.ShapeType
@@ -160,16 +162,23 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
     val sp = DtTheme.space
     val masks = controller.masks
     val m = ms.module ?: return
+    val pst by controller.parametric.state.collectAsState()
     SheetSection("mask")
     val mode = m.mode
     for (row in listOf(listOf(MaskMode.OFF, MaskMode.UNIFORM, MaskMode.DRAWN), listOf(MaskMode.PARAMETRIC, MaskMode.BOTH))) {
         Row(Modifier.fillMaxWidth().padding(vertical = sp.xxs), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
             for (md in row) {
-                ModeButton(md.label, mode == md, !ro && md.available, Modifier.weight(1f)) { controller.launch { masks.setMode(md) } }
+                // P3d 2c: the engine reads drawn & parametric as a drawn tree holding parametric elements
+                val hasParam = pst.all.isNotEmpty()
+                val on = when (md) {
+                    MaskMode.DRAWN -> mode == MaskMode.DRAWN && !hasParam
+                    MaskMode.BOTH -> mode == MaskMode.BOTH || (mode == MaskMode.DRAWN && hasParam)
+                    else -> mode == md
+                }
+                ModeButton(md.label, on, !ro && md.available, Modifier.weight(1f)) { controller.launch { masks.setMode(md) } }
             }
         }
     }
-    if (mode == MaskMode.BOTH) Note("drawn & parametric: shown as the tree of its elements")
     if (mode == null) Note("this mask (${m.engineMode}) is not edited here yet")
     if (mode != null && mode != MaskMode.OFF) {
         MaskSlider(maskSlider(1, "opacity", 0.0, 100.0, 100.0, 1.0, 0, " %"), m.opacity, !ro, live = false) {
@@ -177,13 +186,13 @@ private fun ModuleMaskSection(controller: DarkroomController, s: DarkroomState, 
         }
         ListControl("blend mode", Masks.blendLabel(m.blendMode), enabled = !ro) { masks.openSheet(MaskSheet.BlendModes) }
     }
-    if (mode == MaskMode.DRAWN) {
+    if (mode == MaskMode.DRAWN || mode == MaskMode.BOTH) {
         DrawnShapes(controller, ms, inst, m, ro)
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
     }
     // brief P3d stage 2b: the parametric mode and the refinement
-    if (mode == MaskMode.PARAMETRIC || mode == MaskMode.DRAWN || mode == MaskMode.BOTH) ParametricSection(controller, s, ro)
+    if (mode == MaskMode.PARAMETRIC || mode == MaskMode.DRAWN || mode == MaskMode.BOTH) ParametricSection(controller, s, ro, listing = mode == MaskMode.PARAMETRIC)
     if (mode == MaskMode.PARAMETRIC) {
         ToggleControl("show mask", s.showMask == m.key, enabled = true) { masks.toggleShowMask() }
         ToggleControl("invert mask", m.invert, enabled = !ro) { controller.launch { masks.setInvert(!m.invert) } }
@@ -201,6 +210,13 @@ private fun DrawnShapes(controller: DarkroomController, ms: MasksState, inst: Mo
     val n = m.members.size
     DtText(if (n == 0) "no shapes in this module's mask yet" else "group \"${fullName(inst)}\" · $n ${if (n == 1) "member" else "members"}",
         DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xs))
+    // P3d 2c: the group a new shape goes into (tap a group row in the tree to choose it)
+    val target = Masks.target(ms)
+    val targetName = target?.takeIf { it != m.rootId }?.let { g -> ms.forms.firstOrNull { it.id == g }?.let { Masks.shapeLabel(it) } } ?: fullName(inst)
+    DtText("new shapes go into: $targetName", DtTheme.type.small, c.textStrong, Modifier.padding(bottom = sp.xs).semantics { contentDescription = "new shapes go into: $targetName" }, maxLines = 2)
+    if (target != null && target != m.rootId) {
+        DtTextButton("use the module's group", { masks.useModuleGroup() }, Modifier.fillMaxWidth(), enabled = !ro, compact = true)
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
         for (t in ShapeType.entries) {
             Column(
@@ -216,8 +232,34 @@ private fun DrawnShapes(controller: DarkroomController, ms: MasksState, inst: Mo
     }
     Spacer(Modifier.height(sp.xs))
     DtTextButton("use an existing shape…", { masks.openSheet(MaskSheet.Existing) }, Modifier.fillMaxWidth(), enabled = !ro)
+    AddParametric(controller, target, ro)
     // P3d 2a: the mask as a tree (MaskTree.kt) replaces stage 1's single "combine shapes" row and flat member rows
     MaskTree(controller, ms, m, ro)
+}
+
+/** P3d 2c: "add parametric…": the channel buttons of parametric mode, adding an element to the chosen group. */
+@Composable
+private fun AddParametric(controller: DarkroomController, target: Int?, ro: Boolean) {
+    val sp = DtTheme.space
+    val pm = controller.parametric
+    val p by pm.state.collectAsState()
+    var open by remember { mutableStateOf(false) }
+    DtTextButton("add parametric…", { open = !open }, Modifier.fillMaxWidth(), selected = open, enabled = !ro)
+    if (open) {
+        val specs = ParamChannels.of(p.space)
+        if (specs.isEmpty()) DtText("parametric masks are not offered in this colour space", DtTheme.type.small, DtTheme.colors.textMuted, Modifier.padding(vertical = sp.s), maxLines = 3)
+        for (rowSpecs in specs.chunked(4)) {
+            Row(Modifier.fillMaxWidth().padding(vertical = sp.xxs), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
+                for (spec in rowSpecs) {
+                    ChannelButton(spec.label, false, !ro, Modifier.weight(1f)) {
+                        open = false
+                        controller.launch { pm.addChannel(spec, target, select = true) }
+                    }
+                }
+                for (i in rowSpecs.size until 4) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
@@ -328,6 +370,14 @@ private val HINTS = mapOf(
     ShapeType.PATH to "tap the photo to add a point",
 )
 
+private val EDIT_HINTS = mapOf(
+    ShapeType.BRUSH to "drag on the photo to move the brush strokes",
+    ShapeType.CIRCLE to "drag on the photo to move the circle",
+    ShapeType.ELLIPSE to "drag on the photo to move the ellipse",
+    ShapeType.GRADIENT to "drag on the photo to move the line",
+    ShapeType.PATH to "drag a point of the path to move it",
+)
+
 /** The tool panel that replaces the bottom panel while a shape is drawn. */
 @Composable
 fun DrawPanel(controller: DarkroomController, s: DarkroomState, d: DrawTool, modifier: Modifier = Modifier) {
@@ -336,8 +386,9 @@ fun DrawPanel(controller: DarkroomController, s: DarkroomState, d: DrawTool, mod
     val masks = controller.masks
     Column(modifier.fillMaxWidth().background(c.panel).padding(horizontal = sp.panel, vertical = sp.s)) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            DtText("${moduleOf(s, d.key)?.let { fullName(it) } ?: d.key.op} · ${d.type.key}", DtTheme.type.body, c.textStrong)
-            DtText(HINTS[d.type] ?: "", DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xxs), maxLines = 2)
+            DtText("${moduleOf(s, d.key)?.let { fullName(it) } ?: d.key.op} · ${if (d.editing != null) "edit " else ""}${d.type.key}", DtTheme.type.body, c.textStrong)
+            DtText(if (d.editing != null) EDIT_HINTS[d.type] ?: "" else HINTS[d.type] ?: "", DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.xxs), maxLines = 2)
+            if (d.editing != null && d.usedBy > 1) DtText("used by ${d.usedBy} modules", DtTheme.type.small, c.textStrong, Modifier.padding(bottom = sp.xxs))
             val size = maskSlider(11, "size", 0.005, 0.5, 0.05, 100.0, 1, " %")
             val feather = maskSlider(12, "feather", 0.0, 0.5, 0.05, 100.0, 1, " %")
             val hardness = maskSlider(13, "hardness", 0.0, 1.0, 0.66, 100.0, 0, " %")
@@ -346,7 +397,7 @@ fun DrawPanel(controller: DarkroomController, s: DarkroomState, d: DrawTool, mod
             val flatness = maskSlider(16, "flatness", 0.1, 1.0, 0.7, 100.0, 0, " %")
             val compression = maskSlider(17, "compression", 0.01, 1.0, 0.5, 100.0, 0, " %")
             val sliders = when (d.type) {
-                ShapeType.BRUSH -> listOf(size to d.size, hardness to d.hardness, opacity to d.opacity)
+                ShapeType.BRUSH -> if (d.editing != null) emptyList() else listOf(size to d.size, hardness to d.hardness, opacity to d.opacity)
                 ShapeType.CIRCLE -> listOf(size to d.size, feather to d.feather)
                 ShapeType.ELLIPSE -> listOf(size to d.size, feather to d.feather, rotation to d.rotation, flatness to d.flatness)
                 ShapeType.GRADIENT -> listOf(rotation to d.rotation, compression to d.compression)
@@ -356,14 +407,14 @@ fun DrawPanel(controller: DarkroomController, s: DarkroomState, d: DrawTool, mod
             Row(Modifier.fillMaxWidth().padding(vertical = sp.xs), horizontalArrangement = Arrangement.spacedBy(sp.xs)) {
                 when (d.type) {
                     ShapeType.BRUSH -> {
-                        DtTextButton("undo stroke", { masks.undoStroke() }, Modifier.weight(1f), enabled = d.strokes.isNotEmpty(), compact = true)
+                        if (d.editing == null) DtTextButton("undo stroke", { masks.undoStroke() }, Modifier.weight(1f), enabled = d.strokes.isNotEmpty(), compact = true)
                         DtTextButton("show mask", { masks.toggleDrawShow() }, Modifier.weight(1f)
                             .semantics { stateDescription = if (d.showMask) "on" else "off" }, selected = d.showMask, compact = true)
                     }
-                    ShapeType.PATH -> {
+                    ShapeType.PATH -> if (d.editing == null) {
                         DtTextButton("remove last point", { masks.removeLastPoint() }, Modifier.weight(1f), enabled = d.points.isNotEmpty(), compact = true)
                         DtTextButton("close path", { masks.closePath() }, Modifier.weight(1f), enabled = d.points.size >= 3 && !d.closed, compact = true)
-                    }
+                    } else Unit
                     else -> Unit
                 }
             }
@@ -427,6 +478,7 @@ fun BoxScope.MasksOverlays(controller: DarkroomController, s: DarkroomState, ms:
             val f = form(sheet.id) ?: return
             Sheet(Masks.shapeLabel(f), close, maxW) {
                 SheetSection(if (f.users.isEmpty()) "used by no module" else "used by ${f.users.size} ${if (f.users.size == 1) "module" else "modules"}")
+                if (masks.editable(f)) SheetItem("edit", !ro) { controller.launch { masks.startEdit(f.id) } }
                 SheetItem("rename", !ro) { masks.openSheet(MaskSheet.Rename(f.id)) }
                 SheetItem("use in another module…", !ro) { masks.openSheet(MaskSheet.UseIn(f.id)) }
                 if (!f.isGroup) SheetItem("duplicate", !ro) { controller.launch { masks.duplicate(f.id, sheet.from) } }

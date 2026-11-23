@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,10 +26,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import app.dtandroid.darkroom.DarkroomController
+import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.MaskSheet
 import app.dtandroid.darkroom.Masks
 import app.dtandroid.darkroom.MasksState
 import app.dtandroid.darkroom.ModuleMask
+import app.dtandroid.darkroom.ParamElement
 import app.dtandroid.darkroom.MaskTreeRow
 import app.dtandroid.ui.icons.DtIcon
 import app.dtandroid.ui.icons.DtIconImage
@@ -69,11 +72,13 @@ internal fun MaskTree(controller: DarkroomController, ms: MasksState, m: ModuleM
             controller.launch { masks.setGroupOpacity(root, it / 100.0) }
         }
     }
-    for (row in Masks.treeRows(ms.forms, root, ms.expanded)) TreeRowView(controller, ms, m, row, ro)
+    val pst by controller.parametric.state.collectAsState()
+    val st by controller.state.collectAsState()
+    for (row in Masks.treeRows(ms.forms, root, ms.expanded)) TreeRowView(controller, st, ms, m, row, ro, pst.all)
 }
 
 @Composable
-private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: ModuleMask, row: MaskTreeRow, ro: Boolean) {
+private fun TreeRowView(controller: DarkroomController, s: DarkroomState, ms: MasksState, m: ModuleMask, row: MaskTreeRow, ro: Boolean, params: List<ParamElement>) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val masks = controller.masks
@@ -88,7 +93,10 @@ private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: Modul
     repeat(row.depth) { indent += sp.l }
     Row(
         Modifier.fillMaxWidth().height(DtTheme.sizes.touch).background(if (selected) c.selected else c.panel)
-            .clickable(role = Role.Button) { controller.launch { masks.selectShape(id) } }
+            // P3d 2c: a group row chooses where new shapes go; a shape row opens its edit; a parametric element row opens its controls
+            .clickable(role = Role.Button) {
+                controller.launch { if (group) masks.chooseGroup(id) else if (masks.editable(f)) masks.startEdit(id) else masks.selectShape(id) }
+            }
             .semantics { contentDescription = "member $name"; stateDescription = if (selected) "selected" else "" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -104,7 +112,8 @@ private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: Modul
         Column(Modifier.weight(1f)) {
             DtText(name, DtTheme.type.label, c.textStrong, maxLines = 1)
             if (group) {
-                DtText(Masks.operatorLabel(groupOperator(ms, id)) + " · ${f?.members?.size ?: 0}", DtTheme.type.small, c.accent, maxLines = 1,
+                val here = Masks.target(ms) == id
+                DtText(Masks.operatorLabel(groupOperator(ms, id)) + " · ${f?.members?.size ?: 0}" + if (here) " · new shapes go here" else "", DtTheme.type.small, c.accent, maxLines = 1,
                     modifier = Modifier.clickable(enabled = !ro, role = Role.Button) { masks.openSheet(MaskSheet.Operator(id)) }
                         .semantics { contentDescription = "operator of $name" })
             }
@@ -118,6 +127,10 @@ private fun TreeRowView(controller: DarkroomController, ms: MasksState, m: Modul
             modifier = Modifier.semantics { stateDescription = if (inverse) "on" else "off" })
         DtIconButton(DtIcon.More, "more, $name", c.text,
             onClick = { masks.openSheet(MaskSheet.More(id, if (row.group == m.rootId) m.key else null, row.group)) })
+    }
+    if (selected && f?.type == "parametric") {
+        val el = params.firstOrNull { it.id == id }
+        if (el != null) Row(Modifier.fillMaxWidth().padding(start = indent)) { Column(Modifier.weight(1f)) { ChannelRow(controller, s, el, ro) } }
     }
     if (selected) {
         val value = if (group) groupOpacity(ms, id) else row.member.opacity

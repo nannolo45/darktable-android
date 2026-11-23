@@ -50,7 +50,7 @@ import app.dtandroid.ui.theme.DtTheme
  */
 
 @Composable
-fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Boolean) {
+fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Boolean, listing: Boolean = true) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val pm = controller.parametric
@@ -61,8 +61,8 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
         ListControl("colour space", ParamChannels.spaceLabel(p.space) + if (b.colorspace == "default") " (module's)" else "", enabled = !ro) {
             pm.openSheet(ParamSheet.Space)
         }
-        val specs = ParamChannels.of(p.space)
-        if (specs.isEmpty()) {
+        val specs = if (listing) ParamChannels.of(p.space) else emptyList()
+        if (listing && specs.isEmpty()) {
             DtText("parametric masks are not offered in this colour space", DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.s), maxLines = 3)
         }
         for (rowSpecs in specs.chunked(4)) {
@@ -74,7 +74,8 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
                 for (i in rowSpecs.size until 4) Spacer(Modifier.weight(1f))
             }
         }
-        for (el in p.elements) {
+        // P3d 2c: with a drawn mask the tree holds the elements and the channel buttons
+        for (el in (if (listing) p.elements else emptyList())) {
             key(el.id) { ChannelRow(controller, s, el, ro) }
         }
     }
@@ -82,7 +83,7 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
 }
 
 @Composable
-private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = DtTheme.colors
     val shape = RoundedCornerShape(DtTheme.sizes.radiusControl)
     var m = modifier.height(DtTheme.sizes.touch).clip(shape).background(if (on) c.selected else c.raised)
@@ -97,7 +98,7 @@ private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier
 }
 
 @Composable
-private fun ChannelRow(controller: DarkroomController, s: DarkroomState, el: ParamElement, ro: Boolean) {
+internal fun ChannelRow(controller: DarkroomController, s: DarkroomState, el: ParamElement, ro: Boolean) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val pm = controller.parametric

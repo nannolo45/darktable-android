@@ -38,8 +38,11 @@ enum class MaskMode(val label: String, val engineName: String) {
     PARAMETRIC("parametric", "parametric"),
     BOTH("drawn & parametric", "drawn_parametric");
 
-    /** stage 2b adds parametric; drawn & parametric waits for stage 2a (what the engine needs for it) */
-    val available: Boolean get() = this != BOTH
+    /**
+     * P3d 2c: drawn & parametric is available. The pinned engine has no such mode of its own (engine-api.md 6.9): it is
+     * the drawn (flexi) mask whose tree also holds parametric elements, so its button asks for "drawn".
+     */
+    val available: Boolean get() = true
 
     companion object {
         /**
@@ -136,6 +139,18 @@ data class DrawTool(
     val current: List<Pair<Double, Double>>? = null,
     /** the brush's strokes filled (on) or as thin lines (off) */
     val showMask: Boolean = true,
+    /** P3d 2c: the flexi group a new shape goes into (null = the module's own group) */
+    val group: Int? = null,
+    /** P3d 2c: the form being edited after "done" (null = a new shape) */
+    val editing: Int? = null,
+    /** P3d 2c: how many modules use the form being edited */
+    val usedBy: Int = 0,
+    /** P3d 2c, editing: where the finger last was (circle, ellipse, gradient: its offset from the centre) */
+    val grab: Pair<Double, Double>? = null,
+    /** P3d 2c, editing a brush: how far it was moved, fractions of the picture shown */
+    val shift: Pair<Double, Double> = 0.0 to 0.0,
+    /** P3d 2c, editing a path: the point the finger drags */
+    val dragIndex: Int? = null,
 ) {
     val canFinish: Boolean
         get() = when (type) {
@@ -200,6 +215,8 @@ data class MasksState(
     val folded: Set<Int> = emptySet(),
     /** P3d 2a: nested groups of the module's tree that are open (collapsed by default) */
     val expanded: Set<Int> = emptySet(),
+    /** P3d 2c: the group of the tree that new shapes go into (null = the module's own group) */
+    val group: Int? = null,
     val draw: DrawTool? = null,
     val sheet: MaskSheet? = null,
     /** a sentence for the user about the last action that could not be done */
@@ -220,7 +237,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     /** Choose the instance whose mask the tab edits. */
     suspend fun select(key: InstanceKey) {
         if (c.state.value.showMask != null && c.state.value.showMask != key) c.setShowMask(null)
-        _state.update { it.copy(key = key, sheet = null, note = null) }
+        _state.update { it.copy(key = key, sheet = null, note = null, group = null) }
         reload()
     }
 
@@ -337,6 +354,24 @@ class Masks internal constructor(private val c: DarkroomController) {
     /** P3d 2a: open or close a nested group of the module's tree. */
     fun toggleExpanded(groupId: Int) = _state.update { it.copy(expanded = if (groupId in it.expanded) it.expanded - groupId else it.expanded + groupId) }
 
+    /** P3d 2c: the group new shapes go into: [ms]'s choice if it is still a group, else the module's own group. */
+    fun targetGroup(): Int? = target(_state.value)
+
+    /** P3d 2c: tap on a group row: new shapes go into it (tap again: back to the module's group); it is also the selected row. */
+    suspend fun chooseGroup(id: Int) {
+        val now = target(_state.value)
+        _state.update { it.copy(group = if (now == id) null else id) }
+        selectShape(id)
+    }
+
+    /** P3d 2c: a new element: its group opens and its row is selected. */
+    suspend fun revealAndSelect(id: Int, group: Int?) {
+        _state.update { it.copy(expanded = group?.let { g -> it.expanded + g } ?: it.expanded, selected = null, outline = null) }
+        selectShape(id)
+    }
+
+    fun useModuleGroup() = _state.update { it.copy(group = null) }
+
     /** Tap on a shape in the list: its outline on the photo (tap again: hidden). */
     suspend fun selectShape(id: Int?) {
         val next = if (id == _state.value.selected) null else id
@@ -374,9 +409,14 @@ class Masks internal constructor(private val c: DarkroomController) {
 
     suspend fun setMode(mode: MaskMode) {
         val m = current() ?: return
+        if (mode == MaskMode.BOTH && m.mode == MaskMode.DRAWN) {
+            _state.update { it.copy(note = "drawn & parametric: add parametric elements to the tree below, in any group") }
+            return
+        }
         if (!mode.available || m.mode == mode) return
-        if (mode != MaskMode.DRAWN && mode != MaskMode.PARAMETRIC) c.setShowMask(null)
-        edit { e -> e.blendSet(m.key.op, m.key.priority, mapOf("masks" to JsonPrimitive(mode.engineName))); e.historySeal() }
+        if (mode != MaskMode.DRAWN && mode != MaskMode.PARAMETRIC && mode != MaskMode.BOTH) c.setShowMask(null)
+        val asked = if (mode == MaskMode.BOTH) MaskMode.DRAWN.engineName else mode.engineName
+        edit { e -> e.blendSet(m.key.op, m.key.priority, mapOf("masks" to JsonPrimitive(asked))); e.historySeal() }
     }
 
     suspend fun setOpacity(value: Double) {
@@ -537,7 +577,7 @@ class Masks internal constructor(private val c: DarkroomController) {
         // the crop tool shows the uncropped picture: shapes are drawn on the picture as it is
         c.state.value.cropTool?.let { c.state.value.expanded?.let { k -> c.toggleExpanded(k) } }
         c.setShowMask(null)
-        _state.update { it.copy(draw = DrawTool.start(type, m.key), sheet = null, note = null, selected = null, outline = null) }
+        _state.update { it.copy(draw = DrawTool.start(type, m.key).copy(group = target(it)), sheet = null, note = null, selected = null, outline = null) }
     }
 
     fun cancelDraw() = _state.update { it.copy(draw = null) }
@@ -565,6 +605,7 @@ class Masks internal constructor(private val c: DarkroomController) {
 
     /** One finger down on the photo at ([x], [y]), fractions of the picture shown. */
     fun touchDown(x: Double, y: Double) = updateDraw { d ->
+        if (d.editing != null) return@updateDraw editDown(d, x, y)
         when (d.type) {
             ShapeType.BRUSH -> d.copy(current = listOf(x to y))
             ShapeType.PATH -> if (d.closed) d else d.copy(pending = x to y)
@@ -573,6 +614,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     }
 
     fun touchMove(x: Double, y: Double) = updateDraw { d ->
+        if (d.editing != null) return@updateDraw editMove(d, x, y)
         when (d.type) {
             ShapeType.BRUSH -> d.current?.let { d.copy(current = it + (x to y)) } ?: d
             ShapeType.PATH -> if (d.pending != null) d.copy(pending = x to y) else d
@@ -582,6 +624,7 @@ class Masks internal constructor(private val c: DarkroomController) {
 
     /** The finger lifted: a stroke ends, a path point is added where it was. */
     fun touchUp() = updateDraw { d ->
+        if (d.editing != null) return@updateDraw editUp(d)
         when (d.type) {
             ShapeType.BRUSH -> d.current?.let { d.copy(strokes = d.strokes + Stroke(it, d.size, d.hardness, d.opacity), current = null) } ?: d
             ShapeType.PATH -> d.pending?.let { d.copy(points = d.points + it, pending = null) } ?: d
@@ -591,6 +634,7 @@ class Masks internal constructor(private val c: DarkroomController) {
 
     /** A second finger came: the touch was a pinch, whatever it began goes. */
     fun touchCancel() = updateDraw { d ->
+        if (d.editing != null) return@updateDraw editCancel(d)
         when (d.type) {
             ShapeType.BRUSH -> d.copy(current = null)
             ShapeType.PATH -> d.copy(pending = null)
@@ -605,6 +649,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     suspend fun finishDraw() {
         val d = _state.value.draw ?: return
         if (!d.canFinish || readOnly) return
+        if (d.editing != null) { finishEdit(d); return }
         var last: Int? = null
         try {
             c.engineChange { e ->
@@ -614,7 +659,7 @@ class Masks internal constructor(private val c: DarkroomController) {
                 e.historyGroupBegin()
                 var kept = false
                 try {
-                    for (g in forms) last = e.maskAdd(d.key.op, d.key.priority, d.type.key, g)
+                    for (g in forms) last = e.maskAdd(d.key.op, d.key.priority, d.type.key, g, group = d.group)
                     kept = true
                 } finally {
                     e.historyGroupEnd(kept)
@@ -630,9 +675,166 @@ class Masks internal constructor(private val c: DarkroomController) {
             if (c.state.value.message == null) _state.update { it.copy(note = "the shape could not be added") }
             return
         }
-        _state.update { it.copy(draw = null, key = d.key) }
+        // a shape in a nested group is shown: its group opens
+        _state.update { it.copy(draw = null, key = d.key, expanded = d.group?.let { g -> it.expanded + g } ?: it.expanded) }
         c.setView(BottomView.MASKS)
         selectShape(last)
+    }
+
+    // ------------------------------------------------------------------ P3d 2c: editing a shape after "done"
+
+    /** The shapes the tool edits: circle, ellipse, gradient, path, brush (not groups, not parametric elements). */
+    fun editable(f: MaskShape?): Boolean = f != null && ShapeType.of(f.type) != null && !readOnly
+
+    /** Open drawing mode on the form [id]: drag to move, the sliders as when drawing; nothing is written until "done". */
+    suspend fun startEdit(id: Int) {
+        val f = _state.value.forms.firstOrNull { it.id == id } ?: return
+        val type = ShapeType.of(f.type) ?: return
+        val m = current() ?: return
+        if (readOnly) return
+        val key = f.users.firstOrNull { it == m.key } ?: m.key
+        val tool = try {
+            c.engineRead { e -> editToolLocked(e, f, type, key) }
+        } catch (x: kotlinx.coroutines.CancellationException) { throw x }
+        catch (x: Exception) { _state.update { it.copy(note = noteOf(x)) }; return }
+        c.disarmPicker()
+        c.state.value.cropTool?.let { c.state.value.expanded?.let { k -> c.toggleExpanded(k) } }
+        c.setShowMask(null)
+        _state.update { it.copy(draw = tool, sheet = null, note = null, selected = null, outline = null) }
+    }
+
+    private suspend fun editToolLocked(e: DarktableEngine, f: MaskShape, type: ShapeType, key: InstanceKey): DrawTool {
+        val g = f.geometry
+        val orig: List<Pair<Double, Double>> = when (type) {
+            ShapeType.CIRCLE, ShapeType.ELLIPSE -> listOfNotNull(g.pair("center"))
+            ShapeType.GRADIENT -> listOfNotNull(g.pair("anchor"))
+            ShapeType.PATH, ShapeType.BRUSH -> (g["points"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.pair("corner") } ?: emptyList()
+        }
+        if (orig.isEmpty()) throw EngineException(EngineError.ARG, "this shape has no position to edit")
+        val outside = EngineException(EngineError.ARG, "the shape lies outside the picture")
+        val p = e.coordsTransform(CoordsDirection.TO_PROCESSED, orig).points.map { it ?: throw outside }
+        val back = e.coordsTransform(CoordsDirection.TO_ORIGINAL, listOf(p[0], p[0].first + PROBE to p[0].second))
+        val k = lengthScale(back, back.points[0] ?: throw outside, back.points[1] ?: throw outside)
+        val base = DrawTool.start(type, key).copy(group = null, editing = f.id, usedBy = f.users.size)
+        return when (type) {
+            ShapeType.CIRCLE -> base.copy(center = p[0], size = ((g.num("radius") ?: 0.05) / k).coerceIn(0.005, 0.5),
+                feather = ((g.num("border") ?: 0.05) / k).coerceIn(0.0, 0.5))
+            ShapeType.ELLIPSE -> {
+                val r = (g["radius"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull } ?: listOf(0.05, 0.035)
+                val a = (r.getOrElse(0) { 0.05 } / k).coerceIn(0.005, 0.5)
+                val b = r.getOrElse(1) { r.getOrElse(0) { 0.05 } } / k
+                base.copy(center = p[0], size = a, flatness = (b / a).coerceIn(0.1, 1.0), rotation = (g.num("rotation") ?: 0.0).coerceIn(-180.0, 180.0),
+                    feather = ((g.num("border") ?: 0.05) / k).coerceIn(0.0, 0.5))
+            }
+            ShapeType.GRADIENT -> base.copy(center = p[0], rotation = (g.num("rotation") ?: 0.0).coerceIn(-180.0, 180.0),
+                compression = (g.num("compression") ?: 0.5).coerceIn(0.01, 1.0))
+            ShapeType.PATH -> base.copy(points = p, closed = true)
+            ShapeType.BRUSH -> {
+                val first = (g["points"] as? JsonArray)?.firstOrNull() as? JsonObject
+                val border = (first?.get("border") as? JsonArray)?.firstOrNull()?.let { (it as? JsonPrimitive)?.doubleOrNull }
+                val size = ((border ?: 0.05) / k).coerceIn(0.005, 0.5)
+                val hardness = first?.num("hardness") ?: 0.66
+                val density = first?.num("density") ?: 1.0
+                base.copy(size = size, hardness = hardness, opacity = density, strokes = listOf(Stroke(p, size, hardness, density)))
+            }
+        }
+    }
+
+    private fun editDown(d: DrawTool, x: Double, y: Double): DrawTool = when (d.type) {
+        ShapeType.BRUSH -> d.copy(before = x to y, grab = x to y)
+        ShapeType.PATH -> {
+            var best: Int? = null
+            var bestD = EDIT_GRAB
+            d.points.forEachIndexed { i, q -> val dd = hypot(q.first - x, q.second - y); if (dd < bestD) { bestD = dd; best = i } }
+            best?.let { d.copy(dragIndex = it, before = d.points[it]) } ?: d
+        }
+        else -> d.center?.let { c0 -> d.copy(before = c0, grab = x - c0.first to y - c0.second) } ?: d
+    }
+
+    private fun editMove(d: DrawTool, x: Double, y: Double): DrawTool = when (d.type) {
+        ShapeType.BRUSH -> d.grab?.let { g ->
+            val dx = x - g.first
+            val dy = y - g.second
+            d.copy(strokes = d.strokes.map { s -> s.copy(points = s.points.map { it.first + dx to it.second + dy }) },
+                shift = d.shift.first + dx to d.shift.second + dy, grab = x to y)
+        } ?: d
+        ShapeType.PATH -> d.dragIndex?.let { i -> d.copy(points = d.points.mapIndexed { j, q -> if (j == i) x to y else q }) } ?: d
+        else -> d.grab?.let { g -> d.copy(center = x - g.first to y - g.second) } ?: d
+    }
+
+    private fun editUp(d: DrawTool): DrawTool = d.copy(before = null, grab = null, dragIndex = null)
+
+    private fun editCancel(d: DrawTool): DrawTool = when (d.type) {
+        ShapeType.BRUSH -> {
+            val a = d.before
+            val g = d.grab
+            if (a != null && g != null) {
+                val dx = a.first - g.first
+                val dy = a.second - g.second
+                d.copy(strokes = d.strokes.map { s -> s.copy(points = s.points.map { it.first + dx to it.second + dy }) },
+                    shift = d.shift.first + dx to d.shift.second + dy, before = null, grab = null)
+            } else d.copy(before = null, grab = null)
+        }
+        ShapeType.PATH -> d.dragIndex?.let { i -> d.before?.let { b -> d.copy(points = d.points.mapIndexed { j, q -> if (j == i) b else q }, dragIndex = null, before = null) } } ?: d.copy(dragIndex = null, before = null)
+        else -> d.copy(center = d.before ?: d.center, before = null, grab = null)
+    }
+
+    /** "done" of an edit: one mask_update (one history item of the first module that uses the form). */
+    private suspend fun finishEdit(d: DrawTool) {
+        val id = d.editing ?: return
+        val f = _state.value.forms.firstOrNull { it.id == id }
+        if (f == null) { cancelDraw(); return }
+        var ok = false
+        try {
+            c.engineChange { e ->
+                e.maskUpdate(id, editGeometry(e, d, f))
+                e.historySeal()
+                ok = true
+            }
+        } catch (x: EngineException) {
+            _state.update { it.copy(note = x.detail) }
+        }
+        if (!ok) {
+            if (c.state.value.message == null && _state.value.note == null) _state.update { it.copy(note = "the shape could not be changed") }
+            return
+        }
+        _state.update { it.copy(draw = null) }
+        c.setView(BottomView.MASKS)
+        selectShape(id)
+    }
+
+    /** The whole new geometry (the engine's update replaces it): the form's own settings kept, what the tool moved changed. */
+    private suspend fun editGeometry(e: DarktableEngine, d: DrawTool, f: MaskShape): JsonObject {
+        val base = f.geometry
+        val outside = EngineException(EngineError.ARG, "a point of the shape lies outside the picture")
+        val pts = (base["points"] as? JsonArray)?.map { it as? JsonObject ?: JsonObject(emptyMap()) } ?: emptyList()
+        return when (d.type) {
+            ShapeType.PATH -> {
+                val now = e.coordsTransform(CoordsDirection.TO_ORIGINAL, d.points).points.map { it ?: throw outside }
+                JsonObject(base + ("points" to JsonArray(pts.mapIndexed { i, o ->
+                    val old = o.pair("corner")
+                    val n = now.getOrNull(i)
+                    if (old == null || n == null) o else o.moved(n.first - old.first, n.second - old.second)
+                })))
+            }
+            ShapeType.BRUSH -> {
+                val corners = pts.map { it.pair("corner") ?: throw outside }
+                val there = e.coordsTransform(CoordsDirection.TO_PROCESSED, corners).points.map { it ?: throw outside }
+                val moved = there.map { it.first + d.shift.first to it.second + d.shift.second }
+                val now = e.coordsTransform(CoordsDirection.TO_ORIGINAL, moved).points.map { it ?: throw outside }
+                JsonObject(base + ("points" to JsonArray(pts.mapIndexed { i, o -> o.moved(now[i].first - corners[i].first, now[i].second - corners[i].second) })))
+            }
+            else -> JsonObject(base + geometries(e, d).first())
+        }
+    }
+
+    private fun lengthScale(res: app.dtandroid.engine.api.CoordsResult, o0: Pair<Double, Double>, o1: Pair<Double, Double>): Double {
+        val pw = res.processedWidth.toDouble()
+        val ph = res.processedHeight.toDouble()
+        val ow = res.originalWidth.toDouble()
+        val oh = res.originalHeight.toDouble()
+        if (pw <= 0 || ow <= 0) return 1.0
+        return ((hypot((o1.first - o0.first) * ow, (o1.second - o0.second) * oh) / (PROBE * pw)) * min(pw, ph) / min(ow, oh)).takeIf { it > 0.0 } ?: 1.0
     }
 
     /** The tool's shape as engine geometry (engine-api.md 6.7), mapped to the original image. */
@@ -699,6 +901,7 @@ class Masks internal constructor(private val c: DarkroomController) {
         private const val RING = 48
         private const val PROBE = 0.01
         private const val DOT = 0.0005
+        private const val EDIT_GRAB = 0.08
 
         /** the tab's combine modes and the group operators they set (engine-api.md 6.7) */
         val COMBINE = listOf("union" to "maximum", "intersection" to "minimum", "difference" to "difference", "exclusion" to "exclusion")
@@ -755,7 +958,12 @@ class Masks internal constructor(private val c: DarkroomController) {
         fun existingOffers(forms: List<MaskShape>, module: ModuleMask): List<MaskShape> =
             forms.filter { f -> f.id != module.rootId && (!f.isGroup || module.rootId == null || !makesCycle(forms, f.id, module.rootId)) }
 
-        fun shapeLabel(f: MaskShape) = f.name.ifBlank { "${f.type} #${f.id}" }
+        fun shapeLabel(f: MaskShape) = f.name.ifBlank {
+            if (f.type == "parametric") "parametric ${(f.geometry["channel"] as? JsonPrimitive)?.content ?: ""}".trim() else "${f.type} #${f.id}"
+        }
+
+        /** P3d 2c: the group new shapes go into: the chosen one while it is a group of the photo, else the module's own group. */
+        fun target(ms: MasksState): Int? = ms.group?.takeIf { g -> ms.forms.any { it.id == g && it.isGroup } } ?: ms.module?.rootId
 
         /**
          * P3d 2a: a group's operators as the tab lists them (engine-api.md 6.9): the plain names first, then the soft
@@ -793,6 +1001,13 @@ class Masks internal constructor(private val c: DarkroomController) {
             return out
         }
     }
+}
+
+/** A path or brush point with corner and control points shifted. */
+private fun JsonObject.moved(dx: Double, dy: Double): JsonObject {
+    val m = toMutableMap()
+    for (k in listOf("corner", "ctrl1", "ctrl2")) pair(k)?.let { p -> m[k] = JsonArray(listOf(JsonPrimitive(p.first + dx), JsonPrimitive(p.second + dy))) }
+    return JsonObject(m)
 }
 
 private fun JsonObject.bool(k: String) = (this[k] as? JsonPrimitive)?.booleanOrNull ?: false
