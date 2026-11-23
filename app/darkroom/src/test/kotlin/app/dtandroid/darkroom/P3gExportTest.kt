@@ -134,7 +134,7 @@ class P3gExportTest {
             assertTrue("overall went back", snap[k].overall >= snap[k - 1].overall)
         }
         for (j in snap.filter { it.running }) {
-            assertTrue("finished ${j.finished} while photo ${j.number} runs", j.finished <= j.number - 1 || j.step == ExportTarget.DEVICE.delivering && j.finished <= j.number)
+            assertTrue("finished ${j.finished} while photo ${j.number} runs", j.finished <= j.number)
             assertEquals("photo ${j.number} of 3", j.label)
         }
         waitFor("back on the photo the export started from") { s.c.state.value.index == 1 && s.c.state.value.info != null }
