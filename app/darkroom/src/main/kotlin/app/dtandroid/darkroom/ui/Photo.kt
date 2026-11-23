@@ -3,6 +3,12 @@ package app.dtandroid.darkroom.ui
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
+import app.dtandroid.ui.icons.DtIconImage
+import app.dtandroid.ui.icons.DtIcon
+import androidx.compose.ui.draw.rotate as rotateModifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,6 +99,8 @@ private class Converted(val layer: PhotoLayer, val bitmap: ImageBitmap)
 private fun rememberLayer(layer: PhotoLayer?): Converted? = remember(layer) { layer?.let { Converted(it, it.image.toImageBitmap()) } }
 
 private const val MAX_ZOOM_OVER_100 = 4f
+/** brief P3h: the handle's drawing is for a vertical divider; turned for a horizontal one */
+private const val SPLIT_HANDLE_HORIZONTAL_DEGREES = 90f
 private const val TWO_FINGER_TAP_MS = 300L
 private const val TAP_ZOOM_TOLERANCE = 0.05f
 
@@ -498,15 +506,12 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         )
                     }
                 }
+                // the line: light over a dark edge (the handle is the ui-icons splitHandle, drawn over the canvas)
                 val lw = splitLineWidth.toPx()
-                val a = if (split.vertical) Offset(cut, 0f) else Offset(0f, cut)
-                val b = if (split.vertical) Offset(cut, h) else Offset(w, cut)
-                drawLine(splitShadow, a, b, lw * 3)
-                drawLine(splitLine, a, b, lw)
-                val centre = if (split.vertical) Offset(cut, h / 2) else Offset(w / 2, cut)
-                val rh = splitHandle.toPx() / 2
-                drawCircle(splitShadow, rh + lw, centre)
-                drawCircle(splitLine, rh, centre, style = Stroke(lw))
+                for ((col, t) in listOf(splitShadow to lw * 3, splitLine to lw)) {
+                    if (split.vertical) drawRect(col, Offset(cut - t / 2, 0f), Size(t, h))
+                    else drawRect(col, Offset(0f, cut - t / 2), Size(w, t))
+                }
             }
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
             // brief P3c: the armed picker's area or point
@@ -519,6 +524,21 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
         val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
         note?.let { WorkingNote(it, if (s.working != null) s.workingProgress else null, Modifier.align(Alignment.BottomStart)) }
+        // brief P3h: the divider's handle (centred on the line; the touch target is the line's whole length)
+        if (split != null && size.width > 0) {
+            val hp = with(androidx.compose.ui.platform.LocalDensity.current) { splitHandle.roundToPx() }
+            val cut = if (split.vertical) split.position * size.width else split.position * size.height
+            val hx = if (split.vertical) cut - hp / 2f else size.width / 2f - hp / 2f
+            val hy = if (split.vertical) size.height / 2f - hp / 2f else cut - hp / 2f
+            Box(
+                Modifier.align(Alignment.TopStart).offset { IntOffset(hx.roundToInt(), hy.roundToInt()) }
+                    .size(splitHandle).clip(CircleShape).background(splitShadow).border(splitLineWidth, splitLine, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                DtIconImage(DtIcon.SplitHandle, null, splitLine, splitHandle,
+                    if (split.vertical) Modifier else Modifier.rotateModifier(SPLIT_HANDLE_HORIZONTAL_DEGREES))
+            }
+        }
         // brief P3h: which side is which (mockup B3-Snapshots: the snapshot's name and "current" in the corners)
         if (split != null && splitSnap != null && note == null) {
             val snapAt = when {
