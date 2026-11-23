@@ -359,8 +359,8 @@ class Exports internal constructor(private val c: DarkroomController) {
         val ready = arrayOfNulls<SeriesItem>(items.size)
         for ((k, item) in items.withIndex()) {
             if (cancelled) break
-            _job.update { it?.copy(number = k + 1, fileName = item.fileName, step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
             if (!c.needsFetch(item)) { ready[k] = item; continue }
+            _job.update { it?.copy(number = k + 1, fileName = item.fileName, step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
             try {
                 ready[k] = c.fetchForExport(item) { text, _ -> _job.update { j -> if (j == null || cancelled) j else j.copy(step = text) } }
             } catch (e: PhotoSourceException) {
