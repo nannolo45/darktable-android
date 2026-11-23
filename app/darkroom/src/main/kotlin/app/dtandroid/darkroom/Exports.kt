@@ -46,7 +46,7 @@ data class ExportSettings(
     val scope: ExportScope = ExportScope.PHOTO,
     val target: ExportTarget = ExportTarget.DEVICE,
     val format: ExportFormat = ExportFormat.JPEG,
-    val quality: Int = 95,
+    val quality: Int = QUALITY_DEFAULT,
     val bitDepth: Int = 8,
     val size: ExportSize = ExportSize.ORIGINAL,
     val highQuality: Boolean = false,
@@ -65,11 +65,17 @@ data class ExportSettings(
         upscale = false, highQuality = highQuality, profile = profile,
     )
 
+    /** brief P3i: quality as desktop's slider, 5..100 (whole numbers) */
+    fun withQuality(q: Int) = copy(quality = q.coerceIn(QUALITY_MIN, QUALITY_MAX))
+
     /** another format: the bit depth falls back to 8 where the format cannot hold it */
     fun withFormat(f: ExportFormat) = copy(format = f, bitDepth = if (bitDepth in bitDepths(f)) bitDepth else 8)
 
     companion object {
-        val QUALITIES = listOf(100, 95, 90, 85, 80, 70, 60, 50)
+        const val QUALITY_MIN = 5
+        const val QUALITY_MAX = 100
+        /** darktable's default (manual: export, JPEG quality) */
+        const val QUALITY_DEFAULT = 95
         fun bitDepths(f: ExportFormat): List<Int> = when (f) {
             ExportFormat.JPEG, ExportFormat.WEBP -> listOf(8)
             ExportFormat.PNG -> listOf(8, 16)

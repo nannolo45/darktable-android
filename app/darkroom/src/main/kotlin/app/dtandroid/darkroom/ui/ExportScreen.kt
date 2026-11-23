@@ -38,7 +38,10 @@ import app.dtandroid.darkroom.ExportTarget
 import app.dtandroid.darkroom.Overlay
 import app.dtandroid.engine.api.ExportFormat
 import app.dtandroid.engine.api.ExportProfile
+import app.dtandroid.schema.Binding
+import app.dtandroid.schema.Control
 import app.dtandroid.ui.icons.DtIcon
+import kotlin.math.roundToInt
 import app.dtandroid.ui.theme.DtTheme
 
 /*
@@ -109,10 +112,7 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
                     if (depths.size > 1) ListControl("bit depth", "${set.bitDepth} bit", !running) {
                         list = ExportList("bit depth", depths.map { "$it bit" }, depths.indexOf(set.bitDepth)) { i -> ex.set { it.copy(bitDepth = depths[i]) } }
                     }
-                    val qs = ExportSettings.QUALITIES
-                    if (set.lossy) ListControl("quality", "${set.quality} %", !running) {
-                        list = ExportList("quality", qs.map { "$it %" }, qs.indexOf(set.quality)) { i -> ex.set { it.copy(quality = qs[i]) } }
-                    }
+                    if (set.lossy) QualitySlider(set.quality, !running) { q -> ex.set { it.withQuality(q) } }
                 }
                 PanelHeading("global options")
                 Column(Modifier.padding(horizontal = DtTheme.space.panel)) {
@@ -146,6 +146,24 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
             for ((i, e) in l.entries.withIndex()) SheetItem(e, enabled = true, selected = i == l.chosen) { l.choose(i); list = null }
         }
     }
+}
+
+private val qualitySlider = Control.Slider(
+    id = -2, label = "quality", tooltip = null, hiddenByDefault = false, binding = Binding.None,
+    softMin = ExportSettings.QUALITY_MIN.toDouble(), softMax = ExportSettings.QUALITY_MAX.toDouble(),
+    hardMin = ExportSettings.QUALITY_MIN.toDouble(), hardMax = ExportSettings.QUALITY_MAX.toDouble(),
+    default = ExportSettings.QUALITY_DEFAULT.toDouble(), step = 1.0, digits = 0, factor = 1.0, offset = 0.0,
+    format = " %", textDefault = null, integer = true,
+)
+
+/** Brief P3i: JPEG and WebP quality as the other sliders: one value per lifted finger, a double tap on the bar resets to 95. */
+@Composable
+private fun QualitySlider(quality: Int, enabled: Boolean, onSet: (Int) -> Unit) {
+    var moving by remember { mutableStateOf<Double?>(null) }
+    SliderControl("quality", qualitySlider, moving ?: quality.toDouble(), enabled,
+        onDrag = { moving = it },
+        onDragEnd = { moving?.let { onSet(it.roundToInt()) }; moving = null },
+        onReset = { onSet(ExportSettings.QUALITY_DEFAULT) }, onExact = {})
 }
 
 /** The bar with the percent and the step; for a series the overall bar ("photo n of N") and the photo's own. */

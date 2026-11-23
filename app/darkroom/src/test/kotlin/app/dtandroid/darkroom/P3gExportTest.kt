@@ -193,4 +193,17 @@ class P3gExportTest {
         assertEquals("export 5/12 · 38 %", j.short)
         assertEquals("5/12 · 38 %", j.compact)
     }
+
+    /** brief P3i: quality is a slider 5..100 (desktop), darktable's default 95, kept in range */
+    @Test fun qualityIsASliderFrom5To100WithDefault95() {
+        val d = ExportSettings()
+        assertEquals(95, ExportSettings.QUALITY_DEFAULT)
+        assertEquals(95, d.quality)
+        assertEquals(5, d.withQuality(5).quality)
+        assertEquals(100, d.withQuality(100).quality)
+        assertEquals(5, d.withQuality(-3).quality)
+        assertEquals(100, d.withQuality(250).quality)
+        assertEquals(37, d.withQuality(37).options().quality)
+        assertEquals(95, d.withQuality(12).withQuality(ExportSettings.QUALITY_DEFAULT).quality)
+    }
 }
