@@ -260,6 +260,8 @@ private fun TabletLayout(controller: DarkroomController, s: DarkroomState, live:
                     }
                     if (masksShown) MasksTab(controller, s, ms, Modifier.weight(1f))
                     else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        SnapshotsSection(controller, s) // brief P3h: above the history, as desktop's left panel
+                        PanelHeading("history")
                         HistoryRows(controller, s)
                         HistoryActions(controller, s, withUndo = false)
                         PanelHeading("image information")

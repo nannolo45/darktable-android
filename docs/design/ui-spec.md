@@ -233,3 +233,32 @@ export button. A screen over the darkroom: back, title "export", the photo's nam
   left during a series, it stops after the photo under way ("stopped: the darkroom was left"). In the background
   (app not visible) nothing stops it while Android keeps the process, but there is no foreground service yet
   (later package): Android may stop the process and with it the export.
+
+## 14. Snapshots and the split view (brief P3h)
+
+Mockup `B3-Snapshots`; darktable's snapshots module (manual: utility modules › darkroom › snapshots;
+`src/libs/snapshots.c`) is the reference.
+
+- **Where:** a "snapshots" section above the history, as desktop's left panel has it: the phone's history tab
+  (darktable and modern skins), the tablet's left panel, and l1's `more` tool (which shows the same history view).
+- **take snapshot:** keeps the current history end; the open history item is closed first, so that a further
+  change of the same control becomes a new item and the snapshot keeps its picture. Named as on desktop by the
+  history item at that end with its instance name ("original" at 0), after the position number ("4 · exposure").
+  At most 10, as desktop's `MAX_SNAPSHOT` (the button is off when all are used). Memory only, for the open photo:
+  another photo starts with none (desktop keeps them for the session, also across images: not done here).
+- **list:** one 44 px row per snapshot; a tap shows it in the split view, a second tap on the shown one ends the
+  split (desktop); the close icon on the right deletes it (desktop has one reset for all).
+- **split view:** the snapshot on one side of a divider, the live edit on the other, both at the same zoom and pan;
+  the divider is a light line over a dark edge (`color.splitLine`, `color.splitShadow`, `size.splitLine`) with a
+  round handle (`size.splitHandle`); a finger within half a touch target (`size.touch`, 44 px) of the line drags
+  it (4 % to 96 % of the view). Labels in the corners: "snapshot · <name>" and "current". Under the list while a
+  snapshot is shown: "divider: vertical / horizontal" (desktop's rotate icon on the line) and "switch sides"
+  (desktop: the side-by-side mode's rotation; the overlay's sides are switched here).
+- **editing:** changes go to the live side; the snapshot's picture is rendered once (preview, and the sharp region
+  when zoomed in) as a history position (engine-api.md 8) and does not change. A change made after a tap on an
+  older history item discards the items above it, and with them the snapshots above it; a compress removes all
+  snapshots (their positions mean something else); undo and redo keep a snapshot while the items up to its position
+  are the same.
+- **l1:** the compare button opens the split with the newest snapshot (and closes it again); without snapshots it
+  is "before" as until now.
+- **before:** rendered with the same engine option at position 0; no history_goto.

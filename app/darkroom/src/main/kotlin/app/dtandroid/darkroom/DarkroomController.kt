@@ -431,7 +431,7 @@ class DarkroomController(
         runCatching { engine.close() }
         fetching = fetch
         _state.update {
-            it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false,
+            it.copy(index = index, loading = true, preview = null, region = null, beforePreview = null, before = false, snapshots = SnapshotsState(),
                 expanded = null, overlay = null, message = null, readOnlyReason = null, info = null, syncStep = null, syncProgress = null, lastEdit = null,
                 cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
         }
@@ -489,7 +489,7 @@ class DarkroomController(
             saveLocked()
             runCatching { engine.close() }
             _state.update {
-                it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, modules = emptyList(),
+                it.copy(info = null, preview = null, region = null, beforePreview = null, before = false, snapshots = SnapshotsState(), modules = emptyList(),
                     expanded = null, overlay = null, readOnlyReason = null, loading = false, placeholder = null, working = null, workingProgress = null,
                     cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
             }
@@ -714,6 +714,9 @@ class DarkroomController(
     /** Brief P3c deliverable 5: the last answer of each action list, with the photo and parameters it was read for. */
     private val listCache = HashMap<Pair<InstanceKey, Int>, Pair<String, kotlinx.serialization.json.JsonElement>>()
 
+    /** brief P3h: the change being made is a history compress (every snapshot position then means something else) */
+    @Volatile private var compressing = false
+
     private suspend fun refreshLocked() {
         val modules = engine.modules()
         val history = engine.history()
@@ -746,12 +749,16 @@ class DarkroomController(
         }
         val info = engine.imageInfo()
         livePatched.clear()
+        val compressedNow = compressing
+        compressing = false
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
             // brief P3d: "show mask" ends when its instance is gone, off, or has no drawn or parametric mask any more
             val shown = s.showMask?.takeIf { k -> modules.any { it.key == k && it.enabled } && Masks.displayable(maskModes[k]) }
+            // brief P3h: a snapshot is a history position: it goes when the history below it changed
+            val snaps = SnapshotRules.prune(s.snapshots, s.history, history, compressedNow)
             s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists,
-                maskModes = maskModes, showMask = shown)
+                maskModes = maskModes, showMask = shown, snapshots = snaps)
         }
     }
 
@@ -759,9 +766,10 @@ class DarkroomController(
      * Run a change: cancel the render, call the engine, re-read its state, render again.
      * Engine errors become [DarkroomState.message].
      */
-    private suspend fun change(block: suspend () -> Unit) {
+    private suspend fun change(compress: Boolean = false, block: suspend () -> Unit) {
         cancelRenders()
         fg {
+            compressing = compress
             val before = _state.value.modules
             try {
                 // the "before" picture is kept for the session (engine-api.md, clarifications after P2a)
@@ -1618,7 +1626,7 @@ class DarkroomController(
     }
 
     suspend fun historyGoto(end: Int) = change { engine.historyGoto(end) }
-    suspend fun historyCompress() = change { engine.historyCompress() }
+    suspend fun historyCompress() = change(compress = true) { engine.historyCompress() }
     // brief P3a: asked of the engine inside the change (an open crop tool's frame may have been written first)
     suspend fun undo() = change { if (engine.undoState().canUndo) engine.undo() }
     suspend fun redo() = change { if (engine.undoState().canRedo) engine.redo() }
@@ -1974,6 +1982,8 @@ class DarkroomController(
         renderJob = scope.launch {
             try {
                 renderPreview()
+                // brief P3h: the selected snapshot's picture (rendered once: edits do not change it)
+                renderSnapshotPreview()
                 // brief P2i: the full pipe only when zoomed in (read now: the user may have zoomed meanwhile)
                 if (zoomedIn(viewport)) renderRegion()
             } catch (e: CancellationException) {
@@ -1989,6 +1999,7 @@ class DarkroomController(
         if (cropWanted(_state.value) != null) { syncCropTool(); return } // brief P3a
         cancelRenders()
         renderPreview()
+        renderSnapshotPreview()
         if (zoomedIn(viewport)) renderRegion()
         if (_state.value.before) renderBefore()
     }
@@ -2102,6 +2113,8 @@ class DarkroomController(
                 _state.update { it.copy(region = layer.first, regionOfCropTool = layer.second != null) }
                 Timeline.mark("darkroom: region shown")
             }
+            // brief P3h: the selected snapshot's sharp region of the same view
+            if (layer.second == null) renderSnapshotRegion()
         } finally {
             if (regionsPending.decrementAndGet() == 0) _state.update { it.copy(regionPending = false) }
         }
@@ -2140,6 +2153,8 @@ class DarkroomController(
             if (zoomedIn(before) || _state.value.region != null) {
                 cancelRegionRender()
                 if (_state.value.region != null) _state.update { it.copy(region = null) }
+                if (_state.value.snapshots.region != null) _state.update { it.copy(snapshots = it.snapshots.copy(region = null)) }
+                snapshotRegionKey = null
                 Timeline.mark("darkroom: back at fit, region render stopped and region dropped")
             }
             val asked = lastPreviewAsk
@@ -2180,17 +2195,104 @@ class DarkroomController(
             val info = _state.value.info ?: return@fg null
             // since P1c end <= items always (unknown items of a read-only session are listed), so the
             // clamp P2b needed here is gone
-            val end = engine.history().end
-            try {
-                engine.historyGoto(0)
-                // brief P2i: at the preview's size, so "before" and "after" look alike on screen
-                val img = engine.renderPreview(previewSize())
-                PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
-            } finally {
-                engine.historyGoto(end)
-            }
+            // brief P3h: position 0 rendered without moving the history end (engine-api.md 8): no goto and back
+            // brief P2i: at the preview's size, so "before" and "after" look alike on screen
+            val img = engine.renderPreview(previewSize(), RenderOptions.at(0))
+            PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
         } ?: return
         _state.update { it.copy(beforePreview = layer) }
+    }
+
+    // ------------------------------------------------------------------ snapshots (brief P3h)
+    //
+    // As darktable's snapshots module (src/libs/snapshots.c): "take snapshot" keeps the current history end, a
+    // tap on a snapshot shows it on one side of a movable divider and the live edit on the other, a second tap
+    // ends the split. The engine renders a snapshot as a history position without moving the history end
+    // (RenderOptions.historyEnd, engine-api.md 8), so a snapshot's picture stays as it is while the edit goes on.
+
+    /** what the snapshot's sharp region was rendered for (snapshot id, region); null: none */
+    @Volatile private var snapshotRegionKey: Pair<Int, Region>? = null
+
+    /** "take snapshot": the history end now; the next change starts a new history item, so the snapshot keeps it */
+    suspend fun takeSnapshot() {
+        cancelRenders()
+        fg {
+            if (_state.value.info == null) return@fg
+            // a later change of the same control would otherwise merge into the item the snapshot shows
+            if (!_state.value.readOnly) runCatching { engine.historySeal() }
+            val h = engine.history()
+            val next = SnapshotRules.take(_state.value.snapshots, h, _state.value.modules)
+            if (next == null) _state.update { it.copy(message = "all ${SnapshotRules.MAX} snapshot slots are in use") }
+            else _state.update { it.copy(history = h, snapshots = next, before = false) }
+            snapshotRegionKey = null
+        }
+        requestRender()
+    }
+
+    fun selectSnapshot(id: Int) {
+        _state.update { it.copy(snapshots = SnapshotRules.select(it.snapshots, id), before = false) }
+        snapshotRegionKey = null
+        if (_state.value.snapshots.selected != null) requestRender()
+    }
+
+    fun deleteSnapshot(id: Int) {
+        _state.update { it.copy(snapshots = SnapshotRules.delete(it.snapshots, id)) }
+    }
+
+    /** l1's compare button: the split with the newest snapshot (or off again); without snapshots, "before" */
+    suspend fun compare() {
+        if (_state.value.snapshots.list.isEmpty()) { setBefore(!_state.value.before); return }
+        _state.update { it.copy(snapshots = SnapshotRules.toggleLast(it.snapshots), before = false) }
+        snapshotRegionKey = null
+        if (_state.value.snapshots.selected != null) requestRender()
+    }
+
+    fun moveSplit(position: Float) = _state.update { it.copy(snapshots = SnapshotRules.moveDivider(it.snapshots, position)) }
+    fun rotateSplit() = _state.update { it.copy(snapshots = SnapshotRules.rotate(it.snapshots)) }
+    fun switchSplitSides() = _state.update { it.copy(snapshots = SnapshotRules.switchSides(it.snapshots)) }
+
+    /** the selected snapshot's preview, at the live preview's size; once per snapshot and size */
+    private suspend fun renderSnapshotPreview() {
+        val snap = _state.value.snapshots.selectedSnapshot ?: return
+        val size = previewSize()
+        if (_state.value.snapshots.previewKey == (snap.id to size) && _state.value.snapshots.preview != null) return
+        val layer = fg {
+            val info = _state.value.info ?: return@fg null
+            if (_state.value.snapshots.selected != snap.id) return@fg null
+            val img = wanted({ _state.value.snapshots.selected == snap.id }) { engine.renderPreview(size, RenderOptions.at(snap.historyEnd)) }
+            PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
+        } ?: return
+        _state.update { s ->
+            if (s.snapshots.selected != snap.id) s
+            else s.copy(snapshots = s.snapshots.copy(preview = layer, previewKey = snap.id to size))
+        }
+        Timeline.mark("darkroom: snapshot ${snap.id} preview shown")
+    }
+
+    /** zoomed in: the selected snapshot's region of the same view (the live side's region, at the same scale) */
+    private suspend fun renderSnapshotRegion() {
+        val snap = _state.value.snapshots.selectedSnapshot ?: return
+        val vp = viewport?.takeIf { zoomedIn(it) } ?: return
+        val info = _state.value.info ?: return
+        if (_state.value.cropTool != null) return
+        val r = regionFor(vp, info.width, info.height) ?: return
+        if (snapshotRegionKey == (snap.id to r) && _state.value.snapshots.region != null) return
+        val opts = RenderOptions.at(snap.historyEnd)
+        val layer = fg {
+            wanted({ zoomedIn(viewport) && _state.value.snapshots.selected == snap.id }) {
+                val size = engine.renderSize(r.scale, opts)
+                val x = r.x.coerceIn(0, size.w - 1)
+                val y = r.y.coerceIn(0, size.h - 1)
+                val w = min(r.w, size.w - x)
+                val h = min(r.h, size.h - y)
+                if (w <= 0 || h <= 0) return@wanted null
+                PhotoLayer(engine.renderRegion(x, y, w, h, r.scale, opts), x, y, r.scale)
+            }
+        } ?: return
+        if (!zoomedIn(viewport) || _state.value.snapshots.selected != snap.id) return
+        snapshotRegionKey = snap.id to r
+        _state.update { it.copy(snapshots = it.snapshots.copy(region = layer)) }
+        Timeline.mark("darkroom: snapshot ${snap.id} region shown")
     }
 
     // ------------------------------------------------------------------ output and maintenance (brief P2b)

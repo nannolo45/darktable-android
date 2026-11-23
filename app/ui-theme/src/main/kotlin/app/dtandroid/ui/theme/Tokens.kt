@@ -58,6 +58,9 @@ class DtColors(t: TokenSource) {
     /** brief P3d, masks on the photo: a shape's outline (light over a dark edge); the fill is `maskOverlay` */
     val maskLine = t.color("color.maskLine")
     val maskShadow = t.color("color.maskShadow")
+    /** brief P3h, snapshot split view: the divider line and its round handle (light over a dark edge) */
+    val splitLine = t.color("color.splitLine")
+    val splitShadow = t.color("color.splitShadow")
     /** brief PUI2a: the accent and where it is used; the darktable skin sets each to today's colour of that use */
     val accent = t.color("color.accent")
     val accentPower = t.color("color.accentPower")
@@ -136,6 +139,9 @@ class DtSizes(t: TokenSource) {
     val pickerLine = t.dp("size.pickerLine")
     val pickerHandle = t.dp("size.pickerHandle")
     val pickerPoint = t.dp("size.pickerPoint")
+    /** brief P3h: the split view's divider line and its drawn handle (the touch target is `touch`) */
+    val splitLine = t.dp("size.splitLine")
+    val splitHandle = t.dp("size.splitHandle")
     /** brief P3d: a shape's outline on the photo, its point handles, the mask indicator in a module header, an add-shape button */
     val maskLine = t.dp("size.maskLine")
     val maskHandle = t.dp("size.maskHandle")

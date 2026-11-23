@@ -70,8 +70,10 @@ internal fun L1TopBar(controller: DarkroomController, s: DarkroomState, fade: Fl
         Spacer(Modifier.weight(1f))
         DtIconButton(DtIcon.Undo, "undo", c.textBright, enabled = s.undo.canUndo, onClick = { controller.launch { undo() } })
         // the existing before/after
-        DtIconButton(DtIcon.Compare, "compare", if (s.before) c.accent else c.textBright, onClick = { controller.launch { setBefore(!s.before) } },
-            keepTint = true, modifier = Modifier.semantics { stateDescription = if (s.before) "on" else "off" })
+        // brief P3h: with snapshots taken, the split view with the newest one; without, "before" as until now
+        val comparing = s.before || s.snapshots.selected != null
+        DtIconButton(DtIcon.Compare, "compare", if (comparing) c.accent else c.textBright, onClick = { controller.launch { compare() } },
+            keepTint = true, modifier = Modifier.semantics { stateDescription = if (comparing) "on" else "off" })
         app.dtandroid.darkroom.ui.ExportIndicator(controller, s, compact = true) // brief P3g
         // brief P3g: the export button opens the darkroom's export screen (the host's own export action, if any, stays in "more")
         DtIconButton(DtIcon.Export, export?.label ?: "export…", c.textBright, enabled = s.info != null, onClick = { controller.exports.open() })

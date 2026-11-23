@@ -110,7 +110,7 @@ For the C bridge, on Linux in CI, against `darktable-cli` of the same build (see
 For `FakeEngine`: the same Kotlin test suite that later runs against the JNI implementation on the emulator, minus pixel parity.
 
 ## Clarifications after P2a (19 Nov 2026)
-- **"before" view.** There is no call that renders another history position without moving the history end. The app shows "before" by `history_goto(0)`, `render_preview`, `history_goto(end)` under one lock, and keeps that picture for the session, because the state at position 0 does not change while a photo is open. A call that renders a history position or a snapshot without touching the session belongs to the extended part (snapshots, section 3).
+- **"before" view.** There is no call that renders another history position without moving the history end. The app shows "before" by `history_goto(0)`, `render_preview`, `history_goto(end)` under one lock, and keeps that picture for the session, because the state at position 0 does not change while a photo is open. A call that renders a history position or a snapshot without touching the session belongs to the extended part (snapshots, section 3). *P3h: that call is the render option `history_end` (section 8); "before" uses it.*
 - **`color_labels`** in `image_info()` is a list of darktable's label numbers (0 red, 1 yellow, 2 green, 3 blue, 4 purple).
 - **`modules()` size.** Array parameters make the full list large. If re-reading it after every change is too slow through JNI, a call returning one module instance may be added; measure first.
 
@@ -626,3 +626,31 @@ first, middle and last module, while writing, and over an older file, from the c
 thread at 30 % and 60 % of the export's time; each leaves no file and no temporary file; an idle cancel does not
 affect the next export; the export after the cancels equals the first byte for byte, `export` equals `export_ex`,
 and the first export is compared with `darktable-cli` (run_tests.sh, as X1).
+
+## 8. P3h: render a history position (snapshots, "before") (23 Nov 2026)
+
+The clarification after P2a ("before" view) named a missing call: one that renders another history position
+without touching the session. It is a render option, so preview, region and size all have it with the options they
+already take (6.1: `bypass`, `show_mask`).
+
+| C | Kotlin | Meaning |
+|---|---|---|
+| `"history_end": n` in `options_json` of `dtb_render_preview_ex`, `dtb_render_region_ex`, `dtb_render_size_ex` | `RenderOptions(historyEnd = n)`, `RenderOptions.at(n)` | The picture (and size) of the state after the first `n` history items, 0 <= n <= the number of items `history()` lists, as `history_goto(n)`, the same render, `history_goto(back)` give it. The session does not move: no library write, no XMP change, `history()` and its end, `undo_state()` and the open history item (and an open group) stay as they were; the next change still merges into the open item. `null` or absent: the session's own end. ARG: n outside 0..items; TYPE: not an integer. Cancel-safe as every render (`dtb_render_cancel`): a cancelled render returns CANCELLED and leaves the session as it was. |
+
+How (render.c, `dtb__history_at_begin` / `_end`): for that one call the develop object's module state is moved to
+position `n` in memory with `dt_dev_pop_history_items_ext()` (the function the reload after `history_goto` ends
+with) and back afterwards; the pipes are rebuilt (`DT_DEV_PIPE_REMOVE`, as after a reload). The session's shape
+list (`dev->forms`) is kept: the position's shapes go into a copy, so that pointers into the session's list stay
+valid. Unlike `history_goto`, nothing is written to the library and the develop object is not reloaded.
+In a read-only session `n` counts the rows `history()` lists (unknown items included), as `history_goto` does.
+
+Pickers, histogram and coordinates do not take `history_end` (their options are 6.1's; the member is ignored there).
+
+Tests: C28 (`engine/tests/dtb_test_p3h.c`): for positions 0, 1, n/2, n-2, n-1 and n of a history with a new
+instance and a drawn mask, preview, size and a region equal `history_goto` + render + `history_goto` back pixel for
+pixel; `history()`, `undo_state()` and the live render are unchanged, and the open item is still open; positions
+out of range and a string are refused; a full-size render cancelled from another thread returns CANCELLED and
+leaves everything as it was. Kotlin contract test `aRenderOfAHistoryPositionEqualsGotoAndBack` (stand-in engine on
+the JVM, real engine on the emulator).
+
+The app's "before" view uses it (`RenderOptions.at(0)`), no longer `history_goto(0)` + render + `history_goto(end)`.

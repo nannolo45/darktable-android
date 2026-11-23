@@ -804,28 +804,48 @@ class FakeEngine(
         }.toSet()
     }
 
+    /**
+     * Brief P3h (engine-api.md 8): [block] sees the history end [RenderOptions.historyEnd] and the end goes back
+     * afterwards, also after a failure or a cancel; nothing else of the session changes (the open group stays open).
+     */
+    private inline fun <T> Session.atEnd(options: RenderOptions, block: () -> T): T {
+        val e = options.historyEnd ?: return block()
+        if (e !in 0..items.size) fail(EngineError.ARG, "history_end $e outside 0..${items.size}")
+        val saved = end
+        end = e
+        try {
+            return block()
+        } finally {
+            end = saved
+        }
+    }
+
     override suspend fun renderSize(scale: Double): RenderSize = renderSize(scale, RenderOptions.NONE)
 
     override suspend fun renderSize(scale: Double, options: RenderOptions): RenderSize = onEngine {
         val s = requireSession()
-        val bypass = s.bypassOf(options)
-        if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
-        val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s, bypass), scale)
-        RenderSize.fromJson(RenderSize(w, h).toJson())
+        s.atEnd(options) {
+            val bypass = s.bypassOf(options)
+            if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
+            val (w, h) = FakeRenderer(s.variant).processedSize(orientation(s, bypass), scale)
+            RenderSize.fromJson(RenderSize(w, h).toJson())
+        }
     }
 
     override suspend fun renderPreview(maxSize: Int): RenderedImage = renderPreview(maxSize, RenderOptions.NONE)
 
     override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
-        val bypass = s.bypassOf(options)
-        if (maxSize < 16) fail(EngineError.ARG, "max_size $maxSize")
-        val r = FakeRenderer(s.variant)
-        val o = orientation(s, bypass)
-        val (fw, fh) = r.processedSize(o, 1.0)
-        val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
-        val (w, h) = r.processedSize(o, scale)
-        render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass).let { if (options.showMask != null) grey(it) else it }
+        s.atEnd(options) {
+            val bypass = s.bypassOf(options)
+            if (maxSize < 16) fail(EngineError.ARG, "max_size $maxSize")
+            val r = FakeRenderer(s.variant)
+            val o = orientation(s, bypass)
+            val (fw, fh) = r.processedSize(o, 1.0)
+            val scale = min(1.0, maxSize.toDouble() / max(fw, fh))
+            val (w, h) = r.processedSize(o, scale)
+            render(s, r, 0, 0, w, h, scale, o, timing.previewFixedMs, "preview", bypass).let { if (options.showMask != null) grey(it) else it }
+        }
     }
 
     /** the stand-in's "show mask": the picture in grey (no mask drawn) */
@@ -843,15 +863,17 @@ class FakeEngine(
 
     override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
-        val bypass = s.bypassOf(options)
-        if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
-        val r = FakeRenderer(s.variant)
-        val o = orientation(s, bypass)
-        val (fw, fh) = r.processedSize(o, scale)
-        if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
-            fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
-        if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
-        render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass).let { if (options.showMask != null) grey(it) else it }
+        s.atEnd(options) {
+            val bypass = s.bypassOf(options)
+            if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
+            val r = FakeRenderer(s.variant)
+            val o = orientation(s, bypass)
+            val (fw, fh) = r.processedSize(o, scale)
+            if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > fw || y + h > fh)
+                fail(EngineError.ARG, "region $x,$y ${w}x$h outside ${fw}x$fh")
+            if (w.toLong() * h > 64L * 1024 * 1024) fail(EngineError.ARG, "region too large")
+            render(s, r, x, y, w, h, scale, o, timing.regionFixedMs, "full", bypass).let { if (options.showMask != null) grey(it) else it }
+        }
     }
 
     private suspend fun render(s: Session, r: FakeRenderer, x: Int, y: Int, w: Int, h: Int, scale: Double, o: Int, fixedMs: Long, pipe: String? = null,

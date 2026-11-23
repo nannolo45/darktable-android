@@ -736,6 +736,57 @@ abstract class DarktableEngineContract {
         assertEquals(engine.renderSize(0.25), engine.renderSize(0.25, RenderOptions.NONE))
     }
 
+    /**
+     * Brief P3h (engine-api.md 8): a render of another history position equals historyGoto + render + historyGoto
+     * back, and leaves the history, its end, the undo state, the XMP and the open item as they were.
+     */
+    @Test
+    fun aRenderOfAHistoryPositionEqualsGotoAndBack() = runBlocking<Unit> {
+        openSample()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.8))
+        engine.historySeal()
+        engine.setEnabled("exposure", 0, false)
+        engine.historySeal()
+        engine.setEnabled("exposure", 0, true)
+        engine.historySeal()
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(-0.4)) // left open
+        val history0 = engine.history()
+        val undo0 = engine.undoState()
+        val n = history0.items.size
+        val xmpA = File(tmp.root, "at-a.xmp")
+        engine.xmpWrite(xmpA.path)
+        val ends = (listOf(0, 1, n / 2, n - 1, n)).distinct()
+        val at = ends.associateWith { e ->
+            val o = RenderOptions.at(e)
+            val size = engine.renderSize(0.25, o)
+            Triple(engine.renderPreview(256, o), size, engine.renderRegion(0, 0, size.w, size.h, 0.25, o))
+        }
+        assertEquals(history0, engine.history())
+        assertEquals(undo0, engine.undoState())
+        val xmpB = File(tmp.root, "at-b.xmp")
+        engine.xmpWrite(xmpB.path)
+        assertTrue("the XMP is byte-equal after renders of other positions", xmpA.readBytes().contentEquals(xmpB.readBytes()))
+        // the open item is still open: a further change of the same value merges into it
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(-0.3))
+        assertEquals("the open item stayed open", n, engine.history().items.size)
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(-0.4))
+        for (e in ends) {
+            engine.historyGoto(e)
+            val size = engine.renderSize(0.25)
+            val prev = engine.renderPreview(256)
+            val region = engine.renderRegion(0, 0, size.w, size.h, 0.25)
+            engine.historyGoto(n)
+            val (p, s, r) = at.getValue(e)
+            assertEquals("size at $e", size, s)
+            assertTrue("preview at $e = goto + render + goto back", prev.rgba.contentEquals(p.rgba))
+            assertTrue("region at $e = goto + render + goto back", region.rgba.contentEquals(r.rgba))
+        }
+        assertNotEquals(meanOf(at.getValue(0).first), meanOf(at.getValue(1).first), 1e-9)
+        expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.at(n + 1)) }
+        expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.at(-1)) }
+        assertEquals(n, engine.history().end)
+    }
+
     @Test
     fun aRedoStepSurvivesBypassRenders() = runBlocking<Unit> {
         openSample()
