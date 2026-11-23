@@ -1,0 +1,702 @@
+darktable 04477d3 [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> DISABLED - GPU acceleration is NOT available
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+RESULT engine 04477d3
+     0.5491 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.5574 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.6376 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     0.6406 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     0.6414 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     0.6540 [dev_pixelpipe] took 0.013 secs (0.045 CPU) [export] processed `highlights' on CPU
+     0.6952 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     0.6973 [dev_pixelpipe] took 0.043 secs (0.164 CPU) [export] processed `demosaic' on CPU
+     0.6977 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     0.6993 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.002 secs (0.007 CPU) [colorout]
+     0.7000 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     0.7032 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.7128 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.7759 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     0.7790 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     0.7798 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     0.7924 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     0.8332 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     0.8352 [dev_pixelpipe] took 0.043 secs (0.154 CPU) [export] processed `demosaic' on CPU
+     0.8356 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     0.8371 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.8379 [dev_pixelpipe] took 0.002 secs (0.005 CPU) [export] processed `colorout' on CPU
+     0.8408 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.8505 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.9138 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     0.9167 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     0.9175 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     0.9300 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     0.9709 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.053 CPU)
+     0.9729 [dev_pixelpipe] took 0.043 secs (0.162 CPU) [export] processed `demosaic' on CPU
+     0.9734 [dev_pixelpipe] took 0.000 secs (0.003 CPU) [export] processed `colorin' on CPU
+     0.9749 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.9757 [dev_pixelpipe] took 0.002 secs (0.006 CPU) [export] processed `colorout' on CPU
+     0.9786 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost preview size 320x213
+DTB_STEP unchanged 320 0
+     0.9885 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.0524 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.0554 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     1.0563 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     1.0688 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     1.1103 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.053 CPU)
+     1.1126 [dev_pixelpipe] took 0.044 secs (0.158 CPU) [export] processed `demosaic' on CPU
+     1.1130 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.1145 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     1.1153 [dev_pixelpipe] took 0.002 secs (0.011 CPU) [export] processed `colorout' on CPU
+     1.1186 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 1
+     1.1282 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.1911 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.1939 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     1.1948 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     1.2072 [dev_pixelpipe] took 0.012 secs (0.047 CPU) [export] processed `highlights' on CPU
+     1.2482 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     1.2505 [dev_pixelpipe] took 0.043 secs (0.157 CPU) [export] processed `demosaic' on CPU
+     1.2509 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.2525 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     1.2532 [dev_pixelpipe] took 0.002 secs (0.011 CPU) [export] processed `colorout' on CPU
+     1.2561 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 2
+     1.2660 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.3294 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.3323 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     1.3332 [dev_pixelpipe] took 0.001 secs (0.003 CPU) [export] processed `temperature' on CPU
+     1.3456 [dev_pixelpipe] took 0.012 secs (0.045 CPU) [export] processed `highlights' on CPU
+     1.3887 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     1.3910 [dev_pixelpipe] took 0.045 secs (0.166 CPU) [export] processed `demosaic' on CPU
+     1.3915 [dev_pixelpipe] took 0.000 secs (0.002 CPU) [export] processed `colorin' on CPU
+     1.3930 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.3938 [dev_pixelpipe] took 0.002 secs (0.004 CPU) [export] processed `colorout' on CPU
+     1.3968 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 3
+     1.4066 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.4700 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.4730 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     1.4739 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     1.4865 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     1.5278 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     1.5302 [dev_pixelpipe] took 0.044 secs (0.159 CPU) [export] processed `demosaic' on CPU
+     1.5306 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     1.5321 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.5329 [dev_pixelpipe] took 0.002 secs (0.006 CPU) [export] processed `colorout' on CPU
+     1.5359 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 4
+     1.5456 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.6091 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.6120 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     1.6128 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     1.6254 [dev_pixelpipe] took 0.013 secs (0.051 CPU) [export] processed `highlights' on CPU
+     1.6667 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     1.6691 [dev_pixelpipe] took 0.044 secs (0.159 CPU) [export] processed `demosaic' on CPU
+     1.6695 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.6710 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.6718 [dev_pixelpipe] took 0.002 secs (0.005 CPU) [export] processed `colorout' on CPU
+     1.6747 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 5
+     1.6846 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.7484 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.7512 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     1.7520 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     1.7646 [dev_pixelpipe] took 0.013 secs (0.049 CPU) [export] processed `highlights' on CPU
+     1.8062 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     1.8084 [dev_pixelpipe] took 0.044 secs (0.164 CPU) [export] processed `demosaic' on CPU
+     1.8088 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     1.8104 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     1.8111 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     1.8141 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 6
+     1.8240 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     1.8876 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     1.8905 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     1.8914 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     1.9039 [dev_pixelpipe] took 0.013 secs (0.045 CPU) [export] processed `highlights' on CPU
+     1.9455 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     1.9478 [dev_pixelpipe] took 0.044 secs (0.167 CPU) [export] processed `demosaic' on CPU
+     1.9482 [dev_pixelpipe] took 0.000 secs (0.002 CPU) [export] processed `colorin' on CPU
+     1.9497 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     1.9505 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     1.9536 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 7
+     1.9637 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.0290 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.0320 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     2.0328 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     2.0454 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     2.0874 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     2.0897 [dev_pixelpipe] took 0.044 secs (0.163 CPU) [export] processed `demosaic' on CPU
+     2.0901 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     2.0917 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     2.0925 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.0956 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 320 8
+     2.1053 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.1687 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.1730 [dev_pixelpipe] took 0.004 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     2.1738 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     2.1864 [dev_pixelpipe] took 0.013 secs (0.049 CPU) [export] processed `highlights' on CPU
+     2.2275 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     2.2297 [dev_pixelpipe] took 0.043 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     2.2302 [dev_pixelpipe] took 0.000 secs (0.002 CPU) [export] processed `colorin' on CPU
+     2.2317 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     2.2325 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.2355 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost unchanged size 320: change 0.00 ms, preview render 139.57 ms (medians of 9; min 137.77 max 141.65)
+DTB_STEP late_drag 320 0
+     2.2466 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.3106 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.3135 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     2.3143 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     2.3274 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     2.3723 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.052 CPU)
+     2.3748 [dev_pixelpipe] took 0.047 secs (0.169 CPU) [export] processed `demosaic' on CPU
+     2.3757 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     2.3772 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     2.3779 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.3810 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 1
+     2.3913 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.4546 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.4574 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     2.4584 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     2.4714 [dev_pixelpipe] took 0.013 secs (0.045 CPU) [export] processed `highlights' on CPU
+     2.5129 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     2.5151 [dev_pixelpipe] took 0.043 secs (0.162 CPU) [export] processed `demosaic' on CPU
+     2.5163 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     2.5178 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     2.5184 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.5216 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 2
+     2.5319 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.5958 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.5987 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     2.5997 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     2.6128 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     2.6559 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.053 CPU)
+     2.6586 [dev_pixelpipe] took 0.045 secs (0.163 CPU) [export] processed `demosaic' on CPU
+     2.6595 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     2.6610 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     2.6617 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.6649 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 3
+     2.6755 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.7396 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.7426 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     2.7436 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     2.7567 [dev_pixelpipe] took 0.013 secs (0.051 CPU) [export] processed `highlights' on CPU
+     2.7993 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     2.8017 [dev_pixelpipe] took 0.044 secs (0.163 CPU) [export] processed `demosaic' on CPU
+     2.8028 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     2.8043 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     2.8049 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     2.8080 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 4
+     2.8184 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     2.8819 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.8850 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     2.8859 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     2.8989 [dev_pixelpipe] took 0.012 secs (0.043 CPU) [export] processed `highlights' on CPU
+     2.9402 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     2.9424 [dev_pixelpipe] took 0.043 secs (0.153 CPU) [export] processed `demosaic' on CPU
+     2.9436 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     2.9451 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     2.9458 [dev_pixelpipe] took 0.002 secs (0.007 CPU) [export] processed `colorout' on CPU
+     2.9488 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 5
+     2.9592 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.0230 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.0262 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     3.0271 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     3.0403 [dev_pixelpipe] took 0.012 secs (0.046 CPU) [export] processed `highlights' on CPU
+     3.0832 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.056 CPU)
+     3.0859 [dev_pixelpipe] took 0.045 secs (0.169 CPU) [export] processed `demosaic' on CPU
+     3.0868 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     3.0883 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     3.0889 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.0921 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 6
+     3.1025 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.1667 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.1697 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     3.1706 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     3.1844 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     3.2267 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.052 CPU)
+     3.2291 [dev_pixelpipe] took 0.044 secs (0.161 CPU) [export] processed `demosaic' on CPU
+     3.2304 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     3.2319 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     3.2326 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.2356 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 7
+     3.2461 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.3101 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.3129 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     3.3139 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     3.3269 [dev_pixelpipe] took 0.012 secs (0.043 CPU) [export] processed `highlights' on CPU
+     3.3714 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.017 secs (0.063 CPU)
+     3.3737 [dev_pixelpipe] took 0.046 secs (0.162 CPU) [export] processed `demosaic' on CPU
+     3.3749 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     3.3764 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     3.3770 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.3802 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 320 8
+     3.3905 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.4539 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.4570 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     3.4580 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     3.4710 [dev_pixelpipe] took 0.012 secs (0.046 CPU) [export] processed `highlights' on CPU
+     3.5126 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     3.5150 [dev_pixelpipe] took 0.043 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     3.5161 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     3.5176 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     3.5182 [dev_pixelpipe] took 0.002 secs (0.011 CPU) [export] processed `colorout' on CPU
+     3.5215 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost late_drag size 320: change 0.53 ms, preview render 142.72 ms (medians of 9; min 140.00 max 144.23)
+DTB_STEP late_sealed 320 0
+     3.5319 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.5954 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.5983 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     3.5993 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     3.6122 [dev_pixelpipe] took 0.012 secs (0.047 CPU) [export] processed `highlights' on CPU
+     3.6537 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     3.6562 [dev_pixelpipe] took 0.043 secs (0.164 CPU) [export] processed `demosaic' on CPU
+     3.6574 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     3.6589 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     3.6595 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.6627 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 1
+     3.6739 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.7378 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.7407 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     3.7417 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     3.7548 [dev_pixelpipe] took 0.013 secs (0.049 CPU) [export] processed `highlights' on CPU
+     3.8026 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.017 secs (0.064 CPU)
+     3.8046 [dev_pixelpipe] took 0.049 secs (0.173 CPU) [export] processed `demosaic' on CPU
+     3.8056 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     3.8071 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     3.8077 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.8106 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 2
+     3.8220 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     3.8855 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     3.8886 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     3.8896 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     3.9027 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     3.9444 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     3.9464 [dev_pixelpipe] took 0.043 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     3.9474 [dev_pixelpipe] took 0.000 secs (0.002 CPU) [export] processed `colorin' on CPU
+     3.9489 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     3.9495 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     3.9524 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 3
+     3.9638 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.0275 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.0304 [dev_pixelpipe] took 0.003 secs (0.004 CPU) [export] processed `rawprepare' on CPU
+     4.0313 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     4.0444 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     4.0866 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.0886 [dev_pixelpipe] took 0.044 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     4.0896 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     4.0911 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     4.0917 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.0946 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 4
+     4.1064 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.1702 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.1732 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     4.1752 [dev_pixelpipe] took 0.002 secs (0.004 CPU) [export] processed `temperature' on CPU
+     4.1883 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     4.2296 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.2315 [dev_pixelpipe] took 0.043 secs (0.158 CPU) [export] processed `demosaic' on CPU
+     4.2324 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     4.2339 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     4.2345 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.2375 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 5
+     4.2491 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.3127 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.3155 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     4.3164 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     4.3296 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     4.3743 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.017 secs (0.062 CPU)
+     4.3762 [dev_pixelpipe] took 0.046 secs (0.171 CPU) [export] processed `demosaic' on CPU
+     4.3772 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     4.3787 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     4.3794 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.3825 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 6
+     4.3943 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.4582 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.4612 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     4.4621 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     4.4751 [dev_pixelpipe] took 0.012 secs (0.045 CPU) [export] processed `highlights' on CPU
+     4.5172 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.5191 [dev_pixelpipe] took 0.043 secs (0.158 CPU) [export] processed `demosaic' on CPU
+     4.5200 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     4.5215 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     4.5221 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.5251 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 7
+     4.5372 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.6029 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.6058 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     4.6068 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     4.6198 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     4.6613 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.6633 [dev_pixelpipe] took 0.043 secs (0.163 CPU) [export] processed `demosaic' on CPU
+     4.6642 [dev_pixelpipe] took 0.000 secs (0.003 CPU) [export] processed `colorin' on CPU
+     4.6657 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     4.6663 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.6694 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_sealed 320 8
+     4.6817 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.7460 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.7489 [dev_pixelpipe] took 0.003 secs (0.005 CPU) [export] processed `rawprepare' on CPU
+     4.7499 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     4.7631 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     4.8046 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.8066 [dev_pixelpipe] took 0.043 secs (0.156 CPU) [export] processed `demosaic' on CPU
+     4.8075 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     4.8090 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.005 CPU) [colorout]
+     4.8096 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.8127 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost late_sealed size 320: change 1.24 ms, preview render 141.58 ms (medians of 9; min 140.55 max 146.86)
+DTB_STEP early_drag 320 0
+     4.8250 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     4.8899 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     4.8929 [dev_pixelpipe] took 0.003 secs (0.004 CPU) [export] processed `rawprepare' on CPU
+     4.8939 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     4.9070 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     4.9583 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     4.9603 [dev_pixelpipe] took 0.053 secs (0.164 CPU) [export] processed `demosaic' on CPU
+     4.9612 [dev_pixelpipe] took 0.000 secs (0.003 CPU) [export] processed `colorin' on CPU
+     4.9627 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     4.9633 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     4.9664 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 1
+     4.9781 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.0450 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.0481 [dev_pixelpipe] took 0.003 secs (0.005 CPU) [export] processed `rawprepare' on CPU
+     5.0491 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     5.0624 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     5.1038 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     5.1057 [dev_pixelpipe] took 0.043 secs (0.159 CPU) [export] processed `demosaic' on CPU
+     5.1067 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.1082 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.002 secs (0.007 CPU) [colorout]
+     5.1088 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     5.1119 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 2
+     5.1238 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.1888 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.1918 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     5.1927 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     5.2058 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     5.2471 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.053 CPU)
+     5.2490 [dev_pixelpipe] took 0.043 secs (0.159 CPU) [export] processed `demosaic' on CPU
+     5.2500 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.2518 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.002 secs (0.008 CPU) [colorout]
+     5.2524 [dev_pixelpipe] took 0.002 secs (0.011 CPU) [export] processed `colorout' on CPU
+     5.2554 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 3
+     5.2672 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.3317 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.3346 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     5.3356 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     5.3487 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     5.3934 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.053 CPU)
+     5.3956 [dev_pixelpipe] took 0.046 secs (0.165 CPU) [export] processed `demosaic' on CPU
+     5.3967 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.3982 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     5.3988 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     5.4020 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 4
+     5.4135 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.4773 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.4802 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     5.4811 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     5.4941 [dev_pixelpipe] took 0.012 secs (0.045 CPU) [export] processed `highlights' on CPU
+     5.5353 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     5.5377 [dev_pixelpipe] took 0.043 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     5.5387 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.5402 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.007 CPU) [colorout]
+     5.5408 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     5.5440 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 5
+     5.5555 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.6196 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.6225 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     5.6235 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     5.6365 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     5.6778 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     5.6804 [dev_pixelpipe] took 0.043 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     5.6813 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.6828 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     5.6834 [dev_pixelpipe] took 0.002 secs (0.007 CPU) [export] processed `colorout' on CPU
+     5.6866 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 6
+     5.6981 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.7620 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.7648 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     5.7658 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     5.7789 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     5.8203 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     5.8228 [dev_pixelpipe] took 0.043 secs (0.156 CPU) [export] processed `demosaic' on CPU
+     5.8237 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.8252 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.002 secs (0.008 CPU) [colorout]
+     5.8258 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     5.8290 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 7
+     5.8406 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     5.9046 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     5.9077 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     5.9086 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     5.9217 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     5.9629 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.054 CPU)
+     5.9654 [dev_pixelpipe] took 0.043 secs (0.162 CPU) [export] processed `demosaic' on CPU
+     5.9663 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `colorin' on CPU
+     5.9678 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.005 CPU) [colorout]
+     5.9684 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     5.9717 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP early_drag 320 8
+     5.9835 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.0517 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.0546 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     6.0555 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     6.0688 [dev_pixelpipe] took 0.013 secs (0.044 CPU) [export] processed `highlights' on CPU
+     6.1106 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.014 secs (0.055 CPU)
+     6.1132 [dev_pixelpipe] took 0.044 secs (0.155 CPU) [export] processed `demosaic' on CPU
+     6.1142 [dev_pixelpipe] took 0.000 secs (0.003 CPU) [export] processed `colorin' on CPU
+     6.1156 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     6.1163 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+     6.1194 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost early_drag size 320: change 0.52 ms, preview render 142.85 ms (medians of 9; min 141.42 max 152.50)
+DTB_STEP late_drag 1024 0
+     6.1317 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.1958 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.1988 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     6.1998 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     6.2128 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     6.2557 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.053 CPU)
+     6.2579 [dev_pixelpipe] took 0.045 secs (0.156 CPU) [export] processed `demosaic' on CPU
+     6.2624 [dev_pixelpipe] took 0.004 secs (0.006 CPU) [export] processed `colorin' on CPU
+     6.2776 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     6.2838 [dev_pixelpipe] took 0.021 secs (0.074 CPU) [export] processed `colorout' on CPU
+     6.2884 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 1
+     6.3003 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.3654 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.3684 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     6.3694 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     6.3826 [dev_pixelpipe] took 0.013 secs (0.045 CPU) [export] processed `highlights' on CPU
+     6.4335 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.050 CPU)
+     6.4358 [dev_pixelpipe] took 0.052 secs (0.169 CPU) [export] processed `demosaic' on CPU
+     6.4400 [dev_pixelpipe] took 0.004 secs (0.006 CPU) [export] processed `colorin' on CPU
+     6.4553 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     6.4615 [dev_pixelpipe] took 0.021 secs (0.079 CPU) [export] processed `colorout' on CPU
+     6.4661 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 2
+     6.4780 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.5428 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.5456 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     6.5466 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     6.5597 [dev_pixelpipe] took 0.013 secs (0.049 CPU) [export] processed `highlights' on CPU
+     6.6024 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.056 CPU)
+     6.6048 [dev_pixelpipe] took 0.044 secs (0.155 CPU) [export] processed `demosaic' on CPU
+     6.6091 [dev_pixelpipe] took 0.004 secs (0.008 CPU) [export] processed `colorin' on CPU
+     6.6244 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     6.6307 [dev_pixelpipe] took 0.021 secs (0.078 CPU) [export] processed `colorout' on CPU
+     6.6352 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 3
+     6.6475 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.7167 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 4
+     6.7289 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.7937 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.7965 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     6.7975 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     6.8106 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     6.8535 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.056 CPU)
+     6.8554 [dev_pixelpipe] took 0.044 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     6.8596 [dev_pixelpipe] took 0.004 secs (0.013 CPU) [export] processed `colorin' on CPU
+     6.8749 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     6.8811 [dev_pixelpipe] took 0.021 secs (0.079 CPU) [export] processed `colorout' on CPU
+     6.8856 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 5
+     6.8975 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     6.9622 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     6.9651 [dev_pixelpipe] took 0.003 secs (0.005 CPU) [export] processed `rawprepare' on CPU
+     6.9661 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     6.9792 [dev_pixelpipe] took 0.013 secs (0.052 CPU) [export] processed `highlights' on CPU
+     7.0216 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.056 CPU)
+     7.0235 [dev_pixelpipe] took 0.044 secs (0.157 CPU) [export] processed `demosaic' on CPU
+     7.0276 [dev_pixelpipe] took 0.004 secs (0.005 CPU) [export] processed `colorin' on CPU
+     7.0429 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.0490 [dev_pixelpipe] took 0.021 secs (0.077 CPU) [export] processed `colorout' on CPU
+     7.0535 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 6
+     7.0655 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.1304 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     7.1332 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     7.1342 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     7.1472 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     7.1913 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.016 secs (0.057 CPU)
+     7.1932 [dev_pixelpipe] took 0.046 secs (0.156 CPU) [export] processed `demosaic' on CPU
+     7.1973 [dev_pixelpipe] took 0.004 secs (0.009 CPU) [export] processed `colorin' on CPU
+     7.2126 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.2187 [dev_pixelpipe] took 0.021 secs (0.075 CPU) [export] processed `colorout' on CPU
+     7.2232 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 7
+     7.2351 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.3047 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP late_drag 1024 8
+     7.3169 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.3814 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     7.3843 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     7.3853 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     7.3984 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     7.4572 [resample_plain] plan 0.000 secs (0.001 CPU) resample 0.015 secs (0.053 CPU)
+     7.4591 [dev_pixelpipe] took 0.057 secs (0.187 CPU) [export] processed `demosaic' on CPU
+     7.4632 [dev_pixelpipe] took 0.004 secs (0.009 CPU) [export] processed `colorin' on CPU
+     7.4785 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.4846 [dev_pixelpipe] took 0.021 secs (0.080 CPU) [export] processed `colorout' on CPU
+     7.4890 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost late_drag size 1024: change 0.54 ms, preview render 167.92 ms (medians of 9; min 80.56 max 183.45)
+DTB_STEP unchanged 1024 0
+     7.5005 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.5654 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     7.5682 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `rawprepare' on CPU
+     7.5692 [dev_pixelpipe] took 0.001 secs (0.002 CPU) [export] processed `temperature' on CPU
+     7.5823 [dev_pixelpipe] took 0.013 secs (0.050 CPU) [export] processed `highlights' on CPU
+     7.6245 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.053 CPU)
+     7.6267 [dev_pixelpipe] took 0.044 secs (0.154 CPU) [export] processed `demosaic' on CPU
+     7.6312 [dev_pixelpipe] took 0.004 secs (0.008 CPU) [export] processed `colorin' on CPU
+     7.6466 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.6528 [dev_pixelpipe] took 0.021 secs (0.076 CPU) [export] processed `colorout' on CPU
+     7.6574 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 1
+     7.6690 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.7341 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     7.7371 [dev_pixelpipe] took 0.003 secs (0.006 CPU) [export] processed `rawprepare' on CPU
+     7.7380 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     7.7510 [dev_pixelpipe] took 0.012 secs (0.046 CPU) [export] processed `highlights' on CPU
+     7.7941 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.056 CPU)
+     7.7961 [dev_pixelpipe] took 0.045 secs (0.153 CPU) [export] processed `demosaic' on CPU
+     7.8002 [dev_pixelpipe] took 0.004 secs (0.006 CPU) [export] processed `colorin' on CPU
+     7.8155 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.8218 [dev_pixelpipe] took 0.021 secs (0.078 CPU) [export] processed `colorout' on CPU
+     7.8264 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 2
+     7.8378 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     7.9026 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     7.9055 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     7.9065 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     7.9196 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `highlights' on CPU
+     7.9625 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.051 CPU)
+     7.9648 [dev_pixelpipe] took 0.045 secs (0.154 CPU) [export] processed `demosaic' on CPU
+     7.9693 [dev_pixelpipe] took 0.004 secs (0.007 CPU) [export] processed `colorin' on CPU
+     7.9848 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     7.9910 [dev_pixelpipe] took 0.022 secs (0.076 CPU) [export] processed `colorout' on CPU
+     7.9955 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 3
+     8.0071 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.0724 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.0752 [dev_pixelpipe] took 0.003 secs (0.011 CPU) [export] processed `rawprepare' on CPU
+     8.0762 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     8.0893 [dev_pixelpipe] took 0.012 secs (0.048 CPU) [export] processed `highlights' on CPU
+     8.1318 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.056 CPU)
+     8.1342 [dev_pixelpipe] took 0.044 secs (0.163 CPU) [export] processed `demosaic' on CPU
+     8.1386 [dev_pixelpipe] took 0.004 secs (0.012 CPU) [export] processed `colorin' on CPU
+     8.1538 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     8.1600 [dev_pixelpipe] took 0.021 secs (0.078 CPU) [export] processed `colorout' on CPU
+     8.1646 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 4
+     8.1759 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.2415 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.2444 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     8.2454 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     8.2584 [dev_pixelpipe] took 0.013 secs (0.049 CPU) [export] processed `highlights' on CPU
+     8.3024 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.016 secs (0.052 CPU)
+     8.3047 [dev_pixelpipe] took 0.046 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     8.3095 [dev_pixelpipe] took 0.004 secs (0.011 CPU) [export] processed `colorin' on CPU
+     8.3255 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.016 secs (0.064 CPU) [colorout]
+     8.3325 [dev_pixelpipe] took 0.023 secs (0.084 CPU) [export] processed `colorout' on CPU
+     8.3371 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 5
+     8.3484 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.4136 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.4165 [dev_pixelpipe] took 0.003 secs (0.009 CPU) [export] processed `rawprepare' on CPU
+     8.4175 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     8.4497 [dev_pixelpipe] took 0.032 secs (0.093 CPU) [export] processed `highlights' on CPU
+     8.4920 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.055 CPU)
+     8.4939 [dev_pixelpipe] took 0.044 secs (0.160 CPU) [export] processed `demosaic' on CPU
+     8.4981 [dev_pixelpipe] took 0.004 secs (0.008 CPU) [export] processed `colorin' on CPU
+     8.5132 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.063 CPU) [colorout]
+     8.5179 [dev_pixelpipe] took 0.020 secs (0.080 CPU) [export] processed `colorout' on CPU
+     8.5226 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 6
+     8.5339 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.5987 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.6018 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     8.6036 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     8.6166 [dev_pixelpipe] took 0.013 secs (0.048 CPU) [export] processed `highlights' on CPU
+     8.6587 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.049 CPU)
+     8.6606 [dev_pixelpipe] took 0.043 secs (0.149 CPU) [export] processed `demosaic' on CPU
+     8.6647 [dev_pixelpipe] took 0.004 secs (0.010 CPU) [export] processed `colorin' on CPU
+     8.6799 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     8.6847 [dev_pixelpipe] took 0.020 secs (0.080 CPU) [export] processed `colorout' on CPU
+     8.6893 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 7
+     8.7007 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.7657 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.7689 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     8.7709 [dev_pixelpipe] took 0.001 secs (0.000 CPU) [export] processed `temperature' on CPU
+     8.7839 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     8.8263 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.054 CPU)
+     8.8283 [dev_pixelpipe] took 0.044 secs (0.153 CPU) [export] processed `demosaic' on CPU
+     8.8325 [dev_pixelpipe] took 0.004 secs (0.007 CPU) [export] processed `colorin' on CPU
+     8.8476 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     8.8524 [dev_pixelpipe] took 0.020 secs (0.080 CPU) [export] processed `colorout' on CPU
+     8.8570 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+DTB_STEP unchanged 1024 8
+     8.8689 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     8.9345 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     8.9373 [dev_pixelpipe] took 0.003 secs (0.010 CPU) [export] processed `rawprepare' on CPU
+     8.9375 [dev_pixelpipe] took 0.000 secs (0.000 CPU) [export] processed `temperature' on CPU
+     8.9505 [dev_pixelpipe] took 0.013 secs (0.047 CPU) [export] processed `highlights' on CPU
+     8.9927 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.015 secs (0.053 CPU)
+     8.9947 [dev_pixelpipe] took 0.044 secs (0.158 CPU) [export] processed `demosaic' on CPU
+     8.9968 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorin' on CPU
+     9.0119 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.015 secs (0.060 CPU) [colorout]
+     9.0168 [dev_pixelpipe] took 0.020 secs (0.080 CPU) [export] processed `colorout' on CPU
+     9.0214 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+RESULT cost unchanged size 1024: change 0.00 ms, preview render 168.53 ms (medians of 9; min 163.64 max 185.28)
+RESULT exit 0
