@@ -12,7 +12,7 @@
 
 ## CI (x86_64 runners)
 - p2a-app run 45091755482 (commit 09326603): success.
-- p2b-real-engine run 45091755578: see the final message / ci-logs.
+- p2b-real-engine run 45094227323 (commit bdf97b15): success (JVM tests, emulator, comparison). Runs 45091755578 and 45093440817 failed only on Maven Central downloads (429 / Robolectric artifact fetch) in the apk job; re-triggered by a comment line in the workflow file.
 - Earlier failed p2a-app runs: 45086567186 (size.l1SectionCell missing from tokens.json), 45090693520 and 45091171538 (test compile error; then the stand-in has only six sections).
 
 ## Screenshots (ci-logs `runs/45091755482-a1/p2a-app/screenshots/`)
