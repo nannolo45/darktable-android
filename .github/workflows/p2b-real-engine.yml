@@ -11,7 +11,7 @@ name: p2b-real-engine
 
 on:
   push:
-    branches: [main, p2b-real-engine, p2e-lpl-client, p1c-engine-followups, p2e-state-fix, pui3a-l1-layout]
+    branches: [main, p2b-real-engine, p2e-lpl-client, p1c-engine-followups, p2e-state-fix, pui3a-l1-layout, p3h-snapshots]
     paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", "tools/spektrafilm-stock-table.py", ".github/workflows/p2b-real-engine.yml"]
   workflow_dispatch:
 
@@ -77,7 +77,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Build darktable for Linux
         run: |
@@ -102,7 +102,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Fetch the test image
         run: |
@@ -426,7 +426,7 @@ jobs:
         with:
           path: /home/runner/dt-linux
           fail-on-cache-miss: true
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

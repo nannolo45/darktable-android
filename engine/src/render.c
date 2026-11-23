@@ -14,6 +14,7 @@
 #include "common/colorspaces.h"
 #include "common/image_cache.h"
 #include "common/iop_order.h"
+#include "develop/masks.h"
 #include "develop/tiling.h"
 
 #include <math.h>
@@ -184,6 +185,7 @@ void dtb__render_opts_clear(dtb_render_opts_t *o)
   if(o->bypass) g_ptr_array_free(o->bypass, TRUE);
   o->bypass = NULL;
   o->show_mask = NULL;
+  o->history_end = -1;
 }
 
 static int _instance_ref(JsonNode *n, const char *what, dt_iop_module_t **out)
@@ -206,6 +208,7 @@ static int _instance_ref(JsonNode *n, const char *what, dt_iop_module_t **out)
 int dtb__render_opts_from(JsonObject *o, dtb_render_opts_t *out)
 {
   memset(out, 0, sizeof(*out));
+  out->history_end = -1;
   if(!o) return DTB_OK;
   if(json_object_has_member(o, "bypass"))
   {
@@ -261,14 +264,75 @@ int dtb__render_opts_parse(const char *json, dtb_render_opts_t *out)
     json_node_unref(root);
     return dtb__err(DTB_E_ARG, "render options must be a JSON object");
   }
-  const int r = dtb__render_opts_from(json_node_get_object(root), out);
+  JsonObject *obj = json_node_get_object(root);
+  int r = dtb__render_opts_from(obj, out);
+  // P3h: only the render calls take a history position (engine-api.md 8)
+  if(!r && json_object_has_member(obj, "history_end"))
+  {
+    JsonNode *n = json_object_get_member(obj, "history_end");
+    if(!JSON_NODE_HOLDS_NULL(n))
+    {
+      if(!JSON_NODE_HOLDS_VALUE(n) || json_node_get_value_type(n) != G_TYPE_INT64)
+        r = dtb__err(DTB_E_TYPE, "history_end must be an integer");
+      else
+      {
+        const gint64 e = json_node_get_int(n);
+        const int rows = dtb_S.rows ? (int)dtb_S.rows->len : (int)g_list_length(dtb_S.dev.history);
+        if(e < 0 || e > rows)
+          r = dtb__err(DTB_E_ARG, "history_end %d outside 0..%d", (int)e, rows);
+        else
+          out->history_end = (int)e;
+      }
+      if(r) dtb__render_opts_clear(out);
+    }
+  }
   json_node_unref(root);
   return r;
 }
 
 gboolean dtb__render_opts_empty(const dtb_render_opts_t *o)
 {
-  return !o || ((!o->bypass || o->bypass->len == 0) && !o->show_mask);
+  return !o || ((!o->bypass || o->bypass->len == 0) && !o->show_mask && o->history_end < 0);
+}
+
+/* P3h: another history position for one render. What history_goto(n),
+ * render, history_goto(back) shows, without its side effects: goto writes
+ * the library, reloads the develop object, closes an open group and seals
+ * the last item (history.c). Here only the develop object's module state
+ * moves, in memory, with the same dt_dev_pop_history_items_ext() the reload
+ * ends with; the pipes are rebuilt (DT_DEV_PIPE_REMOVE, as after a reload).
+ * dev->forms keeps its list: the position's shapes go into a copy, so that
+ * pointers the bridge holds into the session's forms stay valid. */
+int dtb__history_at_begin(const dtb_render_opts_t *o, dtb_history_at_t *h)
+{
+  memset(h, 0, sizeof(*h));
+  if(!o || o->history_end < 0) return DTB_OK;
+  const int cur = dtb_S.rows ? dtb_S.rows_end : dtb_S.dev.history_end;
+  if(o->history_end == cur) return DTB_OK;
+  const int dev_end = dtb_S.rows ? dtb__rows_dev_end(o->history_end) : o->history_end;
+  h->active = TRUE;
+  h->saved_end = dtb_S.dev.history_end;
+  h->saved_forms = dtb_S.dev.forms;
+  dtb_S.dev.forms = dt_masks_dup_forms_deep(h->saved_forms, NULL);
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  dt_dev_pop_history_items_ext(&dtb_S.dev, dev_end);
+  dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
+  return DTB_OK;
+}
+
+void dtb__history_at_end(dtb_history_at_t *h)
+{
+  if(!h->active) return;
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  dt_dev_pop_history_items_ext(&dtb_S.dev, h->saved_end);
+  dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  g_list_free_full(dtb_S.dev.forms, (GDestroyNotify)dt_masks_free_form);
+  dtb_S.dev.forms = h->saved_forms;
+  dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
+  h->active = FALSE;
 }
 
 /* Leave the bypassed instances out of the (synchronised) pipe for one
@@ -552,9 +616,12 @@ int dtb_render_size_ex(float scale, const char *options_json, int *width, int *h
   dtb_render_opts_t o;
   int r = dtb__render_opts_parse(options_json, &o);
   if(r) return r;
+  dtb_history_at_t at;
+  dtb__history_at_begin(&o, &at);
   r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
   if(r)
   {
+    dtb__history_at_end(&at);
     dtb__render_opts_clear(&o);
     return r;
   }
@@ -564,6 +631,7 @@ int dtb_render_size_ex(float scale, const char *options_json, int *width, int *h
   if(width) *width = (int)floor(scale * dtb_S.full.pipe.processed_width);
   if(height) *height = (int)floor(scale * dtb_S.full.pipe.processed_height);
   dtb__bypass_end(&saved);
+  dtb__history_at_end(&at);
   dtb__render_opts_clear(&o);
   return DTB_OK;
 }
@@ -621,6 +689,8 @@ int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *op
   if(r) return r;
   // a cancel only concerns a render in flight: clear what is left over
   g_atomic_int_set(&g_cancel, 0);
+  dtb_history_at_t at;
+  dtb__history_at_begin(&o, &at);
   r = _pipe_ensure(&dtb_S.full, DT_MIPMAP_FULL);
   if(!r)
   {
@@ -635,6 +705,7 @@ int dtb_render_region_ex(int x, int y, int w, int h, float scale, const char *op
       dtb__mask_display_end(&md);
     }
   }
+  dtb__history_at_end(&at);
   dtb__render_opts_clear(&o);
   return r;
 }
@@ -656,9 +727,12 @@ int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **out,
   const double t0 = dtb__t();
   // DT_MIPMAP_F is the downscaled float input the darkroom's preview pipe
   // runs on (dt_dev_process_image_job, develop.c)
+  dtb_history_at_t at;
+  dtb__history_at_begin(&o, &at);
   r = _pipe_ensure(&dtb_S.preview, DT_MIPMAP_F);
   if(r)
   {
+    dtb__history_at_end(&at);
     dtb__render_opts_clear(&o);
     return r;
   }
@@ -666,6 +740,7 @@ int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **out,
   r = dtb__mask_display_begin(&dtb_S.preview, &o, &md);
   if(r)
   {
+    dtb__history_at_end(&at);
     dtb__render_opts_clear(&o);
     return r;
   }
@@ -685,6 +760,7 @@ int dtb_render_preview_ex(int max_size, const char *options_json, uint8_t **out,
   }
   dtb__bypass_end(&saved);
   dtb__mask_display_end(&md);
+  dtb__history_at_end(&at);
   dtb__render_opts_clear(&o);
   if(r)
   {

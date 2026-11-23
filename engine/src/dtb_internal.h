@@ -149,7 +149,19 @@ typedef struct dtb_render_opts_t
 {
   GPtrArray *bypass;            // dt_iop_module_t *, left out for one call; NULL = none
   dt_iop_module_t *show_mask;   // "show mask" overlay of this instance; NULL = none
+  int history_end;              // P3h: render this history position; -1 = the session's
 } dtb_render_opts_t;
+/* P3h (engine-api.md 8): the develop object at another history position for
+ * one render, without touching the session (no library write, no seal, no
+ * undo state); _end puts everything back */
+typedef struct dtb_history_at_t
+{
+  gboolean active;
+  int saved_end;   // the develop object's history_end before
+  GList *saved_forms;
+} dtb_history_at_t;
+int dtb__history_at_begin(const dtb_render_opts_t *o, dtb_history_at_t *h);
+void dtb__history_at_end(dtb_history_at_t *h);
 #define DTB_BYPASS_MAX 16
 typedef struct dtb_bypass_t
 {

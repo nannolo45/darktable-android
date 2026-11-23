@@ -417,6 +417,8 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
       fail C27 "$C" "p3g_export.jpg was not written"
     fi
   fi
+  # brief P3h (engine-api.md 8): render option history_end equals goto + render + goto back
+  if want C28; then drv C28 snaphist "render another history position without moving the history end"; fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
