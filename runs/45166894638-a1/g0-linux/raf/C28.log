@@ -1,0 +1,22 @@
+RESULT engine 04477d3
+RESULT circle mask on the new instance: returned 0
+RESULT history items 19
+RESULT 6 positions rendered with history_end in 8.132 s (x86_64, CI)
+RESULT live render before vs after the history_end renders: preview 720x480 max 0 mean 0.0000; region 1560x1040 max 0 mean 0.0000
+RESULT items after a further change of the open item: 19 (before 19)
+RESULT history_end 0 vs goto 0 + render + goto back: preview 720x480 max 0 mean 0.0000; region 1560x1040 max 0 mean 0.0000
+RESULT history_end 1 vs goto 1 + render + goto back: sizes differ: preview 720x480 vs 720x480, size 1562x1042 vs 1560x1040
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:185: history_end 1 vs goto 1 + render + goto back: pixels differ []
+RESULT history_end 9 vs goto 9 + render + goto back: sizes differ: preview 720x480 vs 720x480, size 1562x1042 vs 1560x1040
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:185: history_end 9 vs goto 9 + render + goto back: pixels differ []
+RESULT history_end 17 vs goto 17 + render + goto back: sizes differ: preview 720x480 vs 720x480, size 1562x1042 vs 1560x1040
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:185: history_end 17 vs goto 17 + render + goto back: pixels differ []
+RESULT history_end 18 vs goto 18 + render + goto back: sizes differ: preview 720x480 vs 720x480, size 1562x1042 vs 1560x1040
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:185: history_end 18 vs goto 18 + render + goto back: pixels differ []
+RESULT history_end 19 vs goto 19 + render + goto back: sizes differ: preview 720x480 vs 720x480, size 1562x1042 vs 1560x1040
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:185: history_end 19 vs goto 19 + render + goto back: pixels differ []
+RESULT bad positions refused
+RESULT cancel after 0.453 s: returned -8, 0.789 s after the cancel (render alone 1.506 s)
+RESULT live render after the cancel vs before: preview 720x480 max 0 mean 0.0000; region 1560x1040 max 0 mean 0.0000
+RESULT history_end 1 after the cancel vs before: preview 720x480 max 0 mean 0.0000; region 1562x1042 max 0 mean 0.0000
+RESULT exit 1

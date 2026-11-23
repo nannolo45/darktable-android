@@ -1,0 +1,13 @@
+RESULT engine 04477d3
+RESULT redo after bypass renders: exposure 0.80
+RESULT exposure session unchanged by bypass renders: yes (XMP 195174 bytes)
+RESULT exposure exposure 0 (on 1): size 6240x4160 bypass 4375x3542, preview 511x415 max 999, region 1093x885 max 999; with it in: 6240x4160
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:108: exposure: size with bypass 4375x3542, switched off 6240x4160 []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:109: exposure: bypass preview differs from switched off (max 999) []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:110: exposure: bypass region differs from switched off (max 999) []
+RESULT crop session unchanged by bypass renders: yes (XMP 195174 bytes)
+RESULT crop crop 0 (on 1): size 6240x4160 bypass 6250x4168, preview 512x341 max 101, region 1562x1042 max 999; with it in: 6240x4160
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:108: crop: size with bypass 6250x4168, switched off 6240x4160 []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:109: crop: bypass preview differs from switched off (max 101) []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p1b2.c:110: crop: bypass region differs from switched off (max 999) []
+RESULT exit 1
