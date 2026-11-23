@@ -39,3 +39,8 @@ See the CI section at the end (run ids filled in from the last runs). Compare ca
 - Merge with main (P3e-b bands, f54750b3) conflicts, all resolved keeping both sides: `p2b-real-engine.yml` (two compare loops, the fail condition and the log tag carry `p3e` and `p3eb`), `DarkroomController.kt` (`Drag.writes` is main's list form; the curve writes are converted with `toList()`; one `writeDrag`), `Controls.kt` (Unsupported branch: picker, then the band editor, then the curve editor), `emulator-p2b.sh` (both scenario classes), `ui-spec.md` (bands 10, curves 11). `tokens.json`, `Tokens.kt`, `Theme.kt` merged without conflict.
 
 ## CI
+Last code commit: 4cbd3a97 (merged with main f54750b3).
+- p2a-app run 45119443708: success.
+- p2b-real-engine run 45119443688: success (apk, emulator `P3eScenarioTest` 4 of 4, compare).
+Earlier failures, fixed: p2a 45103530155 (curve touch test: node under the tab bar, off screen; test moved to the visible half); p2b 45104818505 and 45107163626 (test used the params after closing the photo; levels needed the enum name); p2b 45113113113 (rgbcurve compare PSNR 5.9: duplicate end node, fixed in the app); p2b 45115700738 (pick and clean-up were two history items; now one history group).
+Compare in the last run: see `runs/45119443688-a1/p2b-compare/compare.txt` on `ci-logs`.
