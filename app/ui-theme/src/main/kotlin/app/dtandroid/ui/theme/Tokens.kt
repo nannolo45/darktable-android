@@ -217,6 +217,8 @@ class DtTokens(source: TokenSource) {
     val alpha = DtAlpha(source)
     val shapes = DtShapes(source)
     val l1 = DtL1(source)
+    /** brief P3e-b: the band editor */
+    val band = DtBand(source)
     /** names in an override file that are not tokens (reported, otherwise ignored) */
     val unknownOverrides: List<String> = source.unknownOverrides
 

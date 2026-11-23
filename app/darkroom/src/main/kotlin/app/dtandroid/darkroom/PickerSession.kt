@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.darkroom
 
+import app.dtandroid.engine.api.PickStats
 import app.dtandroid.schema.PickSelection
 
 /**
@@ -22,6 +23,8 @@ data class PickerState(
     val readout: List<String> = emptyList(),
     /** the selection lies outside the picture (the edit's geometry moved it away) */
     val outside: Boolean = false,
+    /** brief P3e-b: the picked area's statistics at the module's input, in the module's picker space (colour zones: LCh) */
+    val moduleInput: PickStats? = null,
 )
 
 /**

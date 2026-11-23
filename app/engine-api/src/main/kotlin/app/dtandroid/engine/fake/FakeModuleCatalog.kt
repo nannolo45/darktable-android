@@ -87,7 +87,7 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
                     oneInstance = flags?.get("one_instance")?.jsonPrimitive?.booleanOrNull ?: false,
                     supportsBlending = flags?.get("supports_blending")?.jsonPrimitive?.booleanOrNull ?: false,
                     fields = withImageDefaults,
-                    defaultParams = buildParams(withImageDefaults.values.toList()),
+                    defaultParams = buildParams(withImageDefaults.values.toList(), ARRAY_DIMS[op] ?: emptyMap()),
                 )
             }
             return FakeModuleCatalog(version, mods)
@@ -182,7 +182,16 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
          * otherwise the outer dimensions are 1 and the innermost holds the count.
          * Only graph and on-image modules have such arrays (Tier 2 and 3).
          */
-        fun buildParams(fields: List<FieldDef>): JsonObject {
+        /**
+         * Brief P3e-b: the shape of two-dimensional arrays that the field list alone does not give (the real engine's
+         * introspection gives it): contrast equalizer's `x` and `y` are [5][6], colour zones' `curve` is [3][20].
+         */
+        private val ARRAY_DIMS: Map<String, Map<String, List<Int>>> = mapOf(
+            "atrous" to mapOf("x" to listOf(5, 6), "y" to listOf(5, 6)),
+            "colorzones" to mapOf("curve" to listOf(3, 20)),
+        )
+
+        fun buildParams(fields: List<FieldDef>, dims: Map<String, List<Int>> = emptyMap()): JsonObject {
             val root = Node.Obj()
             val prefixSize = HashMap<String, Int>()
             for (f in fields) {
@@ -194,8 +203,11 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
                 val steps = ParamPath.parse(f.template)
                 val indexPositions = steps.indices.filter { steps[it] is ParamPath.Step.Index }
                 val sizes = IntArray(indexPositions.size) { 1 }
+                val hint = (steps.first() as? ParamPath.Step.Field)?.let { dims[it.name] }?.takeIf { it.size == indexPositions.size }
                 var remaining = f.count
-                for ((k, pos) in indexPositions.withIndex()) {
+                if (hint != null) {
+                    for (k in sizes.indices) sizes[k] = hint[k]
+                } else for ((k, pos) in indexPositions.withIndex()) {
                     if (k == indexPositions.lastIndex) { sizes[k] = maxOf(1, remaining); break }
                     val known = prefixSize[prefixOf(steps, pos)]
                     if (known != null && known > 0 && remaining % known == 0) { sizes[k] = known; remaining /= known }
