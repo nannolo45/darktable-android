@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 /**
  * One-to-one JNI view of engine/include/dtbridge.h (brief G0).
  *
- * Every function except [renderCancel], [logSince], [logLine],
+ * Every function except [renderCancel], [exportCancel], [logSince], [logLine],
  * [startLogCapture] and [dlopenCheck] must be called on the engine thread
  * (see [Engine]). Functions returning Int return 0 or a negative DTB_E_*
  * code; [lastError] then holds the message.
@@ -112,6 +112,10 @@ object NativeBridge {
     /** region into [out] (exactly w*h*4 bytes); copied[0] tells whether JNI had to copy the array */
     @JvmStatic external fun renderRegionInto(x: Int, y: Int, w: Int, h: Int, scale: Float, out: ByteArray, copied: BooleanArray): Int
     @JvmStatic external fun exportWith(path: String, optionsJson: String?): Int
+    /** P3g: export with progress; [listener] is called on this (the engine) thread. */
+    @JvmStatic external fun exportProgress(path: String, optionsJson: String?, listener: ExportListener?): Int
+    /** P3g: from any thread. */
+    @JvmStatic external fun exportCancel()
 
     // P1b part 1 (engine-api.md section 5): one entry point, [what] selects the call. Arguments:
     // PRESETS_LIST (s1 op, n1 priority); PRESET_APPLY (s1 op, n1 priority, s2 name);
@@ -175,4 +179,9 @@ object NativeBridge {
     const val P3D_MEMBER_UPDATE = 5
     const val P3D_GROUP_WRAP = 6
     @JvmStatic external fun p3d(what: Int, s1: String?, s2: String?, n1: Int, n2: Int, n3: Int, n4: Int, status: IntArray): String?
+}
+
+/** P3g: what [NativeBridge.exportProgress] calls (engine-api.md section 7); step 0 preparing, 1 processing, 2 writing, 3 done. */
+fun interface ExportListener {
+    fun onProgress(step: Int, module: Int, modules: Int, fraction: Double)
 }

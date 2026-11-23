@@ -9,6 +9,8 @@ import app.dtandroid.engine.api.EnginePaths
 import app.dtandroid.engine.api.Exif
 import app.dtandroid.engine.api.ExportFormat
 import app.dtandroid.engine.api.ExportOptions
+import app.dtandroid.engine.api.ExportProgress
+import app.dtandroid.engine.api.ExportStep
 import app.dtandroid.engine.api.History
 import app.dtandroid.engine.api.HistoryItem
 import app.dtandroid.engine.api.ImageClass
@@ -918,25 +920,65 @@ class FakeEngine(
         }
     }
 
-    override suspend fun export(path: String, options: ExportOptions) = onEngine {
+    override suspend fun export(path: String, options: ExportOptions) = export(path, options) {}
+
+    /**
+     * P3g: time each module of the stand-in export takes (ms), so the app's progress can be seen and cancelled
+     * on the stand-in; 0 by default (tests set it).
+     */
+    @Volatile var exportMsPerModule: Long = 0
+
+    private val exportCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile private var exporting = false
+
+    /** P3g: as the real engine (engine-api.md section 7): one PROCESSING per switched-on instance. */
+    override suspend fun export(path: String, options: ExportOptions, onProgress: (ExportProgress) -> Unit) = onEngine {
         val s = requireSession()
         if (options.format != ExportFormat.PNG) fail(EngineError.ARG, "the fake engine exports PNG only")
-        val r = FakeRenderer(s.variant)
-        val o = orientation(s)
-        val (fw, fh) = r.processedSize(o, 1.0)
-        var scale = 1.0
-        if (options.maxWidth > 0) scale = min(scale, options.maxWidth.toDouble() / fw)
-        if (options.maxHeight > 0) scale = min(scale, options.maxHeight.toDouble() / fh)
-        val (w, h) = r.processedSize(o, scale)
-        val img = render(s, r, 0, 0, w, h, scale, o, 0)
+        exportCancelled.set(false)
+        exporting = true
         try {
+            onProgress(ExportProgress(ExportStep.PREPARING, 0, 0, 0.0))
+            val live = s.live()
+            val on = s.insts.filter { live[it.op to it.priority]?.enabled == true }
+            val modules = maxOf(on.size, 1)
+            for (k in 1..modules) {
+                if (exportCancelled.get()) fail(EngineError.CANCELLED, "export cancelled")
+                onProgress(ExportProgress(ExportStep.PROCESSING, k, modules, 0.05 + 0.85 * (k - 1) / modules))
+                var left = exportMsPerModule
+                while (left > 0 && !exportCancelled.get()) { val st = min(left, 5L); Thread.sleep(st); left -= st }
+            }
+            if (exportCancelled.get()) fail(EngineError.CANCELLED, "export cancelled")
+            val r = FakeRenderer(s.variant)
+            val o = orientation(s)
+            val (fw, fh) = r.processedSize(o, 1.0)
+            var scale = 1.0
+            if (options.maxWidth > 0) scale = min(scale, options.maxWidth.toDouble() / fw)
+            if (options.maxHeight > 0) scale = min(scale, options.maxHeight.toDouble() / fh)
+            val (w, h) = r.processedSize(o, scale)
+            val img = render(s, r, 0, 0, w, h, scale, o, 0)
+            onProgress(ExportProgress(ExportStep.WRITING, modules, modules, 0.9))
             val f = File(path)
             val tmp = File(f.parentFile, f.name + ".tmp")
-            tmp.writeBytes(Png.encode(img))
-            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
-        } catch (e: Exception) {
-            fail(EngineError.IO, "cannot write $path: ${e.message}")
+            try {
+                tmp.writeBytes(Png.encode(img))
+                if (exportCancelled.get()) { tmp.delete(); fail(EngineError.CANCELLED, "export cancelled") }
+                if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+            } catch (e: EngineException) {
+                throw e
+            } catch (e: Exception) {
+                tmp.delete()
+                fail(EngineError.IO, "cannot write $path: ${e.message}")
+            }
+            onProgress(ExportProgress(ExportStep.DONE, modules, modules, 1.0))
+        } finally {
+            exporting = false
+            exportCancelled.set(false)
         }
+    }
+
+    override fun exportCancel() {
+        if (exporting) exportCancelled.set(true)
     }
 
     // ------------------------------------------------------------ 5 (P1b part 1)

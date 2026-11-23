@@ -83,6 +83,8 @@ sealed interface Overlay {
     data object HostMenu : Overlay
     /** brief P3b: the styles list ("styles…" in the photo menu); its pages are [StylesPresets]' */
     data object Styles : Overlay
+    /** brief P3g: the export screen (mockup B3-Export) */
+    data object Export : Overlay
     /** brief P3f: the versions sheet (thumbnail, number, name, edited, sync dot; duplicate and virgin duplicate) */
     data object Versions : Overlay
     /** brief P3f: the name of version [n] (a text sheet) */

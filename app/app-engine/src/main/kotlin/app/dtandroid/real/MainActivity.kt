@@ -118,7 +118,8 @@ class MainActivity : ComponentActivity() {
         val actions = listOf(
             HostAction("sync now") { syncCurrent() },
             HostAction("open in LightPhotoLibrary") { openCurrentInLpl() },
-            HostAction("export JPEG…") { exportJpeg.launch(vm.exportName()) },
+            // brief P3g: "export…" (the export screen) is the darkroom's own menu entry; the JPEG to a chosen file stays
+            HostAction("export JPEG to a file…") { exportJpeg.launch(vm.exportName()) },
             HostAction("save XMP…") { saveXmp.launch(vm.xmpName()) },
             HostAction("timings…") { vm.openTimings() },
         )

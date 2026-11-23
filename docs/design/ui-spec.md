@@ -199,3 +199,37 @@ Design and mockup: `docs/design/P3f-versions.md`, `docs/design/mockups/P3f-Versi
 - **Chip.** Darktable and modern skins (and the tablet layout) show a `versions` chip (icon `versions` and `v2`) in the top bar; the l1 phone skin has none: its `more` menu has `duplicate…`, which opens the same sheet. Shown only where the app supports versions.
 - **Sheet** "Versions of NAME": a row per version: thumbnail (the version's last picture seen in this run, else its number), `vN · name · cover`, `edited` or `no edits`, a sync dot (synced, waiting to sync, on this phone only) and a menu (rename…, set as cover when LPL knows versions, delete… never for 0). Buttons `Duplicate` (same history as the version in use) and `Virgin duplicate` (no history); both keep rating, labels, tags and open the new version. Tap a row: the version in use is saved, the other opens, the sheet closes. Hold a row: its last picture is shown over the photo while held.
 - **Rules.** A version whose XMP fails the version guard is never duplicated or renamed. Delete asks first; LPL keeps its copy. Tokens: `size.versionThumbWidth/Height`, `size.versionDot`, `color.syncDone`, `color.syncWaiting`.
+
+## 13. Export (brief P3g)
+
+Mockup `B3-Export`; darktable's export module (manual: utility modules › shared › export) is the reference for the
+options and their defaults. Opened from the darkroom's menu ("export…", every skin) and, in l1, the top bar's
+export button. A screen over the darkroom: back, title "export", the photo's name and the series line.
+
+- **storage options:** target storage (this device: `Pictures/darktable` through MediaStore; share to an app:
+  the Android share sheet once the export is done), images (this image / whole series (N), only with a series), a
+  note on the target. LightPhotoLibrary is not offered: the app has no R5 upload call yet (P3g report).
+- **format options:** file format (JPEG, PNG, TIFF, WebP: what the engine takes; WebP only where the engine was
+  built with it, otherwise the export fails with the engine's message), bit depth where the format has more than
+  one (PNG 8/16, TIFF 8/16/32), quality for JPEG and WebP (a list 100…50; desktop has a slider).
+- **global options:** set size (original size = max size 0 × 0, long edge 2048 px, long edge 3840 px), high quality
+  resampling, profile (image settings, sRGB, Adobe RGB, Display P3). Upscaling is always off.
+- Defaults are darktable's: JPEG, quality 95, 8 bit, no size limit, high quality resampling no, profile image
+  settings (`darktableconfig.xml.in`: `high_quality_processing` false, `icctype` −1).
+- **While exporting** the options are greyed and the screen shows `BatchProgress` (P2k): one photo: "exporting
+  <name>", the bar, the step in plain words with the percent ("preparing", "processing · module 7 of 23",
+  "writing the file", "saving to this device" / "getting it ready to share"; "sending to LightPhotoLibrary" is
+  reserved for R5) and "cancel". A series: "photo n of N" with the overall bar and "k finished · p %", and under
+  it the current photo's own bar and step. The share of one photo: the engine's 0…95 % (its steps, engine-api.md
+  section 7), the hand-off the last 5 %.
+- **After:** "exported to Pictures/darktable on this device" (or the share sheet opens), "cancelled · nothing
+  written" / "cancelled · k of N exported", or the failure with the engine's message; the button reads "export
+  again". Closing the screen forgets an ended export.
+- **Top bar indicator:** while an export runs, or after it ended until the export screen is opened again, the
+  darkroom's top bar (phone, tablet, l1) shows a small text ("export 42 %", "export 5/12 · 38 %", "exported") over
+  a thin bar; tapping it opens the export screen.
+- The export runs in the darkroom's scope: it goes on when the export screen is closed and while another screen of
+  the app is shown. A series opens each photo in the darkroom and comes back to the first one; when the darkroom is
+  left during a series, it stops after the photo under way ("stopped: the darkroom was left"). In the background
+  (app not visible) nothing stops it while Android keeps the process, but there is no foreground service yet
+  (later package): Android may stop the process and with it the export.
