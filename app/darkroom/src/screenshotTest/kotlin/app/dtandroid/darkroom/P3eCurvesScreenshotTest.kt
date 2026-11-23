@@ -2,6 +2,7 @@
 package app.dtandroid.darkroom
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
 import app.dtandroid.darkroom.ui.DarkroomLayout
