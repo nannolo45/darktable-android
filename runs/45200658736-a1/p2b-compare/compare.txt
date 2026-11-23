@@ -1,0 +1,37 @@
+test XMP: app export vs darktable-cli: size 3908x2602 max 26 mean 0.00092 psnr 75.73 differing_values_pct 0.0642
+spektrafilm test (0179): app export vs darktable-cli, same data pack: Traceback (most recent call last):
+  File "/home/runner/work/darktable-android/darktable-android/engine/tests/compare.py", line 58, in <module>
+    sys.exit(main(sys.argv))
+             ^^^^^^^^^^^^^^
+  File "/home/runner/work/darktable-android/darktable-android/engine/tests/compare.py", line 39, in main
+    a, b = load(args[0]), load(args[1])
+           ^^^^^^^^^^^^^
+  File "/home/runner/work/darktable-android/darktable-android/engine/tests/compare.py", line 19, in load
+    return np.asarray(Image.open(path).convert("RGB")).astype(np.int32)
+                      ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/PIL/Image.py", line 3241, in open
+    fp = builtins.open(filename, "rb")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/runner/app/spektrafilm.jpg'
+app-written XMP: app export vs darktable-cli: size 3908x2602 max 34 mean 0.00108 psnr 74.44 differing_values_pct 0.0707
+p2j colorcalibration: no XMP from the emulator
+p2j spektrafilm: no XMP from the emulator
+p2j framing: no XMP from the emulator
+p3a: no XMP or export from the emulator
+p3b append: no XMP or export from the emulator
+p3b overwrite: no XMP or export from the emulator
+p3c wb: no XMP or export from the emulator
+p3c exposure: no XMP or export from the emulator
+p3c picks: no p3c-picks.txt from the emulator or no dtb_pickref
+p3d circle: no XMP or export from the emulator
+p3d brush: no XMP or export from the emulator
+p3d tree: no XMP or export from the emulator
+p3d parametric: no XMP or export from the emulator
+p3d dp: no XMP or export from the emulator
+p3e tonecurve: no XMP or export from the emulator
+p3e rgbcurve: no XMP or export from the emulator
+p3e rgblevels: no XMP or export from the emulator
+p3e toneeq: no XMP or export from the emulator
+p3e atrous: no XMP or export from the emulator
+p3e colorzones: no XMP or export from the emulator
+p3e colorequal: no XMP or export from the emulator
