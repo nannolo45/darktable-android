@@ -34,7 +34,8 @@ abstract class P3eCurveScreens : ScreenshotBase() {
     private val toneL = CurveLayout.TONECURVE
     private val rgbL = CurveLayout.RGBCURVE
     private fun n(x: Double, y: Double) = CurveNode(x, y)
-    private val three = listOf(n(0.0, 0.0), n(0.5, 0.5), n(1.0, 1.0))
+    // the nodes stay in the upper half: the phone shows only the top of the graph (the rest is under the tab bar)
+    private val three = listOf(n(0.0, 0.0), n(0.5, 0.7), n(1.0, 1.0))
     private val s = listOf(n(0.0, 0.0), n(0.25, 0.16), n(0.7, 0.82), n(1.0, 1.0))
     protected open val tokens: DtTokens = DtTokens.load()
 
@@ -114,13 +115,13 @@ abstract class P3eCurveScreens : ScreenshotBase() {
         histogram(c)
         val items0 = c.state.value.history.items.size
         // a node dragged: one history item, the nodes in order
-        drag("curve graph", at("curve graph", 0.5, 0.5), at("curve graph", 0.55, 0.8))
-        waitUntil("node moved") { abs(toneL.read(params(c, tone), 0)[1].y - 0.8) < 0.03 }
+        drag("curve graph", at("curve graph", 0.5, 0.7), at("curve graph", 0.55, 0.9))
+        waitUntil("node moved") { abs(toneL.read(params(c, tone), 0)[1].y - 0.9) < 0.03 }
         waitUntil("one item") { c.state.value.history.items.size == items0 + 1 }
         assertTrue(CurveEdit.valid(toneL.read(params(c, tone), 0)))
         assertEquals(3, toneL.countOf(params(c, tone), 0))
         // a tap on empty space adds a node there
-        compose.onNodeWithContentDescription("curve graph").performTouchInput { down(at("curve graph", 0.2, 0.7)); up() }
+        compose.onNodeWithContentDescription("curve graph").performTouchInput { down(at("curve graph", 0.2, 0.9)); up() }
         waitUntil("node added") { toneL.countOf(params(c, tone), 0) == 4 }
         waitUntil("an item more") { c.state.value.history.items.size == items0 + 2 }
         val nodes = toneL.read(params(c, tone), 0)
@@ -129,10 +130,10 @@ abstract class P3eCurveScreens : ScreenshotBase() {
         settle(c)
         capture("$name-p3e-05-tonecurve-touched")
         // a node dragged off the graph is removed
-        drag("curve graph", at("curve graph", nodes[1].x, nodes[1].y), Offset(-200f, at("curve graph", 0.5, 0.5).y))
+        drag("curve graph", at("curve graph", nodes[1].x, nodes[1].y), Offset(-200f, at("curve graph", 0.5, 0.8).y))
         waitUntil("node removed") { toneL.countOf(params(c, tone), 0) == 3 }
         // a double tap puts the curve back
-        compose.onNodeWithContentDescription("curve graph").performTouchInput { doubleClick(at("curve graph", 0.8, 0.3)) }
+        compose.onNodeWithContentDescription("curve graph").performTouchInput { doubleClick(at("curve graph", 0.8, 0.75)) }
         waitUntil("reset") { toneL.read(params(c, tone), 0) == CurveEdit.IDENTITY }
     }
 
