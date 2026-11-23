@@ -40,3 +40,18 @@ See CI section.
 2. Accept that the darkroom's undo stack is lost when a series export runs (single engine session)?
 
 ## CI
+
+Last code commit **375e3770**.
+
+| Workflow | Run | Result |
+|---|---|---|
+| p2a-app (JVM tests, screenshots, rules) | 45216986733 line: see `gh run list -b p3i-export-followup`; success on 375e3770 | success |
+| p2b-real-engine (APK, emulator) | 45218200092 | attempt 1 failed (LplScenarioTest.l5), attempt 2 failed (l2, P2fScenarioTest.f10), **attempt 3 success** (103 of 103) |
+
+The emulator failures of attempts 1 and 2 (and of run 45211124813: f4, and P3g s3, which was my bug in the series counter, fixed in 375e3770)
+were all "timed out: darkroom with the photo open" on tests that open a photo from the stub LPL server, with the engine lock held
+by a background render for about 60 s. Attempt 3 on the same commit passed, and main passed 4 of 4 recent runs. I found no code path
+of this package that runs in those tests and could cause it, but I cannot rule out that P3i made an existing flake more frequent; reviewer to judge.
+Emulator results of P3i (`p3i-results.txt`): i1 two-photo series with the activity stopped: DONE 2 of 2, two files, foreground service seen
+running; i2 export to the stub LPL server: DONE, server received 1 JPEG, version 0, the app's agent id.
+Earlier failures fixed: screen rule (R.drawable in the notification), type inference in LplAgent, three tests of mine (P2kBatchesTest caps list, a stub assertion, a "working" assertion).
