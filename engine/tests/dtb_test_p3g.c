@@ -7,10 +7,12 @@
  *                                    ending at 100 %; cancel at several points
  *                                    (from the callback, from another thread,
  *                                    while writing) leaves no file and keeps
- *                                    an older file at the path; the export
- *                                    after the cancels is byte for byte the
- *                                    first one (run_tests.sh compares that one
- *                                    with darktable-cli)
+ *                                    an older file at the path; run_tests.sh
+ *                                    compares the pixels of the first export
+ *                                    with darktable-cli's and with a second
+ *                                    export, the export after the cancels and
+ *                                    dtb_export's (JPEG metadata carries the
+ *                                    export time, so bytes may differ)
  */
 
 typedef struct
@@ -122,6 +124,14 @@ static int cmd_exportprog(const char *raw, const char *xmp, const char *outdir)
   CHECK(l->n > 0 && l->step[l->n - 1] == DTB_EXPORT_DONE && l->fraction[l->n - 1] == 1.0,
         "the last event is not done at 100 %%");
 
+  // a second export with nothing in between: darktable's JPEG carries the
+  // export time in its metadata, so two exports need not be equal byte for
+  // byte; run_tests.sh compares the decoded pixels of all of them
+  char *control = path_join(outdir, "p3g_control.jpg");
+  unlink(control);
+  MUST(dtb_export_ex(control, opts, NULL, NULL));
+  fprintf(stdout, "RESULT two exports in a row: %s byte for byte\n", p3g_same_file(first, control) ? "equal" : "not equal");
+
   // 2. cancels: each leaves no file at the path and no temporary file; an
   // older file at the path stays as it was
   char *path = path_join(outdir, "p3g_cancel.jpg");
@@ -195,15 +205,15 @@ static int cmd_exportprog(const char *raw, const char *xmp, const char *outdir)
   memset(l, 0, sizeof(*l));
   l->cancel_step = -1;
   const int r = dtb_export_ex(again, opts, p3g_cb, l);
-  fprintf(stdout, "RESULT export after the cancels: returned %d, %d events, %s the first export\n", r, l->n,
-          r == DTB_OK && p3g_same_file(first, again) ? "equal to" : "DIFFERENT from");
+  fprintf(stdout, "RESULT export after the cancels: returned %d, %d events, %s byte for byte to the first export (pixels: run_tests.sh)\n",
+          r, l->n, r == DTB_OK && p3g_same_file(first, again) ? "equal" : "not equal");
   CHECK(r == DTB_OK, "export after an idle cancel returned %d", r);
-  CHECK(p3g_same_file(first, again), "the export after the cancels differs from the first");
-  // dtb_export (no callback) is the same export
+  CHECK(g_file_test(again, G_FILE_TEST_EXISTS), "the export after the cancels wrote nothing");
+  // dtb_export (no callback) is the same export; run_tests.sh compares its pixels
   char *plain = path_join(outdir, "p3g_plain.jpg");
+  unlink(plain);
   MUST(dtb_export(plain, opts));
-  CHECK(p3g_same_file(first, plain), "dtb_export differs from dtb_export_ex");
   free(l);
-  free(first); free(path); free(older); free(again); free(plain);
+  free(first); free(path); free(older); free(again); free(plain); free(control);
   return g_fail;
 }

@@ -409,6 +409,10 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
       "$CLI" "$RAW" "$XMP" "$D/p3g_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
         --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
       cmp_rec C27 "$C" "$D/p3g_export.jpg" "$D/p3g_export_cli.jpg"
+      # the same pixels: a second export, the export after the cancels, dtb_export without progress
+      for f in p3g_control p3g_again p3g_plain; do
+        if [ -f "$D/$f.jpg" ]; then cmp_rec C27 "$C" "$D/$f.jpg" "$D/p3g_export.jpg"; else fail C27 "$C" "$f.jpg was not written"; fi
+      done
     else
       fail C27 "$C" "p3g_export.jpg was not written"
     fi
