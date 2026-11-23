@@ -72,7 +72,7 @@ internal fun L1TopBar(controller: DarkroomController, s: DarkroomState, fade: Fl
         // the existing before/after
         DtIconButton(DtIcon.Compare, "compare", if (s.before) c.accent else c.textBright, onClick = { controller.launch { setBefore(!s.before) } },
             keepTint = true, modifier = Modifier.semantics { stateDescription = if (s.before) "on" else "off" })
-        app.dtandroid.darkroom.ui.ExportIndicator(controller, s) // brief P3g
+        app.dtandroid.darkroom.ui.ExportIndicator(controller, s, compact = true) // brief P3g
         // brief P3g: the export button opens the darkroom's export screen (the host's own export action, if any, stays in "more")
         DtIconButton(DtIcon.Export, export?.label ?: "export…", c.textBright, enabled = s.info != null, onClick = { controller.exports.open() })
         DtIconButton(DtIcon.More, "more", c.textBright, { controller.setOverlay(Overlay.HostMenu) }, iconSize = DtTheme.sizes.iconLarge)

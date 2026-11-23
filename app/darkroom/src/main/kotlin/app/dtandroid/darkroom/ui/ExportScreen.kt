@@ -158,7 +158,7 @@ fun ExportProgressLines(j: ExportJob, onCancel: () -> Unit) {
 
 /** Brief P3g: the darkroom top bar's small indicator of an export under way or just ended; opens the export screen. */
 @Composable
-fun ExportIndicator(controller: DarkroomController, s: DarkroomState) {
+fun ExportIndicator(controller: DarkroomController, s: DarkroomState, compact: Boolean = false) {
     val job by controller.exports.job.collectAsState()
     val j = job
     if (j != null && s.overlay != Overlay.Export) {
@@ -170,7 +170,7 @@ fun ExportIndicator(controller: DarkroomController, s: DarkroomState) {
                 .padding(horizontal = DtTheme.space.xs),
             verticalArrangement = Arrangement.Center,
         ) {
-            DtText(j.short, DtTheme.type.small, if (j.running) c.textStrong else c.textMuted)
+            DtText(if (compact) j.compact else j.short, DtTheme.type.small, if (j.running) c.textStrong else c.textMuted)
             Box(Modifier.fillMaxWidth().padding(top = DtTheme.space.xxs).height(DtTheme.sizes.progressLine).background(c.sliderTrack)) {
                 Box(Modifier.fillMaxWidth(j.overall).height(DtTheme.sizes.progressLine).background(c.accent))
             }

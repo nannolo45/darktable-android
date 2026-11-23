@@ -157,7 +157,7 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
             DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
                 Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
         }
-        ExportIndicator(controller, s) // brief P3g
+        ExportIndicator(controller, s, compact = true) // brief P3g: the numbers only, the photo's name keeps its room
         BeforeButton(controller, s, compact = true)
         if (menu) MoreButton(controller)
         DtTextButton("done", onDone, compact = true)

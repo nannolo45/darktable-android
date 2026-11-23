@@ -191,5 +191,6 @@ class P3gExportTest {
         assertEquals("4 finished · 38 %", j.stepLine)
         assertEquals("processing · module 3 of 20 · 50 %", j.photoLine)
         assertEquals("export 5/12 · 38 %", j.short)
+        assertEquals("5/12 · 38 %", j.compact)
     }
 }

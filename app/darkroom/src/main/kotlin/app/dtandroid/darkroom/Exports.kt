@@ -139,6 +139,14 @@ data class ExportJob(
         ExportPhase.FAILED -> "export failed"
     }
 
+    /** the phone's top bar, where the photo's name needs the room: the numbers only */
+    val compact: String get() = when (phase) {
+        ExportPhase.RUNNING -> if (series) "$number/$total · $percent %" else "$percent %"
+        ExportPhase.DONE -> if (failed == 0) "exported" else "$failed failed"
+        ExportPhase.CANCELLED -> "cancelled"
+        ExportPhase.FAILED -> "failed"
+    }
+
     companion object {
         const val STEP_PREPARING = "preparing"
         const val STEP_WRITING = "writing the file"
