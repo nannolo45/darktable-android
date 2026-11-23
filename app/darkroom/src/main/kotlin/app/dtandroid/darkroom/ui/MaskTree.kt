@@ -128,7 +128,9 @@ private fun TreeRowView(controller: DarkroomController, s: DarkroomState, ms: Ma
         DtIconButton(DtIcon.More, "more, $name", c.text,
             onClick = { masks.openSheet(MaskSheet.More(id, if (row.group == m.rootId) m.key else null, row.group)) })
     }
-    if (selected && f?.type == "parametric") {
+    // elements of the module's own group have their controls in the parametric section below the mode buttons;
+    // those of nested groups open them here
+    if (selected && f?.type == "parametric" && row.group != m.rootId) {
         val el = params.firstOrNull { it.id == id }
         if (el != null) Row(Modifier.fillMaxWidth().padding(start = indent)) { Column(Modifier.weight(1f)) { ChannelRow(controller, s, el, ro) } }
     }

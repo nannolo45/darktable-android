@@ -50,7 +50,7 @@ import app.dtandroid.ui.theme.DtTheme
  */
 
 @Composable
-fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Boolean, listing: Boolean = true) {
+fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Boolean) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val pm = controller.parametric
@@ -61,8 +61,8 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
         ListControl("colour space", ParamChannels.spaceLabel(p.space) + if (b.colorspace == "default") " (module's)" else "", enabled = !ro) {
             pm.openSheet(ParamSheet.Space)
         }
-        val specs = if (listing) ParamChannels.of(p.space) else emptyList()
-        if (listing && specs.isEmpty()) {
+        val specs = ParamChannels.of(p.space)
+        if (specs.isEmpty()) {
             DtText("parametric masks are not offered in this colour space", DtTheme.type.small, c.textMuted, Modifier.padding(vertical = sp.s), maxLines = 3)
         }
         for (rowSpecs in specs.chunked(4)) {
@@ -74,8 +74,7 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
                 for (i in rowSpecs.size until 4) Spacer(Modifier.weight(1f))
             }
         }
-        // P3d 2c: with a drawn mask the tree holds the elements and the channel buttons
-        for (el in (if (listing) p.elements else emptyList())) {
+        for (el in p.elements) {
             key(el.id) { ChannelRow(controller, s, el, ro) }
         }
     }
