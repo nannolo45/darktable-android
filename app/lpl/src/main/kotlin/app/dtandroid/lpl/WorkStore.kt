@@ -39,9 +39,24 @@ data class PhotoRecord(
     val recovered: Boolean = false,
     /** R15: the last edit as LightPhotoLibrary reported it; null when unknown or the server has no R15 */
     val lastEdit: LastEdit? = null,
+    /** R17: what is known of the versions n >= 1 beside the photo's own edit (their files are `NAME_nn.EXT.xmp`) */
+    val versions: List<VersionState> = emptyList(),
+    /** R17: the server of this photo knows versions (its checkout listed them): versions are synced and may be made */
+    val versionsCap: Boolean = false,
+    /** R17: versions deleted on the phone that LPL still has: `DELETE /xmp?version=n` is sent at the next sync */
+    val deletedVersions: List<Int> = emptyList(),
 ) {
     val key get() = server to id
+
+    fun versionState(n: Int) = versions.firstOrNull { it.n == n }
 }
+
+/**
+ * R17: the sync state of one version n >= 1: the hash of the file as LPL last has it (empty = never sent, so it is
+ * an unsynced edit), whether its file fails the engine's version guard (never sent, never rewritten), and a
+ * pending preview.
+ */
+data class VersionState(val n: Int, val syncedHash: String = "", val readOnly: Boolean = false, val previewPending: Boolean = false)
 
 /** The photos' folders and their state files. Files only; the rules live in [LplAgent]. */
 class WorkStore(val root: File) {
@@ -51,6 +66,8 @@ class WorkStore(val root: File) {
     fun raw(r: PhotoRecord) = File(folder(r.server, r.id), r.filename)
     fun part(r: PhotoRecord) = File(folder(r.server, r.id), r.filename + ".part")
     fun xmp(r: PhotoRecord) = File(folder(r.server, r.id), r.filename + ".xmp")
+    fun versionXmp(r: PhotoRecord, n: Int) = VersionFiles.file(folder(r.server, r.id), r.filename, n)
+    fun versionPreview(r: PhotoRecord, n: Int) = File(folder(r.server, r.id), "preview-v$n.jpg")
     fun backup(r: PhotoRecord) = File(folder(r.server, r.id), "downloaded.xmp")
     fun preview(r: PhotoRecord) = File(folder(r.server, r.id), "preview.jpg")
     private fun stateFile(server: ServerOrigin, id: Long) = File(folder(server, id), "state.json")
@@ -107,6 +124,15 @@ class WorkStore(val root: File) {
         put("added", r.added)
         put("recovered", r.recovered)
         r.lastEdit?.let { put("last_edit", it.toJson()) }
+        if (r.versionsCap) put("versions_cap", true)
+        if (r.versions.isNotEmpty()) put("versions", kotlinx.serialization.json.buildJsonArray {
+            for (v in r.versions) add(buildJsonObject {
+                put("n", v.n); put("synced_hash", v.syncedHash); put("read_only", v.readOnly); put("preview_pending", v.previewPending)
+            })
+        })
+        if (r.deletedVersions.isNotEmpty()) put("deleted_versions", kotlinx.serialization.json.buildJsonArray {
+            for (n in r.deletedVersions) add(kotlinx.serialization.json.JsonPrimitive(n))
+        })
     }
 
     private fun decode(o: JsonObject): PhotoRecord? {
@@ -120,6 +146,13 @@ class WorkStore(val root: File) {
             o["read_only"].bool() ?: false, o["preview_pending"].bool() ?: false, o["added"].long() ?: 0,
             o["recovered"].bool() ?: false,
             LastEdit.fromJson(o["last_edit"]),
+            versions = o["versions"].arr().orEmpty().mapNotNull { e ->
+                val v = e as? JsonObject ?: return@mapNotNull null
+                val n = v["n"].long()?.toInt()?.takeIf { it > 0 } ?: return@mapNotNull null
+                VersionState(n, v["synced_hash"].str() ?: "", v["read_only"].bool() ?: false, v["preview_pending"].bool() ?: false)
+            },
+            versionsCap = o["versions_cap"].bool() ?: false,
+            deletedVersions = o["deleted_versions"].arr().orEmpty().mapNotNull { it.long()?.toInt() },
         )
     }
 
@@ -135,7 +168,7 @@ class WorkStore(val root: File) {
                 val ext = n.substringAfterLast('.', "").take(10)
                 n = n.take(110) + if (ext.isNotEmpty()) ".$ext" else ""
             }
-            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || n == "preview.jpg" || n == "thumb.rgba" || n == "picture.rgba" ||
+            if (n.isEmpty() || n.startsWith(".") || n == "state.json" || n == "downloaded.xmp" || Regex("preview-v\\d+\\.jpg").matches(n) || n == "preview.jpg" || n == "thumb.rgba" || n == "picture.rgba" ||
                 n.endsWith(".xmp", ignoreCase = true) || n.endsWith(".part") || n.endsWith(".tmp") || n.endsWith(".etag")
             ) return "photo-$id"
             return n

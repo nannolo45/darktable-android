@@ -33,13 +33,15 @@ enum class LplFailure {
     CANCELLED,
     /** the local file could not be written */
     LOCAL,
+    /** 409 `version_exists` (R17): the version number was taken meanwhile; [LplException.next] is a free one */
+    VERSION_EXISTS,
 }
 
 /**
  * An LPL call failed. [message] names the call (method and path) and what happened; it never
  * contains the password, the token or a URL with credentials. [userText] is what the user sees.
  */
-class LplException(val failure: LplFailure, message: String, val status: Int = 0, cause: Throwable? = null) :
+class LplException(val failure: LplFailure, message: String, val status: Int = 0, cause: Throwable? = null, val next: Int? = null) :
     Exception(message, cause) {
 
     /** Whether trying again later can help without the user doing anything. */
@@ -74,6 +76,7 @@ object UserText {
         LplFailure.BAD_ANSWER -> "the server's answer was not what LightPhotoLibrary sends"
         LplFailure.CANCELLED -> "stopped"
         LplFailure.LOCAL -> "the phone's storage could not be written (full?)"
+        LplFailure.VERSION_EXISTS -> "another device made a version with the same number"
     }
 
     const val NEWER_DARKTABLE = "edited with a newer darktable: view only, never sent back"

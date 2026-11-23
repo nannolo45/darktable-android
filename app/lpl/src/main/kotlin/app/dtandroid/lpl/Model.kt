@@ -33,7 +33,12 @@ data class Checkout(
     val size: Long,
     val mtime: Double,
     val serverTime: Double,
+    /** R17: the versions of the photo (`versions` of the answer); null = the server does not know versions */
+    val versions: List<ServerVersion>? = null,
 )
+
+/** R17: one entry of `/checkout`'s `versions`; [n] 0 is the photo's own edit. */
+data class ServerVersion(val n: Int, val name: String, val mtime: Double, val size: Long, val hasFile: Boolean = true)
 
 /** A job from the heartbeat's answer. [ids] empty with [all] = every photo this device holds. */
 data class Job(
@@ -70,6 +75,8 @@ data class WorkingSetLine(
     val step: String? = null,
     /** R16: the share of [step] done, 0 to 1, when known */
     val progress: Double? = null,
+    /** R17: the version being edited when it is not the photo's own (n >= 1); only sent to a server with versions */
+    val version: Int? = null,
 )
 
 /** The agent state sent with every heartbeat (PLAN.md 4.1). */
@@ -94,6 +101,7 @@ data class AgentState(
                 // R16: only while a step runs; servers without R16 ignore them
                 l.step?.let { put("step", it) }
                 l.progress?.let { put("progress", it.coerceIn(0.0, 1.0)) }
+                l.version?.let { put("version", it) }
             })
         })
         put("darktable_running", darktableRunning)

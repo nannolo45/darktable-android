@@ -11,6 +11,8 @@ data class HandOff(
     val start: Long,
     val series: Long? = null,
     val title: String? = null,
+    /** R17: the version of [start] to open first (0 = the photo's own edit); null = LPL's cover, as before */
+    val version: Int? = null,
 ) {
     companion object {
         const val MAX_IDS = 200
@@ -67,10 +69,13 @@ data class HandOff(
             val list = if (start in ids) ids else (listOf(start) + ids).take(MAX_IDS)
             val series = params["series"]?.takeIf { it.isNotEmpty() }?.let { number(it) ?: return HandOffResult.Invalid("the series is not a number") }
             val title = params["title"]?.let { t -> t.filterNot { it.isISOControl() }.trim().take(MAX_TITLE).ifEmpty { null } }
-            return HandOffResult.Ok(HandOff(server, list, start, series, title))
+            val version = params["version"]?.takeIf { it.isNotEmpty() }?.let { v ->
+                if (v.length > 3 || !v.all { it in '0'..'9' }) return HandOffResult.Invalid("the version is not a number") else v.toInt()
+            }
+            return HandOffResult.Ok(HandOff(server, list, start, series, title, version))
         }
 
-        private val KNOWN = setOf("server", "ids", "start", "series", "title")
+        private val KNOWN = setOf("server", "ids", "start", "series", "title", "version")
 
         /** A positive whole number of at most 15 digits, digits only. */
         private fun number(s: String): Long? {
