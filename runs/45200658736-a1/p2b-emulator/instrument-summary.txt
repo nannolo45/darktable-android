@@ -1,0 +1,59 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActionsForControlsOutsideTheParameters
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.builtinPresetAppliesAsOneHistoryItem
+PASS    app.dtandroid.real.JniEngineContractTest.userPresetStoreApplyRenameExportImportDelete
+PASS    app.dtandroid.real.JniEngineContractTest.drawnMasksCreateAttachShareEditDelete
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.aRedoStepSurvivesBypassRenders
+PASS    app.dtandroid.real.JniEngineContractTest.colorPickersAndHistogram
+PASS    app.dtandroid.real.JniEngineContractTest.blendingGetSetValidateAndGroup
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActionsThatPick
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+PASS    app.dtandroid.real.JniEngineContractTest.aRenderOfAHistoryPositionEqualsGotoAndBack
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openRefusesAnEmptyFile
+PASS    app.dtandroid.real.JniEngineContractTest.anUndoBackGivesTheXmpOfThatState
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.renderTimesListTheLastRender
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+PASS    app.dtandroid.real.JniEngineContractTest.aBypassRenderLeavesTheEditAlone
+PASS    app.dtandroid.real.JniEngineContractTest.maskDisplayRender
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+PASS    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+PASS    app.dtandroid.real.JniEngineContractTest.coordinatesBetweenOriginalAndPicture
+PASS    app.dtandroid.real.JniEngineContractTest.stylesImportCreateApplyDelete
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+FAIL    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+        java.io.FileNotFoundException: /data/user/0/app.dtandroid/files/lpl/work/http_127.0.0.1_41013/51/mire1.cr2.xmp: open failed: ENOENT (No such file or directory)
+        	at libcore.io.IoBridge.open(IoBridge.java:574)
+        	at java.io.FileInputStream.<init>(FileInputStream.java:160)
+        	at kotlin.io.FilesKt__FileReadWriteKt.readBytes(FileReadWrite.kt:69)
+        	at app.dtandroid.lpl.WorkStore$Companion.sha256(WorkStore.kt:184)
+        	at app.dtandroid.lpl.LplAgent.zeroDirty(LplAgent.kt:208)
+        	at app.dtandroid.lpl.LplAgent.isDirty(LplAgent.kt:203)
+        	at app.dtandroid.real.ScreensKt.lplRow(Screens.kt:194)
+passed 46, failed 1, total 47
+runner: INSTRUMENTATION_RESULT: shortMsg=Process crashed.
+runner: INSTRUMENTATION_CODE: 0
+RESULT: NOT OK
