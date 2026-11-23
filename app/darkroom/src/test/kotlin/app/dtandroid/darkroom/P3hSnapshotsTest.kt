@@ -128,7 +128,9 @@ class P3hSnapshotsTest {
         assertEquals(2, SnapshotRules.prune(s, h4, h3).list.size)
         // back at 2, then a change: the third item is replaced (even by one that looks the same): the one at 3 goes
         val at2 = History(2, h3.items)
-        val replaced = History(3, h3.items.take(2) + item(2, "exposure").copy(enabled = true))
+        val replaced = History(3, h3.items.take(2) + item(2, "exposure"))
+        assertEquals("history() cannot tell the new item from the old one", h3.items, replaced.items)
+        assertEquals("a tap on an item is no change", 2, SnapshotRules.prune(s, at2, h3, navigation = true).list.size)
         val after = SnapshotRules.prune(s, at2, replaced)
         assertEquals(listOf(2), after.list.map { it.historyEnd })
         assertNull("the shown one went: no split", after.selected)

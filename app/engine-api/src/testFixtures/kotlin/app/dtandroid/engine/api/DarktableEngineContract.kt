@@ -781,7 +781,7 @@ abstract class DarktableEngineContract {
             assertTrue("preview at $e = goto + render + goto back", prev.rgba.contentEquals(p.rgba))
             assertTrue("region at $e = goto + render + goto back", region.rgba.contentEquals(r.rgba))
         }
-        assertNotEquals(meanOf(at.getValue(0).first), meanOf(at.getValue(1).first), 1e-9)
+        assertNotEquals("the original differs from the edit", meanOf(at.getValue(0).first), meanOf(at.getValue(n).first), 1e-9)
         expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.at(n + 1)) }
         expect(EngineError.ARG) { engine.renderPreview(256, RenderOptions.at(-1)) }
         assertEquals(n, engine.history().end)

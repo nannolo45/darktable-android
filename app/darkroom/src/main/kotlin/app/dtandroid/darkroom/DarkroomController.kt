@@ -716,6 +716,8 @@ class DarkroomController(
 
     /** brief P3h: the change being made is a history compress (every snapshot position then means something else) */
     @Volatile private var compressing = false
+    /** brief P3h: the change being made is a tap on a history item (no item is discarded by it) */
+    @Volatile private var navigating = false
 
     private suspend fun refreshLocked() {
         val modules = engine.modules()
@@ -750,13 +752,15 @@ class DarkroomController(
         val info = engine.imageInfo()
         livePatched.clear()
         val compressedNow = compressing
+        val navigationNow = navigating
         compressing = false
+        navigating = false
         _state.update { s ->
             val expanded = s.expanded?.takeIf { k -> modules.any { it.key == k } }
             // brief P3d: "show mask" ends when its instance is gone, off, or has no drawn or parametric mask any more
             val shown = s.showMask?.takeIf { k -> modules.any { it.key == k && it.enabled } && Masks.displayable(maskModes[k]) }
             // brief P3h: a snapshot is a history position: it goes when the history below it changed
-            val snaps = SnapshotRules.prune(s.snapshots, s.history, history, compressedNow)
+            val snaps = SnapshotRules.prune(s.snapshots, s.history, history, compressedNow, navigationNow)
             s.copy(modules = modules, history = history, undo = undo, actionValues = actions, info = info, expanded = expanded, actionLists = lists,
                 maskModes = maskModes, showMask = shown, snapshots = snaps)
         }
@@ -766,10 +770,11 @@ class DarkroomController(
      * Run a change: cancel the render, call the engine, re-read its state, render again.
      * Engine errors become [DarkroomState.message].
      */
-    private suspend fun change(compress: Boolean = false, block: suspend () -> Unit) {
+    private suspend fun change(compress: Boolean = false, navigation: Boolean = false, block: suspend () -> Unit) {
         cancelRenders()
         fg {
             compressing = compress
+            navigating = navigation
             val before = _state.value.modules
             try {
                 // the "before" picture is kept for the session (engine-api.md, clarifications after P2a)
@@ -1625,7 +1630,7 @@ class DarkroomController(
         _state.update { it.copy(overlay = null) }
     }
 
-    suspend fun historyGoto(end: Int) = change { engine.historyGoto(end) }
+    suspend fun historyGoto(end: Int) = change(navigation = true) { engine.historyGoto(end) }
     suspend fun historyCompress() = change(compress = true) { engine.historyCompress() }
     // brief P3a: asked of the engine inside the change (an open crop tool's frame may have been written first)
     suspend fun undo() = change { if (engine.undoState().canUndo) engine.undo() }

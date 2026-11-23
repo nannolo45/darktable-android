@@ -90,12 +90,12 @@ object SnapshotRules {
 
     /**
      * After a change: keep the snapshots whose history up to their position is still the engine's. [before] is the
-     * history before the change: when the change was made with the end below the top (after a tap on an older
-     * history item), the items above that end were discarded, and a snapshot above it is gone even if the new items
-     * look the same. After a compress every position means something else: [compressed] drops them all.
+     * history before the change: when a change (not a [navigation], a tap on a history item) was made with the end
+     * below the top, the items above that end were discarded, and a snapshot above it is gone even if the new items
+     * look the same in history(). After a compress every position means something else: [compressed] drops them all.
      */
-    fun prune(s: SnapshotsState, before: History?, after: History, compressed: Boolean = false): SnapshotsState {
-        val cut = before?.takeIf { it.end < it.items.size && it.items != after.items }?.end
+    fun prune(s: SnapshotsState, before: History?, after: History, compressed: Boolean = false, navigation: Boolean = false): SnapshotsState {
+        val cut = before?.takeIf { !navigation && it.end < it.items.size && it != after }?.end
         val keep = if (compressed) emptyList() else s.list.filter { sn ->
             sn.historyEnd <= after.items.size && after.items.take(sn.historyEnd) == sn.prefix && (cut == null || sn.historyEnd <= cut)
         }
