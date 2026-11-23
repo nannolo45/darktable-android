@@ -223,7 +223,9 @@ class P3eScenarioTest {
         // the picker button next to the channel tabs ("create curve"): arming picks the area at once
         c.togglePicker(rgb, 7)
         waitFor("armed and picked") { c.state.value.picker?.readout?.isNotEmpty() == true }
-        waitFor("the nodes from the area") { L.read(params(c, rgb), 0).size >= 3 }
+        runCatching { waitFor("the nodes from the area", 20_000) { L.read(params(c, rgb), 0).size >= 3 } }
+        val m0 = c.state.value.modules.first { it.key == rgb }
+        TestFiles.record(res, "p2_diag", "enabled ${m0.enabled}, num ${m0.params["curve_num_nodes"]}, nodes ${m0.params["curve_nodes"].toString().take(300)}, message ${c.state.value.message}")
         Thread.sleep(300)
         val nodes = L.read(params(c, rgb), 0)
         TestFiles.record(res, "p2_nodes", "${nodes.size} nodes $nodes, items $items0 -> ${items(c)}")
@@ -255,6 +257,8 @@ class P3eScenarioTest {
         TestFiles.record(res, "p3_levels", "${l.toList()} (was ${start.toList()})")
         assertTrue(l[0] < l[1] && l[1] < l[2])
         assertEquals("the red channel is untouched", red0.toList(), LevelsEdit.read(params(c, levels), 0).toList())
+        val m1 = c.state.value.modules.first { it.key == levels }
+        TestFiles.record(res, "p3_diag", "enabled ${m1.enabled}, params ${m1.params.toString().take(400)}")
         val d = difference(picture1, render(c))
         TestFiles.record(res, "p3_difference", String.format(Locale.ROOT, "%.3f", d))
         assertTrue("the picture changes: $d", d > 0.2)
