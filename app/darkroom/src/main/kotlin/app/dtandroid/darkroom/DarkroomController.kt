@@ -194,7 +194,9 @@ class DarkroomController(
     private var regionJob: Job? = null
     private var viewport: Viewport? = null
 
-    private data class Drag(val key: InstanceKey, val controlId: Int, val binding: Binding, val value: Double, val integer: Boolean, val end: Boolean)
+    private data class Drag(val key: InstanceKey, val controlId: Int, val binding: Binding, val value: Double, val integer: Boolean, val end: Boolean,
+        /** brief P3e-b: a band graph's drag writes these fields (all that changed since the finger came down) instead of one binding */
+        val writes: List<Pair<String, JsonPrimitive>>? = null)
 
     private val drags = Channel<Drag>(Channel.CONFLATED)
 
@@ -830,6 +832,37 @@ class DarkroomController(
         drags.trySend(Drag(key, controlId, binding, v, integer, end = true))
     }
 
+    private suspend fun writeDrag(d: Drag) {
+        val w = d.writes
+        if (w == null) writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
+        else for ((path, v) in w) engine.paramSet(d.key.op, d.key.priority, path, v)
+    }
+
+    /**
+     * Brief P3e-b: a finger moves on a band graph (contrast equalizer, colour zones, colour equalizer). [writes] holds
+     * every field the drag has changed since the finger came down, so the newest message says it all (the channel
+     * keeps only the newest). The values show at once; the engine follows; one history item for the whole drag.
+     */
+    fun bandDrag(key: InstanceKey, writes: List<Pair<String, JsonPrimitive>>) {
+        if (writes.isEmpty()) return
+        drags.trySend(Drag(key, BAND_DRAG, Binding.None, 0.0, false, end = false, writes = writes))
+    }
+
+    /** The finger lifts: the last values are written and the history item sealed. */
+    fun bandEnd(key: InstanceKey, writes: List<Pair<String, JsonPrimitive>>) {
+        if (writes.isEmpty()) return
+        drags.trySend(Drag(key, BAND_DRAG, Binding.None, 0.0, false, end = true, writes = writes))
+    }
+
+    /** A band graph's change that is not a drag (a double tap's reset, a node taken away, "select by"): one history item. */
+    suspend fun bandApply(key: InstanceKey, writes: List<Pair<String, JsonPrimitive>>) {
+        if (writes.isEmpty()) return
+        change {
+            for ((path, v) in writes) engine.paramSet(key.op, key.priority, path, v)
+            engine.historySeal()
+        }
+    }
+
     /** The drag picture size of the drag in progress, fixed from its first step to its end. */
     private var dragSize: Int? = null
 
@@ -848,7 +881,7 @@ class DarkroomController(
                 try {
                     // brief P3a: another module's slider (quick access panel) leaves the crop tool first
                     if (_state.value.cropTool != null) { dragBefore = _state.value.modules; leaveCropLocked(); refreshLocked() }
-                    writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
+                    writeDrag(d)
                     markOn(d.key)
                     _state.update { it.copy(message = null) }
                     val info = _state.value.info ?: return@fg null
@@ -869,7 +902,7 @@ class DarkroomController(
         fg {
             dragSize = null
             try {
-                writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
+                writeDrag(d)
                 engine.historySeal()
                 _state.update { it.copy(message = null) }
             } catch (e: EngineException) {
@@ -1431,7 +1464,14 @@ class DarkroomController(
             if (e.error == EngineError.CANCELLED) return
             emptyList()
         }
-        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines)) } ?: s }
+        // brief P3e-b: colour zones' graph marks the picked value on its axis: the module's own input in its picker space
+        val moduleInput = if (sel != null && p.key.op == "colorzones") try {
+            engine.colorPick(p.key.op, p.key.priority, PickRequest(sel.area, sel.point)).input
+        } catch (e: EngineException) {
+            if (e.error == EngineError.CANCELLED) return
+            null
+        } else null
+        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = moduleInput)) } ?: s }
     }
 
     /**
@@ -2212,6 +2252,9 @@ class DarkroomController(
     fun paramValue(m: ModuleInstance, path: String) = m.params.paramAt(path)
 
     companion object {
+        /** brief P3e-b: the control id of a band graph's drag (a drag of fields, not of one slider) */
+        const val BAND_DRAG = -7
+
         /** background work starts only after the darkroom was quiet this long */
         const val QUIET_MS = 300L
 
