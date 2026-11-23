@@ -67,6 +67,9 @@ object AppHost {
         runCatching { File(a.filesDir, "preview-series").takeIf { it.isDirectory }?.deleteRecursively() }
     }
 
+    /** brief P3i: set by the activity: asks for the notification permission once */
+    @Volatile var askNotifications: (() -> Unit)? = null
+
     val schema by lazy { SchemaLoader.fromResources() }
     private val builtins by lazy { BuiltinLayouts.fromResources() }
     private val layouts by lazy {
@@ -132,6 +135,7 @@ object AppHost {
             AppEngine.scope.launch {
                 c.exports.job.map { it?.running == true }.distinctUntilChanged().collect { running ->
                     if (running) {
+                        askNotifications?.invoke()
                         ExportService.start(app)
                         if (c.exports.job.value?.target == ExportTarget.LPL) exportHeartbeats()
                     }

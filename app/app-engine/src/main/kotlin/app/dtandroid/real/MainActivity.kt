@@ -13,8 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import app.dtandroid.darkroom.HostAction
 import app.dtandroid.darkroom.ui.DarkroomScreen
@@ -112,7 +110,6 @@ class MainActivity : ComponentActivity() {
 
     /** brief P3i: the notification permission of Android 13 and later, asked once, when the first export starts */
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    private var exportWatch: kotlinx.coroutines.Job? = null
 
     private fun askNotificationsOnce() {
         if (android.os.Build.VERSION.SDK_INT < 33) return
@@ -124,7 +121,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        exportWatch?.cancel()
+        AppHost.askNotifications = null
         super.onDestroy()
     }
 
@@ -132,11 +129,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AppEngine.start(this)
-        exportWatch = AppEngine.scope.launch {
-            vm.controller.exports.job.map { it?.running == true }.distinctUntilChanged().collect { running ->
-                if (running) runOnUiThread { askNotificationsOnce() }
-            }
-        }
+        // brief P3i: AppHost asks, from its own watch of the export job, when the first export starts
+        AppHost.askNotifications = { runOnUiThread { askNotificationsOnce() } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = back()
         })
