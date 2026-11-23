@@ -660,3 +660,44 @@ leaves everything as it was. Kotlin contract test `aRenderOfAHistoryPositionEqua
 the JVM, real engine on the emulator).
 
 The app's "before" view uses it (`RenderOptions.at(0)`), no longer `history_goto(0)` + render + `history_goto(end)`.
+
+## 9. P3j: copy and (selective) paste of the history (23 Nov 2026)
+
+Desktop's lighttable "history stack" module: copy, selective copy…, paste, selective paste…, mode append / overwrite
+(`libs/copy_history.c`, `common/history.c`, the dialog `gui/hist_dialog.c`). The user manual's page could not be
+fetched from the build workspace (no approval for the fetch); upstream's source at the pinned commit is the reference.
+
+| C | Kotlin (`DarktableEngine`) | Meaning |
+|---|---|---|
+| `int dtb_history_copy_items(char **json)` | `historyCopyItems(): CopyItems` | The open photo's items as desktop's selective dialog lists them (`dt_history_get_items(imgid, FALSE, TRUE, FALSE)` without hidden modules: one per module instance, newest instance first): `{ "items": [ { "num", "op", "priority", "name", "instance_name", "enabled", "mask", "safe" } ], "module_order": "v3.0" }`. `safe`: not flagged `IOP_FLAGS_UNSAFE_COPY`/`DEPRECATED`/`HIDDEN` (`dt_history_module_skip_copy`): a plain copy takes it. Unsafe at the pinned commit: temperature (white balance), rawprepare, flip, gamma, mask_manager, rotatepixels, scalepixels. Needs a session. |
+| `int dtb_history_copy(const char *options_json)` | `historyCopy(selection: HistorySelection?)` | NULL = desktop's "copy" (`dt_history_copy`: whole history, `full_copy` FALSE so unsafe modules are skipped, module order copied). `{ "items": [num…], "reset": [num…], "module_order": bool }` = "selective copy" (`dt_history_copy_parts`: `full_copy` TRUE, the chosen items, `reset` = desktop's "reset" column, i.e. pasted with default parameters; `module_order` = the dialog's "module order" box, default true). `items` must be listed by `copy_items` and not empty (ARG). READ_ONLY in a read-only session. Does not change the edit. |
+| `int dtb_history_clipboard(char **json)` | `historyClipboard(): Clipboard?` | `null` or `{ "parts", "copy_module_order", "items": [ … + "selected" ], "module_order" }`: what a selective paste dialog shows (desktop ticks the chosen items, all of them after a plain copy). |
+| `int dtb_history_paste(const char *options_json)` [M] | `historyPaste(mode, selection)` | Onto the open photo. `{ "mode": "append" \| "overwrite" \| null, "items": […], "reset": […] }`; mode null = desktop's preference `plugins/lighttable/copy_history/pastemode` (append). `items` = a selective paste: it replaces the clipboard's choice for later pastes too, as desktop's dialog does (`copy_paste.selops`). One undo step; the pasted modules become history items as on desktop (one per module; overwrite replaces the history). STATE: nothing copied. READ_ONLY: read-only session. |
+| `int dtb_history_paste_files(const char *targets_json, const char *options_json, char **json)` | `historyPasteFiles(targets, mode, selection): List<PasteResult>` | Onto photos that are not open; no session may be open (STATE: the app saves and closes the darkroom's photo first). `targets_json` `[ { "raw", "xmp" } ]`. Per target: the XMP's guard first (an XMP that fails it is not touched: code READ_ONLY, rule 4); the photo into the library as `dtb_open` does; its XMP read, or, when it does not exist, the default edit made as `dtb_open` shows it (this decodes the RAW: white balance defaults come from it); the paste; the XMP written atomically. The RAW is never written. → `[ { "raw", "xmp", "code", "error" } ]` in order; the call returns OK when the array could be read. |
+
+**How (engine/src/copypaste.c).** Desktop's copy remembers only the image; its paste reads that image's history from
+the library. The engine re-reads a photo's XMP into the library at every open, and versions of one RAW share one
+library image, so the copied history is kept under an image of its own: the clipboard image, a library duplicate of
+the copied photo (`dt_image_duplicate_with_version`, version 32000, renamed `.dtb-clipboard` so `dt_image_get_id`
+never finds it) holding a verbatim copy of its history rows, masks, module order and history end. Both that copy and
+every paste are upstream's own `dt_history_copy_and_paste_on_image()` (the copy: its overwrite of the whole stack with
+`copy_full`), so selection, append (`_history_copy_and_paste_on_image_merge` through
+`dt_history_merge_module_into_history`, masks of pasted modules included), overwrite (a verbatim row copy without the
+unsafe modules), module order and locked masks are desktop's. Its interface parts do nothing without the interface
+(no view manager, `darktable.develop` holds no image, `darktable.undo` NULL), except the two undo snapshots it takes of
+the target in `memory.snapshot_*`, the tables of the bridge's own undo: they are cleared right after the call. The
+clipboard image is removed at the next copy, at `dtb_shutdown`, and at `dtb_init` if an earlier process left one.
+Raster-mask data files (`dt_dtdata_merge`) follow upstream's call too; the app makes none.
+
+Differences from desktop, on purpose: pasting onto the photo the history was copied from is allowed (desktop refuses
+the same image; here versions of one RAW share an image, and the copy is a snapshot); a photo without an XMP gets the
+default edit first (desktop's images have it from their first thumbnail).
+
+Tests: C29 (`engine/tests/dtb_test_p3j.c`, run_tests.sh): copy all + overwrite onto a byte copy of the RAW equals the
+source's history rows without the unsafe modules (desktop's overwrite is a verbatim row copy; reference = the source
+XMP's own items) and renders as darktable-cli renders the written XMP; a selective copy of every item + overwrite
+gives the source's pixels; a selective copy of a new instance with a drawn circle + append keeps the target's own
+modules and values and brings the circle; paste onto the open photo is one undo step and its XMP reopens with the same
+history; refusals (nothing copied, a session open for `paste_files`, a target XMP with an unknown module left
+unchanged, a read-only session, items not listed, bad mode); the RAW's checksum is unchanged. Kotlin contract test
+`copyAndPasteTheHistoryBetweenPhotos` (stand-in on the JVM, real engine on the emulator).
