@@ -980,7 +980,6 @@ class FakeEngine(
     override fun exportCancel() {
         if (exporting) exportCancelled.set(true)
     }
-    }
 
     // ------------------------------------------------------------ 5 (P1b part 1)
     // Presets and styles live in memory for the engine's life (the real engine keeps them in
