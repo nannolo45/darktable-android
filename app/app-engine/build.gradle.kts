@@ -115,8 +115,12 @@ abstract class AppIcons : DefaultTask() {
     private fun layer(mono: Boolean): String {
         val out = ByteArrayOutputStream()
         val errors = Svg2Vector.parseSvgToXml(brandSvg.get().asFile.toPath(), out)
-        require(errors.isNullOrEmpty()) { "darktable-icon.svg: $errors" }
+        // Svg2Vector reports every SVG filter (the icon's 25 Gaussian blurs) as an error and draws the shapes
+        // without it: a known, accepted simplification (docs/experiments/app-icon-REPORT.md). Any other message fails.
+        val other = errors.orEmpty().lines().filter { it.isNotBlank() && !it.contains("<filter> is not supported") && !it.contains("<feGaussianBlur> is not supported") }
+        require(other.isEmpty()) { "darktable-icon.svg: $other" }
         val xml = out.toString(Charsets.UTF_8)
+        require(xml.contains("<path")) { "darktable-icon.svg: no paths" }
         val start = xml.indexOf('>', xml.indexOf("<vector")) + 1
         var inner = xml.substring(start, xml.lastIndexOf("</vector>"))
         if (mono) {
