@@ -45,7 +45,7 @@ dt_iop_module_t *dtb__find(const char *op, int prio)
  * import. init_history is FALSE because its TRUE branch writes the flag
  * with DT_IMAGE_CACHE_SAFE (a sidecar write path) and reloads
  * darktable.develop; the bridge clears the flag itself, relaxed. */
-static void _reset_to_default_edit(const dt_imgid_t imgid)
+void dtb__reset_to_default_edit(const dt_imgid_t imgid)
 {
   dt_history_delete_on_image_ext(imgid, FALSE, FALSE);
   dt_image_t *img = dt_image_cache_get(imgid, 'w');
@@ -317,7 +317,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
     }
   }
   else
-    _reset_to_default_edit(imgid);
+    dtb__reset_to_default_edit(imgid);
   g_free(sidecar);
 
   int pre_end = 0;

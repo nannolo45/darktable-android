@@ -450,6 +450,36 @@ int dtb_style_delete(const char *name);
 int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite);
 
 /* ---------------------------------------------------------------------- */
+/* 9 copy and paste of the history (P3j; engine-api.md 9 has the JSON)     */
+
+/* The items desktop's "selective copy" dialog lists for the open image:
+ * { "items": [ { "num", "op", "priority", "name", "instance_name",
+ *   "enabled", "mask", "safe" } ], "module_order": s }. safe = a plain
+ * copy takes it (not flagged unsafe to copy, as white balance or raw
+ * black/white point). */
+int dtb_history_copy_items(char **json);
+/* Copy the open image's history to the engine's clipboard (it outlives the
+ * session). options_json NULL = desktop's "copy" (the whole history, unsafe
+ * modules left out), or { "items": [num...], "reset": [num...],
+ * "module_order": bool } = "selective copy" of listed items. Needs a
+ * writable session; does not change the edit. */
+int dtb_history_copy(const char *options_json);
+/* The clipboard: "null", or { "parts", "copy_module_order", "items": [ as
+ * above plus "selected" ], "module_order" }. */
+int dtb_history_clipboard(char **json);
+/* [M] Paste onto the open image; options_json NULL or { "mode": "append" |
+ * "overwrite" | null, "items": [...], "reset": [...] } (items = selective
+ * paste; the selection is kept for later pastes, as on desktop). One undo
+ * step. STATE: nothing copied. */
+int dtb_history_paste(const char *options_json);
+/* Paste onto photos that are not open (no session may be open): targets_json
+ * [ { "raw", "xmp" } ]; each XMP is read (or the default edit made when it
+ * does not exist), pasted on and written atomically. -> [ { "raw", "xmp",
+ * "code", "error" } ] in order; code READ_ONLY: the XMP failed the version
+ * guard and was not touched. */
+int dtb_history_paste_files(const char *targets_json, const char *options_json, char **json);
+
+/* ---------------------------------------------------------------------- */
 /* 5.6 per-module times of the last render (P1b, E2)                       */
 
 /* { "pipe": "full" | "preview" | null, "total_ms",
