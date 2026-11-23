@@ -25,7 +25,10 @@ abstract class P3gExportScreens : ScreenshotBase() {
 
     private fun layoutName() = if (layout == DarkroomLayout.TABLET) "tablet" else "phone"
 
-    protected fun indicator(skin: Skin) = shot("indicator", skin, series, ExportScope.SERIES, screen = false)
+    protected fun indicator(skin: Skin) = shot("indicator", skin, seriesJob(), ExportScope.SERIES, screen = false)
+
+    protected fun seriesJob() = ExportJob(ExportPhase.RUNNING, ExportTarget.DEVICE, total = 12, finished = 4, number = 5,
+        fileName = "IMG_0005.RAF", step = "processing · module 12 of 23", photoFraction = 0.55)
 }
 
 @Config(sdk = [35], qualifiers = "w390dp-h844dp-port-xhdpi")
@@ -47,8 +50,6 @@ class PhoneExportScreenshots : P3gExportScreens() {
     @Test fun indicatorModern() = indicator(Skin.MODERN)
     @Test fun indicatorL1() = indicator(Skin.L1)
 
-    private fun seriesJob() = ExportJob(ExportPhase.RUNNING, ExportTarget.DEVICE, total = 12, finished = 4, number = 5,
-        fileName = "IMG_0005.RAF", step = "processing · module 12 of 23", photoFraction = 0.55)
     private fun doneJob() = ExportJob(ExportPhase.DONE, ExportTarget.DEVICE, total = 1, finished = 1,
         message = "1 photo · exported to Pictures/darktable on this device")
 }
