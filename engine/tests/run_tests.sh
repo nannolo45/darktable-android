@@ -421,6 +421,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C28; then
     drv C28 snaphist "render another history position without moving the history end"
     # which live picture is right: before or after a reload, against darktable-cli of the XMP of that state
+    parity C28 p3h_first_before_reload; parity C28 p3h_first_after_reload
     parity C28 p3h_before_reload; parity C28 p3h_after_reload
   fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim

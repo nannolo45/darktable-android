@@ -91,9 +91,57 @@ static int p3h_compare(const char *what, const p3h_shot_t *a, const p3h_shot_t *
   return m1 != 0 || m2 != 0;
 }
 
+/* the main sequence of edits of C28 on a fresh session: two exposure changes
+ * (the last one left open), the vignette, a new exposure instance with a
+ * prototype circle */
+static int p3h_edits(const char *raw, const char *xmp)
+{
+  MUST(dtb_open(raw, xmp));
+  MUST(dtb_history_seal());
+  double e0 = 0;
+  module_info("exposure", 0, &e0, NULL, 0, NULL);
+  char v[64];
+  snprintf(v, sizeof(v), "%.9g", e0 + 0.7);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
+  MUST(dtb_history_seal());
+  MUST(dtb_param_set("vignette", 0, "brightness", "-0.4"));
+  MUST(dtb_history_seal());
+  int np = -1;
+  MUST(dtb_instance_new("exposure", 0, &np));
+  MUST(dtb_param_set("exposure", np, "exposure", "-0.5"));
+  MUST(dtb_history_seal());
+  dtb_mask_add_circle("exposure", np, 0.5f, 0.5f, 0.2f, 0.05f);
+  MUST(dtb_history_seal());
+  snprintf(v, sizeof(v), "%.9g", e0 + 0.3);
+  MUST(dtb_param_set("exposure", 0, "exposure", v));
+  return DTB_OK;
+}
+
 static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
 {
-  (void)outdir;
+  // The live picture before and after the first reload (history_goto to the
+  // own end), in the first session of the process and in a second one, with
+  // the pictures and XMPs for darktable-cli (run_tests.sh, parity): run
+  // 45200658730 found no difference in later sessions, while the main
+  // session below (the first) differed.
+  for(int k = 0; k < 2; k++)
+  {
+    if(p3h_edits(raw, xmp)) return g_fail + 1;
+    p3h_shot_t a, b;
+    MUST(p3h_shoot(NULL, &a));
+    if(k == 0) save_render(outdir, "p3h_first_before_reload");
+    int e = 0;
+    history_count(&e);
+    MUST(dtb_history_goto(e));
+    MUST(p3h_shoot(NULL, &b));
+    if(k == 0) save_render(outdir, "p3h_first_after_reload");
+    char what[128];
+    snprintf(what, sizeof(what), "diag: session %d of the process: after a reload vs before", k + 1);
+    p3h_compare(what, &b, &a);
+    p3h_free(&a);
+    p3h_free(&b);
+    MUST(dtb_close());
+  }
   MUST(dtb_open(raw, xmp));
   MUST(dtb_history_seal());
   // several history items of different kinds: two exposure changes, a
