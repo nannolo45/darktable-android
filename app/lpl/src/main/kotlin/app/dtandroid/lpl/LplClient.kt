@@ -95,6 +95,7 @@ class LplClient(
             mtime = o["mtime"].num() ?: 0.0,
             serverTime = o["server_time"].num()
                 ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no server time"),
+            cover = o["cover"].long()?.toInt() ?: 0,
             versions = o["versions"].arr()?.mapNotNull { e ->
                 val v = e as? JsonObject ?: return@mapNotNull null
                 val n = v["n"].long()?.toInt() ?: return@mapNotNull null
@@ -110,6 +111,10 @@ class LplClient(
 
     /** R17: `version=n` for a version other than 0; nothing for 0, so the calls of an older server are unchanged. */
     private fun versionQuery(version: Int, lead: String) = if (version > 0) "${lead}version=$version" else ""
+
+    /** R17: `POST /api/photos/{id}/cover?version=n`: the version LPL shows for the photo. Returns the cover LPL now has. */
+    fun setCover(id: Long, version: Int): Int =
+        callJson("POST", "/api/photos/$id/cover?version=$version", ByteArray(0))["cover"].long()?.toInt() ?: version
 
     /** R17: `DELETE /api/photos/{id}/xmp?version=n` (never 0): LPL moves the file to its backup folder. */
     fun deleteVersion(id: Long, version: Int) {

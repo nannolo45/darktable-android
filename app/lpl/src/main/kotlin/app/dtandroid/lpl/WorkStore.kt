@@ -45,6 +45,8 @@ data class PhotoRecord(
     val versionsCap: Boolean = false,
     /** R17: versions deleted on the phone that LPL still has: `DELETE /xmp?version=n` is sent at the next sync */
     val deletedVersions: List<Int> = emptyList(),
+    /** R17: the version LPL shows for the photo (its cover); 0 = the photo's own edit */
+    val cover: Int = 0,
 ) {
     val key get() = server to id
 
@@ -125,6 +127,7 @@ class WorkStore(val root: File) {
         put("recovered", r.recovered)
         r.lastEdit?.let { put("last_edit", it.toJson()) }
         if (r.versionsCap) put("versions_cap", true)
+        if (r.cover != 0) put("cover", r.cover)
         if (r.versions.isNotEmpty()) put("versions", kotlinx.serialization.json.buildJsonArray {
             for (v in r.versions) add(buildJsonObject {
                 put("n", v.n); put("synced_hash", v.syncedHash); put("read_only", v.readOnly); put("preview_pending", v.previewPending)
@@ -153,6 +156,7 @@ class WorkStore(val root: File) {
             },
             versionsCap = o["versions_cap"].bool() ?: false,
             deletedVersions = o["deleted_versions"].arr().orEmpty().mapNotNull { it.long()?.toInt() },
+            cover = o["cover"].long()?.toInt() ?: 0,
         )
     }
 

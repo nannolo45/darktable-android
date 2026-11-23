@@ -388,7 +388,7 @@ class LplAgent(
      */
     private suspend fun pullVersions(r0: PhotoRecord, co: Checkout): PhotoRecord {
         val list = co.versions ?: return if (r0.versionsCap) r0.copy(versionsCap = false) else r0
-        var r = r0.copy(versionsCap = true)
+        var r = r0.copy(versionsCap = true, cover = co.cover)
         val dir = work.folder(r.server, r.id)
         for (sv in list.filter { it.n >= 1 && it.hasFile && it.n !in r.deletedVersions }) {
             val f = work.versionXmp(r, sv.n)
@@ -666,6 +666,23 @@ class LplAgent(
     fun canMakeVersion(origin: ServerOrigin, id: Long): Boolean {
         val r = record(origin, id) ?: return false
         return r.versionsCap || _reachable.value[origin] != null
+    }
+
+    /** R17: version [n]'s file differs from what LPL has (for the versions sheet's dot); false for a version of a server without versions. */
+    fun isVersionDirty(origin: ServerOrigin, id: Long, n: Int): Boolean {
+        val r = record(origin, id) ?: return false
+        return if (n == 0) zeroDirty(r) else r.versionsCap && versionDirty(r, n)
+    }
+
+    /** R17: ask LPL to show version [n] for the photo (the cover). An error text for the user, null when done. */
+    suspend fun setCover(origin: ServerOrigin, id: Long, n: Int): String? = withContext(Dispatchers.IO) {
+        try {
+            val c = net(origin) { it.setCover(id, n) }
+            mutate(origin, id) { cur -> cur?.copy(cover = c) }
+            null
+        } catch (e: LplException) {
+            e.userText
+        }
     }
 
     /** Whether the versions of this photo are sent to LPL (false: they stay on the phone). */

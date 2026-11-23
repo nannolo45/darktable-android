@@ -64,6 +64,9 @@ class DtColors(t: TokenSource) {
     val accentTab = t.color("color.accentTab")
     /** raised surfaces: an open module's header and the text buttons */
     val raised = t.color("color.raised")
+    /** brief P3f: the dot of a version's sync state on the versions sheet: synced, waiting to sync */
+    val syncDone = t.color("color.syncDone")
+    val syncWaiting = t.color("color.syncWaiting")
 }
 
 class DtSizes(t: TokenSource) {
@@ -102,6 +105,10 @@ class DtSizes(t: TokenSource) {
     val thumbTabletWidth = t.dp("size.thumbTabletWidth")
     val thumbTabletHeight = t.dp("size.thumbTabletHeight")
     val thumbRing = t.dp("size.thumbRing")
+    /** brief P3f: a version's thumbnail on the versions sheet, and its sync dot */
+    val versionThumbWidth = t.dp("size.versionThumbWidth")
+    val versionThumbHeight = t.dp("size.versionThumbHeight")
+    val versionDot = t.dp("size.versionDot")
     val photoPhoneHeight = t.dp("size.photoPhoneHeight")
     /** window size from which the tablet layout is used (width and height) */
     val tabletMinWidth = t.dp("size.tabletMinWidth")

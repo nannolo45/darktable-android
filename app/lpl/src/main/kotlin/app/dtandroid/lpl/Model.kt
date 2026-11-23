@@ -35,6 +35,8 @@ data class Checkout(
     val serverTime: Double,
     /** R17: the versions of the photo (`versions` of the answer); null = the server does not know versions */
     val versions: List<ServerVersion>? = null,
+    /** R17: the version LPL shows for the photo (`cover` of the answer); 0 when absent */
+    val cover: Int = 0,
 )
 
 /** R17: one entry of `/checkout`'s `versions`; [n] 0 is the photo's own edit. */
