@@ -200,10 +200,19 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
                     val known = prefixSize[prefixOf(steps, pos)]
                     if (known != null && known > 0 && remaining % known == 0) { sizes[k] = known; remaining /= known }
                 }
+                // brief P3e: the schema does not give the dimensions of these two-index arrays; the stand-in keeps darktable's
+                SHAPES[f.template]?.copyInto(sizes)
                 insert(root, steps, 0, sizes, 0, f.default)
             }
             return toJson(root) as JsonObject
         }
+
+        /** brief P3e: [channels][nodes] of the curve modules and [channels][black, grey, white] of rgb levels (darktable's structs) */
+        private val SHAPES: Map<String, IntArray> = mapOf(
+            "tonecurve[0][0].x" to intArrayOf(3, 20), "tonecurve[0][0].y" to intArrayOf(3, 20),
+            "curve_nodes[0][0].x" to intArrayOf(3, 20), "curve_nodes[0][0].y" to intArrayOf(3, 20),
+            "levels[0][0]" to intArrayOf(3, 3),
+        )
 
         private fun prefixOf(steps: List<ParamPath.Step>, upToInclusive: Int): String = buildString {
             for (i in 0..upToInclusive) when (val s = steps[i]) {

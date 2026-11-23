@@ -48,6 +48,7 @@ import app.dtandroid.engine.api.paramAt
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.ComputedList
 import app.dtandroid.schema.ComputedToggle
+import app.dtandroid.darkroom.ui.graph.CurveEditorHost
 import app.dtandroid.schema.Control
 import app.dtandroid.schema.ModuleSchema
 import app.dtandroid.schema.ParamRuleInputs
@@ -148,7 +149,8 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
         }
         is Control.ButtonRow -> ButtonRowView(c, ctx)
         // brief P3c: a picker button that stands alone (white balance's "from image area", levels' black, gray, white)
-        is Control.Unsupported -> if (c.id in ctx.module.pickerMarks) PickerButtonRow(c, ctx) // other buttons and graphs: later packages
+        // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
+        is Control.Unsupported -> if (c.id in ctx.module.pickerMarks) PickerButtonRow(c, ctx) else if (c.kind == "graph") CurveEditorHost(c, ctx)
     }
 }
 

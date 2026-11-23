@@ -140,6 +140,10 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val drawing = ms.draw?.takeIf { !s.before && tool == null }
     val drawOn = drawing != null
     val currentDraw by rememberUpdatedState(drawing)
+    // brief P3e: the tone equalizer's panel is open: a vertical one-finger drag on the photo edits the band under the finger
+    // (not zoomed in, so that a drag there still pans; not with a picker armed, a shape drawn or the crop tool)
+    val eqKey = controller.toneEqWanted(s)?.takeIf { !s.before && tool == null && s.picker == null && !drawOn }
+    val currentEq by rememberUpdatedState(eqKey)
     val maskLook = maskLook()
     val pickerLook = PickerLook(c.pickerFrame, c.pickerShadow, DtTheme.sizes.pickerLine, DtTheme.sizes.pickerHandle, DtTheme.sizes.pickerPoint)
     val touch = DtTheme.sizes.touch
@@ -242,10 +246,47 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                 pick = true
                             } else pickPending = true
                         }
+                        var eqPending = currentEq != null && currentTool == null && !draw && !pick && !pickPending && !frame && !line && zoom <= 1.001f
+                        var eq = false
+                        val eqFrom = down.position
                         do {
                             val ev = awaitPointerEvent()
                             upTime = ev.changes.maxOf { it.uptimeMillis }
                             val pressed = ev.changes.count { it.pressed }
+                            if (eq) {
+                                if (pressed >= 2) {
+                                    controller.toneEqEnd()
+                                    eq = false
+                                    maxPointers = max(maxPointers, pressed)
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed) controller.toneEqMove(((ch.position.y - eqFrom.y) / size.height).toDouble())
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
+                            if (eqPending) {
+                                if (pressed >= 2) {
+                                    eqPending = false
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed) {
+                                        val dx = ch.position.x - eqFrom.x
+                                        val dy = ch.position.y - eqFrom.y
+                                        if (dx * dx + dy * dy > slop * slop) {
+                                            eqPending = false
+                                            if (abs(dy) > abs(dx)) {
+                                                val (px, py) = picturePoint(eqFrom)
+                                                controller.toneEqStart(currentEq!!, px, py)
+                                                controller.toneEqMove((dy / size.height).toDouble())
+                                                eq = true
+                                                ev.changes.forEach { it.consume() }
+                                                continue
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if (draw) {
                                 if (pressed >= 2) {
                                     controller.masks.touchCancel()
@@ -344,6 +385,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                 if (z != 1f || (pan != Offset.Zero && zoom > 1f)) ev.changes.forEach { it.consume() }
                             }
                         } while (ev.changes.any { it.pressed })
+                        if (eq) { controller.toneEqEnd(); return@awaitEachGesture }
                         if (draw) { controller.masks.touchUp(); return@awaitEachGesture }
                         if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
                         if (pick) { controller.pickerDragEnd(); return@awaitEachGesture }

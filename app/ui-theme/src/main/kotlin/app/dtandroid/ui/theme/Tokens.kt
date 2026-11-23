@@ -42,6 +42,16 @@ class DtColors(t: TokenSource) {
     val cropGrid = t.color("color.cropGrid")
     val cropHandle = t.color("color.cropHandle")
     val cropHandleFill = t.color("color.cropHandleFill")
+    /** brief P3e, graph editors: the graph's ground and grid, the curve, a node and its fill, the histogram behind, the R, G, B channel lines */
+    val curveBg = t.color("color.curveBg")
+    val curveGrid = t.color("color.curveGrid")
+    val curveLine = t.color("color.curveLine")
+    val curveNode = t.color("color.curveNode")
+    val curveNodeFill = t.color("color.curveNodeFill")
+    val curveHistogram = t.color("color.curveHistogram")
+    val curveRed = t.color("color.curveRed")
+    val curveGreen = t.color("color.curveGreen")
+    val curveBlue = t.color("color.curveBlue")
     /** brief P3c, colour picker on the photo: its area or point, drawn light over a dark outline (desktop: dashed) */
     val pickerFrame = t.color("color.pickerFrame")
     val pickerShadow = t.color("color.pickerShadow")
@@ -110,6 +120,11 @@ class DtSizes(t: TokenSource) {
     val cropHandleLine = t.dp("size.cropHandleLine")
     val cropSideHandleLength = t.dp("size.cropSideHandleLength")
     val cropSideHandleWidth = t.dp("size.cropSideHandleWidth")
+    /** brief P3e, graph editors: the tallest a graph grows (it is square, as wide as the panel), its curve and grid lines, a node's drawn size */
+    val curveMaxHeight = t.dp("size.curveMaxHeight")
+    val curveLine = t.dp("size.curveLine")
+    val curveGridLine = t.dp("size.curveGridLine")
+    val curveNode = t.dp("size.curveNode")
     /** brief P3c, colour picker: the area's line, its corner handles, the point's cross (half its length) */
     val pickerLine = t.dp("size.pickerLine")
     val pickerHandle = t.dp("size.pickerHandle")
