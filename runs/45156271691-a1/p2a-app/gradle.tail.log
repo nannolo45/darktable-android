@@ -1,0 +1,24 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRules FAILED
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:504: icon drawn outside ui-icons: drawLine(splitShadow, a, b, lw * 3)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:505: icon drawn outside ui-icons: drawLine(splitLine, a, b, lw)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:508: icon drawn outside ui-icons: drawCircle(splitShadow, rh + lw, centre)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:509: icon drawn outside ui-icons: drawCircle(splitLine, rh, centre, style = Stroke(lw))
+check-screen-rules: 71 files, 4 violations
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':checkScreenRules'.
+> Process 'command 'python3'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 7s
+1 actionable task: 1 executed

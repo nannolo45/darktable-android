@@ -1,0 +1,141 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:processTestFixturesResources NO-SOURCE
+> Task :engine-api:processTestResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :schema:processTestResources
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug
+> Task :ui-theme:javaPreCompileDebugUnitTest
+> Task :ui-theme:packTokens
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:parseDebugLocalResources
+> Task :lpl:processResources NO-SOURCE
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:generateDebugRFile
+
+> Task :checkScreenRules FAILED
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:504: icon drawn outside ui-icons: drawLine(splitShadow, a, b, lw * 3)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:505: icon drawn outside ui-icons: drawLine(splitLine, a, b, lw)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:508: icon drawn outside ui-icons: drawCircle(splitShadow, rh + lw, centre)
+/home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:509: icon drawn outside ui-icons: drawCircle(splitLine, rh, centre, style = Stroke(lw))
+check-screen-rules: 71 files, 4 violations
+
+> Task :ui-theme:generateDebugUnitTestStubRFile
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:convertIcons
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-icons:parseDebugLocalResources
+> Task :ui-icons:generateDebugRFile
+> Task :ui-icons:compileDebugKotlin
+> Task :ui-icons:javaPreCompileDebug
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:writeDebugAarMetadata
+> Task :ui-icons:extractDeepLinksDebug
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:extractDeepLinksDebug
+> Task :ui-theme:processDebugManifest
+> Task :ui-icons:compileDebugLibraryResources
+> Task :ui-theme:compileDebugLibraryResources
+> Task :darkroom:generateDebugUnitTestAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugShaders
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets
+> Task :ui-theme:mergeDebugShaders
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :ui-icons:processDebugJavaRes
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:255:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:262:82 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :ui-theme:processDebugJavaRes
+> Task :ui-theme:compileDebugUnitTestKotlin
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:processDebugUnitTestJavaRes
+> Task :ui-theme:testDebugUnitTest
+> Task :lpl:compileKotlin
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:classes UP-TO-DATE
+> Task :lpl:jar
+> Task :engine-api:compileKotlin
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :engine-api:jar
+> Task :engine-api:compileTestFixturesKotlin
+> Task :engine-api:compileTestFixturesJava NO-SOURCE
+> Task :engine-api:testFixturesClasses UP-TO-DATE
+> Task :engine-api:testFixturesJar
+> Task :engine-api:compileTestKotlin
+> Task :engine-api:compileTestJava NO-SOURCE
+> Task :engine-api:testClasses UP-TO-DATE
+> Task :schema:compileKotlin
+
+> Task :engine-api:test
+
+FakeEngineContractTest > aRenderOfAHistoryPositionEqualsGotoAndBack FAILED
+    java.lang.AssertionError at Assert.java:89
+
+64 tests completed, 1 failed
+
+> Task :engine-api:test FAILED
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes
+> Task :schema:jar
+> Task :schema:compileTestKotlin
+> Task :schema:compileTestJava NO-SOURCE
+> Task :schema:testClasses
+> Task :schema:test
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':checkScreenRules'.
+> Process 'command 'python3'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':engine-api:test'.
+> There were failing tests. See the report at: file:///home/runner/work/darktable-android/darktable-android/app/engine-api/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights.
+==============================================================================
+
+BUILD FAILED in 49s
+57 actionable tasks: 57 executed
