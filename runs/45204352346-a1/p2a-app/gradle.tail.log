@@ -1,0 +1,22 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRules FAILED
+/home/runner/work/darktable-android/darktable-android/app/app-engine/src/main/kotlin/app/dtandroid/real/ExportService.kt:81: icon drawn outside ui-icons: .setSmallIcon(android.R.drawable.stat_sys_upload)
+/home/runner/work/darktable-android/darktable-android/app/app-engine/src/main/kotlin/app/dtandroid/real/ExportService.kt:92: icon drawn outside ui-icons: b.addAction(Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, android.R.drawable.ic_menu_close_clear_cancel), "Cancel", cancel).build())
+check-screen-rules: 72 files, 2 violations
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':checkScreenRules'.
+> Process 'command 'python3'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 11s
+1 actionable task: 1 executed
