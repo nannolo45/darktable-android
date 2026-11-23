@@ -178,6 +178,23 @@ interface DarktableEngine {
     /** Create a style from the open image's history: [items] null = every item below the end, else history nums. */
     suspend fun styleCreate(name: String, description: String = "", items: List<Int>? = null, overwrite: Boolean = false)
 
+    // 9 (P3j): copy and paste of the history, docs/design/engine-api.md section 9.
+
+    /** The open photo's items as desktop's "selective copy" dialog lists them (one per module instance). */
+    suspend fun historyCopyItems(): CopyItems
+
+    /** Copy the open photo's history to the engine's clipboard: [selection] null = desktop's "copy" (the whole history without the modules unsafe to copy), else "selective copy". READ_ONLY in a read-only session. */
+    suspend fun historyCopy(selection: HistorySelection? = null)
+
+    /** What was copied; null = nothing yet. The clipboard outlives the photo's session. */
+    suspend fun historyClipboard(): Clipboard?
+
+    /** Paste onto the open photo, one undo step. [mode] null = desktop's preference (append). [selection]: a selective paste (its choice is kept, as on desktop). STATE: nothing copied. */
+    suspend fun historyPaste(mode: PasteMode? = null, selection: HistorySelection? = null)
+
+    /** Paste onto photos that are not open (no photo may be open: STATE); each XMP written. A target whose XMP fails the version guard is left alone (READ_ONLY in its result). */
+    suspend fun historyPasteFiles(targets: List<PasteTarget>, mode: PasteMode? = null, selection: HistorySelection? = null): List<PasteResult>
+
     /** Per-module times of the last render. */
     suspend fun renderTimes(): RenderTimes
 

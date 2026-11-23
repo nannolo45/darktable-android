@@ -31,6 +31,13 @@ import app.dtandroid.engine.api.RenderSize
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.UndoState
 import app.dtandroid.engine.api.XmpCheck
+import app.dtandroid.engine.api.Clipboard
+import app.dtandroid.engine.api.CopyItems
+import app.dtandroid.engine.api.HistorySelection
+import app.dtandroid.engine.api.PasteMode
+import app.dtandroid.engine.api.PasteResult
+import app.dtandroid.engine.api.PasteTarget
+import app.dtandroid.engine.api.pasteOptionsJson
 import app.dtandroid.engine.api.parseEngineJson
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -38,6 +45,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.put
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
@@ -423,6 +431,25 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     override suspend fun renderTimes(): RenderTimes = onEngine { RenderTimes.fromJson(p1b(NativeBridge.RENDER_TIMES)) }
+
+    // ---------------------------------------------------------------- 9 (P3j): copy and paste of the history
+
+    override suspend fun historyCopyItems(): CopyItems = onEngine { CopyItems.fromJson(p1b(NativeBridge.HISTORY_COPY_ITEMS)) }
+
+    override suspend fun historyCopy(selection: HistorySelection?) = onEngine {
+        p1b(NativeBridge.HISTORY_COPY, selection?.toJson(true)?.toString()); Unit
+    }
+
+    override suspend fun historyClipboard(): Clipboard? = onEngine { Clipboard.fromJson(p1b(NativeBridge.HISTORY_CLIPBOARD)) }
+
+    override suspend fun historyPaste(mode: PasteMode?, selection: HistorySelection?) = onEngine {
+        p1b(NativeBridge.HISTORY_PASTE, pasteOptionsJson(mode, selection)); Unit
+    }
+
+    override suspend fun historyPasteFiles(targets: List<PasteTarget>, mode: PasteMode?, selection: HistorySelection?): List<PasteResult> = onEngine {
+        val t = kotlinx.serialization.json.JsonArray(targets.map { kotlinx.serialization.json.buildJsonObject { put("raw", it.raw); put("xmp", it.xmp) } })
+        PasteResult.listFromJson(p1b(NativeBridge.HISTORY_PASTE_FILES, t.toString(), pasteOptionsJson(mode, selection)))
+    }
 
     // ------------------------------------------------------------------ 6 (P1b part 2)
 

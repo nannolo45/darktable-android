@@ -1028,4 +1028,62 @@ abstract class DarktableEngineContract {
         assertEquals(h0, engine.history())
         assertTrue(plain.rgba.contentEquals(engine.renderPreview(256).rgba))
     }
+
+    /**
+     * Brief P3j (engine-api.md 9): copy the history of photo A, paste it onto the open photo (one undo step) and onto
+     * photos that are not open (their XMP written); a selective copy takes only the chosen items; append keeps the
+     * target's own items; a target whose XMP fails the version guard is left alone.
+     */
+    @Test
+    fun copyAndPasteTheHistoryBetweenPhotos() = runBlocking<Unit> {
+        openSample()
+        expect(EngineError.STATE) { engine.historyPaste() }
+        engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.8))
+        engine.historySeal()
+        val items = engine.historyCopyItems().items
+        val exp = items.last { it.op == "exposure" && it.priority == 0 }
+        assertTrue("exposure is safe to copy", exp.safe)
+        items.firstOrNull { it.op == "temperature" }?.let { assertFalse("white balance is not safe to copy", it.safe) }
+        expect(EngineError.ARG) { engine.historyCopy(HistorySelection(listOf(99999))) }
+        engine.historyCopy(HistorySelection(listOf(exp.num)))
+        val clip = engine.historyClipboard()!!
+        assertTrue(clip.parts)
+        assertEquals(listOf(exp.num), clip.items.filter { it.selected == true }.map { it.num })
+        expect(EngineError.STATE) { engine.historyPasteFiles(emptyList()) }
+        engine.close()
+
+        val raw = File(sampleRaw())
+        val b = File(tmp.root, "paste-b." + raw.extension).also { raw.copyTo(it, overwrite = true) }
+        val bx = File(tmp.root, "paste-b.xmp")
+        val d = File(tmp.root, "paste-d." + raw.extension).also { raw.copyTo(it, overwrite = true) }
+        val dx = File(tmp.root, "paste-d.xmp").also { writeXmpWithUnknownModule(it) }
+        val dText = dx.readText()
+        val r = engine.historyPasteFiles(listOf(PasteTarget(b.path, bx.path), PasteTarget(d.path, dx.path)), PasteMode.APPEND)
+        assertEquals(null, r[0].error)
+        assertEquals(EngineError.READ_ONLY, r[1].error)
+        assertEquals("the refused XMP is unchanged", dText, dx.readText())
+        engine.open(b.path, bx.path)
+        assertEquals(0.8, exposureValue(), 1e-4)
+        val bHistory = engine.history()
+        engine.close()
+
+        // onto the open photo: append keeps its own items, one undo step takes the paste back
+        engine.open(b.path, bx.path)
+        engine.paramSet("vignette", 0, "brightness", ParamValue.of(-0.4))
+        engine.historySeal()
+        val before = engine.history()
+        engine.historyPaste(PasteMode.APPEND)
+        val after = engine.history()
+        assertTrue("the paste added an item", after.items.size > before.items.size)
+        assertEquals(before.items, after.items.take(before.items.size))
+        engine.undo()
+        assertEquals(before, engine.history())
+        engine.redo()
+        val px = File(tmp.root, "paste-b2.xmp")
+        engine.xmpWrite(px.path)
+        engine.close()
+        engine.open(b.path, px.path)
+        assertEquals(after, engine.history())
+        assertTrue(bHistory.items.isNotEmpty())
+    }
 }

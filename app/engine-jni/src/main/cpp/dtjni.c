@@ -770,6 +770,11 @@ Java_app_dtandroid_engine_NativeBridge_historySealCode(JNIEnv *env, jclass cls)
 #define DTJ_STYLE_DELETE 10
 #define DTJ_STYLE_CREATE 11
 #define DTJ_RENDER_TIMES 12
+#define DTJ_HISTORY_COPY_ITEMS 13   /* P3j, engine-api.md 9 */
+#define DTJ_HISTORY_COPY 14
+#define DTJ_HISTORY_CLIPBOARD 15
+#define DTJ_HISTORY_PASTE 16
+#define DTJ_HISTORY_PASTE_FILES 17
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -793,6 +798,11 @@ Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, j
     case DTJ_STYLE_DELETE: r = dtb_style_delete(a.s); break;
     case DTJ_STYLE_CREATE: r = dtb_style_create(a.s, b.s, c.s, n2); break;
     case DTJ_RENDER_TIMES: r = dtb_render_times(&s); break;
+    case DTJ_HISTORY_COPY_ITEMS: r = dtb_history_copy_items(&s); break;
+    case DTJ_HISTORY_COPY: r = dtb_history_copy(a.s); break;
+    case DTJ_HISTORY_CLIPBOARD: r = dtb_history_clipboard(&s); break;
+    case DTJ_HISTORY_PASTE: r = dtb_history_paste(a.s); break;
+    case DTJ_HISTORY_PASTE_FILES: r = dtb_history_paste_files(a.s, b.s, &s); break;
     default: break;
   }
   _str_free(&a); _str_free(&b); _str_free(&c);

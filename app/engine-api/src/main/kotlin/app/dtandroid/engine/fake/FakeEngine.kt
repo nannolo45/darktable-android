@@ -42,6 +42,13 @@ import app.dtandroid.engine.api.Style
 import app.dtandroid.engine.api.StyleImport
 import app.dtandroid.engine.api.StyleItem
 import app.dtandroid.engine.api.StyleMode
+import app.dtandroid.engine.api.Clipboard
+import app.dtandroid.engine.api.CopyItem
+import app.dtandroid.engine.api.CopyItems
+import app.dtandroid.engine.api.HistorySelection
+import app.dtandroid.engine.api.PasteMode
+import app.dtandroid.engine.api.PasteResult
+import app.dtandroid.engine.api.PasteTarget
 import app.dtandroid.engine.api.parseEngineJson
 import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblem
@@ -126,6 +133,9 @@ class FakeEngine(
         )
 
         private const val UNDO_LIMIT = 100
+
+        /** P3j: darktable's modules flagged IOP_FLAGS_UNSAFE_COPY (the iop sources at the pinned commit) */
+        val FAKE_UNSAFE_COPY = setOf("flip", "gamma", "mask_manager", "rotatepixels", "scalepixels", "temperature", "rawprepare")
 
         /** the blend parameter version the fake claims (darktable's at the pinned commit) */
         const val FAKE_BLEND_VERSION = 15
@@ -931,12 +941,16 @@ class FakeEngine(
         val s = requireWritable()
         val f = File(path)
         if (f.exists() && !check(readXmp(path)).ok) fail(EngineError.READ_ONLY, "$path fails the version guard; not overwritten")
+        writeXmpOf(s, path)
+    }
+
+    private fun writeXmpOf(s: Session, path: String) {
         val entries = s.items.mapIndexed { n, it ->
             FakeXmp.Entry(n, it.op, catalog[it.op]!!.version, it.enabled, it.priority, it.instanceName, it.params)
         }
         val order = s.insts.mapIndexed { idx, i -> "${i.op}/${i.priority}" to (idx + 1) * 100 }.toMap()
         try {
-            FakeXmp.write(f, entries, s.end, order)
+            FakeXmp.write(File(path), entries, s.end, order)
         } catch (e: Exception) {
             fail(EngineError.IO, "cannot write $path: ${e.message}")
         }
@@ -1232,6 +1246,103 @@ class FakeEngine(
             val it = s.items[i]
             FStyleItem(i, it.op, it.priority, it.instanceName, it.enabled, catalog[it.op]!!.version, FAKE_BLEND_VERSION, it.params)
         })
+    }
+
+    // ------------------------------------------------------------ 9 (P3j): copy and paste of the history
+    //
+    // The stand-in keeps the copied photo's items (one per instance, its last item, as desktop's dialog lists them);
+    // a paste adds them as history items: append on top (instances that do not exist are made), overwrite on an
+    // empty history. Modules unsafe to copy (white balance, raw black/white point, orientation) are left out by a
+    // plain copy, as darktable's IOP_FLAGS_UNSAFE_COPY.
+
+    private class FClip(val items: List<Pair<Int, Item>>, val parts: Boolean, val order: Boolean, var selected: Set<Int>?)
+    private var clip: FClip? = null
+
+    private fun Session.copyList(): List<Pair<Int, Item>> {
+        val last = LinkedHashMap<Pair<String, Int>, Int>()
+        items.forEachIndexed { i, it -> if (!it.unknown) last[it.op to it.priority] = i }
+        return last.values.sorted().map { it to items[it] }
+    }
+
+    private fun copyItemOf(num: Int, it: Item, selected: Boolean? = null) = CopyItem(
+        num, it.op, it.priority, if (it.instanceName.isEmpty()) it.op else "${it.op} ${it.instanceName}", it.instanceName,
+        it.enabled, it.blend != null, it.op !in FAKE_UNSAFE_COPY, selected,
+    )
+
+    private fun checkSelection(sel: HistorySelection, listed: Set<Int>) {
+        if (sel.items.isEmpty()) fail(EngineError.ARG, "no item chosen")
+        (sel.items + sel.reset).firstOrNull { it !in listed }?.let { fail(EngineError.ARG, "\"items\": $it is not one of the listed items") }
+    }
+
+    override suspend fun historyCopyItems(): CopyItems = onEngine {
+        val s = requireSession()
+        CopyItems(s.copyList().map { (n, it) -> copyItemOf(n, it) }, "v5.0")
+    }
+
+    override suspend fun historyCopy(selection: HistorySelection?) = onEngine {
+        val s = requireWritable()
+        val list = s.copyList()
+        selection?.let { checkSelection(it, list.map { p -> p.first }.toSet()) }
+        clip = FClip(list, selection != null, selection?.moduleOrder ?: true, selection?.items?.toSet())
+    }
+
+    override suspend fun historyClipboard(): Clipboard? = onEngine {
+        requireInit()
+        clip?.let { c -> Clipboard(c.parts, c.order, c.items.map { (n, it) -> copyItemOf(n, it, c.selected?.contains(n) ?: true) }, "v5.0") }
+    }
+
+    private fun pasteOnto(s: Session, c: FClip, mode: PasteMode?) {
+        val chosen = c.items.filter { (n, it) -> c.selected?.contains(n) ?: (c.parts || it.op !in FAKE_UNSAFE_COPY) }
+        s.beginChange()
+        if (mode == PasteMode.OVERWRITE) {
+            s.items = emptyList(); s.end = 0
+            s.insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
+        }
+        for ((_, it) in chosen) {
+            if (catalog[it.op] == null) continue
+            if (s.insts.none { i -> i.op == it.op && i.priority == it.priority })
+                s.insts = s.insts + Inst(it.op, it.priority, it.instanceName)
+            s.addItem(it.op, it.priority, it.enabled, it.params, it.blend)
+        }
+    }
+
+    private fun pasteSelection(c: FClip, selection: HistorySelection?) {
+        if (selection != null) {
+            checkSelection(selection, c.items.map { it.first }.toSet())
+            c.selected = selection.items.toSet()
+        }
+    }
+
+    override suspend fun historyPaste(mode: PasteMode?, selection: HistorySelection?) = onEngine {
+        val s = requireWritable()
+        val c = clip ?: fail(EngineError.STATE, "nothing copied")
+        pasteSelection(c, selection)
+        pasteOnto(s, c, mode)
+    }
+
+    override suspend fun historyPasteFiles(targets: List<PasteTarget>, mode: PasteMode?, selection: HistorySelection?): List<PasteResult> = onEngine {
+        requireInit()
+        if (session != null) fail(EngineError.STATE, "close the open image first (save it to its XMP)")
+        val c = clip ?: fail(EngineError.STATE, "nothing copied")
+        pasteSelection(c, selection)
+        targets.map { t ->
+            try {
+                if (!File(t.raw).isFile) fail(EngineError.IO, "cannot read ${t.raw}")
+                val insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
+                val name = File(t.raw).name
+                val s = Session(t.raw, false, (name.hashCode() and 0x7fffffff) % 6, samples[name], insts, emptyList(), 0, 0, emptyList())
+                if (File(t.xmp).isFile) {
+                    val text = readXmp(t.xmp)
+                    if (!check(text).ok) fail(EngineError.READ_ONLY, "refusing to change ${t.xmp}: it failed the version guard")
+                    loadXmp(s, FakeXmp.parse(text))
+                } else applyDefaultEdit(s)
+                pasteOnto(s, c, mode)
+                writeXmpOf(s, t.xmp)
+                PasteResult(t.raw, t.xmp, null, null)
+            } catch (e: EngineException) {
+                PasteResult(t.raw, t.xmp, e.error, e.detail)
+            }
+        }
     }
 
     // ------------------------------------------------------------ 6 (P1b part 2): pickers, histogram, coordinates
