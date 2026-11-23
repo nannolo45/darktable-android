@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import app.dtandroid.darkroom.ui.l1.L1Model
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
