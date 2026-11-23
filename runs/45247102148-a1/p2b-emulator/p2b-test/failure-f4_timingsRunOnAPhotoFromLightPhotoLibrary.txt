@@ -1,0 +1,245 @@
+f4_timingsRunOnAPhotoFromLightPhotoLibrary(app.dtandroid.real.P2fScenarioTest): java.lang.AssertionError: timed out: darkroom with the photo open
+
+## darkroom scheduler
+lock held, interactive 0, background running, dragging false, quiet true, photo mire1.cr2 open false, loading false, fetching false, working null
+
+## timeline
++0 ms	done
++8 ms	lpl: last picture of 71/mire1.cr2 written
++117 ms	XMP posted (seen by the stub)
++471 ms	LPL preview: render start
++475 ms	open requested
++525 ms	LPL preview: render cancelled
++533 ms	background: session on mire1.cr2 put back for interactive work
++533 ms	background: session on mire1.cr2 put back for interactive work
++537 ms	darkroom: open mire1.cr2 asked
++539 ms	darkroom: stored picture shown
++540 ms	first picture on screen (test)
++546 ms	darkroom: engine open start
++656 ms	darkroom: engine open end
++710 ms	darkroom: preview render start (1024 px)
++1330 ms	darkroom: preview rendered 1024x681 in 620 ms
++1330 ms	darkroom: preview shown
++1360 ms	lpl: thumbnail of 71/mire1.cr2 written
++1644 ms	LPL preview: render start
++3874 ms	LPL preview: render end
++3875 ms	background: session on mire1.cr2 put back for interactive work
++3875 ms	darkroom: preview render start (1024 px)
++3903 ms	darkroom: preview rendered 1024x681 in 28 ms
++3904 ms	darkroom: preview shown
++3929 ms	lpl: thumbnail of 71/mire1.cr2 written
++3962 ms	preview posted (seen by the stub)
++3977 ms	lpl: last picture of 71/mire1.cr2 written
++4510 ms	LPL preview: render start
++4681 ms	LPL preview: render cancelled
++4731 ms	background: thumbnail OTHER_0023.CR2 put back for interactive work
++4731 ms	background: session on mire1.cr2 put back for interactive work
++4731 ms	background: session on mire1.cr2 put back for interactive work
++5516 ms	LPL preview: render start
++5976 ms	LPL preview: render end
++6252 ms	LPL preview: render start
++6259 ms	LPL preview: render end
++8888 ms	darkroom: open mire1.cr2 asked
++8891 ms	darkroom: engine open start
++9111 ms	darkroom: engine open end
++9164 ms	darkroom: preview render start (1024 px)
++9415 ms	darkroom: preview rendered 1024x681 in 250 ms
++9415 ms	darkroom: preview shown
++9430 ms	lpl: thumbnail of 81/mire1.cr2 written
++308894 ms	lpl: last picture of 81/mire1.cr2 written
++309318 ms	thumbnail pass: 81/mire1.cr2 render start
++309477 ms	thumbnail pass: 81/mire1.cr2 rendered
++309495 ms	thumbnail pass: 81/mire1.cr2 store
++309500 ms	lpl: thumbnail of 81/mire1.cr2 written
+
+## threads
+"Signal Catcher" WAITING
+"HeapTaskDaemon" WAITING
+"ReferenceQueueDaemon" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.Object.wait(Object.java:568)
+    at java.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"FinalizerDaemon" WAITING
+    at java.lang.Object.wait(Native Method)
+    at java.lang.Object.wait(Object.java:442)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)
+    at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)
+    at java.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"FinalizerWatchdogDaemon" TIMED_WAITING
+    at java.lang.Thread.sleep(Native Method)
+    at java.lang.Thread.sleep(Thread.java:450)
+    at java.lang.Thread.sleep(Thread.java:355)
+    at java.lang.Daemons$FinalizerWatchdogDaemon.sleepForNanos(Daemons.java:438)
+    at java.lang.Daemons$FinalizerWatchdogDaemon.waitForProgress(Daemons.java:480)
+    at java.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:369)
+    at java.lang.Daemons$Daemon.run(Daemons.java:140)
+    at java.lang.Thread.run(Thread.java:1012)
+"Jit thread pool worker thread 0" RUNNABLE
+"Profile Saver" RUNNABLE
+"main" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.app.ActivityThread.main(ActivityThread.java:7924)
+    at java.lang.reflect.Method.invoke(Native Method)
+    at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+"binder:3811_1" RUNNABLE
+"binder:3811_2" RUNNABLE
+"binder:3811_3" RUNNABLE
+"Instr: androidx.test.runner.AndroidJUnitRunner" RUNNABLE
+    at dalvik.system.VMStack.getThreadStackTrace(Native Method)
+    at java.lang.Thread.getStackTrace(Thread.java:1841)
+    at app.dtandroid.real.HangGuard$rule$1.failed(HangGuard.kt:32)
+    at org.junit.rules.TestWatcher.failedQuietly(TestWatcher.java:90)
+    at org.junit.rules.TestWatcher.access$300(TestWatcher.java:52)
+    at org.junit.rules.TestWatcher$1.evaluate(TestWatcher.java:68)
+    at org.junit.rules.RunRules.evaluate(RunRules.java:20)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+    at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+    at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+    at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+    at org.junit.runners.Suite.runChild(Suite.java:128)
+    at org.junit.runners.Suite.runChild(Suite.java:27)
+    at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+    at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+    at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+    at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+    at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+    at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+    at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+    at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+    at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+    at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+    at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+    at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:467)
+    at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2361)
+"DefaultDispatcher-worker-3" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"InstrumentationConnectionThread" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"dt-engine" RUNNABLE
+    at app.dtandroid.engine.NativeBridge.jsonGet(Native Method)
+    at app.dtandroid.engine.JniEngine.get(JniEngine.kt:146)
+    at app.dtandroid.engine.JniEngine.imageInfo$lambda$0(JniEngine.kt:208)
+    at app.dtandroid.engine.JniEngine.$r8$lambda$Q7HgrsQ2Xsrrd66951IFqO0Env8(Unknown Source:0)
+    at app.dtandroid.engine.JniEngine$$ExternalSyntheticLambda69.invoke(D8$$SyntheticClass:0)
+    at app.dtandroid.engine.JniEngine$Task.run(JniEngine.kt:96)
+    at app.dtandroid.engine.Engine.thread$lambda$0(Engine.kt:86)
+    at app.dtandroid.engine.Engine.$r8$lambda$oDRF5EH_LtHKI5kZ_J83oB6ZCGc(Unknown Source:0)
+    at app.dtandroid.engine.Engine$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+    at java.lang.Thread.run(Thread.java:1012)
+"RenderThread" RUNNABLE
+"hwuiTask1" RUNNABLE
+"hwuiTask0" RUNNABLE
+"queued-work-looper" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"DefaultDispatcher-worker-4" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"OkHttp ConnectionPool" TIMED_WAITING
+    at java.lang.Object.wait(Native Method)
+    at com.android.okhttp.ConnectionPool$1.run(ConnectionPool.java:106)
+    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+    at java.lang.Thread.run(Thread.java:1012)
+"Okio Watchdog" TIMED_WAITING
+    at java.lang.Object.wait(Native Method)
+    at com.android.okhttp.okio.AsyncTimeout.awaitTimeout(AsyncTimeout.java:325)
+    at com.android.okhttp.okio.AsyncTimeout.access$000(AsyncTimeout.java:42)
+    at com.android.okhttp.okio.AsyncTimeout$Watchdog.run(AsyncTimeout.java:288)
+"binder:3811_4" RUNNABLE
+"DefaultDispatcher-worker-1" RUNNABLE
+    at java.util.Formatter$Flags.contains(Formatter.java:4540)
+    at java.util.Formatter$FormatSpecifier.checkNumeric(Formatter.java:3126)
+    at java.util.Formatter$FormatSpecifier.checkInteger(Formatter.java:3082)
+    at java.util.Formatter$FormatSpecifier.<init>(Formatter.java:2826)
+    at java.util.Formatter$FormatSpecifierParser.<init>(Formatter.java:2630)
+    at java.util.Formatter.parse(Formatter.java:2563)
+    at java.util.Formatter.format(Formatter.java:2510)
+    at java.util.Formatter.format(Formatter.java:2464)
+    at java.lang.String.format(String.java:3603)
+    at app.dtandroid.lpl.WorkStore$Companion.sha256$lambda$0(WorkStore.kt:182)
+    at app.dtandroid.lpl.WorkStore$Companion.$r8$lambda$O-25wxlTygQRif8-8VWugRaIL4g(Unknown Source:0)
+    at app.dtandroid.lpl.WorkStore$Companion$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+    at kotlin.collections.ArraysKt___ArraysKt.joinTo(_Arrays.kt:24845)
+    at kotlin.collections.ArraysKt___ArraysKt.joinToString(_Arrays.kt:25051)
+    at kotlin.collections.ArraysKt___ArraysKt.joinToString$default(_Arrays.kt:25050)
+    at app.dtandroid.lpl.WorkStore$Companion.sha256(WorkStore.kt:182)
+    at app.dtandroid.lpl.WorkStore$Companion.sha256(WorkStore.kt:184)
+    at app.dtandroid.lpl.LplAgent.zeroDirty(LplAgent.kt:208)
+    at app.dtandroid.lpl.LplAgent.isDirty(LplAgent.kt:203)
+    at app.dtandroid.lpl.LplAgent.pending(LplAgent.kt:767)
+    at app.dtandroid.real.AppHost$background$1.invokeSuspend(AppHost.kt:468)
+    at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+    at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:829)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"DefaultDispatcher-worker-2" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"binder:3811_5" RUNNABLE
+"DefaultDispatcher-worker-5" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"DefaultDispatcher-worker-6" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:855)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:803)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:751)
+    at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+"UiAutomation" RUNNABLE
+    at android.os.MessageQueue.nativePollOnce(Native Method)
+    at android.os.MessageQueue.next(MessageQueue.java:335)
+    at android.os.Looper.loopOnce(Looper.java:161)
+    at android.os.Looper.loop(Looper.java:288)
+    at android.os.HandlerThread.run(HandlerThread.java:67)
+"kotlinx.coroutines.DefaultExecutor" TIMED_WAITING
+    at jdk.internal.misc.Unsafe.park(Native Method)
+    at java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)
+    at kotlinx.coroutines.DefaultExecutor.run(DefaultExecutor.kt:118)
+    at java.lang.Thread.run(Thread.java:1012)
+"Time-limited test" TERMINATED
