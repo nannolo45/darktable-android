@@ -255,6 +255,7 @@ int dtb__render_opts_from(JsonObject *o, dtb_render_opts_t *out)
 int dtb__render_opts_parse(const char *json, dtb_render_opts_t *out)
 {
   memset(out, 0, sizeof(*out));
+  out->history_end = -1;  // P3h: none (0 is the original)
   if(!json || !*json) return DTB_OK;
   JsonNode *root = dtb__json_parse(json);
   if(!root) return DTB_E_ARG;
