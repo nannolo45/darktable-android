@@ -129,14 +129,6 @@ object AppHost {
             c.exports.delivery = AppExportDelivery(app)
             // brief P3i: while an export runs the process is kept alive by a foreground service (notification, cancel);
             // an export to LightPhotoLibrary also heartbeats while the app is in the background (step "exporting")
-            AppEngine.scope.launch {
-                c.exports.job.map { it?.running == true }.distinctUntilChanged().collect { running ->
-                    if (running) {
-                        ExportService.start(app)
-                        if (c.exports.job.value?.target == ExportTarget.LPL) exportHeartbeats()
-                    }
-                }
-            }
             // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
             // brief P2f: what a job from LightPhotoLibrary did with the open photo, said in the darkroom once
             AppEngine.scope.launch {

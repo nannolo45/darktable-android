@@ -132,11 +132,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AppEngine.start(this)
-        exportWatch = AppEngine.scope.launch {
-            vm.controller.exports.job.map { it?.running == true }.distinctUntilChanged().collect { running ->
-                if (running) runOnUiThread { askNotificationsOnce() }
-            }
-        }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = back()
         })
