@@ -15,15 +15,16 @@
  * Model
  * - One process holds one engine (dtb_init .. dtb_shutdown) and at most one
  *   open image (dtb_open .. dtb_close), called a session.
- * - Threading: every function except dtb_render_cancel() must be called from
- *   the same thread, the "engine thread". dtb_render_cancel() may be called
- *   from any thread while a render runs on the engine thread.
+ * - Threading: every function except dtb_render_cancel() and
+ *   dtb_export_cancel() must be called from the same thread, the "engine
+ *   thread". dtb_render_cancel() may be called from any thread while a render
+ *   runs on the engine thread; dtb_export_cancel() from any thread (P3g).
  * - A module instance is addressed by its operation name `op` ("exposure")
  *   and its `priority` (darktable's multi_priority, 0 for the first
  *   instance). Priorities can change when an instance is deleted; callers
  *   re-read dtb_modules().
  * - Every function returns 0 (DTB_OK) or a negative DTB_E_* code, except
- *   dtb_shutdown, dtb_render_cancel, dtb_last_error and dtb_free.
+ *   dtb_shutdown, dtb_render_cancel, dtb_export_cancel, dtb_last_error and dtb_free.
  *   dtb_last_error() then holds a message.
  * - JSON results are returned through a `char **json` argument, are UTF-8,
  *   owned by the caller and freed with dtb_free(). On failure *json is NULL.
@@ -365,6 +366,33 @@ int dtb_xmp_write(const char *xmp_path);
  *              | "adobergb" | "displayp3" }
  * A format whose library is not built: DTB_E_ARG with a message. */
 int dtb_export(const char *path, const char *options_json);
+
+/* P3g (engine-api.md 6.10): the same export with progress, and a cancel.
+ * progress (may be NULL) is called on the engine thread, inside the export,
+ * in this order: PREPARING once (fraction 0), PROCESSING once per module of
+ * the export pipe as it starts (module = 1..modules, the count of enabled
+ * modules of that pipe), WRITING once, DONE once (fraction 1) on success
+ * only. fraction (0..1) never goes back. The callback must return quickly
+ * and must not call the bridge, except dtb_export_cancel().
+ * The file is written under a temporary name in path's folder and renamed
+ * to path only on success: a cancelled or failed export leaves no file.
+ * Returns DTB_E_CANCELLED after dtb_export_cancel(). dtb_export(p, o) is
+ * dtb_export_ex(p, o, NULL, NULL). */
+typedef enum dtb_export_step_t
+{
+  DTB_EXPORT_PREPARING = 0,
+  DTB_EXPORT_PROCESSING = 1,
+  DTB_EXPORT_WRITING = 2,
+  DTB_EXPORT_DONE = 3
+} dtb_export_step_t;
+typedef void (*dtb_export_progress_f)(int step, int module, int modules, double fraction, void *user);
+int dtb_export_ex(const char *path, const char *options_json, dtb_export_progress_f progress, void *user);
+
+/* Ask the export running on the engine thread to stop. Safe from any thread,
+ * also from the progress callback. The pipe stops after the module that is
+ * processing; nothing is written once the cancel arrived. A cancel while no
+ * export runs has no effect (the next export starts uncancelled). */
+void dtb_export_cancel(void);
 
 
 /* ---------------------------------------------------------------------- */

@@ -52,6 +52,8 @@ static void _timed_plain(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_i
 {
   _plain_f f = g_orig ? g_hash_table_lookup(g_orig, self->so) : NULL;
   if(!f) return;
+  // P3g: export progress (which module of how many) and cancel between modules (output.c)
+  dtb__export_hook(self, piece);
   const double w0 = dtb__t(), c0 = _cpu_ms();
   f(self, piece, i, o, roi_in, roi_out);
   const double w = dtb__t() - w0, c = _cpu_ms() - c0;

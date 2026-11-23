@@ -249,6 +249,10 @@ void dtb__times_begin(const char *pipe);
 void dtb__times_end(void);
 void dtb__times_reset(void);
 
+/* output.c (P3g): times.c calls it before every process_plain; progress and
+ * cancel of an export in flight, nothing otherwise */
+void dtb__export_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece);
+
 /* actions2.c: 1 = no such action there */
 int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 

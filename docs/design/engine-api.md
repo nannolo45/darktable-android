@@ -584,3 +584,45 @@ Kotlin: `historyGroupBegin()`, `historyGroupEnd(keep)`, `maskAdd(op, priority, t
 `maskMemberMove`, `maskMemberRemove`, `maskMemberUpdate`, `maskGroupWrap(group, ids, operator)`; JNI entry
 `NativeBridge.p3d`. The stand-in engine keeps them as data (it merges a group's items of one instance as the bridge
 does). Bridge test C26 (`engine/tests/dtb_test_p3d.c`).
+
+## 7. P3g: export progress and cancel (23 Nov 2026)
+
+`export` (2.8) reports nothing while it runs and cannot be stopped. Two calls add both; `export` itself is
+unchanged (it is `export_ex` without a callback, and its output is the same byte for byte: test C27).
+
+| C | Kotlin (`DarktableEngine`) | Meaning |
+|---|---|---|
+| `int dtb_export_ex(path, options_json, progress, user)` | `suspend fun export(path, options, onProgress: (ExportProgress) -> Unit)` | The export of 2.8 with progress. `progress(step, module, modules, fraction, user)` is called on the engine thread inside the export, in this order: `PREPARING` once (fraction 0); `PROCESSING` once per module of the export pipe as it starts (`module` = 1..`modules`, `modules` = the enabled modules of that pipe); `WRITING` once; `DONE` once (fraction 1) on success only. `fraction` never goes back. The callback returns quickly and calls nothing of the bridge but `export_cancel`. The file is written under a temporary name (`.<name>.dtb-part-<pid>.<ext>`) in the target folder and renamed to `path` only on success: a cancelled or failed export leaves no file, and a file already at `path` stays as it was. |
+| `void dtb_export_cancel(void)` | `fun exportCancel()` | From any thread (also from the callback). The export returns `CANCELLED`; the pipe stops after the module that is processing; nothing is written once the cancel arrived, also when it arrives after the last module. A cancel while no export runs has no effect: the next export starts uncancelled. |
+
+`ExportProgress(step: ExportStep, module: Int, modules: Int, fraction: Double)`, `ExportStep` = `PREPARING`,
+`PROCESSING`, `WRITING`, `DONE`.
+
+**Where the progress comes from (no change to upstream).** darktable has no progress callback for one export:
+desktop's export job reports only "image n of N" (`control/jobs/control_jobs.c`), and
+`dt_imageio_export_with_flags` (`imageio/imageio.c`) keeps its pipe on its own stack. The bridge reaches into it at
+two places that upstream already routes through replaceable function pointers:
+- every module's pixel code runs through `module->process_plain` (`default_process`, `develop/imageop.c`), which
+  each instance copies from its library's `so->process_plain` (`dt_iop_load_module_by_so`); the bridge has wrapped
+  it since P1b for module times (`engine/src/times.c`). Before each module the wrapper now calls the export hook
+  (`engine/src/output.c`), which counts the modules of the export pipe (`dt_pipe_is_export`) and, after a cancel,
+  stops that pipe with `dt_dev_pixelpipe_set_shutdown(pipe, DT_DEV_PIXELPIPE_STOP_PIECE)` — the stopper a module
+  itself uses (`dt_dev_piece_shutdown`), which `_module_pipe_stop` (`develop/pixelpipe_hb.c`) never ignores, unlike
+  `STOP_NODES`/`STOP_DATA` late in the pipe;
+- the format's `write_image`: the export is given a copy of the format module whose `write_image` is the bridge's;
+  it reports `WRITING`, and refuses to write after a cancel.
+
+So the processing part is real pipeline progress ("module n of N"), not an estimate. It counts modules, not time:
+demosaic and the heavy modules take a larger share of the time than of the bar. Limits: a module processed by
+OpenCL (`process_cl`) is not seen (the bridge runs on the CPU); an enabled module whose pixel code is not reached
+through `process_plain` is not counted, and the bar then jumps from the last module seen to writing (C27 reports
+modules seen against modules enabled). A cancel takes effect when the module processing at that moment ends.
+
+Shares of the bar: preparing 0 to 5 %, modules 5 to 90 % (module n starting = 5 + 85·(n−1)/N), writing 90 %, done
+100 %. The app adds a share per photo for a series and its own steps (sending, sharing) outside the engine.
+
+Tests (C27, `engine/tests/dtb_test_p3g.c`): events in order and ending at 100 %; cancel while preparing, at the
+first, middle and last module, while writing, and over an older file, from the callback; cancel from another
+thread at 30 % and 60 % of the export's time; each leaves no file and no temporary file; an idle cancel does not
+affect the next export; the export after the cancels equals the first byte for byte, `export` equals `export_ex`,
+and the first export is compared with `darktable-cli` (run_tests.sh, as X1).

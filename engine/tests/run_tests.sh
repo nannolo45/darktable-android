@@ -401,6 +401,18 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C26 masktree "mask tree: one-step shapes, history groups, tree editing, parametric elements, reopen"
     parity C26 masktree_difference; parity C26 masktree_groups; parity C26 masktree_parametric
   fi
+  # brief P3g (engine-api.md 6.10): export progress events and cancel; the export equals darktable-cli's
+  if want C27; then
+    drv C27 exportprog "export progress in order to 100 %, cancel leaves no file"
+    if [ -f "$D/p3g_export.jpg" ]; then
+      rm -f "$D/p3g_export_cli.jpg"
+      "$CLI" "$RAW" "$XMP" "$D/p3g_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+        --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
+      cmp_rec C27 "$C" "$D/p3g_export.jpg" "$D/p3g_export_cli.jpg"
+    else
+      fail C27 "$C" "p3g_export.jpg was not written"
+    fi
+  fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
