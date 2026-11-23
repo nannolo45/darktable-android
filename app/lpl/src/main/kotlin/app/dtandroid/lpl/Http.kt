@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.lpl
 
+import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -16,6 +17,10 @@ class HttpRequest(
     val contentType: String? = null,
     val connectTimeoutMs: Int,
     val readTimeoutMs: Int,
+    /** brief P3i: the body is this file, streamed (never held whole in memory); used instead of [body] */
+    val bodyFile: File? = null,
+    /** brief P3i: told after each block of [bodyFile] sent, with the bytes sent so far (on the calling thread) */
+    val onSent: ((Long) -> Unit)? = null,
 ) {
     /** What error texts and logs show: method and path, never the token, never a credential. */
     val label: String get() = "$method ${path.substringBefore('?')}"
@@ -55,6 +60,26 @@ class UrlConnectionTransport : HttpTransport {
                 c.setRequestProperty("Content-Type", req.contentType ?: "application/octet-stream")
                 c.setFixedLengthStreamingMode(body.size)
                 c.outputStream.use { it.write(body) }
+            }
+            val file = req.bodyFile
+            if (file != null) {
+                c.doOutput = true
+                c.setRequestProperty("Content-Type", req.contentType ?: "application/octet-stream")
+                val length = file.length()
+                c.setFixedLengthStreamingMode(length)
+                var sent = 0L
+                file.inputStream().use { input ->
+                    c.outputStream.use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            sent += n
+                            req.onSent?.invoke(sent)
+                        }
+                    }
+                }
             }
             val status = c.responseCode
             if (status < 0) throw IOException("no valid HTTP answer")

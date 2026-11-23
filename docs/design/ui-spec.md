@@ -211,7 +211,7 @@ export button. A screen over the darkroom: back, title "export", the photo's nam
   note on the target. LightPhotoLibrary is not offered: the app has no R5 upload call yet (P3g report).
 - **format options:** file format (JPEG, PNG, TIFF, WebP: what the engine takes; WebP only where the engine was
   built with it, otherwise the export fails with the engine's message), bit depth where the format has more than
-  one (PNG 8/16, TIFF 8/16/32), quality for JPEG and WebP (a list 100…50; desktop has a slider).
+  one (PNG 8/16, TIFF 8/16/32), quality for JPEG and WebP (brief P3i: a slider 5..100 as desktop's, default 95, one value per lifted finger, double tap on the bar resets to 95).
 - **global options:** set size (original size = max size 0 × 0, long edge 2048 px, long edge 3840 px), high quality
   resampling, profile (image settings, sRGB, Adobe RGB, Display P3). Upscaling is always off.
 - Defaults are darktable's: JPEG, quality 95, 8 bit, no size limit, high quality resampling no, profile image
@@ -228,6 +228,17 @@ export button. A screen over the darkroom: back, title "export", the photo's nam
 - **Top bar indicator:** while an export runs, or after it ended until the export screen is opened again, the
   darkroom's top bar (phone, tablet, l1) shows a small text ("export 42 %", "export 5/12 · 38 %", "exported") over
   a thin bar; tapping it opens the export screen.
+- **Brief P3i, LightPhotoLibrary:** the destination "LightPhotoLibrary" sends the file to the server the photo came from
+  (R18, PLAN.md 4.3), with the photo's id and version. It is on offer only when the photo came from an LPL server whose
+  last heartbeat answer has `server_caps` with `exports`; otherwise the entry is greyed and a one-line note under the
+  target says why (not from LPL, server not answered yet, server too old). The step reads "sending to LightPhotoLibrary"
+  with the bytes sent as the share of the bar. A server that does not answer keeps the export in a queue on the phone
+  (survives a restart); it is sent with the next sync and the end line says "waiting for LightPhotoLibrary".
+- **Brief P3i, series in the background:** a series no longer opens each photo in the darkroom. The darkroom's photo is
+  saved and closed, every photo is opened, exported and closed on the engine (one session at a time: the bridge allows
+  one), and the darkroom's photo is opened again at the end. Meanwhile the darkroom's own actions wait. A foreground
+  service (type dataSync) keeps the process alive with the app in the background or the screen off; its notification
+  reads "Exporting photo n of N" with a progress bar and a Cancel action; the end stays as a notification.
 - The export runs in the darkroom's scope: it goes on when the export screen is closed and while another screen of
   the app is shown. A series opens each photo in the darkroom and comes back to the first one; when the darkroom is
   left during a series, it stops after the photo under way ("stopped: the darkroom was left"). In the background

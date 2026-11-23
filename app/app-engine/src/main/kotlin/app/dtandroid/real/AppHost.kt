@@ -38,7 +38,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import app.dtandroid.darkroom.ExportTarget
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -63,6 +66,9 @@ object AppHost {
         // installed over the old interface preview (same id until P2e): its sample series is of no use here
         runCatching { File(a.filesDir, "preview-series").takeIf { it.isDirectory }?.deleteRecursively() }
     }
+
+    /** brief P3i: set by the activity: asks for the notification permission once */
+    @Volatile var askNotifications: (() -> Unit)? = null
 
     val schema by lazy { SchemaLoader.fromResources() }
     private val builtins by lazy { BuiltinLayouts.fromResources() }
@@ -124,6 +130,17 @@ object AppHost {
             c.stylesPresets.settings = FileStyleSettings(File(app.filesDir, "styles/settings.json"))
             // brief P3g: where the export screen's files go (Pictures/darktable, the share sheet)
             c.exports.delivery = AppExportDelivery(app)
+            // brief P3i: while an export runs the process is kept alive by a foreground service (notification, cancel);
+            // an export to LightPhotoLibrary also heartbeats while the app is in the background (step "exporting")
+            AppEngine.scope.launch {
+                c.exports.job.map { it?.running == true }.distinctUntilChanged().collect { running ->
+                    if (running) {
+                        askNotifications?.invoke()
+                        ExportService.start(app)
+                        if (c.exports.job.value?.target == ExportTarget.LPL) exportHeartbeats()
+                    }
+                }
+            }
             // brief P2f: the open photo's sync step (R16) and last edit (R15), from the agent
             // brief P2f: what a job from LightPhotoLibrary did with the open photo, said in the darkroom once
             AppEngine.scope.launch {
@@ -397,15 +414,45 @@ object AppHost {
             // edits that waited while the app was away are sent now (the app is in front: no battery concern)
             // brief P2i: not with automatic syncing off
             launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
+            var beats = 0
             while (isActive) {
                 if (servers.list().isNotEmpty()) {
                     val jobs = agent.heartbeat()
+                    // brief P3i: exports that waited for their server go out as soon as it answers (looked at every ~10 s)
+                    if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) launch { agent.sendQueuedExports() }
                     // in the order LPL gave them, one after the other
                     if (jobs.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
                 }
                 delay(HEARTBEAT_MS)
             }
         }
+    }
+
+    /**
+     * Brief P3i: while an export to LightPhotoLibrary runs with the app in the background, the heartbeat goes on (every
+     * 2 s, as in the foreground) so LPL shows the step "exporting". Jobs it hands out are dealt with as at the last
+     * heartbeat of [background]. Ends with the export, or when the app is in the foreground again (its own loop).
+     */
+    private var exportBeat: CoJob? = null
+
+    @Synchronized
+    private fun exportHeartbeats() {
+        if (exportBeat?.isActive == true) return
+        exportBeat = AppEngine.scope.launch {
+            while (isActive && controller.exports.job.value?.running == true) {
+                if (loop?.isActive != true && servers.list().isNotEmpty()) heartbeatAndKeep()
+                delay(HEARTBEAT_MS)
+            }
+        }
+    }
+
+    /** One heartbeat of the background kind: sync and release jobs are done now, edit and open are kept for the screen. */
+    private suspend fun heartbeatAndKeep() {
+        val now = ArrayList<Pair<ServerOrigin, Job>>()
+        for ((origin, job) in agent.heartbeat()) {
+            if (job.kind == "sync" || job.kind == "release") now += origin to job else keepJob(origin, job)
+        }
+        if (now.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in now) runJob(origin, job) } }
     }
 
     /** The app left the foreground: stop the heartbeat, send a last one, leave pending syncs to the background job. */
@@ -417,15 +464,12 @@ object AppHost {
             if (servers.list().isNotEmpty()) {
                 // LPL hands a job out once. Jobs that come with this last heartbeat: sync and release are
                 // done now; edit and open need the screen and are kept (on disk) until the app is open again
-                val now = ArrayList<Pair<ServerOrigin, Job>>()
-                for ((origin, job) in agent.heartbeat()) {
-                    if (job.kind == "sync" || job.kind == "release") now += origin to job else keepJob(origin, job)
-                }
-                if (now.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in now) runJob(origin, job) } }
+                heartbeatAndKeep()
             }
             // a photo left open in the darkroom has its edit written by the activity; if the process ends
             // before the user comes back, the job sends it
-            if (agent.pending().isNotEmpty() || controller.openRawPath() != null) SyncJob.schedule(app)
+            // brief P3i: exports that wait for their server go out with the next sync
+            if (agent.pending().isNotEmpty() || controller.openRawPath() != null || agent.queuedExports() > 0) SyncJob.schedule(app)
         }
     }
 
@@ -455,6 +499,7 @@ object AppHost {
     }
 
     const val HEARTBEAT_MS = 2_000L
+    private const val EXPORT_QUEUE_BEATS = 5
 
     private suspend fun runJob(origin: ServerOrigin, job: Job) {
         // R13: a job handed out again (never reported done) that already ran here is reported, not run twice

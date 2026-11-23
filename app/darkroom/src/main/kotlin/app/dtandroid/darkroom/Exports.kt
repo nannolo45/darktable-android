@@ -21,15 +21,18 @@ import kotlin.math.roundToInt
  * The engine reports its steps and "module n of N" (engine-api.md section 7); this adds the photos of a series,
  * the hand-off to the destination, and a cancel. The job runs in the darkroom's scope, so it goes on when the
  * export screen is closed (the darkroom's top bar shows it) and while the app is in the foreground elsewhere;
- * a series stops after the photo under way when the darkroom is left (it opens each photo in the darkroom).
+ * brief P3i: a series no longer opens each photo in the darkroom: it runs on engine sessions of its own and
+ * does not stop when the darkroom is left.
  */
 
 enum class ExportScope(val label: String) { PHOTO("this image"), SERIES("whole series") }
 
-/** Where the files go. LightPhotoLibrary is not here: the app has no call for R5 yet (P3g report). */
+/** Where the files go. LightPhotoLibrary (brief P3i): the photo's own server, request R18; offered only when [ExportDelivery.lplOffer] says so. */
 enum class ExportTarget(val label: String, val note: String, val done: String, val delivering: String) {
     DEVICE("this device", "Saved on this device, in Pictures/darktable.", "exported to Pictures/darktable on this device", "saving to this device"),
     SHARE("share to an app", "Opens the Android share sheet when the export is done.", "exported · choose an app to share to", "getting it ready to share"),
+    LPL("LightPhotoLibrary", "Sent to the server this photo came from, with its version; if the server cannot be reached the export waits and is sent with the next sync.",
+        "sent to LightPhotoLibrary", ExportJob.STEP_LPL),
 }
 
 /** darktable's "set size: in pixels" with a few choices; 0 = no limit, darktable's default (manual: max size). */
@@ -46,7 +49,7 @@ data class ExportSettings(
     val scope: ExportScope = ExportScope.PHOTO,
     val target: ExportTarget = ExportTarget.DEVICE,
     val format: ExportFormat = ExportFormat.JPEG,
-    val quality: Int = 95,
+    val quality: Int = QUALITY_DEFAULT,
     val bitDepth: Int = 8,
     val size: ExportSize = ExportSize.ORIGINAL,
     val highQuality: Boolean = false,
@@ -65,11 +68,17 @@ data class ExportSettings(
         upscale = false, highQuality = highQuality, profile = profile,
     )
 
+    /** brief P3i: quality as desktop's slider, 5..100 (whole numbers) */
+    fun withQuality(q: Int) = copy(quality = q.coerceIn(QUALITY_MIN, QUALITY_MAX))
+
     /** another format: the bit depth falls back to 8 where the format cannot hold it */
     fun withFormat(f: ExportFormat) = copy(format = f, bitDepth = if (bitDepth in bitDepths(f)) bitDepth else 8)
 
     companion object {
-        val QUALITIES = listOf(100, 95, 90, 85, 80, 70, 60, 50)
+        const val QUALITY_MIN = 5
+        const val QUALITY_MAX = 100
+        /** darktable's default (manual: export, JPEG quality) */
+        const val QUALITY_DEFAULT = 95
         fun bitDepths(f: ExportFormat): List<Int> = when (f) {
             ExportFormat.JPEG, ExportFormat.WEBP -> listOf(8)
             ExportFormat.PNG -> listOf(8, 16)
@@ -84,6 +93,9 @@ data class ExportSettings(
         }
     }
 }
+
+/** Brief P3i: what the export's notification says. [percent] is the whole job's share done. */
+data class ExportNotice(val title: String, val text: String, val percent: Int, val ongoing: Boolean)
 
 enum class ExportPhase { RUNNING, DONE, CANCELLED, FAILED }
 
@@ -102,6 +114,8 @@ data class ExportJob(
     /** share of the current photo done, 0..1 */
     val photoFraction: Double = 0.0,
     val message: String? = null,
+    /** brief P3i: photos handed to the LightPhotoLibrary queue instead of sent (the server could not be reached) */
+    val queued: Int = 0,
 ) {
     /** the whole job's share done */
     val overall: Float get() {
@@ -115,9 +129,16 @@ data class ExportJob(
     /** BatchProgress's label: "photo 3 of 12" for a series, the file name for one photo; the end state after */
     val label: String get() = when (phase) {
         ExportPhase.RUNNING -> if (series) "photo $number of $total" else "exporting $fileName"
-        ExportPhase.DONE -> if (failed == 0) target.done else "$finished of $total exported · $failed failed"
+        ExportPhase.DONE -> if (failed == 0) doneText else "$finished of $total exported · $failed failed"
         ExportPhase.CANCELLED -> "cancelled · " + if (series) "$finished of $total exported" else "nothing written"
         ExportPhase.FAILED -> "export failed"
+    }
+
+    /** the end line of a good job; for LightPhotoLibrary it says when photos wait for the server */
+    val doneText: String get() = when {
+        target == ExportTarget.LPL && queued > 0 && queued >= finished -> "waiting for LightPhotoLibrary · sent with the next sync"
+        target == ExportTarget.LPL && queued > 0 -> "${finished - queued} sent to LightPhotoLibrary · $queued waiting for the next sync"
+        else -> target.done
     }
 
     val photoPercent: Int get() = (photoFraction * 100).roundToInt()
@@ -130,6 +151,15 @@ data class ExportJob(
 
     /** a series: the line under the current photo's bar */
     val photoLine: String get() = "$step · $photoPercent %"
+
+    /** brief P3i: the Android notification of the job (the foreground service shows it): title, text and the bar */
+    val notice: ExportNotice get() = when (phase) {
+        ExportPhase.RUNNING -> ExportNotice(
+            title = if (series) "Exporting photo $number of $total" else "Exporting $fileName",
+            text = if (series) "$fileName · $step" else "$step · $percent %",
+            percent = percent, ongoing = true)
+        else -> ExportNotice(title = label, text = message ?: "", percent = 100, ongoing = false)
+    }
 
     /** the darkroom's top-bar indicator */
     val short: String get() = when (phase) {
@@ -162,6 +192,15 @@ data class ExportJob(
     }
 }
 
+/** Brief P3i: whether the LightPhotoLibrary destination is on offer for a photo, and if not, why (one line). */
+sealed interface LplOffer {
+    data object Available : LplOffer
+    data class Unavailable(val reason: String) : LplOffer
+}
+
+/** What [ExportDelivery.deliver] hands back: where the file went, and whether it only waits to be sent ([queued]). */
+data class Delivered(val ref: String, val queued: Boolean = false)
+
 /**
  * The host's side of an export: a folder for the engine's file, and the hand-off of each file to the chosen
  * [ExportTarget]. [deliver] runs off the main thread and throws when the file cannot be delivered; what it
@@ -169,8 +208,15 @@ data class ExportJob(
  */
 interface ExportDelivery {
     val scratch: File
-    suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget): String
+    /** [item] is the photo exported (its LightPhotoLibrary id and version are found from it); [progress] takes the share sent, 0..1 */
+    suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget, item: SeriesItem, progress: (Float) -> Unit): Delivered
     fun finished(target: ExportTarget, mime: String, delivered: List<String>) {}
+
+    /** brief P3i: the LightPhotoLibrary destination for [item]; by default not on offer */
+    fun lplOffer(item: SeriesItem?): LplOffer = LplOffer.Unavailable("this build cannot send to LightPhotoLibrary")
+
+    /** brief P3i: a new number whenever the answer of [lplOffer] may have changed (a heartbeat answered) */
+    val lplOfferChanges: kotlinx.coroutines.flow.Flow<Int> get() = kotlinx.coroutines.flow.emptyFlow()
 }
 
 class Exports internal constructor(private val c: DarkroomController) {
@@ -206,10 +252,18 @@ class Exports internal constructor(private val c: DarkroomController) {
         }
         val series = st.series
         val home = st.index
+        if (s.target == ExportTarget.LPL) {
+            val offer = d.lplOffer(st.current)
+            if (offer is LplOffer.Unavailable) {
+                _job.value = ExportJob(ExportPhase.FAILED, s.target, 1, message = offer.reason)
+                return false
+            }
+        }
         val indices = if (s.scope == ExportScope.SERIES && series.items.size > 1) series.items.indices.toList() else listOf(home)
         cancelled = false
         _job.value = ExportJob(ExportPhase.RUNNING, s.target, indices.size, fileName = series.items.getOrNull(indices[0])?.fileName ?: "")
-        c.launch { runJob(s, d, series.name, series.items.size, indices, home) }
+        if (indices.size > 1) c.launch { runSeries(s, d, indices.map { series.items[it] }) }
+        else c.launch { runJob(s, d) }
         return true
     }
 
@@ -224,90 +278,204 @@ class Exports internal constructor(private val c: DarkroomController) {
     /** Forget an ended job (the indicator goes away). */
     fun dismiss() { if (_job.value?.running != true) _job.value = null }
 
-    private fun sameSeries(name: String, size: Int): Boolean {
-        val s = c.state.value
-        return s.info != null && s.series.name == name && s.series.items.size == size
-    }
-
-    private suspend fun runJob(s: ExportSettings, d: ExportDelivery, seriesName: String, seriesSize: Int, indices: List<Int>, home: Int) {
-        val delivered = ArrayList<String>()
+    /** What a job has done so far, exactly. */
+    private class Tally {
         var finished = 0
         var failed = 0
+        var queued = 0
         var lastError: String? = null
-        var stopped: String? = null
-        for ((k, i) in indices.withIndex()) {
-            if (cancelled) break
-            if (!sameSeries(seriesName, seriesSize)) { stopped = "stopped: the darkroom was left · $finished of ${indices.size} exported"; break }
-            if (c.state.value.index != i) c.openPhoto(i)
-            val now = c.state.value
-            val item = now.series.items.getOrNull(i)
-            _job.update { it?.copy(number = k + 1, fileName = item?.fileName ?: "", step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
-            if (cancelled) break
-            if (item == null || now.index != i || now.info == null) {
-                failed++
-                lastError = "${item?.fileName ?: "photo ${i + 1}"} could not be opened"
-                _job.update { it?.copy(failed = failed) }
-                continue
+        val delivered = ArrayList<String>()
+    }
+
+    /**
+     * Export one photo with [engineExport] and hand the file to the destination. True when the job must stop
+     * (a cancel). The photo's share of the bar starts again from 0 in the same update that counts it, so the bar
+     * never goes back.
+     */
+    private suspend fun one(
+        s: ExportSettings, d: ExportDelivery, item: SeriesItem, t: Tally,
+        engineExport: suspend (String, app.dtandroid.engine.api.ExportOptions, (ExportProgress) -> Unit) -> Unit,
+    ): Boolean {
+        val share = engineShare(s.target)
+        val name = item.fileName.substringBeforeLast('.') + "." + s.extension
+        val tmp = File(d.scratch, name)
+        var stop = false
+        try {
+            d.scratch.mkdirs()
+            engineExport(tmp.path, s.options()) { p ->
+                _job.update { j -> if (j == null || cancelled) j else j.copy(step = ExportJob.words(p), photoFraction = p.fraction * share) }
             }
-            val name = item.fileName.substringBeforeLast('.') + "." + s.extension
-            val tmp = File(d.scratch, name)
-            var stop = false
+            if (cancelled) {
+                stop = true
+            } else {
+                _job.update { it?.copy(step = s.target.delivering, photoFraction = share) }
+                val r = d.deliver(tmp, name, s.mime, s.target, item) { f ->
+                    _job.update { j -> if (j == null || cancelled) j else j.copy(photoFraction = share + (1 - share) * f.coerceIn(0f, 1f)) }
+                }
+                t.delivered += r.ref
+                if (r.queued) t.queued++
+                t.finished++
+            }
+        } catch (e: EngineException) {
+            if (e.error == EngineError.CANCELLED || cancelled) stop = true
+            else { t.failed++; t.lastError = "${item.fileName}: ${e.detail}" }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            t.failed++
+            t.lastError = "${item.fileName}: ${deliveryProblem(s.target, e)}"
+        } finally {
+            tmp.delete()
+        }
+        _job.update { it?.copy(finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0) }
+        return stop
+    }
+
+    private fun deliveryProblem(target: ExportTarget, e: Exception) =
+        if (target == ExportTarget.LPL) "could not be sent to LightPhotoLibrary (${e.message})" else "the file could not be saved (${e.message})"
+
+    /** One photo: the open photo, through the darkroom's own session. */
+    private suspend fun runJob(s: ExportSettings, d: ExportDelivery) {
+        val t = Tally()
+        val item = c.state.value.current
+        if (item == null || c.state.value.info == null) {
+            t.failed++
+            t.lastError = "no photo is open"
+            _job.update { it?.copy(failed = t.failed) }
+        } else {
+            one(s, d, item, t) { path, o, p -> c.export(path, o, p) }
+        }
+        end(s, d, t, null)
+    }
+
+    /**
+     * Brief P3i: a series. The photos are fetched first when they are not on the phone (outside the engine's lock),
+     * then each is opened, exported and closed on an engine session of its own ([DarkroomController.withExportSessions]):
+     * nothing is shown in the darkroom, no activity is needed, and the job lives in the controller's scope, so it
+     * goes on with the app in the background (the foreground service keeps the process).
+     */
+    private suspend fun runSeries(s: ExportSettings, d: ExportDelivery, items: List<SeriesItem>) {
+        val t = Tally()
+        val ready = arrayOfNulls<SeriesItem>(items.size)
+        for ((k, item) in items.withIndex()) {
+            if (cancelled) break
+            if (!c.needsFetch(item)) { ready[k] = item; continue }
+            _job.update { it?.copy(number = k + 1, fileName = item.fileName, step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
             try {
-                d.scratch.mkdirs()
-                c.export(tmp.path, s.options()) { p ->
-                    _job.update { j -> if (j == null || cancelled) j else j.copy(step = ExportJob.words(p), photoFraction = p.fraction * ENGINE_SHARE) }
+                ready[k] = c.fetchForExport(item) { text, _ -> _job.update { j -> if (j == null || cancelled) j else j.copy(step = text) } }
+            } catch (e: PhotoSourceException) {
+                t.failed++
+                t.lastError = "${item.fileName}: ${e.message}"
+                _job.update { it?.copy(failed = t.failed) }
+            }
+        }
+        var stopped: String? = null
+        val pending = ArrayList<Pending>()
+        if (!cancelled && ready.any { it != null }) {
+            try {
+                // brief P3i: under the engine's lock the files are only made; they are handed over after it is released,
+                // so the darkroom's actions never wait for a network ([deliverPending])
+                c.withExportSessions { run ->
+                    for ((k, item) in ready.withIndex()) {
+                        if (item == null) continue
+                        if (cancelled) break
+                        _job.update { it?.copy(number = k + 1, fileName = item.fileName, step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
+                        val name = item.fileName.substringBeforeLast('.') + "." + s.extension
+                        val tmp = File(File(d.scratch, "s$k"), name)
+                        var stop = false
+                        try {
+                            tmp.parentFile?.mkdirs()
+                            val share = engineShare(s.target)
+                            run.export(item, tmp.path, s.options()) { p ->
+                                _job.update { j -> if (j == null || cancelled) j else j.copy(step = ExportJob.words(p), photoFraction = p.fraction * share) }
+                            }
+                            if (cancelled) { tmp.delete(); stop = true } else {
+                                // provisional: counted as done now so the bar never goes back; [deliverPending] corrects a failed hand-over
+                                t.finished++
+                                pending += Pending(item, name, tmp)
+                            }
+                        } catch (e: EngineException) {
+                            tmp.delete()
+                            if (e.error == EngineError.CANCELLED || cancelled) stop = true
+                            else { t.failed++; t.lastError = "${item.fileName}: ${e.detail}" }
+                        }
+                        _job.update { it?.copy(finished = t.finished, failed = t.failed, photoFraction = 0.0) }
+                        if (stop) break
+                    }
                 }
-                if (cancelled) {
-                    stop = true
-                } else {
-                    _job.update { it?.copy(step = s.target.delivering, photoFraction = ENGINE_SHARE) }
-                    delivered += d.deliver(tmp, name, s.mime, s.target)
-                    finished++
-                }
-            } catch (e: EngineException) {
-                if (e.error == EngineError.CANCELLED || cancelled) stop = true
-                else { failed++; lastError = "${item.fileName}: ${e.detail}" }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                failed++
-                lastError = "${item.fileName}: the file could not be saved (${e.message})"
-            } finally {
-                tmp.delete()
+                stopped = "stopped: ${e.message} · ${t.finished} of ${items.size} exported"
             }
-            // the photo is counted and its own share starts again from 0 in the same step, so the bar never goes back
-            _job.update { it?.copy(finished = finished, failed = failed, photoFraction = 0.0) }
-            if (stop) break
         }
-        // a series: back to the photo the export started from
-        if (indices.size > 1 && sameSeries(seriesName, seriesSize) && c.state.value.index != home) c.openPhoto(home)
+        deliverPending(s, d, t, pending)
+        end(s, d, t, stopped)
+    }
+
+    private class Pending(val item: SeriesItem, val name: String, val tmp: File)
+
+    /** Hand the series' files to the destination, after the engine's lock is released. A failure or a cancel un-counts the photo. */
+    private suspend fun deliverPending(s: ExportSettings, d: ExportDelivery, t: Tally, pending: List<Pending>) {
+        val share = engineShare(s.target)
+        // photos made before a cancel are still handed over (as before); a cancel during the hand-over drops the rest
+        val cancelledBefore = cancelled
+        try {
+            for (p in pending) {
+                if (cancelled && !cancelledBefore) { t.finished--; continue }
+                _job.update { it?.copy(fileName = p.item.fileName, step = s.target.delivering, photoFraction = share) }
+                try {
+                    val r = d.deliver(p.tmp, p.name, s.mime, s.target, p.item) { f ->
+                        _job.update { j -> if (j == null || cancelled) j else j.copy(photoFraction = share + (1 - share) * f.coerceIn(0f, 1f)) }
+                    }
+                    t.delivered += r.ref
+                    if (r.queued) t.queued++
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    t.finished--
+                    t.failed++
+                    t.lastError = "${p.item.fileName}: ${deliveryProblem(s.target, e)}"
+                }
+                _job.update { it?.copy(finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0) }
+            }
+        } finally {
+            for (p in pending) p.tmp.delete()
+        }
+    }
+
+    private fun end(s: ExportSettings, d: ExportDelivery, t: Tally, stopped: String?) {
         val phase = when {
             cancelled -> ExportPhase.CANCELLED
             stopped != null -> ExportPhase.CANCELLED
-            finished == 0 -> ExportPhase.FAILED
+            t.finished == 0 -> ExportPhase.FAILED
             else -> ExportPhase.DONE
         }
-        _job.update {
-            it?.copy(phase = phase, finished = finished, failed = failed, photoFraction = 0.0,
-                message = stopped ?: lastError ?: if (phase == ExportPhase.DONE) "${Words.count(finished, "photo")} · ${s.target.done}" else null)
+        _job.update { j ->
+            if (j == null) null
+            else j.copy(phase = phase, finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0,
+                message = stopped ?: t.lastError ?: if (phase == ExportPhase.DONE) "${Words.count(t.finished, "photo")} · ${j.doneText}" else null)
         }
-        if (phase != ExportPhase.FAILED && delivered.isNotEmpty() && !cancelled) d.finished(s.target, s.mime, delivered)
+        if (phase != ExportPhase.FAILED && t.delivered.isNotEmpty() && !cancelled) d.finished(s.target, s.mime, t.delivered)
     }
 
     companion object {
         /** the engine's part of one photo; the hand-off to the destination is the rest */
         const val ENGINE_SHARE = 0.95
+
+        /** sending to a server takes a larger share of the bar than a copy on the phone */
+        fun engineShare(target: ExportTarget) = if (target == ExportTarget.LPL) 0.7 else ENGINE_SHARE
     }
 }
 
 /** A delivery into a plain folder, whatever the target: the stand-in app and tests. */
 class FolderExportDelivery(override val scratch: File, private val folder: File) : ExportDelivery {
     val finishedWith = java.util.concurrent.CopyOnWriteArrayList<Pair<ExportTarget, List<String>>>()
-    override suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget): String {
+    override suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget, item: SeriesItem, progress: (Float) -> Unit): Delivered {
         folder.mkdirs()
         val out = File(folder, name)
         file.copyTo(out, overwrite = true)
-        return out.path
+        return Delivered(out.path)
     }
     override fun finished(target: ExportTarget, mime: String, delivered: List<String>) { finishedWith += target to delivered }
 }

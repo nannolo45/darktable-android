@@ -23,6 +23,8 @@ data class ClientSettings(
     val backoffMs: List<Long> = listOf(500, 2_000),
     /** a download that breaks off resumes this many times within one call */
     val downloadResumes: Int = 5,
+    /** brief P3i: how long the answer to an export upload may take after the last byte (the server writes the file first) */
+    val exportReadTimeoutMs: Int = 60_000,
 )
 
 /** Result of checking a server before it is added. */
@@ -66,7 +68,8 @@ class LplClient(
         } ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/agents/heartbeat: no job list in the answer")
         val c = o["cancel"] as? JsonObject
         val cancel = c?.let { Cancel(it["jobs"].arr().orEmpty().mapNotNull { x -> x.long() }.toSet(), it["photos"].arr().orEmpty().mapNotNull { x -> x.long() }.toSet()) }
-        return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0, cancel)
+        val caps = o["server_caps"].arr()?.mapNotNull { it.str() }?.toSet()
+        return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0, cancel, caps)
     }
 
     private fun buildBody(installId: String, deviceName: String, state: AgentState, transfers: JsonArray): ByteArray =
@@ -154,6 +157,29 @@ class LplClient(
         callJson("GET", "/api/photos/$id/edits" + (limit?.let { "?limit=$it" } ?: ""))["edits"].arr()?.mapNotNull { LastEdit.fromJson(it) } ?: emptyList()
     } catch (e: LplException) {
         if (e.failure == LplFailure.NOT_FOUND) emptyList() else throw e
+    }
+
+    /**
+     * R18: `POST /api/photos/{id}/exports?agent=&version=&name=&size=` with the file as the body, streamed; [onBytes]
+     * gets the bytes sent so far. LPL has no resumable upload: a failure that can pass (no answer, 502/503/504) repeats
+     * the whole file, up to [ClientSettings.retries] more times; `size` makes the server refuse a cut-off body.
+     */
+    fun postExport(id: Long, agentId: String, version: Int, name: String, file: File, onBytes: (Long) -> Unit = {}): ExportAnswer {
+        val enc = { t: String -> java.net.URLEncoder.encode(t, "UTF-8") }
+        val path = "/api/photos/$id/exports?agent=${enc(agentId)}&version=$version&name=${enc(name)}&size=${file.length()}"
+        var attempt = 0
+        while (true) {
+            try {
+                return callOnce("POST", path, null, "application/octet-stream", settings.exportReadTimeoutMs, true, file, onBytes) { r ->
+                    val o = parseObject("POST /api/photos/$id/exports", r.body.readBytes())
+                    ExportAnswer(o["export_id"].long() ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/photos/$id/exports: no export_id in the answer"), o["path"].str() ?: "")
+                }
+            } catch (e: LplException) {
+                if (!e.transient || attempt >= settings.retries) throw e
+                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                attempt++
+            }
+        }
     }
 
     /** `POST /api/photos/{id}/preview`: the engine's JPEG becomes LPL's preview of the photo. */
@@ -357,7 +383,7 @@ class LplClient(
         var attempt = 0
         while (true) {
             try {
-                return callOnce(method, path, body, contentType, readTimeoutMs, withToken, handle)
+                return callOnce(method, path, body, contentType, readTimeoutMs, withToken, handle = handle)
             } catch (e: LplException) {
                 if (!e.transient || attempt >= retries) throw e
                 sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
@@ -368,11 +394,12 @@ class LplClient(
 
     private fun <T> callOnce(
         method: String, path: String, body: ByteArray?, contentType: String?, readTimeoutMs: Int, withToken: Boolean,
+        bodyFile: File? = null, onSent: ((Long) -> Unit)? = null,
         handle: (HttpResponse) -> T,
     ): T {
         val headers = HashMap<String, String>()
         if (withToken) token()?.takeIf { it.isNotEmpty() }?.let { headers["x-lpl-token"] = it }
-        val req = HttpRequest(method, origin, path, headers, body, contentType, settings.connectTimeoutMs, readTimeoutMs)
+        val req = HttpRequest(method, origin, path, headers, body, contentType, settings.connectTimeoutMs, readTimeoutMs, bodyFile, onSent)
         val t0 = System.nanoTime()
         return try {
             transport.exchange(req) { r ->
@@ -413,7 +440,7 @@ class LplClient(
     companion object {
         /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
         /** `caps` of every heartbeat (brief P2k): `batch` = reports transfers, `cancel` = acts on Stop, `open` = honours `payload.open` */
-        val CAPS = listOf("batch", "cancel", "open", "versions")
+        val CAPS = listOf("batch", "cancel", "open", "versions", "exports")
 
         fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
     }

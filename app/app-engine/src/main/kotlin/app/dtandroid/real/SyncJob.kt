@@ -24,7 +24,9 @@ class SyncJob : JobService() {
         running = AppEngine.scope.launch {
             // brief P2i: with automatic syncing off the job sends nothing (and is not scheduled again)
             val done = runCatching { AppHost.agent.syncPendingAutomatically() ?: true }.getOrDefault(false)
-            jobFinished(params, !done)
+            // brief P3i: exports that waited for their server go out with the sync (asked for by the user, so also with automatic syncing off)
+            val exported = runCatching { AppHost.agent.sendQueuedExports(); AppHost.agent.queuedExports() == 0 }.getOrDefault(false)
+            jobFinished(params, !(done && exported))
         }
         return true
     }
@@ -41,7 +43,7 @@ class SyncJob : JobService() {
         fun schedule(ctx: Context) {
             // brief P2i: the background job is the app syncing by itself: not while automatic syncing is off
             AppHost.init(ctx.applicationContext as android.app.Application)
-            if (!AppHost.agent.autoSync) return
+            if (!AppHost.agent.autoSync && AppHost.agent.queuedExports() == 0) return
             val js = ctx.getSystemService(JobScheduler::class.java) ?: return
             val info = JobInfo.Builder(ID, ComponentName(ctx, SyncJob::class.java))
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)

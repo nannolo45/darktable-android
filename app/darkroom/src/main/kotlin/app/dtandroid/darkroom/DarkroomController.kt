@@ -2563,6 +2563,75 @@ class DarkroomController(
     /** A change of the edit through [block], as every change: render cancelled, state read again, rendered again. */
     internal suspend fun engineChange(block: suspend (DarktableEngine) -> Unit) = change { block(engine) }
 
+    // ------------------------------------------------------------------ brief P3i: a series exported without the darkroom
+
+    /** What [withExportSessions] gives its block: an export of one photo of the series on a session of its own. */
+    interface ExportSession {
+        suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit)
+    }
+
+    /**
+     * Brief P3i: run [block] with the engine to itself, for the export of a series. The engine holds one photo
+     * (engine-api.md 1), so the darkroom's photo is saved to its sidecar and closed first (its edit is exported
+     * from that sidecar, which equals the live edit: C28), each photo of the series is opened, exported and closed
+     * by [ExportSession.export] without being shown, and the darkroom's photo is opened again at the end. While
+     * this runs the darkroom's own actions wait for the lock; the export does not need the darkroom's screen, nor
+     * an activity. With no photo open there is nothing to close or reopen.
+     */
+    suspend fun <T> withExportSessions(block: suspend (ExportSession) -> T): T {
+        cancelRenders()
+        try {
+            return fg {
+                val st = _state.value
+                val home = st.current.takeIf { st.info != null }
+                val index = st.index
+                if (home != null) {
+                    leaveLocked(index, saveCurrent = true, fetch = false)
+                    _state.update { it.copy(working = "exporting the series…", workingProgress = null) }
+                }
+                try {
+                    block(object : ExportSession {
+                        override suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit) =
+                            exportSessionLocked(item, path, options, onProgress)
+                    })
+                } finally {
+                    if (home != null) {
+                        _state.update { it.copy(working = null) }
+                        openLocked(home)
+                        if (_state.value.info != null) {
+                            lastOpened = _state.value.series to index
+                            source?.opened(home, _state.value.series.items.getOrNull(index + 1))
+                        }
+                    }
+                }
+            }
+        } finally {
+            requestRender()
+        }
+    }
+
+    private suspend fun exportSessionLocked(
+        item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions,
+        onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit,
+    ) {
+        val xmp = item.xmpPath.takeIf { File(it).isFile }
+        val stamp = stampOf(item.rawPath)
+        openOrRemember(engine, item.rawPath, xmp, stamp)
+        try {
+            if (pictureOrClose(engine, item.rawPath, stamp) == null) noPicture()
+            engine.export(path, options, onProgress)
+        } finally {
+            runCatching { engine.close() }
+        }
+    }
+
+    /** Brief P3i: whether [item]'s files must be fetched from the photo source before an engine can open it. */
+    fun needsFetch(item: SeriesItem): Boolean = source != null && !File(item.rawPath).isFile
+
+    /** Brief P3i: fetch [item] (outside the lock; the engine is free meanwhile); [progress] as for [PhotoSource.prepare]. */
+    suspend fun fetchForExport(item: SeriesItem, progress: (String, Float?) -> Unit): SeriesItem =
+        source?.prepare(item, progress) ?: item
+
     // ------------------------------------------------------------------ brief P3g: export
 
     /** Stop the export in flight (engine-api.md section 7); from any thread. */

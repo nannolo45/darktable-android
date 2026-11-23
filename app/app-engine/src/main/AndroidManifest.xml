@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- brief P3i: a series export goes on with the app in the background (foreground service, type dataSync) and
+         shows its progress as a notification (the notification permission of Android 13 and later; without it the
+         export still runs, Android shows the service in its task manager) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- package visibility (P2c report): to see whether the LightPhotoLibrary app is installed and open a page in it -->
     <queries>
@@ -57,6 +63,11 @@
             android:name=".SyncJob"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+        <!-- brief P3i: the export's foreground service and its notification -->
+        <service
+            android:name=".ExportService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <!-- brief P3g: exported files offered to the share sheet -->
         <provider
             android:name="androidx.core.content.FileProvider"

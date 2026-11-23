@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.flow.emptyFlow
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.darkroom.ExportJob
@@ -35,10 +36,14 @@ import app.dtandroid.darkroom.ExportScope
 import app.dtandroid.darkroom.ExportSettings
 import app.dtandroid.darkroom.ExportSize
 import app.dtandroid.darkroom.ExportTarget
+import app.dtandroid.darkroom.LplOffer
 import app.dtandroid.darkroom.Overlay
 import app.dtandroid.engine.api.ExportFormat
 import app.dtandroid.engine.api.ExportProfile
+import app.dtandroid.schema.Binding
+import app.dtandroid.schema.Control
 import app.dtandroid.ui.icons.DtIcon
+import kotlin.math.roundToInt
 import app.dtandroid.ui.theme.DtTheme
 
 /*
@@ -48,7 +53,7 @@ import app.dtandroid.ui.theme.DtTheme
  */
 
 /** One of the screen's lists, open in a sheet: its title, entries and which is chosen. */
-private class ExportList(val title: String, val entries: List<String>, val chosen: Int, val choose: (Int) -> Unit)
+private class ExportList(val title: String, val entries: List<String>, val chosen: Int, val disabled: Set<Int> = emptySet(), val choose: (Int) -> Unit)
 
 @Composable
 fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tablet: Boolean) {
@@ -89,15 +94,24 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
                 PanelHeading("storage options")
                 Column(Modifier.padding(horizontal = DtTheme.space.panel)) {
                     val targets = ExportTarget.entries
+                    // brief P3i: LightPhotoLibrary is on offer only for a photo of a server that receives exports; else greyed, with the reason
+                    val delivery = ex.delivery
+                    val offerTick by (delivery?.lplOfferChanges ?: emptyFlow()).collectAsState(0)
+                    val offer = if (offerTick >= 0) delivery?.lplOffer(s.current) ?: LplOffer.Unavailable("this build cannot send to LightPhotoLibrary") else LplOffer.Available
+                    val lplReason = (offer as? LplOffer.Unavailable)?.reason
+                    val off = targets.indices.filter { targets[it] == ExportTarget.LPL && lplReason != null }.toSet()
                     ListControl("target storage", set.target.label, !running) {
-                        list = ExportList("target storage", targets.map { it.label }, targets.indexOf(set.target)) { i -> ex.set { it.copy(target = targets[i]) } }
+                        list = ExportList("target storage", targets.map { it.label }, targets.indexOf(set.target), off) { i -> ex.set { it.copy(target = targets[i]) } }
                     }
                     val scopes = ExportScope.entries
                     val scopeLabel = { sc: ExportScope -> if (sc == ExportScope.SERIES) "${sc.label} ($seriesSize)" else sc.label }
                     ListControl("images", scopeLabel(set.scope), !running && seriesSize > 1) {
                         list = ExportList("images", scopes.map(scopeLabel), scopes.indexOf(set.scope)) { i -> ex.set { it.copy(scope = scopes[i]) } }
                     }
+                    if (set.scope == ExportScope.SERIES && seriesSize > 1 && s.info != null)
+                        ControlNote("The open photo is saved and reopened; its undo steps are cleared.")
                     ControlNote(set.target.note)
+                    if (lplReason != null) ControlNote("LightPhotoLibrary is not on offer: $lplReason")
                 }
                 PanelHeading("format options")
                 Column(Modifier.padding(horizontal = DtTheme.space.panel)) {
@@ -109,10 +123,7 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
                     if (depths.size > 1) ListControl("bit depth", "${set.bitDepth} bit", !running) {
                         list = ExportList("bit depth", depths.map { "$it bit" }, depths.indexOf(set.bitDepth)) { i -> ex.set { it.copy(bitDepth = depths[i]) } }
                     }
-                    val qs = ExportSettings.QUALITIES
-                    if (set.lossy) ListControl("quality", "${set.quality} %", !running) {
-                        list = ExportList("quality", qs.map { "$it %" }, qs.indexOf(set.quality)) { i -> ex.set { it.copy(quality = qs[i]) } }
-                    }
+                    if (set.lossy) QualitySlider(set.quality, !running) { q -> ex.set { it.withQuality(q) } }
                 }
                 PanelHeading("global options")
                 Column(Modifier.padding(horizontal = DtTheme.space.panel)) {
@@ -137,15 +148,34 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
                 else -> "export"
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m)) {
-                DtTextButton(label, { ex.dismiss(); ex.start() }, Modifier.weight(1f), selected = !running, enabled = !running && s.info != null)
+                val blocked = set.target == ExportTarget.LPL && ex.delivery?.lplOffer(s.current) is LplOffer.Unavailable
+                DtTextButton(label, { ex.dismiss(); ex.start() }, Modifier.weight(1f), selected = !running, enabled = !running && s.info != null && !blocked)
             }
         }
     }
     list?.let { l ->
         Sheet(l.title, { list = null }, maxW) {
-            for ((i, e) in l.entries.withIndex()) SheetItem(e, enabled = true, selected = i == l.chosen) { l.choose(i); list = null }
+            for ((i, e) in l.entries.withIndex()) SheetItem(e, enabled = i !in l.disabled, selected = i == l.chosen) { l.choose(i); list = null }
         }
     }
+}
+
+private val qualitySlider = Control.Slider(
+    id = -2, label = "quality", tooltip = null, hiddenByDefault = false, binding = Binding.None,
+    softMin = ExportSettings.QUALITY_MIN.toDouble(), softMax = ExportSettings.QUALITY_MAX.toDouble(),
+    hardMin = ExportSettings.QUALITY_MIN.toDouble(), hardMax = ExportSettings.QUALITY_MAX.toDouble(),
+    default = ExportSettings.QUALITY_DEFAULT.toDouble(), step = 1.0, digits = 0, factor = 1.0, offset = 0.0,
+    format = " %", textDefault = null, integer = true,
+)
+
+/** Brief P3i: JPEG and WebP quality as the other sliders: one value per lifted finger, a double tap on the bar resets to 95. */
+@Composable
+private fun QualitySlider(quality: Int, enabled: Boolean, onSet: (Int) -> Unit) {
+    var moving by remember { mutableStateOf<Double?>(null) }
+    SliderControl("quality", qualitySlider, moving ?: quality.toDouble(), enabled,
+        onDrag = { moving = it },
+        onDragEnd = { moving?.let { onSet(it.roundToInt()) }; moving = null },
+        onReset = { onSet(ExportSettings.QUALITY_DEFAULT) }, onExact = {})
 }
 
 /** The bar with the percent and the step; for a series the overall bar ("photo n of N") and the photo's own. */

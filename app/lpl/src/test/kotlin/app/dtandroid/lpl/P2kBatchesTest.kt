@@ -61,7 +61,7 @@ class P2kBatchesTest {
     @Test fun heartbeatsCarryCapsAndTransfersAndTheJobsOpenFlag() = runBlocking {
         agent.heartbeat()
         val hb0 = lastHb()
-        assertEquals(listOf("batch", "cancel", "open", "versions"), hb0["caps"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("batch", "cancel", "open", "versions", "exports"), hb0["caps"]!!.jsonArray.map { it.jsonPrimitive.content })
         assertEquals("no job held: an empty list", 0, hb0["transfers"]!!.jsonArray.size)
         val job = receive("edit", 11, 12, open = false)
         assertFalse(job.open)

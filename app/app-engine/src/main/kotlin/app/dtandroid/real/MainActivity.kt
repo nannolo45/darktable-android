@@ -108,10 +108,29 @@ class MainActivity : ComponentActivity() {
 
     private fun appVersion(): String = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
 
+    /** brief P3i: the notification permission of Android 13 and later, asked once, when the first export starts */
+    private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    private fun askNotificationsOnce() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return
+        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        val prefs = getSharedPreferences("export", MODE_PRIVATE)
+        if (prefs.getBoolean("asked-notifications", false)) return
+        prefs.edit().putBoolean("asked-notifications", true).apply()
+        askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    override fun onDestroy() {
+        AppHost.askNotifications = null
+        super.onDestroy()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AppEngine.start(this)
+        // brief P3i: AppHost asks, from its own watch of the export job, when the first export starts
+        AppHost.askNotifications = { runOnUiThread { askNotificationsOnce() } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = back()
         })
