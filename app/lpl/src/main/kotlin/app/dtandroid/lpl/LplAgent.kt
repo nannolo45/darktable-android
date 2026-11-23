@@ -37,6 +37,9 @@ interface EditorPort {
 
     /** The darkroom has a photo open (`darktable_running` in the heartbeat). */
     fun darkroomOpen(): Boolean
+
+    /** R17: the version of [raw] the darkroom has open (0 when it is the photo's own edit or [raw] is not open). */
+    fun openVersion(raw: File): Int = 0
 }
 
 /** A server is not in the user's list: the app never contacts it (PLAN.md 4.3, brief P2e item 4). */
@@ -188,7 +191,7 @@ class LplAgent(
         val origin = servers.list().firstOrNull { it.origin.key == dir.parentFile?.name }?.origin ?: return null
         val known = setOf("state.json", "downloaded.xmp", "preview.jpg", "preview-tmp.jpg", "thumb.rgba", "picture.rgba")
         val name = dir.list().orEmpty().filter { n ->
-            n !in known && !n.endsWith(".xmp") && !n.endsWith(".part") && !n.endsWith(".etag") && !n.endsWith(".tmp") && !n.startsWith(".")
+            n !in known && !n.endsWith(".xmp") && !n.endsWith(".part") && !n.endsWith(".etag") && !n.endsWith(".tmp") && !n.startsWith(".") && !n.startsWith("preview-v")
         }.singleOrNull() ?: return null
         return PhotoRecord(origin, id, name, -1, 0.0, 0.0, PhotoStatus.DIRTY, added = added, recovered = true,
             error = "the app's notes on this photo were lost; its edit is sent as it is")
@@ -197,11 +200,34 @@ class LplAgent(
     private fun settledStatus(r: PhotoRecord) = if (isDirty(r)) PhotoStatus.DIRTY else PhotoStatus.SYNCED
 
     /** The local XMP differs from what LPL last got (read-only photos never count: they are never sent). */
-    fun isDirty(r: PhotoRecord): Boolean {
+    fun isDirty(r: PhotoRecord): Boolean = zeroDirty(r) || versionsDirty(r)
+
+    private fun zeroDirty(r: PhotoRecord): Boolean {
         if (r.readOnly) return false
         val x = work.xmp(r)
         return x.isFile && WorkStore.sha256(x) != r.syncedHash
     }
+
+    /** R17: the numbers (>= 1) of the version files of [r] on the phone. */
+    fun versionNumbers(r: PhotoRecord): List<Int> = VersionFiles.numbers(work.folder(r.server, r.id), r.filename).filter { it > 0 }
+
+    /**
+     * R17: a version file differs from what LPL has (or was never sent). Versions of a server without the
+     * `versions` capability are local only and never count, and neither does a version that fails the version guard.
+     */
+    private fun versionsDirty(r: PhotoRecord): Boolean {
+        if (!r.versionsCap) return false
+        return versionNumbers(r).any { n -> versionDirty(r, n) }
+    }
+
+    private fun versionDirty(r: PhotoRecord, n: Int): Boolean {
+        val st = r.versionState(n)
+        if (st?.readOnly == true) return false
+        return WorkStore.sha256(work.versionXmp(r, n)) != (st?.syncedHash ?: "")
+    }
+
+    private fun versionsPending(r: PhotoRecord): Boolean =
+        r.versionsCap && (r.deletedVersions.isNotEmpty() || r.versions.any { it.previewPending && !it.readOnly && work.versionXmp(r, it.n).isFile })
 
     /** Set the record (under the photo's mutex: take and sync). */
     private fun put(r: PhotoRecord) { mutate(r.server, r.id) { r } }
@@ -260,7 +286,7 @@ class LplAgent(
     }
 
     private suspend fun refreshHeld(r: PhotoRecord): PhotoRecord {
-        val co = net(r.server) { it.checkout(r.id) }
+        val co = net(r.server) { it.checkout(r.id, servers.installId) }
         if ((co.size > 0 && co.size != r.size) || co.mtime != r.mtime) {
             // the original changed on the NAS: fetch it again (the edit is synced, nothing is lost)
             work.raw(r).let { it.setWritable(true); it.delete() }
@@ -275,6 +301,7 @@ class LplAgent(
             writeLocal(work.backup(r), x)
             n = n.copy(syncedHash = WorkStore.sha256(x), previewPending = false)
         }
+        n = pullVersions(n, co)
         n = n.copy(status = settledStatus(n))
         put(n)
         refreshLastEdit(r.server, r.id)
@@ -283,7 +310,7 @@ class LplAgent(
 
     private suspend fun download(origin: ServerOrigin, id: Long, held: PhotoRecord?, batch: Boolean = false, cancelled: () -> Boolean = { false }, onBytes: (Long) -> Unit = {}): PhotoRecord {
         val co = try {
-            net(origin) { it.checkout(id) }
+            net(origin) { it.checkout(id, servers.installId) }
         } catch (e: LplException) {
             if (held != null) put(held.copy(status = if (e.failure == LplFailure.NOT_FOUND) PhotoStatus.ERROR else held.status, error = e.userText))
             throw e
@@ -310,6 +337,8 @@ class LplAgent(
                 r = r.copy(syncedHash = WorkStore.sha256(x))
                 put(r)
             }
+            r = pullVersions(r, co)
+            put(r)
             val part = work.part(r)
             _progress.update { it + ((origin to id) to Progress(if (part.isFile) part.length() else 0, co.size)) }
             step(origin, id, Step(Step.DOWNLOADING, if (co.size > 0 && part.isFile) part.length().toDouble() / co.size else null))
@@ -350,6 +379,33 @@ class LplAgent(
         refreshLastEdit(origin, id)
         return record(origin, id) ?: r
     }
+
+    /**
+     * R17: bring the versions LPL lists (`co.versions`, n >= 1) onto the phone: a version the phone does not have, or has
+     * unchanged since it was synced, is downloaded; a version with an unsynced local edit is never replaced; a version
+     * deleted on the phone and not yet deleted on LPL is not brought back. A server that lists no versions has not the
+     * capability: nothing is fetched and the versions the phone made stay local. Returns the record to keep.
+     */
+    private suspend fun pullVersions(r0: PhotoRecord, co: Checkout): PhotoRecord {
+        val list = co.versions ?: return if (r0.versionsCap) r0.copy(versionsCap = false) else r0
+        var r = r0.copy(versionsCap = true, cover = co.cover)
+        val dir = work.folder(r.server, r.id)
+        for (sv in list.filter { it.n >= 1 && it.hasFile && it.n !in r.deletedVersions }) {
+            val f = work.versionXmp(r, sv.n)
+            val st = r.versionState(sv.n)
+            val localEdit = f.isFile && st?.readOnly != true && WorkStore.sha256(f) != (st?.syncedHash ?: "")
+            if (!localEdit) {
+                val x = net(r.server) { it.getXmp(r.id, sv.n) }
+                if (!f.isFile || WorkStore.sha256(x) != WorkStore.sha256(f)) writeLocal(f, x)
+                val ro = runCatching { editor.xmpReadOnly(f) }.getOrDefault(false)
+                r = withVersion(r, VersionState(sv.n, WorkStore.sha256(x), ro, st?.previewPending ?: false))
+            }
+            VersionFiles.remember(dir, r.filename, sv.n)
+        }
+        return r
+    }
+
+    private fun withVersion(r: PhotoRecord, v: VersionState) = r.copy(versions = (r.versions.filter { it.n != v.n } + v).sortedBy { it.n })
 
     private fun writeLocal(f: File, bytes: ByteArray) {
         try {
@@ -423,6 +479,16 @@ class LplAgent(
     }
 
     private suspend fun syncLocked(origin: ServerOrigin, id: Long, force: Boolean): SyncOutcome {
+        val first = syncZero(origin, id, force)
+        if (first == SyncOutcome.NOT_HELD || first == SyncOutcome.WAITING || first == SyncOutcome.FAILED) return first
+        val rec = record(origin, id) ?: return first
+        if (!rec.versionsCap) return first
+        val v = syncVersions(origin, id, force)
+        return if (v == SyncOutcome.WAITING || v == SyncOutcome.FAILED) v else first
+    }
+
+    /** The photo's own edit (version 0): the sync as it was before R17. */
+    private suspend fun syncZero(origin: ServerOrigin, id: Long, force: Boolean): SyncOutcome {
         var r = record(origin, id) ?: return SyncOutcome.NOT_HELD
         if (!work.hasRaw(r)) return SyncOutcome.NOT_HELD
         if (servers.get(origin) == null) return SyncOutcome.WAITING
@@ -484,6 +550,177 @@ class LplAgent(
     }
 
     /**
+     * R17: send the versions n >= 1 of a photo whose server has the `versions` capability: first the deletions made on the
+     * phone, then each version file that differs from what LPL has, `POST /xmp?version=n`; on `409 version_exists` the
+     * local file is renamed to the number LPL names (`next`) and posted again (never while the darkroom has the photo
+     * open: its file would come back under the old number); then the previews. A version that fails the version guard
+     * is never sent. Without the capability nothing is sent: those versions stay local.
+     */
+    private suspend fun syncVersions(origin: ServerOrigin, id: Long, force: Boolean): SyncOutcome {
+        var r = record(origin, id) ?: return SyncOutcome.NOT_HELD
+        if (!r.versionsCap) return SyncOutcome.SYNCED
+        val raw = work.raw(r)
+        val dir = work.folder(origin, id)
+        for (n in r.deletedVersions) {
+            try {
+                net(origin) { it.deleteVersion(id, n) }
+            } catch (e: LplException) {
+                if (e.failure != LplFailure.NOT_FOUND) return failed(r, e)
+            }
+            r = mutate(origin, id) { cur -> cur?.copy(deletedVersions = cur.deletedVersions - n, versions = cur.versions.filter { it.n != n }) } ?: return SyncOutcome.NOT_HELD
+        }
+        // the open version's changes first (the darkroom writes its own file whatever the path asked for)
+        editor.writeIfOpen(raw, work.xmp(r))
+        for (n in versionNumbers(r)) {
+            r = record(origin, id) ?: return SyncOutcome.NOT_HELD
+            var number = n
+            var file = work.versionXmp(r, number)
+            val st = r.versionState(number)
+            if (st?.readOnly == true) continue
+            if (!file.isFile) continue
+            if (WorkStore.sha256(file) == (st?.syncedHash ?: "") && !force) continue
+            var bytes = file.readBytes()
+            var answer: XmpAnswer? = null
+            var retried = false
+            var refreshed = false
+            while (answer == null) {
+                mutate(origin, id) { it?.copy(status = PhotoStatus.SYNCING) }
+                step(origin, id, Step(Step.SENDING_EDIT))
+                try {
+                    answer = net(origin) { it.postXmp(id, bytes, r.checkoutTs, servers.installId, number) }
+                } catch (e: LplException) {
+                    step(origin, id, null)
+                    if (e.failure == LplFailure.VERSION_EXISTS && !refreshed && st?.syncedHash?.isNotEmpty() == true) {
+                        // a version this phone sent before: LPL notes the numbers a device was told about at checkout, and
+                        // not the ones it sent itself; asking again tells it, then the same number is posted again
+                        refreshed = true
+                        runCatching { net(origin) { it.checkout(id, servers.installId) } }
+                        continue
+                    }
+                    if (e.failure == LplFailure.VERSION_EXISTS && !retried) {
+                        if (editor.isOpen(raw)) { mutate(origin, id) { it?.copy(status = PhotoStatus.DIRTY) }; return SyncOutcome.WAITING }
+                        val to = e.next?.takeIf { it > 0 && !work.versionXmp(r, it).exists() } ?: VersionFiles.next(dir, r.filename)
+                        if (!VersionFiles.renumber(dir, r.filename, number, to)) return failed(r, LplException(LplFailure.LOCAL, "cannot rename version $number to $to"))
+                        val old = number
+                        number = to
+                        file = work.versionXmp(r, number)
+                        bytes = file.readBytes()
+                        retried = true
+                        r = mutate(origin, id) { cur -> cur?.copy(versions = cur.versions.filter { it.n != old }) } ?: return SyncOutcome.NOT_HELD
+                        trace("lpl: photo $id version $old taken on LPL meanwhile, sent as version $number")
+                        continue
+                    }
+                    return failed(r, e)
+                }
+            }
+            step(origin, id, null)
+            val hash = WorkStore.sha256(bytes)
+            var syncedHash = hash
+            if (answer.merged && WorkStore.sha256(file) == hash) {
+                writeLocal(file, answer.xmp)
+                syncedHash = WorkStore.sha256(answer.xmp)
+                editor.reloadIfOpen(raw, file)
+            }
+            val sent = number
+            r = mutate(origin, id) { cur -> cur?.let { withVersion(it, VersionState(sent, syncedHash, false, true)).copy(syncedTs = clock(), error = "") } } ?: return SyncOutcome.NOT_HELD
+        }
+        for (v in r.versions.filter { it.previewPending && !it.readOnly }) {
+            r = record(origin, id) ?: return SyncOutcome.NOT_HELD
+            if (work.versionXmp(r, v.n).isFile) postVersionPreview(r, v.n)
+        }
+        mutate(origin, id) { cur ->
+            cur?.takeIf { it.status == PhotoStatus.SYNCING || it.status == PhotoStatus.DIRTY || it.status == PhotoStatus.SYNCED }
+                ?.let { c -> c.copy(status = if (editor.isOpen(raw)) PhotoStatus.EDITING else settledStatus(c)) }
+        }
+        return SyncOutcome.SYNCED
+    }
+
+    private suspend fun postVersionPreview(r: PhotoRecord, n: Int) {
+        val out = work.versionPreview(r, n)
+        val xmp = work.versionXmp(r, n)
+        if (!out.isFile || out.lastModified() < xmp.lastModified()) {
+            out.delete()
+            step(r.server, r.id, Step(Step.RENDERING_PREVIEW))
+            val ok = try { runCatching { editor.renderPreview(work.raw(r), xmp, out) }.getOrDefault(false) } finally { step(r.server, r.id, null) }
+            if (!ok || !out.isFile || out.length() == 0L) { out.delete(); return }
+        }
+        step(r.server, r.id, Step(Step.SENDING_PREVIEW))
+        try {
+            net(r.server) { it.postPreview(r.id, out.readBytes(), n) }
+        } catch (e: LplException) {
+            return
+        } finally {
+            step(r.server, r.id, null)
+        }
+        out.delete()
+        mutate(r.server, r.id) { cur -> cur?.let { c -> c.versionState(n)?.let { withVersion(c, it.copy(previewPending = false)) } } }
+    }
+
+    // ------------------------------------------------------------------ R17: making and deleting versions
+
+    /**
+     * Whether a version may be made of this photo now (design P3f section 3): the server lists versions, or the phone
+     * cannot reach it (the version then waits; with a server that turns out not to know versions it stays local).
+     * A server seen without the capability while it can be reached: no.
+     */
+    fun canMakeVersion(origin: ServerOrigin, id: Long): Boolean {
+        val r = record(origin, id) ?: return false
+        return r.versionsCap || _reachable.value[origin] != null
+    }
+
+    /** R17: version [n]'s file differs from what LPL has (for the versions sheet's dot); false for a version of a server without versions. */
+    fun isVersionDirty(origin: ServerOrigin, id: Long, n: Int): Boolean {
+        val r = record(origin, id) ?: return false
+        return if (n == 0) zeroDirty(r) else r.versionsCap && versionDirty(r, n)
+    }
+
+    /** R17: ask LPL to show version [n] for the photo (the cover). An error text for the user, null when done. */
+    suspend fun setCover(origin: ServerOrigin, id: Long, n: Int): String? = withContext(Dispatchers.IO) {
+        try {
+            val c = net(origin) { it.setCover(id, n) }
+            mutate(origin, id) { cur -> cur?.copy(cover = c) }
+            null
+        } catch (e: LplException) {
+            e.userText
+        }
+    }
+
+    /** Whether the versions of this photo are sent to LPL (false: they stay on the phone). */
+    fun versionsSynced(origin: ServerOrigin, id: Long): Boolean = record(origin, id)?.versionsCap == true
+
+    /** A version file was made on the phone: it is an unsynced edit until it is sent. */
+    fun versionMade(origin: ServerOrigin, id: Long, n: Int) {
+        mutate(origin, id) { cur ->
+            cur?.takeIf { it.versionState(n) == null }?.let { c ->
+                val n2 = withVersion(c, VersionState(n))
+                n2.copy(status = if (c.status == PhotoStatus.SYNCED || c.status == PhotoStatus.EDITING) c.status else PhotoStatus.DIRTY)
+            }
+        }
+    }
+
+    /**
+     * Delete version [n] (never 0) from the phone. LPL's copy is deleted by the next sync when the version was ever sent
+     * (LPL keeps the file in its backup folder). False when the darkroom has this photo open (close it first).
+     */
+    suspend fun deleteVersion(origin: ServerOrigin, id: Long, n: Int): Boolean = withContext(Dispatchers.IO) {
+        if (n <= 0) return@withContext false
+        lockOf(origin, id).withLock {
+            val r = record(origin, id) ?: return@withLock false
+            if (editor.isOpen(work.raw(r)) && editor.openVersion(work.raw(r)) == n) return@withLock false
+            val dir = work.folder(origin, id)
+            VersionFiles.remember(dir, r.filename, n)
+            work.versionXmp(r, n).delete()
+            work.versionPreview(r, n).delete()
+            val sent = r.versionState(n)?.syncedHash?.isNotEmpty() == true
+            mutate(origin, id) { cur ->
+                cur?.copy(versions = cur.versions.filter { it.n != n },
+                    deletedVersions = if (sent && cur.versionsCap && n !in cur.deletedVersions) cur.deletedVersions + n else cur.deletedVersions)
+            }
+            true
+        }
+    }
+
+    /**
      * R15: ask LightPhotoLibrary for the photo's last edit and keep it with the photo. A server without R15
      * gives nothing and nothing changes; a failure is ignored (the line is only information).
      */
@@ -527,7 +764,7 @@ class LplAgent(
 
     /** Photos with something to send: an unsynced edit, an edit stuck in `syncing`, or a pending preview. */
     fun pending(): List<PhotoRecord> = _photos.value.filter { r ->
-        work.hasRaw(r) && !r.readOnly && (isDirty(r) || r.previewPending || r.status == PhotoStatus.SYNCING || r.status == PhotoStatus.DIRTY)
+        work.hasRaw(r) && ((!r.readOnly && (isDirty(r) || r.previewPending || r.status == PhotoStatus.SYNCING || r.status == PhotoStatus.DIRTY)) || (versionsDirty(r) || versionsPending(r)))
     }
 
     /**
@@ -628,7 +865,8 @@ class LplAgent(
                 else -> r.status
             }
             val st = _steps.value[r.key]
-            WorkingSetLine(r.id, r.filename, status, r.checkoutTs, r.syncedTs, r.error, st?.step, st?.progress)
+            val ver = editor.openVersion(work.raw(r)).takeIf { it > 0 && r.versionsCap }
+            WorkingSetLine(r.id, r.filename, status, r.checkoutTs, r.syncedTs, r.error, st?.step, st?.progress, ver)
         }
         // brief P2i: while automatic syncing is off, LightPhotoLibrary is told so in the device's message
         val msg = if (autoSync) message else listOf(message, SyncSettings.OFF_TEXT).filter { it.isNotEmpty() }.joinToString(" · ")

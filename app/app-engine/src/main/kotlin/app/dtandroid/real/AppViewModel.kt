@@ -325,7 +325,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             watcher.cancel()
             if (_handOff.value.let { it !is HandOffUi.Fetching || it.handOff != h }) return@launch // cancelled
-            val items = h.ids.map { AppHost.itemFor(h.server, it) }
+            // brief P3f: the start photo opens the version the link names, else LPL's cover
+            val items = h.ids.map { AppHost.itemFor(h.server, it, version = if (it == h.start) (h.version ?: agent.record(h.server, it)?.cover) else null) }
             controller.closePhoto() // a photo open from before is saved (and synced) first
             _handOff.value = null
             _screen.value = Screen.DARKROOM

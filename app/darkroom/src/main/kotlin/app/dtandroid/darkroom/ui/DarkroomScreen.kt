@@ -85,6 +85,7 @@ fun DarkroomScreen(
             else -> PhoneLayout(controller, s, live, onBack, onDone, menu = true)
         }
         Overlays(controller, s, tablet, actions)
+        VersionsOverlays(controller, s, tablet) // brief P3f
         StylesOverlays(controller, s, tablet, importFiles, stylesInPanel = tablet || l1)
         // brief P3d: the masks tab's sheets
         val ms by controller.masks.state.collectAsState()
@@ -155,6 +156,7 @@ private fun PhoneTopBar(controller: DarkroomController, s: DarkroomState, onBack
             DtIconImage(DtIcon.ChevronDown, null, c.textMuted, DtTheme.sizes.icon,
                 Modifier.padding(start = DtTheme.space.xs).rotate(if (s.filmstrip) HALF_TURN else NO_TURN))
         }
+        VersionsChip(controller, s) // brief P3f
         BeforeButton(controller, s, compact = true)
         if (menu) MoreButton(controller)
         DtTextButton("done", onDone, compact = true)
@@ -314,6 +316,7 @@ private fun TabletTopBar(controller: DarkroomController, s: DarkroomState, onBac
         }
         DtIconButton(DtIcon.Undo, "undo", c.textStrong, enabled = s.undo.canUndo, onClick = { controller.launch { undo() } })
         DtIconButton(DtIcon.Redo, "redo", c.textStrong, enabled = s.undo.canRedo, onClick = { controller.launch { redo() } })
+        VersionsChip(controller, s) // brief P3f
         BeforeButton(controller, s)
         if (menu) MoreButton(controller)
         DtTextButton("done", onDone)

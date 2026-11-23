@@ -120,6 +120,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         }
         // brief P3b: the presets list and the styles are StylesOverlays' (StylesSheets.kt)
         is Overlay.Presets, Overlay.Styles -> Unit
+        // brief P3f: the versions sheet and its questions are VersionsOverlays' (VersionsSheet.kt)
+        Overlay.Versions, is Overlay.VersionName, is Overlay.VersionDelete -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return
@@ -230,6 +232,10 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         Overlay.HostMenu -> Sheet(s.current?.fileName ?: "photo", close, maxW) {
             // brief P3b: the styles, as desktop's quick styles button in the darkroom
             SheetItem("styles…", enabled = s.info != null) { controller.setOverlay(Overlay.Styles) }
+            // brief P3f: the l1 skin has no versions chip: its "more" opens the same sheet as "duplicate"
+            if (!tablet && DtTheme.l1.layout && s.versionsAvailable) {
+                SheetItem("duplicate…", enabled = s.info != null) { controller.launch { openVersions() } }
+            }
             for (a in actions) SheetItem(a.label, a.enabled) { controller.setOverlay(null); a.run() }
         }
         is Overlay.Rename -> {
