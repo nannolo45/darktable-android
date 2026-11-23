@@ -335,7 +335,7 @@ private suspend fun AwaitPointerEventScope.bandGesture(
             Phase.MOVE -> if (drag == null) {
                 waitForUpOrCancellation()
             } else {
-                var current = tab
+                var current: BandTab = tab
                 while (true) {
                     val ev = awaitPointerEvent()
                     val ch: PointerInputChange = ev.changes.firstOrNull { it.id == down.id } ?: break
