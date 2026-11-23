@@ -421,9 +421,9 @@ class Exports internal constructor(private val c: DarkroomController) {
         // photos made before a cancel are still handed over (as before); a cancel during the hand-over drops the rest
         val cancelledBefore = cancelled
         try {
-            for ((k, p) in pending.withIndex()) {
+            for (p in pending) {
                 if (cancelled && !cancelledBefore) { t.finished--; continue }
-                _job.update { it?.copy(number = k + 1, fileName = p.item.fileName, step = s.target.delivering, photoFraction = share) }
+                _job.update { it?.copy(fileName = p.item.fileName, step = s.target.delivering, photoFraction = share) }
                 try {
                     val r = d.deliver(p.tmp, p.name, s.mime, s.target, p.item) { f ->
                         _job.update { j -> if (j == null || cancelled) j else j.copy(photoFraction = share + (1 - share) * f.coerceIn(0f, 1f)) }
