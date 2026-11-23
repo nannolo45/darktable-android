@@ -94,7 +94,7 @@ static int p3h_compare(const char *what, const p3h_shot_t *a, const p3h_shot_t *
 /* the main sequence of edits of C28 on a fresh session: two exposure changes
  * (the last one left open), the vignette, a new exposure instance with a
  * prototype circle */
-static int p3h_edits(const char *raw, const char *xmp)
+static int p3h_edits(const char *raw, const char *xmp, const int variant)
 {
   MUST(dtb_open(raw, xmp));
   MUST(dtb_history_seal());
@@ -106,37 +106,44 @@ static int p3h_edits(const char *raw, const char *xmp)
   MUST(dtb_history_seal());
   MUST(dtb_param_set("vignette", 0, "brightness", "-0.4"));
   MUST(dtb_history_seal());
-  int np = -1;
-  MUST(dtb_instance_new("exposure", 0, &np));
-  MUST(dtb_param_set("exposure", np, "exposure", "-0.5"));
-  MUST(dtb_history_seal());
-  dtb_mask_add_circle("exposure", np, 0.5f, 0.5f, 0.2f, 0.05f);
-  MUST(dtb_history_seal());
+  // variant 1: no new instance; 2: the instance without its circle; 3: the
+  // last change sealed
+  if(variant != 1)
+  {
+    int np = -1;
+    MUST(dtb_instance_new("exposure", 0, &np));
+    MUST(dtb_param_set("exposure", np, "exposure", "-0.5"));
+    MUST(dtb_history_seal());
+    if(variant != 2) dtb_mask_add_circle("exposure", np, 0.5f, 0.5f, 0.2f, 0.05f);
+    MUST(dtb_history_seal());
+  }
   snprintf(v, sizeof(v), "%.9g", e0 + 0.3);
   MUST(dtb_param_set("exposure", 0, "exposure", v));
+  if(variant == 3) MUST(dtb_history_seal());
   return DTB_OK;
 }
 
 static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
 {
-  // The live picture before and after the first reload (history_goto to the
-  // own end), in the first session of the process and in a second one, with
-  // the pictures and XMPs for darktable-cli (run_tests.sh, parity): run
-  // 45200658730 found no difference in later sessions, while the main
-  // session below (the first) differed.
-  for(int k = 0; k < 2; k++)
+  // Run 45212159947: a reload at the own end changes nothing and both match
+  // darktable-cli; the main session differs after renders of lower
+  // positions. So: history_goto(1) and back, per variant of the edits, and
+  // the full variant against darktable-cli before and after (parity).
+  static const char *vnames[] = { "full sequence", "no new instance", "instance without circle", "last change sealed" };
+  for(int k = 0; k < 4; k++)
   {
-    if(p3h_edits(raw, xmp)) return g_fail + 1;
+    if(p3h_edits(raw, xmp, k)) return g_fail + 1;
     p3h_shot_t a, b;
     MUST(p3h_shoot(NULL, &a));
     if(k == 0) save_render(outdir, "p3h_first_before_reload");
     int e = 0;
     history_count(&e);
+    MUST(dtb_history_goto(1));
     MUST(dtb_history_goto(e));
     MUST(p3h_shoot(NULL, &b));
     if(k == 0) save_render(outdir, "p3h_first_after_reload");
     char what[128];
-    snprintf(what, sizeof(what), "diag: session %d of the process: after a reload vs before", k + 1);
+    snprintf(what, sizeof(what), "diag: %s: after history_goto(1) and back vs before", vnames[k]);
     p3h_compare(what, &b, &a);
     p3h_free(&a);
     p3h_free(&b);
