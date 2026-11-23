@@ -14,7 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,12 +90,15 @@ fun DtTextButton(
     compact: Boolean = false,
 ) {
     val c = DtTheme.colors
+    // pressed feedback from tokens: the pressed button takes the selected colour (a tap is seen at once)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
     Box(
         modifier = modifier
             .height(DtTheme.sizes.touch)
             .clip(RoundedCornerShape(DtTheme.sizes.radiusControl))
-            .background(if (selected) c.selected else c.raised)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .background(if (selected || pressed) c.selected else c.raised)
+            .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = if (compact) DtTheme.space.m else DtTheme.space.xl),
         contentAlignment = Alignment.Center,
     ) {
@@ -153,4 +160,12 @@ fun PanelHeading(text: String) {
             .padding(horizontal = DtTheme.space.panel),
         contentAlignment = Alignment.CenterStart,
     ) { DtText(text, DtTheme.type.body, DtTheme.colors.textStrong) }
+}
+
+/** The About screen's "interface" row: one button per skin, the chosen one in the selected state. */
+@Composable
+fun SkinChooser(chosen: app.dtandroid.ui.theme.Skin, onChoose: (app.dtandroid.ui.theme.Skin) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+        for (s in app.dtandroid.ui.theme.Skin.entries) DtTextButton(s.label, { onChoose(s) }, selected = s == chosen)
+    }
 }

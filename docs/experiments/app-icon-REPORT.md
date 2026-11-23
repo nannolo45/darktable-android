@@ -11,3 +11,11 @@ Rule 5 (no literal colours in screen code) does not apply to the launcher icon, 
 
 Reproduce: `gradle :app-engine:assembleArm64Debug -Pdta.engineDir=...` (CI p2a/p2b); generated files in `app/app-engine/build/generated/app-icons/res`.
 Not verified on a phone or emulator; the APK report does not show the icon.
+
+## Follow-up: selected DtTextButton visible in every skin
+Cause (reviewer): modern-tokens.json had `color.selected` = `color.raised` = #262626 (l1 stacks on modern), so a selected DtTextButton looked unselected.
+- `modern-tokens.json`: `color.selected` is now #503f2c (the accent at 25% over raised); l1 inherits it. The darktable skin is unchanged (#5e5e5e vs #3b3b3b was already distinct). Other widgets using `color.selected` in modern/l1 get the same warm tint.
+- `DtTextButton`: pressed state now takes the selected colour (immediate tap feedback, tokens only); the default indication was off for lack of a theme ripple, so none was visible before.
+- The About "interface" row is now `SkinChooser` (Common.kt), used by Screens.kt and by the test.
+- Test `SkinChooserScreenshots` (darkroom screenshotTest): 9 screenshots `skinrow-<skin>-<chosen>.png` in build/outputs/screenshots, plus an assertion that selected differs from raised in every skin and that a tap selects.
+- Not run locally (no Android SDK on this workspace); CI is the check.
