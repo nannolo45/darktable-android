@@ -55,3 +55,8 @@ of this package that runs in those tests and could cause it, but I cannot rule o
 Emulator results of P3i (`p3i-results.txt`): i1 two-photo series with the activity stopped: DONE 2 of 2, two files, foreground service seen
 running; i2 export to the stub LPL server: DONE, server received 1 JPEG, version 0, the app's agent id.
 Earlier failures fixed: screen rule (R.drawable in the notification), type inference in LplAgent, three tests of mine (P2kBatchesTest caps list, a stub assertion, a "working" assertion).
+
+## Final CI (commit 4dde5b4f, after merging main 6ee3ac42)
+- p2a-app 45267571170: success.
+- p2b-real-engine 45267571199: attempt 1 success, attempt 2 (whole workflow rerun) success (103 of 103 each).
+- Before it, runs on 3d1d9e0f/0a6fcd06 (45247102148) failed twice (f4, l5: engine thread ~300 s inside a native render/image_info call). The bisect branch p3i-bisect (no startup hooks) passed once. 4dde5b4f removed the one startup hook that touched the controller from the activity (MainActivity watching `vm.controller.exports`); the notification permission is now asked through `AppHost.askNotifications`. Root cause is NOT proven: I could not show why that hook stalls the engine; two green runs against 1 of 6 earlier is the evidence. Uploads are also no longer under the engine lock (series files are made under it, handed over after).
