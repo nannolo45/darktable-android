@@ -78,7 +78,7 @@ class ExportService : Service() {
             val open = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val b = Notification.Builder(ctx, CHANNEL)
-                .setSmallIcon(android.R.drawable.stat_sys_upload)
+                .setSmallIcon(ctx.applicationInfo.icon)
                 .setContentTitle(n?.title ?: "Exporting")
                 .setContentText(n?.text ?: "")
                 .setContentIntent(open)
@@ -89,7 +89,7 @@ class ExportService : Service() {
                 b.setProgress(100, n?.percent ?: 0, n == null)
                 val cancel = PendingIntent.getService(ctx, 1, Intent(ctx, ExportService::class.java).setAction(ACTION_CANCEL),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-                b.addAction(Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, android.R.drawable.ic_menu_close_clear_cancel), "Cancel", cancel).build())
+                b.addAction(Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, ctx.applicationInfo.icon), "Cancel", cancel).build())
             }
             return b.build()
         }
