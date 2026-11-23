@@ -51,3 +51,9 @@ CI numbers are in section 5 (run ids, last code commit). Measurements on the CI 
 2. The override notes of color zones' "edit by area" and "interpolation method" (`schema/overrides/colorzones.json`) are now dead (the controls are hidden, the editor builds them); the notes were left because `P2jComputedTest` asserts one of them. Remove both together if wanted.
 3. A vertical drag on the graph does not scroll the panel. If that is annoying on a phone, a "lock" (edit only after a long press) is a small change in `bandGesture`.
 4. Colour zones' picked mark needs the module on (`color_pick` refuses a module that is off); with it off the mark is simply not shown.
+
+## 6. CI (last code commit 3c44c7e9)
+
+- p2a-app run 45108366856: success (22 JVM tests, 10 phone and 2 tablet screenshot tests).
+- p2b-real-engine run 45108366825: success, including the emulator job and the compare job (`p3eb` ok). x86_64 CI numbers, not phone numbers. Compare, app export vs darktable-cli of the app's XMP (3908x2602): p3e-atrous PSNR 44.38 (max 20), p3e-colorzones PSNR 43.62 (max 22), p3e-colorequal PSNR 46.13 (max 16). Logs: `ci-logs` branch, `runs/45108366825-a1/`.
+- Earlier runs on 6207a4d5 (p2b 45106063242) failed in the emulator job only on the scenario's baseline open (fixed in 3c44c7e9).
