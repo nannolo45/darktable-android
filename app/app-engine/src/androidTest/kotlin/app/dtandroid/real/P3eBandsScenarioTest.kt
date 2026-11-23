@@ -8,6 +8,7 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import app.dtandroid.darkroom.ui.graph.BandEdit
 import app.dtandroid.darkroom.ui.graph.BandModels
 import app.dtandroid.darkroom.ui.graph.BandOptions

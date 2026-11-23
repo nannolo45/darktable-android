@@ -6,6 +6,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -74,7 +75,21 @@ abstract class P3eBandsScreens : ScreenshotBase() {
         }
         compose.onNodeWithContentDescription("band graph", substring = true).assertExists()
         settle(c)
+        // the l1 panel is a short window on the module: its editor is looked at scrolled to the brush radius
+        if (skin == Skin.L1) scrollTo(hasContentDescription("brush radius"))
         capture("$name-p3eb-$op-${skinName(skin)}")
+        // colour zones: the rest of the panel, scrolled to its last row
+        if (op == "colorzones" && skin != Skin.L1) {
+            scrollTo(hasText("interpolation method"))
+            capture("$name-p3eb-$op-options-${skinName(skin)}")
+        }
+    }
+
+    private fun scrollTo(target: androidx.compose.ui.test.SemanticsMatcher) {
+        runCatching {
+            compose.onNode(hasScrollAction() and hasAnyDescendant(hasContentDescription("band graph", substring = true))).performScrollToNode(target)
+        }
+        compose.waitForIdle()
     }
 
     /** a node of contrast equalizer dragged with a finger: one history item, the node follows */
