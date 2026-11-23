@@ -82,7 +82,7 @@ fun ParametricSection(controller: DarkroomController, s: DarkroomState, ro: Bool
 }
 
 @Composable
-private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val c = DtTheme.colors
     val shape = RoundedCornerShape(DtTheme.sizes.radiusControl)
     var m = modifier.height(DtTheme.sizes.touch).clip(shape).background(if (on) c.selected else c.raised)
@@ -97,7 +97,7 @@ private fun ChannelButton(label: String, on: Boolean, enabled: Boolean, modifier
 }
 
 @Composable
-private fun ChannelRow(controller: DarkroomController, s: DarkroomState, el: ParamElement, ro: Boolean) {
+internal fun ChannelRow(controller: DarkroomController, s: DarkroomState, el: ParamElement, ro: Boolean) {
     val c = DtTheme.colors
     val sp = DtTheme.space
     val pm = controller.parametric

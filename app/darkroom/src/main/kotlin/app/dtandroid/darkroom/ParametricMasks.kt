@@ -200,6 +200,8 @@ data class ParametricState(
     val root: Int? = null,
     /** the parametric elements among its direct members, bottom first */
     val elements: List<ParamElement> = emptyList(),
+    /** P3d 2c: every parametric element of the module's tree, in nested groups too (the tree's rows open their controls) */
+    val all: List<ParamElement> = emptyList(),
     val refineOpen: Boolean = false,
     val sheet: ParamSheet? = null,
     val note: String? = null,
@@ -230,12 +232,39 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
         var blend: Blend? = null
         var root: Int? = null
         var els = emptyList<ParamElement>()
+        var every = emptyList<ParamElement>()
         if (key != null) try {
             blend = e.blendGet(key.op, key.priority).takeIf { it.supported }
             root = blend?.maskId
-            if (root != null) els = elementsOf(e.masks(), root)
+            if (root != null) {
+                val forms = e.masks()
+                els = elementsOf(forms, root)
+                every = treeElements(forms, root)
+            }
         } catch (x: EngineException) { blend = null }
-        _state.update { if (it.key != key) it.copy(key = key, blend = blend, root = root, elements = els, sheet = null, note = null) else it.copy(blend = blend, root = root, elements = els) }
+        _state.update {
+            if (it.key != key) it.copy(key = key, blend = blend, root = root, elements = els, all = every, sheet = null, note = null)
+            else it.copy(blend = blend, root = root, elements = els, all = every)
+        }
+    }
+
+    /** The parametric elements of [root] and of every group below it (a group listed twice is read once). */
+    private fun treeElements(forms: List<MaskForm>, root: Int): List<ParamElement> {
+        val seen = HashSet<Int>()
+        val out = ArrayList<ParamElement>()
+        val todo = ArrayDeque(listOf(root))
+        while (todo.isNotEmpty()) {
+            val g = todo.removeFirst()
+            if (seen.add(g)) {
+                out += elementsOf(forms, g)
+                val group = forms.firstOrNull { it.id == g }
+                for (m in (group?.geometry?.get("members") as? JsonArray) ?: JsonArray(emptyList())) {
+                    val id = ((m as? JsonObject)?.get("id") as? JsonPrimitive)?.intOrNull
+                    if (id != null && forms.any { it.id == id && it.type == "group" }) todo.addLast(id)
+                }
+            }
+        }
+        return out
     }
 
     private fun elementsOf(forms: List<MaskForm>, root: Int): List<ParamElement> {
@@ -278,16 +307,19 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
 
     private fun num(v: Double) = JsonPrimitive(v)
     private fun arr(r: List<Double>) = JsonArray(r.map { JsonPrimitive(it) })
-    private fun element(id: Int) = _state.value.elements.firstOrNull { it.id == id }
+    private fun element(id: Int) = _state.value.all.firstOrNull { it.id == id } ?: _state.value.elements.firstOrNull { it.id == id }
 
     // ------------------------------------------------------------------ elements
 
     /** A channel button: a new element (the whole range, so it restricts nothing yet) in the module's mask group. */
-    suspend fun addChannel(spec: ChannelSpec) {
+    suspend fun addChannel(spec: ChannelSpec, group: Int? = _state.value.root, select: Boolean = false) {
         val st = _state.value
         val k = st.key ?: return
         val geometry = buildJsonObject { put("channel", spec.base); put("in", arr(RangeMath.FULL)); put("out", arr(RangeMath.FULL)) }
-        edit { e -> e.maskAdd(k.op, k.priority, "parametric", geometry, group = st.root); e.historySeal() }
+        var made: Int? = null
+        edit { e -> made = e.maskAdd(k.op, k.priority, "parametric", geometry, group = group); e.historySeal() }
+        // P3d 2c: in the tree the new element's row opens its controls
+        if (select) made?.let { c.masks.revealAndSelect(it, group) }
     }
 
     /** Remove an element: out of the group, and the form deleted (it is nobody else's). */
@@ -295,9 +327,13 @@ class ParametricMasks internal constructor(private val c: DarkroomController) {
         val st = _state.value
         val root = st.root ?: return
         edit { e ->
+            // the group that holds it: the module's own, or a nested one (P3d 2c)
+            val parent = e.masks().firstOrNull { f ->
+                f.type == "group" && ((f.geometry["members"] as? JsonArray)?.any { m -> ((m as? JsonObject)?.get("id") as? JsonPrimitive)?.intOrNull == id } == true)
+            }?.id ?: root
             e.historyGroupBegin() // the removal and the delete are one undo step
             try {
-                e.maskMemberRemove(root, id)
+                e.maskMemberRemove(parent, id)
                 try { e.maskDelete(id) } catch (x: EngineException) { /* still used elsewhere: it stays */ }
             } finally { e.historyGroupEnd(true) }
             e.historySeal()
