@@ -1,0 +1,52 @@
+RESULT engine 04477d3
+RESULT copy items {"items":[{"num":17,"op":"exposure","priority":1,"name":"exposure • 1","instance_name":"1","enabled":true,"mask":true,"safe":true},{"num":15,"op":"exposure","priority":1,"name":"exposure • scene-referred default","instance_name":"_builtin_scene-referred default","enabled":true,"mask":false,"safe":true},{"num":18,"op":"exposure","priority":0,"name":"exposure","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":13,"op":"vignette","priority":0,"name":"vignetting","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":11,"op":"lens","priority":0,"name":"lens correction","instance_name":"","enabled":true,"mask":false,"safe":false},{"num":10,"op":"flip","priority":0,"name":"orientation • auto","instance_name":"auto","enabled":true,"mask":false,"safe":false},{"num":9,"op":"filmicrgb","priority":0,"name":"filmic rgb • scene-referred default","instance_name":"scene-referred default","enabled":true,"mask":false,"safe":true},{"num":8,"op":"exposure","priority":0,"name":"exposure • scene-referred default","instance_name":"scene-referred default","enabled":true,"mask":false,"safe":true},{"num":7,"op":"channelmixerrgb","priority":0,"name":"color calibration • scene-referred default","instance_name":"scene-referred default","enabled":true,"mask":false,"safe":true},{"num":6,"op":"highlights","priority":0,"name":"highlight reconstruction","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":5,"op":"temperature","priority":0,"name":"white balance","instance_name":"","enabled":true,"mask":false,"safe":false},{"num":3,"op":"colorout","priority":0,"name":"output color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":2,"op":"colorin","priority":0,"name":"input color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":1,"op":"demosaic","priority":0,"name":"demosaic","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":0,"op":"rawprepare","priority":0,"name":"raw black/white point","instance_name":"","enabled":true,"mask":false,"safe":false}],"module_order":"v3.0 RAW"}
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:133: the new exposure instance is not listed with its mask [nothing copied]
+RESULT items 15, unsafe 4, new instance num 15
+RESULT clipboard after copy: {"parts":false,"copy_module_order":true,"items":[{"num":17,"op":"exposure","priority":1,"name":"exposure • 1","instance_name":"1","enabled":true,"mask":true,"safe":true,"selected":true},{"num":15,"o
+RESULT B after copy all + overwrite: 18 items
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:171: B's history is not A's without the unsafe modules:
+A:
+demosaic/0/1
+colorin/0/1
+colorout/0/1
+highlights/0/1
+channelmixerrgb/0/1
+exposure/0/1
+filmicrgb/0/1
+exposure/0/1
+vignette/0/1
+exposure/0/1
+exposure/1/1
+exposure/1/1
+exposure/1/1
+exposure/0/1
+B:
+rawprepare/0/1
+gamma/0/1
+temperature/0/1
+flip/0/1
+demosaic/0/1
+colorin/0/1
+colorout/0/1
+highlights/0/1
+channelmixerrgb/0/1
+exposure/0/1
+filmicrgb/0/1
+exposure/0/1
+vignette/0/1
+exposure/0/1
+exposure/1/1
+exposure/1/1
+exposure/1/1
+exposure/0/1
+ []
+RESULT C exposure 0: 0.7000 (was 0.7000), new instance: 0.0000
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:222: the pasted instance has exposure 0.000000, expected -0.5 []
+RESULT C masks []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:230: the circle did not travel with the instance []
+RESULT open photo: 13 items before the paste, 13 after
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:242: the paste added no history item []
+RESULT unknown-module target: code -7 (refusing to change /home/runner/bridge-tests/raf/p3j_d_unknown.xmp: it failed the version guard (1))
+    27.4066 cannot get iop-order for dtbnosuchop instance 0
+RESULT copypaste failed
+RESULT exit 1

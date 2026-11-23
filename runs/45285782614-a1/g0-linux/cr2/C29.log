@@ -1,0 +1,48 @@
+RESULT engine 04477d3
+RESULT copy items {"items":[{"num":14,"op":"exposure","priority":1,"name":"exposure • 1","instance_name":"1","enabled":true,"mask":true,"safe":true},{"num":12,"op":"exposure","priority":1,"name":"exposure • scene-referred default","instance_name":"_builtin_scene-referred default","enabled":true,"mask":false,"safe":true},{"num":15,"op":"exposure","priority":0,"name":"exposure","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":10,"op":"vignette","priority":0,"name":"vignetting","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":7,"op":"flip","priority":0,"name":"orientation","instance_name":"","enabled":true,"mask":false,"safe":false},{"num":5,"op":"colorout","priority":0,"name":"output color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":4,"op":"colorin","priority":0,"name":"input color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":3,"op":"demosaic","priority":0,"name":"demosaic","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":2,"op":"highlights","priority":0,"name":"highlight reconstruction","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":1,"op":"temperature","priority":0,"name":"white balance","instance_name":"","enabled":true,"mask":false,"safe":false},{"num":0,"op":"rawprepare","priority":0,"name":"raw black/white point","instance_name":"","enabled":true,"mask":false,"safe":false}],"module_order":"legacy"}
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:133: the new exposure instance is not listed with its mask [nothing copied]
+RESULT items 11, unsafe 3, new instance num 12
+RESULT clipboard after copy: {"parts":false,"copy_module_order":true,"items":[{"num":14,"op":"exposure","priority":1,"name":"exposure • 1","instance_name":"1","enabled":true,"mask":true,"safe":true,"selected":true},{"num":12,"o
+RESULT B after copy all + overwrite: 16 items
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:171: B's history is not A's without the unsafe modules:
+A:
+highlights/0/1
+demosaic/0/1
+colorin/0/1
+colorout/0/1
+exposure/0/1
+exposure/0/1
+vignette/0/1
+exposure/0/1
+exposure/1/1
+exposure/1/1
+exposure/1/1
+exposure/0/1
+B:
+rawprepare/0/1
+gamma/0/1
+temperature/0/1
+flip/0/1
+highlights/0/1
+demosaic/0/1
+colorin/0/1
+colorout/0/1
+exposure/0/1
+exposure/0/1
+vignette/0/1
+exposure/0/1
+exposure/1/1
+exposure/1/1
+exposure/1/1
+exposure/0/1
+ []
+RESULT C exposure 0: 1.0000 (was 1.0000), new instance: 0.0000
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:222: the pasted instance has exposure 0.000000, expected -0.5 []
+RESULT C masks []
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:230: the circle did not travel with the instance []
+RESULT open photo: 10 items before the paste, 10 after
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3j.c:242: the paste added no history item []
+RESULT unknown-module target: code -7 (refusing to change /home/runner/bridge-tests/cr2/p3j_d_unknown.xmp: it failed the version guard (1))
+     3.9972 cannot get iop-order for dtbnosuchop instance 0
+RESULT copypaste failed
+RESULT exit 1
