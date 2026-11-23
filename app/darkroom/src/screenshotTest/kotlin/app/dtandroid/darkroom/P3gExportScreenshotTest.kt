@@ -25,6 +25,21 @@ abstract class P3gExportScreens : ScreenshotBase() {
 
     private fun layoutName() = if (layout == DarkroomLayout.TABLET) "tablet" else "phone"
 
+    /** brief P3i: a delivery that says whether LightPhotoLibrary is on offer; the screen with LightPhotoLibrary chosen */
+    protected fun lplShot(name: String, skin: Skin, offer: LplOffer, job: ExportJob?) {
+        show(tokens = DtTokens.load(skin)) {
+            exports.delivery = object : ExportDelivery {
+                override val scratch = java.io.File("scratch")
+                override suspend fun deliver(file: java.io.File, name: String, mime: String, target: ExportTarget, item: SeriesItem, progress: (Float) -> Unit) = Delivered("x")
+                override fun lplOffer(item: SeriesItem?) = offer
+            }
+            exports.set { it.copy(target = ExportTarget.LPL, quality = 80) }
+            exports.showJob(job)
+            exports.open()
+        }
+        capture("${layoutName()}-p3i-$name-${skin.key}")
+    }
+
     protected fun indicator(skin: Skin) = shot("indicator", skin, seriesJob(), ExportScope.SERIES, screen = false)
 
     protected fun seriesJob() = ExportJob(ExportPhase.RUNNING, ExportTarget.DEVICE, total = 12, finished = 4, number = 5,
@@ -49,6 +64,13 @@ class PhoneExportScreenshots : P3gExportScreens() {
     @Test fun indicatorDarktable() = indicator(Skin.DARKTABLE)
     @Test fun indicatorModern() = indicator(Skin.MODERN)
     @Test fun indicatorL1() = indicator(Skin.L1)
+
+    @Test fun lplAvailableDarktable() = lplShot("lpl-available", Skin.DARKTABLE, LplOffer.Available, null)
+    @Test fun lplAvailableModern() = lplShot("lpl-available", Skin.MODERN, LplOffer.Available, null)
+    @Test fun lplSendingModern() = lplShot("lpl-sending", Skin.MODERN, LplOffer.Available, ExportJob(ExportPhase.RUNNING, ExportTarget.LPL, total = 1,
+        fileName = "IMG_0001.RAF", step = ExportJob.STEP_LPL, photoFraction = 0.85))
+    @Test fun lplDisabledDarktable() = lplShot("lpl-disabled", Skin.DARKTABLE, LplOffer.Unavailable("the server has not answered yet: try again in a moment"), null)
+    @Test fun lplDisabledModern() = lplShot("lpl-disabled", Skin.MODERN, LplOffer.Unavailable("this photo did not come from LightPhotoLibrary"), null)
 
     private fun doneJob() = ExportJob(ExportPhase.DONE, ExportTarget.DEVICE, total = 1, finished = 1,
         message = "1 photo · exported to Pictures/darktable on this device")

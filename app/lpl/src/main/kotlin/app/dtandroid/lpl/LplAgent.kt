@@ -888,7 +888,7 @@ class LplAgent(
     private fun heartbeatTo(origin: ServerOrigin, deviceName: String): HeartbeatAnswer? = try {
         val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin)) }
         // brief P3i (R18): what the server can receive; no `server_caps` = an older server, exports wait
-        if (exports.capsOf(origin) != (a.serverCaps ?: emptySet())) { exports.setCaps(origin, a.serverCaps); _capsTick.update { it + 1 } }
+        if (exports.capsOf(origin) != (a.serverCaps ?: emptySet())) { exports.setCaps(origin, a.serverCaps); _capsTick.value = _capsTick.value + 1 }
         // `cancel` comes only from a server that knows `caps`: only then are edit jobs run as batches
         if (a.cancel != null) batchServers += origin
         transfers.applyCancel(origin, a.cancel)
@@ -905,7 +905,7 @@ class LplAgent(
     /** What the app keeps about exports: the servers' `server_caps` and the exports waiting for a server. */
     val exports = ExportBook(File(work.root.parentFile ?: work.root, "exports"))
 
-    private val _capsTick = MutableStateFlow(0)
+    private val _capsTick = MutableStateFlow<Int>(0)
     /** Counts the changes of any server's `server_caps`: the export screen reads the offer again. */
     val capsChanged: StateFlow<Int> = _capsTick.asStateFlow()
 
