@@ -459,6 +459,9 @@ class DarkroomController(
         _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) RENDERING else it.working) }
     }
 
+    /** brief PUI3b: tests give the screen a layout with more groups than the stand-in's (nine sections in l1's sideways column) */
+    internal fun setLayoutForTest(layout: app.dtandroid.schema.layout.Layout) = _state.update { it.copy(layout = layout) }
+
     /** brief P2e: a photo of the series got its name or its final paths (from LightPhotoLibrary). */
     fun replaceItem(index: Int, item: SeriesItem) = _state.update { s ->
         if (index !in s.series.items.indices || s.series.items[index] == item) s

@@ -231,7 +231,13 @@ class SidewaysPhoneL1Screenshots : PUI3aL1Screens() {
     /** brief PUI3b: nine sections in the sideways column: no cell under 44 dp, and the column scrolls so every one is reachable */
     @Test
     fun sidewaysNineSections() {
-        val c = show(tokens = l1, group = null, actions = hostActions)
+        // the stand-in's layout has six sections; this one adds groups (copies of the first) up to nine
+        val c = show(tokens = l1, group = null, actions = hostActions) {
+            val l = state.value.layout
+            val first = l.groups.first()
+            val more = (1..(7 - l.groups.size).coerceAtLeast(0)).map { first.copy(name = "extra $it", modules = emptyList()) }
+            setLayoutForTest(l.copy(quickAccessShown = true, groups = l.groups + more))
+        }
         val sections = L1Model.sections(c.state.value)
         assertTrue("need nine sections, have ${sections.size}", sections.size >= 9)
         val column = compose.onNode(hasScrollAction() and hasAnyDescendant(hasContentDescription("active modules")))
