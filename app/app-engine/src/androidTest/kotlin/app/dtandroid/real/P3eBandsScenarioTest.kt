@@ -137,7 +137,7 @@ class P3eBandsScenarioTest {
         c.closePhoto()
         c.withEngine { e ->
             runCatching { e.close() }
-            e.open(plainRaw.path, File(plainDir, "none.xmp").path)
+            e.open(plainRaw.path, null)
             try { e.export(plain.path, ExportOptions(quality = 95, profile = ExportProfile.IMAGE)) } finally { runCatching { e.close() } }
         }
         assertTrue("$op: the picture changed", !plain.readBytes().contentEquals(jpg.readBytes()))
