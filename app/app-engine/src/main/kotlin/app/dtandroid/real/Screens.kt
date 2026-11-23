@@ -275,9 +275,7 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
             // brief PUI2a: the interface skin, applied at once
             val skin by AppHost.settings.skin.collectAsState()
             PanelHeading("interface")
-            Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
-                for (s in app.dtandroid.ui.theme.Skin.entries) DtTextButton(s.label, { vm.setSkin(s) }, selected = s == skin)
-            }
+            app.dtandroid.darkroom.ui.SkinChooser(skin, { vm.setSkin(it) })
             Paragraph("darktable: the look of the desktop application. modern: the same screens with softer corners and an accent colour. " +
                 "lightcraft-style: modern's look with a second phone darkroom: the photo on top, one panel and two rows of buttons at the bottom.", muted = true)
         }
