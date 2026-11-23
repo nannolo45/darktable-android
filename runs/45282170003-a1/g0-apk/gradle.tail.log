@@ -1,0 +1,75 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRules
+check-screen-rules: 74 files, 0 violations
+
+> Task :app-engine:preBuild
+> Task :app-engine:preArm64DebugBuild
+> Task :app-engine:mergeArm64DebugNativeDebugMetadata NO-SOURCE
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:processResources NO-SOURCE
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:compileKotlin
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:classes UP-TO-DATE
+> Task :lpl:jar
+> Task :engine-api:processResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :app-engine:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-engine:generateArm64DebugBuildConfig
+> Task :darkroom:preBuild
+> Task :darkroom:preDebugBuild
+> Task :darkroom:writeDebugAarMetadata
+> Task :engine-jni:preBuild UP-TO-DATE
+> Task :engine-jni:preDebugBuild UP-TO-DATE
+> Task :engine-jni:writeDebugAarMetadata
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:writeDebugAarMetadata
+> Task :engine-api:compileKotlin
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :app-engine:checkArm64DebugAarMetadata
+> Task :engine-api:jar
+> Task :darkroom:processDebugNavigationResources
+> Task :engine-jni:processDebugNavigationResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :app-engine:processArm64DebugNavigationResources
+> Task :app-engine:compileArm64DebugNavigationResources
+> Task :app-engine:appIcons
+> Task :app-engine:generateArm64DebugResValues
+> Task :darkroom:generateDebugResValues
+> Task :darkroom:generateDebugResources
+> Task :darkroom:packageDebugResources
+> Task :engine-jni:generateDebugResValues
+> Task :engine-jni:generateDebugResources
+> Task :engine-jni:packageDebugResources
+> Task :ui-icons:convertIcons
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :app-engine:mapArm64DebugSourceSetPaths
+> Task :app-engine:generateArm64DebugResources
+> Task :app-engine:mergeArm64DebugResources
+> Task :app-engine:packageArm64DebugResources
