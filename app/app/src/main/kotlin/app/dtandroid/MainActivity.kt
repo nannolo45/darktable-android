@@ -10,6 +10,8 @@ import androidx.activity.viewModels
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.dtandroid.darkroom.DarkroomController
+import app.dtandroid.darkroom.FolderExportDelivery
+import app.dtandroid.engine.api.ExportFormat
 import app.dtandroid.darkroom.InterfacePreview
 import app.dtandroid.darkroom.ui.DarkroomScreen
 import app.dtandroid.engine.api.EnginePaths
@@ -45,9 +47,9 @@ class DarkroomViewModel(app: Application) : AndroidViewModel(app) {
     private val engine = InterfacePreview.engine(SchemaLoader.schemaTextFromResources())
     val controller = DarkroomController(engine, schema, builtins, layouts, viewModelScope).also { c ->
         // brief P3g: the stand-in engine writes PNG only, slowly enough to see the progress; files go to the app's folder
-        c.exports.delivery = app.dtandroid.darkroom.FolderExportDelivery(File(app.cacheDir, "export"), File(app.filesDir, "exports"))
-        c.exports.set { it.withFormat(app.dtandroid.engine.api.ExportFormat.PNG) }
-        (engine as? app.dtandroid.engine.fake.FakeEngine)?.exportMsPerModule = 150
+        c.exports.delivery = FolderExportDelivery(File(app.cacheDir, "export"), File(app.filesDir, "exports"))
+        c.exports.set { it.withFormat(ExportFormat.PNG) }
+        engine.exportMsPerModule = 150
     }
 
     /** The tokens, with the debug override file `theme.json` from the app's folder if there is one. */
