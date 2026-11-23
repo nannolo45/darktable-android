@@ -14,7 +14,8 @@ Branch `p3g-export` from `main` 4fc2974. Brief: `docs/briefs/P3g-export.md`.
   equals darktable-cli's pixel for pixel (max 0). darktable's JPEG carries the export time in its metadata. The
   test now writes a second export with nothing in between (reported as byte-equal or not) and compares the
   decoded pixels of that one, of the export after the cancels and of `dtb_export`'s with the first, at max 0
-  (`run_tests.sh`). The other C27 checks passed unchanged.
+  (`run_tests.sh`). The other C27 checks passed unchanged. Run 45140533602 confirms it: "two exports in a row:
+  not equal byte for byte", and all four exports equal pixel for pixel (max 0) on cr2, raf and arw.
 
 ## 1. Item by item
 
@@ -41,7 +42,7 @@ Branch `p3g-export` from `main` 4fc2974. Brief: `docs/briefs/P3g-export.md`.
 
 ## 3. Results
 
-**Bridge C27** (run 45127185130, CI Linux runner, x86_64 on 2 cores, not phone numbers):
+**Bridge C27** (run 45127185130; the same checks again in 45140533602, CI Linux runner, x86_64 on 2 cores, not phone numbers):
 
 | image | export | modules seen / enabled | cancel half-way returns after | cancel from a thread, then returns after |
 |---|---|---|---|---|
@@ -108,4 +109,15 @@ reachable (mockup note: "the export waits and goes out with the next sync"), e.g
 
 ## CI
 
-Runs on code commits (all on `p3g-export`): see the last section, updated at the end.
+Last code commit **849fbf53** (CI cache key; app and engine code last changed in d97b0504):
+
+| Workflow | Run | Commit | Result |
+|---|---|---|---|
+| g0-app (bridge tests on Linux) | 45140533602 | 849fbf53 | success: 374 passed, 0 failed, C27 on cr2, raf, arw |
+| p2b-real-engine (APK, emulator, compare) | 45140533641 | 849fbf53 | success (emulator job included) |
+| p2a-app (JVM tests, screenshots) | 45134611280 | d97b0504 | success (849fbf53 changes no path this workflow watches) |
+
+Earlier runs: 45127185106 (p2b, emulator, success; the emulator numbers in section 3), 45127185125 (p2a, success),
+45127185130 (g0: C27 byte-equality check failed, see the top), 45134611252 (g0: ran the old C27 driver because the
+bridge build's cache key did not list `dtb_test_p3g.c`; fixed in 849fbf53), 45125877604 (p2a: the overall bar went
+back between photos of a series; fixed in 4f77cf58), and compile errors fixed in d8d6fa7b, 27371e81, a4a39e7e.
