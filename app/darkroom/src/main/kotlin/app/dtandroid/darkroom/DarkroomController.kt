@@ -6,6 +6,7 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
+import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.XmpCheck
@@ -285,6 +286,7 @@ class DarkroomController(
     /** Switch to another photo of the series; the current edit is written to its sidecar first. */
     suspend fun openPhoto(index: Int, saveCurrent: Boolean = true) {
         var item = _state.value.series.items.getOrNull(index) ?: return
+        val wanted = item
         val g = ++generation
         Timeline.mark("darkroom: open ${item.fileName} asked")
         cancelRenders()
@@ -305,6 +307,8 @@ class DarkroomController(
                 return
             }
             if (generation != g) return // the user went to another photo, or left the darkroom, meanwhile
+            // brief P3f: the source gives the photo's own edit's paths; the version asked for is kept
+            if (wanted.version > 0 && File(item.atVersion(wanted.version).xmpPath).isFile) item = item.atVersion(wanted.version)
             replaceItem(index, item)
             _state.update { it.copy(message = null, working = "opening ${item.fileName}…", workingProgress = null) }
             fg {
@@ -405,6 +409,7 @@ class DarkroomController(
         val p = st.preview?.image ?: return
         if (st.info == null) return
         thumbnailStore?.storePicture(item, Thumbnails.downscale(p, ThumbnailStore.PICTURE_SIZE))
+        versionPicture(item, p)
     }
 
     /** Brief P2f: the series and position of the last photo that opened, whatever its source (the timings run on it). */
@@ -497,6 +502,186 @@ class DarkroomController(
     suspend fun save() {
         cancelRenders()
         fg { keepPicture(); saveLocked() }
+    }
+
+    // ------------------------------------------------------------------ brief P3f: versions
+
+    /** What the app gives for versions (sync state, LPL calls); null = versions are not offered (the chip is not shown). */
+    @Volatile var versionHost: VersionHost? = null
+        set(v) { field = v; _state.update { it.copy(versionsAvailable = v != null) } }
+
+    /** The last picture seen of each version in this run, by sidecar path, small (the sheet's thumbnails and "hold to peek"). */
+    private val versionPics = java.util.concurrent.ConcurrentHashMap<String, RenderedImage>()
+
+    private fun versionPicture(item: SeriesItem, p: RenderedImage) {
+        versionPics[item.xmpPath] = Thumbnails.downscale(p, VERSION_PIC_SIZE)
+    }
+
+    /** The rows of the sheet from the files, the host and the pictures seen. */
+    private fun versionRows(): List<VersionUiRow> {
+        val st = _state.value
+        val item = st.current ?: return emptyList()
+        val host = versionHost
+        val cover = host?.cover(item) ?: 0
+        return versionFolderOf(item).rows().map { r ->
+            val it2 = item.atVersion(r.n)
+            VersionUiRow(r.n, r.name, r.edited, host?.syncOf(item, r.n) ?: VersionSync.LOCAL, r.n == cover, r.n == item.version,
+                versionPics[it2.xmpPath])
+        }
+    }
+
+    private fun refreshVersionRows(note: String? = null) = _state.update { it.copy(versionRows = versionRows(), versionNote = note ?: it.versionNote) }
+
+    /**
+     * Open the versions sheet. The open version is written first, so its row says "edited" when it is (the files are
+     * what the rows read).
+     */
+    suspend fun openVersions() {
+        if (versionHost == null || _state.value.info == null) return
+        cancelRenders()
+        fg { keepPicture(); saveLocked() }
+        _state.update { it.copy(overlay = Overlay.Versions, versionNote = null) }
+        refreshVersionRows()
+        requestRender()
+    }
+
+    fun closeVersions() = _state.update { it.copy(overlay = null, peek = null, peekNote = null, versionNote = null) }
+
+    /**
+     * Make a new version of the open photo: the open version's edit is written first, then the engine writes the
+     * new sidecar (`xmp_write` to its path, which refuses a session whose XMP failed the version guard: CLAUDE.md rule 4),
+     * then it is turned into a duplicate (same history, rating, labels, tags) or a virgin duplicate (no history, the
+     * rest kept), and the new version opens. Returns the new number, or null with a line for the user.
+     */
+    suspend fun duplicate(virgin: Boolean): Int? {
+        val st0 = _state.value
+        val item = st0.current ?: return null
+        val host = versionHost ?: return null
+        if (st0.info == null) return null
+        if (st0.readOnly) { versionLine("this version opens for viewing only (a newer darktable edited it): it is not duplicated"); return null }
+        if (!host.canMake(item)) { versionLine("LightPhotoLibrary here does not know versions yet: no duplicate while it is connected"); return null }
+        cancelRenders()
+        var made: Int? = null
+        var why: String? = null
+        fg {
+            try {
+                commitCropLocked(close = false)
+                keepPicture()
+                saveLocked()
+                val folder = versionFolderOf(item)
+                val n = folder.reserve()
+                val path = folder.file(n).path
+                try {
+                    engine.xmpWrite(path)
+                } catch (e: EngineException) {
+                    File(path).delete()
+                    why = "version not made: ${e.message}"
+                    return@fg
+                }
+                val r = folder.finish(n, virgin)
+                if (r is app.dtandroid.lpl.VersionResult.Done) {
+                    made = n
+                } else why = "version not made: " + ((r as? app.dtandroid.lpl.VersionResult.Refused)?.why ?: "its file cannot be rewritten")
+            } finally { requestRender() }
+            Unit
+        }
+        val n = made
+        if (n == null) { versionLine(why ?: "version not made"); return null }
+        // a duplicate looks like the version it came from
+        if (!virgin) _state.value.preview?.image?.let { versionPics[item.atVersion(n).xmpPath] = Thumbnails.downscale(it, VERSION_PIC_SIZE) }
+        host.made(item, n)
+        switchVersion(n, save = false)
+        val file = File(item.atVersion(n).xmpPath).name
+        refreshVersionRows("${if (virgin) "virgin duplicate" else "duplicate"} made: $file (${host.syncOf(item, n).word})")
+        return n
+    }
+
+    private fun versionLine(text: String) = _state.update { it.copy(versionNote = text) }
+
+    /**
+     * Open version [n] of the open photo. The open version is saved first ([save]; false when it was just written),
+     * the filmstrip and the series stay where they are.
+     */
+    suspend fun switchVersion(n: Int, save: Boolean = true) {
+        val s = _state.value
+        val cur = s.current ?: return
+        if (s.info == null || n == cur.version) return
+        val target = cur.atVersion(n)
+        if (!File(target.xmpPath).isFile) { versionLine("version $n has no file"); return }
+        val index = s.index
+        val g = ++generation
+        cancelRenders()
+        showPlaceholder(index, target, "opening version $n…")
+        fg {
+            leaveLocked(index, save, false)
+            replaceItem(index, target)
+            openLocked(target)
+        }
+        if (generation != g) return
+        if (_state.value.info != null) {
+            lastOpened = _state.value.series to index
+            source?.opened(target, _state.value.series.items.getOrNull(index + 1))
+        }
+        refreshVersionRows()
+        requestRender()
+    }
+
+    /** Give version [n] a name (blank removes it). The file is rewritten only after the version guard allowed it. */
+    suspend fun renameVersion(n: Int, name: String) {
+        val s = _state.value
+        val cur = s.current ?: return
+        if (s.info == null) return
+        cancelRenders()
+        var result: app.dtandroid.lpl.VersionResult? = null
+        fg {
+            if (n == cur.version) { keepPicture(); saveLocked() }
+            result = versionFolderOf(cur).rename(n, name) { f -> runCatching { engine.xmpCheck(f.path).ok }.getOrDefault(false) }
+        }
+        when (val r = result) {
+            is app.dtandroid.lpl.VersionResult.Done -> {
+                // the open version's session still holds the old name: the file is read again (its edit was just written)
+                if (n == cur.version) fg {
+                    leaveLocked(s.index, false, false)
+                    openLocked(cur)
+                }
+                refreshVersionRows(if (name.isBlank()) "name of version $n removed" else "version $n is called \"${name.trim()}\"")
+            }
+            app.dtandroid.lpl.VersionResult.ReadOnly -> versionLine("version $n was edited with a newer darktable: its file is not changed")
+            is app.dtandroid.lpl.VersionResult.Refused -> versionLine(r.why)
+            null -> {}
+        }
+        requestRender()
+    }
+
+    /** Delete version [n] (never 0). When it is the open one the photo's own edit opens first. LPL keeps its copy in its backup folder. */
+    suspend fun deleteVersion(n: Int) {
+        val s = _state.value
+        val cur = s.current ?: return
+        if (n <= 0) { versionLine("version 0 is the photo's own edit: it is not deleted from the app"); return }
+        if (s.info == null) return
+        if (cur.version == n) switchVersion(0, save = false)
+        val host = versionHost
+        val item = cur.atVersion(0)
+        val done = host?.delete(item, n)
+        if (done == false) { versionLine("version $n is open: close the photo first"); return }
+        if (done == null) versionFolderOf(item).delete(n)
+        versionPics.remove(item.atVersion(n).xmpPath)
+        refreshVersionRows("version $n deleted")
+    }
+
+    /** Make [n] the cover LPL shows for the photo. */
+    suspend fun setVersionCover(n: Int) {
+        val item = _state.value.current ?: return
+        val err = versionHost?.setCover(item, n)
+        refreshVersionRows(err ?: "version $n is now the cover")
+    }
+
+    /** "Hold to peek": show version [n]'s last picture over the photo (null = let go). */
+    fun peekVersion(n: Int?) {
+        val item = _state.value.current ?: return
+        if (n == null) { _state.update { it.copy(peek = null, peekNote = null) }; return }
+        val pic = if (n == item.version) _state.value.preview?.image else versionPics[item.atVersion(n).xmpPath]
+        _state.update { it.copy(peek = pic, peekNote = if (pic == null) "version $n has not been opened in this run: tap it once" else null) }
     }
 
     private suspend fun saveLocked() {
@@ -2115,7 +2300,8 @@ class DarkroomController(
         val r = bg("session on ${File(rawPath).name}") { e ->
             val s = _state.value
             when {
-                s.info != null && s.current?.rawPath == rawPath -> { usedOpen = true; Result.success(block(e)) }
+                // brief P3f: the open session is the open version's; another version of the open photo waits until it closes
+                s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> { usedOpen = true; Result.success(block(e)) }
                 s.info == null && !fetching -> {
                     // brief P2h: a file without a picture is not opened again until it changes, and a session
                     // that turns out to have none is closed before [block] could render it
@@ -2243,6 +2429,7 @@ class DarkroomController(
     fun toggleFilmstrip() = _state.update { it.copy(filmstrip = !it.filmstrip) }
     fun setOverlay(o: Overlay?) {
         val was = _state.value.overlay
+        if (o == null && (was == Overlay.Versions || was is Overlay.VersionName || was is Overlay.VersionDelete)) { closeVersions(); return }
         _state.update { it.copy(overlay = o) }
         // brief P3b: closing the presets or styles sheet drops its pages (an open import question is cancelled)
         if (was != o && (was is Overlay.Presets || was == Overlay.Styles)) stylesPresets.closed()
@@ -2424,6 +2611,8 @@ class DarkroomController(
          * there, so 1152 px; a phone's landscape frame (1080 px) is below it and gets its own size.
          */
         const val FIT_PREVIEW_MAX = 1152
+        /** brief P3f: the longer side of the pictures kept for the versions sheet and "hold to peek" */
+        const val VERSION_PIC_SIZE = 384
 
         /** Brief P2i: a zoom up to this counts as fit (the gesture code rounds near 1). */
         const val ZOOM_FIT_LIMIT = 1.001f

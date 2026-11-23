@@ -18,6 +18,8 @@ data class SeriesItem(
     val rawPath: String,
     /** where this photo's sidecar lives; it may not exist yet */
     val xmpPath: String,
+    /** brief P3f: which version [xmpPath] is (0 = the photo's own edit, `NAME.EXT.xmp`; n = `NAME_nn.EXT.xmp`) */
+    val version: Int = 0,
 )
 
 data class Series(val name: String, val items: List<SeriesItem>)
@@ -83,6 +85,12 @@ sealed interface Overlay {
     data object Styles : Overlay
     /** brief P3g: the export screen (mockup B3-Export) */
     data object Export : Overlay
+    /** brief P3f: the versions sheet (thumbnail, number, name, edited, sync dot; duplicate and virgin duplicate) */
+    data object Versions : Overlay
+    /** brief P3f: the name of version [n] (a text sheet) */
+    data class VersionName(val n: Int) : Overlay
+    /** brief P3f: "delete version [n]?" */
+    data class VersionDelete(val n: Int) : Overlay
 }
 
 /** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */
@@ -163,6 +171,15 @@ data class DarkroomState(
     val maskModes: Map<InstanceKey, String> = emptyMap(),
     /** Brief P3d: "show mask" is on for this instance: the photo is the engine's mask display (engine-api.md 6.8) */
     val showMask: InstanceKey? = null,
+    /** Brief P3f: the app supports versions for the open photo (the versions chip and the sheet are shown) */
+    val versionsAvailable: Boolean = false,
+    /** Brief P3f: the rows of the versions sheet, refreshed when it opens and after each change */
+    val versionRows: List<VersionUiRow> = emptyList(),
+    /** Brief P3f: a line the versions sheet shows ("version 2 made: IMG_01_02.RAF.xmp") */
+    val versionNote: String? = null,
+    /** Brief P3f: "hold to peek": the version held on the sheet, shown over the photo for as long as it is held */
+    val peek: RenderedImage? = null,
+    val peekNote: String? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

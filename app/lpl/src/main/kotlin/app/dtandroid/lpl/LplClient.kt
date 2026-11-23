@@ -82,8 +82,10 @@ class LplClient(
         )).toString().toByteArray()
 
     /** `GET /api/photos/{id}/checkout`: file name, size and the server's time, which becomes `checkout_ts`. */
-    fun checkout(id: Long): Checkout {
-        val o = callJson("GET", "/api/photos/$id/checkout")
+    fun checkout(id: Long, agentId: String? = null): Checkout {
+        // R17: with `agent=<id>` of an agent whose heartbeat caps say `versions`, the answer lists the versions (and LPL
+        // notes which numbers this agent was told about, for `409 version_exists`)
+        val o = callJson("GET", "/api/photos/$id/checkout" + (agentId?.let { "?agent=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""))
         val name = o["filename"].str()?.takeIf { it.isNotEmpty() }
             ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no file name")
         return Checkout(
@@ -93,12 +95,31 @@ class LplClient(
             mtime = o["mtime"].num() ?: 0.0,
             serverTime = o["server_time"].num()
                 ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no server time"),
+            cover = o["cover"].long()?.toInt() ?: 0,
+            versions = o["versions"].arr()?.mapNotNull { e ->
+                val v = e as? JsonObject ?: return@mapNotNull null
+                val n = v["n"].long()?.toInt() ?: return@mapNotNull null
+                ServerVersion(n, v["name"].str() ?: "", v["mtime"].num() ?: 0.0, v["size"].long() ?: -1L, v["has_file"].bool() != false)
+            },
         )
     }
 
     /** `GET /api/photos/{id}/xmp`: LPL's sidecar for the photo (made from its metadata when the NAS has none). */
-    fun getXmp(id: Long): ByteArray = call("GET", "/api/photos/$id/xmp", retries = settings.retries) { r ->
+    fun getXmp(id: Long, version: Int = 0): ByteArray = call("GET", "/api/photos/$id/xmp${versionQuery(version, "?")}", retries = settings.retries) { r ->
         r.body.readBytes().also { if (it.isEmpty()) throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/xmp: empty") }
+    }
+
+    /** R17: `version=n` for a version other than 0; nothing for 0, so the calls of an older server are unchanged. */
+    private fun versionQuery(version: Int, lead: String) = if (version > 0) "${lead}version=$version" else ""
+
+    /** R17: `POST /api/photos/{id}/cover?version=n`: the version LPL shows for the photo. Returns the cover LPL now has. */
+    fun setCover(id: Long, version: Int): Int =
+        callJson("POST", "/api/photos/$id/cover?version=$version", ByteArray(0))["cover"].long()?.toInt() ?: version
+
+    /** R17: `DELETE /api/photos/{id}/xmp?version=n` (never 0): LPL moves the file to its backup folder. */
+    fun deleteVersion(id: Long, version: Int) {
+        require(version > 0) { "version 0 is not deleted" }
+        call("DELETE", "/api/photos/$id/xmp?version=$version", retries = 0) { r -> r.body.readBytes() }
     }
 
     /**
@@ -106,10 +127,10 @@ class LplClient(
      * `X-LPL-Merged: 1` means it put its own newer rating, labels and tags into it, and the app must take
      * that file. Repeated after a transient failure: posting the same edit twice stores the same file.
      */
-    fun postXmp(id: Long, xmp: ByteArray, checkoutTs: Double, agentId: String? = null): XmpAnswer {
+    fun postXmp(id: Long, xmp: ByteArray, checkoutTs: Double, agentId: String? = null, version: Int = 0): XmpAnswer {
         // R15: `agent` names the posting device (the heartbeat's id); a server without R15 ignores it
         val path = "/api/photos/$id/xmp?checkout_ts=${formatTs(checkoutTs)}" +
-            (agentId?.let { "&agent=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: "")
+            (agentId?.let { "&agent=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: "") + versionQuery(version, "&")
         return call("POST", path, xmp, "application/rdf+xml", retries = settings.retries) { r ->
             val merged = r.header("x-lpl-merged") == "1"
             val body = r.body.readBytes()
@@ -136,8 +157,8 @@ class LplClient(
     }
 
     /** `POST /api/photos/{id}/preview`: the engine's JPEG becomes LPL's preview of the photo. */
-    fun postPreview(id: Long, jpeg: ByteArray) {
-        callJson("POST", "/api/photos/$id/preview", jpeg, "image/jpeg")
+    fun postPreview(id: Long, jpeg: ByteArray, version: Int = 0) {
+        callJson("POST", "/api/photos/$id/preview${versionQuery(version, "?")}", jpeg, "image/jpeg")
     }
 
     /** `POST /api/jobs/{id}/done` with `done` or `failed`. */
@@ -369,10 +390,15 @@ class LplClient(
 
     private fun statusError(label: String, r: HttpResponse): LplException {
         // LPL's errors are {"detail": "..."}; the detail is kept (short) for the log, never shown raw
-        val detail = runCatching { r.body.readNBytes(400).decodeToString() }.getOrDefault("")
-            .let { t -> Regex("\"detail\"\\s*:\\s*\"([^\"]{0,120})").find(t)?.groupValues?.get(1) ?: "" }
+        val text = runCatching { r.body.readNBytes(400).decodeToString() }.getOrDefault("")
+        val detail = Regex("\"detail\"\\s*:\\s*\"([^\"]{0,120})").find(text)?.groupValues?.get(1) ?: ""
         val s = r.status
         val what = if (detail.isNotEmpty()) ": $detail" else ""
+        if (s == 409 && "version_exists" in text) {
+            // R17: {"error":"version_exists","next":3}
+            val next = Regex("\"next\"\\s*:\\s*(\\d+)").find(text)?.groupValues?.get(1)?.toIntOrNull()
+            return LplException(LplFailure.VERSION_EXISTS, "$label: 409 version_exists", s, next = next)
+        }
         return when {
             s in 300..399 -> LplException(LplFailure.REDIRECT, "$label: redirect $s, not followed", s)
             s == 401 || s == 403 -> LplException(LplFailure.UNAUTHORIZED, "$label: $s$what", s)
@@ -387,7 +413,7 @@ class LplClient(
     companion object {
         /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
         /** `caps` of every heartbeat (brief P2k): `batch` = reports transfers, `cancel` = acts on Stop, `open` = honours `payload.open` */
-        val CAPS = listOf("batch", "cancel", "open")
+        val CAPS = listOf("batch", "cancel", "open", "versions")
 
         fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
     }

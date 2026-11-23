@@ -24,3 +24,6 @@ Brief P3d added `mask.svg` (the mask indicator in a module's header) and the fiv
 
 Brief PUI3a added the l1 layout's icons: `export.svg` (export button in its top bar), `compare.svg` (the
 before/after comparison), and two of its tools: `modules.svg` (sliders) and `styles.svg` (stacked frames).
+
+Brief P3f added `versions.svg` (the versions chip and sheet), `duplicate.svg` and `duplicateVirgin.svg`
+(the two buttons of the versions sheet), drawn after the approved mockup (docs/design/mockups/P3f-Versions.html).

@@ -41,7 +41,15 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         @Volatile var lastAgent: String? = null,
         /** R15: the edit events, newest first (only with [StubLpl.r15]) */
         val edits: MutableList<String> = Collections.synchronizedList(ArrayList()),
-    )
+    ) {
+        /** R17: the versions n >= 1 (only with [StubLpl.r17]) */
+        val versions: MutableMap<Int, Ver> = Collections.synchronizedMap(java.util.TreeMap())
+        /** R17: what the server did with versions, in order (`post 2`, `delete 2`, `preview 2`) */
+        val versionLog: MutableList<String> = Collections.synchronizedList(ArrayList())
+    }
+
+    /** R17: one version on the server: its XMP, when the server first got it, and its preview. */
+    class Ver(@Volatile var xmp: ByteArray, val created: Double, @Volatile var name: String = "", @Volatile var preview: ByteArray? = null, @Volatile var posts: Int = 0)
 
     class JobRec(val id: Long, val agentId: String?, val kind: String, val ids: List<Long>, val all: Boolean = false, val open: Boolean? = null) {
         @Volatile var status = "queued"
@@ -63,6 +71,11 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var r15: Boolean = false
     /** brief P2f: answer `GET /api/auth/token` (R14); off = 404 as an older server */
     @Volatile var r14: Boolean = false
+
+    /** R17 (P3f): answer as a server with versions (`versions` in `/checkout`, the `version` parameter, 409 `version_exists`); off = an older server */
+    @Volatile var r17: Boolean = false
+    /** R17: the version numbers each agent was told at its last checkout (`<agent> <photo>` to numbers), as LPL notes them for 409 */
+    val checkoutNs: MutableMap<String, Set<Int>> = Collections.synchronizedMap(HashMap())
 
     /** brief P2k: answer as a server with batches (R17): a `cancel` in every heartbeat answer; off = an older server, no `cancel` */
     @Volatile var batch: Boolean = false
@@ -178,12 +191,43 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                 when (m.groupValues[2] to req.method) {
                     "checkout" to "GET" -> {
                         record(200)
-                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}}""")
+                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}${versionsJson(ph, req.query["agent"])}}""")
                     }
                     "original" to "GET" -> original(out, req, ph, ::record)
-                    "xmp" to "GET" -> { record(200); respond(out, 200, "application/rdf+xml", ph.xmp ?: lplXmp(ph.rating)) }
+                    "xmp" to "GET" -> {
+                        val v = req.query["version"]?.toIntOrNull() ?: 0
+                        if (r17 && v > 0) {
+                            val ver = ph.versions[v]
+                            if (ver == null) { record(404); json(out, 404, """{"detail":"version not found"}"""); return }
+                            record(200); respond(out, 200, "application/rdf+xml", ver.xmp)
+                        } else { record(200); respond(out, 200, "application/rdf+xml", ph.xmp ?: lplXmp(ph.rating)) }
+                    }
+                    "xmp" to "DELETE" -> {
+                        val v = req.query["version"]?.toIntOrNull() ?: 0
+                        if (!r17 || v <= 0) { record(400); json(out, 400, """{"detail":"version 0 is not deleted"}"""); return }
+                        if (ph.versions.remove(v) == null) { record(404); json(out, 404, """{"detail":"version not found"}"""); return }
+                        ph.versionLog += "delete $v"
+                        record(200); json(out, 200, """{"ok":true}""")
+                    }
                     "xmp" to "POST" -> {
                         val body = req.body
+                        val v = if (r17) req.query["version"]?.toIntOrNull() ?: 0 else 0
+                        if (v > 0) {
+                            if (!body.decodeToString().contains("x:xmpmeta")) { record(400); json(out, 400, """{"detail":"not a valid XMP file"}"""); return }
+                            val ts = req.query["checkout_ts"]?.toDoubleOrNull() ?: 0.0
+                            val have = ph.versions[v]
+                            // as LPL: the number exists and the poster was not told about it at its last checkout
+                            val agent = req.query["agent"]?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+                            if (have != null && v !in (checkoutNs["$agent ${ph.id}"] ?: emptySet())) {
+                                val next = (ph.versions.keys.maxOrNull() ?: 0) + 1
+                                record(409); json(out, 409, """{"error":"version_exists","next":$next}"""); return
+                            }
+                            if (have != null) { have.xmp = body; have.posts++ } else ph.versions[v] = Ver(body, now(), posts = 1)
+                            ph.versionLog += "post $v"
+                            record(200)
+                            respond(out, 200, "application/rdf+xml", body, mapOf("X-LPL-Merged" to "0"))
+                            return
+                        }
                         if (!body.decodeToString().contains("x:xmpmeta")) { record(400); json(out, 400, """{"detail":"not a valid XMP file"}"""); return }
                         val ts = req.query["checkout_ts"]?.toDoubleOrNull() ?: 0.0
                         ph.lastCheckoutTs = req.query["checkout_ts"]
@@ -203,6 +247,13 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                     }
                     "preview" to "POST" -> {
                         val b = req.body
+                        val pv = if (r17) req.query["version"]?.toIntOrNull() ?: 0 else 0
+                        if (pv > 0) {
+                            val ver = ph.versions[pv]
+                            if (ver == null) { record(404); json(out, 404, """{"detail":"version not found"}"""); return }
+                            ver.preview = b; ph.versionLog += "preview $pv"
+                            record(200); json(out, 200, """{"ok":true}"""); return
+                        }
                         if (b.size < 4 || b[0] != 0xFF.toByte() || b[1] != 0xD8.toByte()) { record(400); json(out, 400, """{"detail":"bad image"}"""); return }
                         ph.preview = b; ph.previewPosts++
                         record(200); json(out, 200, """{"ok":true}""")
@@ -325,6 +376,16 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     private fun json(out: OutputStream, status: Int, text: String) = respond(out, status, "application/json", text.toByteArray())
 
     private fun now() = System.currentTimeMillis() / 1000.0
+
+    /** R17: `,"versions":[...]` for a checkout (version 0 first), empty for an older server */
+    private fun versionsJson(ph: Photo, agent: String?): String {
+        if (!r17 || agent == null) return ""
+        val vs = synchronized(ph.versions) { ph.versions.entries.toList() }
+        checkoutNs["${java.net.URLDecoder.decode(agent, "UTF-8")} ${ph.id}"] = setOf(0) + vs.map { it.key }
+        val items = listOf("""{"n":0,"name":"","mtime":${ph.mtime},"size":${(ph.xmp ?: lplXmp(ph.rating)).size}}""") +
+            vs.map { """{"n":${it.key},"name":"${it.value.name}","mtime":${it.value.created},"size":${it.value.xmp.size},"has_file":true}""" }
+        return ""","versions":[${items.joinToString(",")}]"""
+    }
 
     companion object {
         /** The XMP LPL makes from its own metadata when the NAS has no sidecar (rating only, here). */

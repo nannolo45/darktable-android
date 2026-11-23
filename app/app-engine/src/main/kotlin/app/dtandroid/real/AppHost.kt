@@ -8,6 +8,9 @@ import app.dtandroid.darkroom.FileThumbnailStore
 import app.dtandroid.darkroom.PhotoSource
 import app.dtandroid.darkroom.PhotoSourceException
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.VersionHost
+import app.dtandroid.darkroom.VersionSync
+import app.dtandroid.darkroom.atVersion
 import app.dtandroid.darkroom.ThumbnailStore
 import app.dtandroid.darkroom.Timeline
 import app.dtandroid.darkroom.RgbaFile
@@ -116,6 +119,7 @@ object AppHost {
     val controller: DarkroomController by lazy {
         DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
             c.source = Source
+            c.versionHost = Versions // brief P3f
             // brief P3b: favourite and recently used styles and the apply mode, in the app's settings (not darktable's database)
             c.stylesPresets.settings = FileStyleSettings(File(app.filesDir, "styles/settings.json"))
             // brief P3g: where the export screen's files go (Pictures/darktable, the share sheet)
@@ -225,6 +229,8 @@ object AppHost {
 
         override fun isOpen(raw: File) = controller.openRawPath() == raw.path
         override fun darkroomOpen() = controller.openRawPath() != null
+        override fun openVersion(raw: File): Int =
+            controller.state.value.takeIf { it.info != null }?.current?.takeIf { it.rawPath == raw.path }?.version ?: 0
     }
 
     const val PREVIEW_SIZE = 1920
@@ -256,6 +262,37 @@ object AppHost {
         }
     }
 
+    /** Brief P3f: versions of the open photo: files for every photo, LightPhotoLibrary's sync state and calls for its photos. */
+    object Versions : VersionHost {
+        override fun canMake(item: SeriesItem): Boolean = lplPhotoOf(item)?.let { (o, id) -> agent.canMakeVersion(o, id) } ?: true
+
+        override fun syncOf(item: SeriesItem, n: Int): VersionSync {
+            val (o, id) = lplPhotoOf(item) ?: return VersionSync.LOCAL
+            if (n > 0 && !agent.versionsSynced(o, id)) return VersionSync.LOCAL
+            return if (agent.isVersionDirty(o, id, n)) VersionSync.WAITING else VersionSync.SYNCED
+        }
+
+        override fun made(item: SeriesItem, n: Int) {
+            val (o, id) = lplPhotoOf(item) ?: return
+            agent.versionMade(o, id, n)
+            syncLater(o, id)
+        }
+
+        override suspend fun delete(item: SeriesItem, n: Int): Boolean? {
+            val (o, id) = lplPhotoOf(item) ?: return null
+            return agent.deleteVersion(o, id, n).also { if (it) syncLater(o, id) }
+        }
+
+        override fun cover(item: SeriesItem): Int = lplPhotoOf(item)?.let { (o, id) -> agent.record(o, id)?.cover } ?: 0
+
+        override fun canSetCover(item: SeriesItem): Boolean = lplPhotoOf(item)?.let { (o, id) -> agent.versionsSynced(o, id) } == true
+
+        override suspend fun setCover(item: SeriesItem, n: Int): String? {
+            val (o, id) = lplPhotoOf(item) ?: return "this photo is not in LightPhotoLibrary"
+            return agent.setCover(o, id, n)
+        }
+    }
+
     /** The LPL photo a darkroom item stands for: its folder is `<work>/<server key>/<id>/`. */
     fun lplPhotoOf(item: SeriesItem): Pair<ServerOrigin, Long>? {
         val dir = File(item.rawPath).parentFile ?: return null
@@ -268,7 +305,16 @@ object AppHost {
     }
 
     /** The darkroom item for an LPL photo; a photo not on the phone yet gets a path that does not exist. */
-    fun itemFor(origin: ServerOrigin, id: Long, name: String? = null): SeriesItem {
+    fun itemFor(origin: ServerOrigin, id: Long, name: String? = null, version: Int? = null): SeriesItem {
+        val base = itemOf(origin, id, name)
+        // brief P3f: a version asked for (the hand-off link's `version`, or the cover) when its file is there; else the photo's own edit
+        val n = version ?: return base
+        if (n <= 0) return base
+        val v = base.atVersion(n)
+        return if (File(base.rawPath).name == NOT_HERE || File(v.xmpPath).isFile) v else base
+    }
+
+    private fun itemOf(origin: ServerOrigin, id: Long, name: String? = null): SeriesItem {
         val r = agent.record(origin, id)
         val folder = work.folder(origin, id)
         return if (r != null && work.hasRaw(r)) SeriesItem(r.filename, work.raw(r).path, work.xmp(r).path)

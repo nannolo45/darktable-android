@@ -50,6 +50,8 @@ dependencies {
     api(project(":schema"))
     api(project(":ui-theme"))
     api(project(":ui-icons"))
+    // brief P3f: the versions file logic (sidecar names, the XMP version name) is the LPL module's, pure Kotlin
+    api(project(":lpl"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")

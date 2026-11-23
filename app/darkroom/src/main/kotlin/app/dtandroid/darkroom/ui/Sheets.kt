@@ -122,6 +122,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         is Overlay.Presets, Overlay.Styles -> Unit
         // brief P3g: the export screen is drawn over the whole darkroom (ExportScreen.kt)
         Overlay.Export -> Unit
+        // brief P3f: the versions sheet and its questions are VersionsOverlays' (VersionsSheet.kt)
+        Overlay.Versions, is Overlay.VersionName, is Overlay.VersionDelete -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return
@@ -234,6 +236,10 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
             SheetItem("styles…", enabled = s.info != null) { controller.setOverlay(Overlay.Styles) }
             // brief P3g: the export screen (darktable's export module, with progress)
             SheetItem("export…", enabled = s.info != null) { controller.setOverlay(Overlay.Export) }
+            // brief P3f: the l1 skin has no versions chip: its "more" opens the same sheet as "duplicate"
+            if (!tablet && DtTheme.l1.layout && s.versionsAvailable) {
+                SheetItem("duplicate…", enabled = s.info != null) { controller.launch { openVersions() } }
+            }
             for (a in actions) SheetItem(a.label, a.enabled) { controller.setOverlay(null); a.run() }
         }
         is Overlay.Rename -> {

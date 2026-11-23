@@ -22,7 +22,7 @@ Branch `p3g-export` from `main` 4fc2974. Brief: `docs/briefs/P3g-export.md`.
 | Brief item | State |
 |---|---|
 | 1. Engine progress and cancel during export; the upstream hook used | **done.** `dtb_export_ex` (callback) and `dtb_export_cancel` (any thread), `engine-api.md` section 7. The progress comes from the pipeline itself: "module n of N". No estimate was needed (see 4). |
-| 2. Export screen as B3-Export (scope, destination, format, quality, bit depth, max size, profile, with the manual's defaults), progress bar and steps, cancel, top-bar indicator | **done.** `app/darkroom/.../ui/ExportScreen.kt`, `Exports.kt`, `ui-spec.md` section 12. Desktop has a quality slider; here it is a list (100…50). |
+| 2. Export screen as B3-Export (scope, destination, format, quality, bit depth, max size, profile, with the manual's defaults), progress bar and steps, cancel, top-bar indicator | **done.** `app/darkroom/.../ui/ExportScreen.kt`, `Exports.kt`, `ui-spec.md` section 13. Desktop has a quality slider; here it is a list (100…50). |
 | 3. Destinations: this device (`Pictures/darktable`), share sheet, LightPhotoLibrary if section 4 allows | **partly:** device and share done; LPL not built (see above). |
 | 4. Keeps running in the foreground on another screen; say what happens in the background | **partly:** see above for a series. In the background: nothing stops it while Android keeps the process; with no foreground service Android may kill the process and the export with it (later package). |
 | Bridge tests: events in order, 100 %; cancel leaves no partial file; output unchanged against darktable-cli | **done** (C27; one check changed as said above). |
