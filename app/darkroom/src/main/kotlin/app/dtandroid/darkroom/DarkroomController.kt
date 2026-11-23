@@ -833,6 +833,26 @@ class DarkroomController(
         drags.trySend(Drag(key, controlId, binding, v, integer, end = true))
     }
 
+    /**
+     * Brief P3e: the engine's "set_nodes_from_area" can leave two nodes at one x (the default end node at 1 and the picked
+     * maximum at 1; the spline of such a curve is undefined and the render is garbage). The later one is dropped, in the
+     * same history item as the action. Reported in docs/experiments/P3e-curves-REPORT.md.
+     */
+    private suspend fun dropDuplicateNodes(key: InstanceKey, args: Any?, r: JsonObject?) {
+        val raw = r?.get("nodes") as? kotlinx.serialization.json.JsonArray ?: return
+        val nodes = raw.mapNotNull { n ->
+            val a = n as? kotlinx.serialization.json.JsonArray
+            val x = (a?.getOrNull(0) as? JsonPrimitive)?.doubleOrNull
+            val y = (a?.getOrNull(1) as? JsonPrimitive)?.doubleOrNull
+            if (x != null && y != null) app.dtandroid.darkroom.ui.graph.CurveNode(x, y) else null
+        }
+        val kept = ArrayList<app.dtandroid.darkroom.ui.graph.CurveNode>()
+        for (n in nodes) if (kept.isEmpty() || n.x > kept.last().x) kept += n
+        if (kept.size == nodes.size || kept.size < 2) return
+        val ch = ((args as? JsonObject)?.get("channel") as? JsonPrimitive)?.doubleOrNull?.toInt() ?: 0
+        for ((path, v) in app.dtandroid.darkroom.ui.graph.CurveLayout.RGBCURVE.writes(ch, kept, nodes.size)) engine.paramSet(key.op, key.priority, path, v)
+    }
+
     private suspend fun writeDrag(d: Drag) {
         val w = d.writes
         if (w == null) writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
@@ -1542,6 +1562,7 @@ class DarkroomController(
                     val (name, args) = action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
                     Timeline.mark("darkroom: picker ${key.op} $name ${args.toString().take(200)}")
                     val r = engine.moduleAction(key.op, key.priority, name, args) as? JsonObject
+                    if (key.op == "rgbcurve") dropDuplicateNodes(key, args, r)
                     engine.historySeal()
                     changed = true
                     // desktop shows some results in the settings (exposure's measured lightness)
