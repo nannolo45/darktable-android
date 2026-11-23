@@ -267,7 +267,8 @@ class Exports internal constructor(private val c: DarkroomController) {
             } finally {
                 tmp.delete()
             }
-            _job.update { it?.copy(finished = finished, failed = failed) }
+            // the photo is counted and its own share starts again from 0 in the same step, so the bar never goes back
+            _job.update { it?.copy(finished = finished, failed = failed, photoFraction = 0.0) }
             if (stop) break
         }
         // a series: back to the photo the export started from
