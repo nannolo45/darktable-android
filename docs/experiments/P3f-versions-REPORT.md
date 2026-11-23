@@ -27,6 +27,7 @@ Branch `p3f-versions`. Design `docs/design/P3f-versions.md`, mockup `docs/design
 ## 4. Limits and open questions
 - Thumbnails and "hold to peek" use the last picture of a version seen in this run (the engine holds one photo). A version not opened yet shows its number; peek then says to open it once.
 - Renaming the open version reopens it (undo history is lost); the engine has no call for the name.
+- On the real engine a virgin duplicate shows "edited" once it was opened and saved (the engine adds its automatic modules to the history).
 - A version deleted on LPL or desktop stays on the phone (no local removal): ask the reviewer.
 - Locally made versions with an old server are never posted; the sync dot says "on this phone only".
 - `darkroom` now depends on the `lpl` module (pure Kotlin) for the file logic.

@@ -77,10 +77,12 @@ class P3fScenarioTest {
         assertEquals("version 1 keeps its own", e1, exposureOf(c), 1e-6)
         // a virgin duplicate: no history; the rows read the real XMP
         assertEquals(2, c.duplicate(virgin = true))
+        // right after it is made the file has no history; once opened the real engine adds its automatic modules
+        val made = c.state.value.versionRows
+        assertEquals(listOf(0, 1, 2), made.map { it.n })
+        assertEquals(listOf(true, true, false), made.map { it.edited })
         c.openVersions()
-        val rows = c.state.value.versionRows
-        assertEquals(listOf(0, 1, 2), rows.map { it.n })
-        assertEquals(listOf(true, true, false), rows.map { it.edited })
+        assertEquals(listOf(0, 1, 2), c.state.value.versionRows.map { it.n })
         // a name survives a real XMP and a reopen
         c.renameVersion(2, "plain")
         waitFor("reopened") { c.state.value.info != null }
