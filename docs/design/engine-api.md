@@ -635,13 +635,14 @@ already take (6.1: `bypass`, `show_mask`).
 
 | C | Kotlin | Meaning |
 |---|---|---|
-| `"history_end": n` in `options_json` of `dtb_render_preview_ex`, `dtb_render_region_ex`, `dtb_render_size_ex` | `RenderOptions(historyEnd = n)`, `RenderOptions.at(n)` | The picture (and size) of the state after the first `n` history items, 0 <= n <= the number of items `history()` lists, as `history_goto(n)`, the same render, `history_goto(back)` give it. The session does not move: no library write, no XMP change, `history()` and its end, `undo_state()` and the open history item (and an open group) stay as they were; the next change still merges into the open item. `null` or absent: the session's own end. ARG: n outside 0..items; TYPE: not an integer. Cancel-safe as every render (`dtb_render_cancel`): a cancelled render returns CANCELLED and leaves the session as it was. |
+| `"history_end": n` in `options_json` of `dtb_render_preview_ex`, `dtb_render_region_ex`, `dtb_render_size_ex` | `RenderOptions(historyEnd = n)`, `RenderOptions.at(n)` | The picture (and size) of the state after the first `n` history items, 0 <= n <= the number of items `history()` lists, as `history_goto(n)`, the same render, `history_goto(back)` give it. The session does not move: no XMP change, `history()` and its end, `undo_state()` and the open history item (and an open group) stay as they were; the next change still merges into the open item. `null` or absent: the session's own end. ARG: n outside 0..items; TYPE: not an integer. Cancel-safe as every render (`dtb_render_cancel`): a cancelled render returns CANCELLED and leaves the session as it was. |
 
-How (render.c, `dtb__history_at_begin` / `_end`): for that one call the develop object's module state is moved to
-position `n` in memory with `dt_dev_pop_history_items_ext()` (the function the reload after `history_goto` ends
-with) and back afterwards; the pipes are rebuilt (`DT_DEV_PIPE_REMOVE`, as after a reload). The session's shape
-list (`dev->forms`) is kept: the position's shapes go into a copy, so that pointers into the session's list stay
-valid. Unlike `history_goto`, nothing is written to the library and the develop object is not reloaded.
+How (history.c, `dtb__history_at_begin` / `_end`): the steps `history_goto` takes, there and back: the
+library is written, the end moved, the develop object reloaded (the private library only, never the XMP). What
+`history_goto` does besides is left out: an open history group stays open, the top item is not sealed, and the
+module of the open item is found again after the reload, so the next change still merges into it. A first version
+moved only the module state in memory (`dt_dev_pop_history_items_ext` there and back); C28 showed its pictures
+differ from `history_goto`'s from some positions on, so it was replaced (P3h report).
 In a read-only session `n` counts the rows `history()` lists (unknown items included), as `history_goto` does.
 
 Pickers, histogram and coordinates do not take `history_end` (their options are 6.1's; the member is ignored there).

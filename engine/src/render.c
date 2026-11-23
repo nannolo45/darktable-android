@@ -14,7 +14,6 @@
 #include "common/colorspaces.h"
 #include "common/image_cache.h"
 #include "common/iop_order.h"
-#include "develop/masks.h"
 #include "develop/tiling.h"
 
 #include <math.h>
@@ -295,45 +294,6 @@ gboolean dtb__render_opts_empty(const dtb_render_opts_t *o)
   return !o || ((!o->bypass || o->bypass->len == 0) && !o->show_mask && o->history_end < 0);
 }
 
-/* P3h: another history position for one render. What history_goto(n),
- * render, history_goto(back) shows, without its side effects: goto writes
- * the library, reloads the develop object, closes an open group and seals
- * the last item (history.c). Here only the develop object's module state
- * moves, in memory, with the same dt_dev_pop_history_items_ext() the reload
- * ends with; the pipes are rebuilt (DT_DEV_PIPE_REMOVE, as after a reload).
- * dev->forms keeps its list: the position's shapes go into a copy, so that
- * pointers the bridge holds into the session's forms stay valid. */
-int dtb__history_at_begin(const dtb_render_opts_t *o, dtb_history_at_t *h)
-{
-  memset(h, 0, sizeof(*h));
-  if(!o || o->history_end < 0) return DTB_OK;
-  const int cur = dtb_S.rows ? dtb_S.rows_end : dtb_S.dev.history_end;
-  if(o->history_end == cur) return DTB_OK;
-  const int dev_end = dtb_S.rows ? dtb__rows_dev_end(o->history_end) : o->history_end;
-  h->active = TRUE;
-  h->saved_end = dtb_S.dev.history_end;
-  h->saved_forms = dtb_S.dev.forms;
-  dtb_S.dev.forms = dt_masks_dup_forms_deep(h->saved_forms, NULL);
-  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
-  dt_dev_pop_history_items_ext(&dtb_S.dev, dev_end);
-  dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
-  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
-  dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
-  return DTB_OK;
-}
-
-void dtb__history_at_end(dtb_history_at_t *h)
-{
-  if(!h->active) return;
-  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
-  dt_dev_pop_history_items_ext(&dtb_S.dev, h->saved_end);
-  dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
-  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
-  g_list_free_full(dtb_S.dev.forms, (GDestroyNotify)dt_masks_free_form);
-  dtb_S.dev.forms = h->saved_forms;
-  dtb__pipes_dirty(DT_DEV_PIPE_REMOVE);
-  h->active = FALSE;
-}
 
 /* Leave the bypassed instances out of the (synchronised) pipe for one
  * render: their pieces are switched off, as dt_dev_pixelpipe_synch() does for

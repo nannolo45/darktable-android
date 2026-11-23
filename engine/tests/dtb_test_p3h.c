@@ -210,15 +210,16 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
     double t0 = now();
     MUST(dtb_render_region_ex(0, 0, w, h, 1.0f, "{\"history_end\": 1}", buf));
     const double t_full = now() - t0;
-    // the pipe cache holds that window now: the cancelled render asks for
-    // another one, so that it runs through the modules again
-    w -= 8;
-    h -= 8;
+    // the pipe cache holds that render now (run 45159564305: the next one of
+    // nearly the same window ended before the cancel came): the cancelled
+    // render is one at another scale, which runs through every module again
+    const float cs = 0.97f;
+    MUST(dtb_render_size_ex(cs, "{\"history_end\": 1}", &w, &h));
     cancel_arg_t a = { 0.3 * t_full, 0 };
     pthread_t thr;
     pthread_create(&thr, NULL, cancel_thread, &a);
     t0 = now();
-    const int r = dtb_render_region_ex(0, 0, w, h, 1.0f, "{\"history_end\": 1}", buf);
+    const int r = dtb_render_region_ex(0, 0, w, h, cs, "{\"history_end\": 1}", buf);
     const double t1 = now();
     pthread_join(thr, NULL);
     fprintf(stdout, "RESULT cancel after %.3f s: returned %d, %.3f s after the cancel (render alone %.3f s)\n",
