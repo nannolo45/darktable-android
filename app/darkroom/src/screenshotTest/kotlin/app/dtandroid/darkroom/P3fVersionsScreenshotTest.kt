@@ -34,7 +34,8 @@ class PhoneVersionsScreenshots : ScreenshotBase() {
         settle(c)
         capture("$name-chip")
         compose.onNodeWithContentDescription("versions, v1").performClick()
-        compose.waitForIdle()
+        val end = System.currentTimeMillis() + 10_000
+        while (c.state.value.overlay != Overlay.Versions && System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(10) }
         assertEquals(Overlay.Versions, c.state.value.overlay)
         settle(c)
         capture("$name-sheet")
