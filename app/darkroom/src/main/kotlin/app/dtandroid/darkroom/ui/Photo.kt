@@ -3,6 +3,12 @@ package app.dtandroid.darkroom.ui
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
+import app.dtandroid.ui.icons.DtIconImage
+import app.dtandroid.ui.icons.DtIcon
+import androidx.compose.ui.draw.rotate as rotateModifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,6 +99,8 @@ private class Converted(val layer: PhotoLayer, val bitmap: ImageBitmap)
 private fun rememberLayer(layer: PhotoLayer?): Converted? = remember(layer) { layer?.let { Converted(it, it.image.toImageBitmap()) } }
 
 private const val MAX_ZOOM_OVER_100 = 4f
+/** brief P3h: the handle's drawing is for a vertical divider; turned for a horizontal one */
+private const val SPLIT_HANDLE_HORIZONTAL_DEGREES = 90f
 private const val TWO_FINGER_TAP_MS = 300L
 private const val TAP_ZOOM_TOLERANCE = 0.05f
 
@@ -144,6 +152,18 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     // (not zoomed in, so that a drag there still pans; not with a picker armed, a shape drawn or the crop tool)
     val eqKey = controller.toneEqWanted(s)?.takeIf { !s.before && tool == null && s.picker == null && !drawOn }
     val currentEq by rememberUpdatedState(eqKey)
+    // brief P3h: the split view: the selected snapshot on one side of the divider, the live edit on the other
+    // (not with "before" shown nor the crop tool's picture); both sides follow the same zoom and pan
+    val snaps = s.snapshots
+    val splitSnap = snaps.selectedSnapshot?.takeIf { !s.before && tool == null }
+    val snapPreview = rememberLayer(snaps.preview)
+    val snapRegion = rememberLayer(snaps.region)
+    val split = snaps.split.takeIf { splitSnap != null }
+    val currentSplit by rememberUpdatedState(split)
+    val splitLine = c.splitLine
+    val splitShadow = c.splitShadow
+    val splitLineWidth = DtTheme.sizes.splitLine
+    val splitHandle = DtTheme.sizes.splitHandle
     val maskLook = maskLook()
     val pickerLook = PickerLook(c.pickerFrame, c.pickerShadow, DtTheme.sizes.pickerLine, DtTheme.sizes.pickerHandle, DtTheme.sizes.pickerPoint)
     val touch = DtTheme.sizes.touch
@@ -195,6 +215,23 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                 .pointerInput(s.index, twoFingerUndo, toolOpen, pickerOn, drawOn) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        // brief P3h: a finger on the split view's divider (within half a touch target) moves it
+                        val sp0 = currentSplit
+                        if (sp0 != null && currentTool == null && currentDraw == null && size.width > 0 && size.height > 0) {
+                            val d = if (sp0.vertical) abs(down.position.x - sp0.position * size.width) else abs(down.position.y - sp0.position * size.height)
+                            if (d <= touch.toPx() / 2) {
+                                down.consume()
+                                do {
+                                    val ev = awaitPointerEvent()
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed) {
+                                        controller.moveSplit(if (sp0.vertical) ch.position.x / size.width else ch.position.y / size.height)
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                } while (ev.changes.any { it.pressed })
+                                return@awaitEachGesture
+                            }
+                        }
                         var maxPointers = 1
                         var moved = 0f
                         var zoomed = 1f
@@ -444,6 +481,38 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                     filterQuality = FilterQuality.Medium,
                 )
             }
+            // brief P3h: the snapshot's side, then the divider with its handle
+            if (split != null) {
+                val w = size.width.toFloat()
+                val h = size.height.toFloat()
+                val cut = if (split.vertical) split.position * w else split.position * h
+                val l0 = if (split.vertical && !split.snapshotFirst) cut else 0f
+                val t0 = if (!split.vertical && !split.snapshotFirst) cut else 0f
+                val r0 = if (split.vertical && split.snapshotFirst) cut else w
+                val b0 = if (!split.vertical && split.snapshotFirst) cut else h
+                clipRect(l0, t0, r0, b0) {
+                    drawRect(c.photoBackground, Offset(left, top), Size(imgW, imgH))
+                    snapPreview?.let { sp ->
+                        drawImage(sp.bitmap, dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
+                            dstSize = IntSize(imgW.roundToInt(), imgH.roundToInt()), filterQuality = FilterQuality.Medium)
+                    }
+                    snapRegion?.let { sr ->
+                        val sc = sr.layer.scale
+                        drawImage(
+                            sr.bitmap,
+                            dstOffset = IntOffset((left + sr.layer.x / sc * ds).roundToInt(), (top + sr.layer.y / sc * ds).roundToInt()),
+                            dstSize = IntSize((sr.layer.image.width / sc * ds).roundToInt(), (sr.layer.image.height / sc * ds).roundToInt()),
+                            filterQuality = FilterQuality.Medium,
+                        )
+                    }
+                }
+                // the line: light over a dark edge (the handle is the ui-icons splitHandle, drawn over the canvas)
+                val lw = splitLineWidth.toPx()
+                for ((col, t) in listOf(splitShadow to lw * 3, splitLine to lw)) {
+                    if (split.vertical) drawRect(col, Offset(cut - t / 2, 0f), Size(t, h))
+                    else drawRect(col, Offset(0f, cut - t / 2), Size(w, t))
+                }
+            }
             if (tool != null) drawCropFrame(tool.clip, left, top, imgW, imgH, cropLook)
             // brief P3c: the armed picker's area or point
             picker?.selection?.let { sel -> drawPickerSelection(sel, left, top, imgW, imgH, pickerLook) }
@@ -455,7 +524,48 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes
         val note = s.working ?: if (s.regionPending && zoom > DarkroomController.ZOOM_FIT_LIMIT && !s.before) DarkroomController.RENDERING else null
         note?.let { WorkingNote(it, if (s.working != null) s.workingProgress else null, Modifier.align(Alignment.BottomStart)) }
+        // brief P3h: the divider's handle (centred on the line; the touch target is the line's whole length)
+        if (split != null && size.width > 0) {
+            val hp = with(androidx.compose.ui.platform.LocalDensity.current) { splitHandle.roundToPx() }
+            val cut = if (split.vertical) split.position * size.width else split.position * size.height
+            val hx = if (split.vertical) cut - hp / 2f else size.width / 2f - hp / 2f
+            val hy = if (split.vertical) size.height / 2f - hp / 2f else cut - hp / 2f
+            Box(
+                Modifier.align(Alignment.TopStart).offset { IntOffset(hx.roundToInt(), hy.roundToInt()) }
+                    .size(splitHandle).clip(CircleShape).background(splitShadow).border(splitLineWidth, splitLine, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                DtIconImage(DtIcon.SplitHandle, null, splitLine, splitHandle,
+                    if (split.vertical) Modifier else Modifier.rotateModifier(SPLIT_HANDLE_HORIZONTAL_DEGREES))
+            }
+        }
+        // brief P3h: which side is which (mockup B3-Snapshots: the snapshot's name and "current" in the corners)
+        if (split != null && splitSnap != null && note == null) {
+            val snapAt = when {
+                split.vertical && split.snapshotFirst -> Alignment.BottomStart
+                split.vertical -> Alignment.BottomEnd
+                split.snapshotFirst -> Alignment.TopStart
+                else -> Alignment.BottomStart
+            }
+            val liveAt = when {
+                split.vertical && split.snapshotFirst -> Alignment.BottomEnd
+                split.vertical -> Alignment.BottomStart
+                split.snapshotFirst -> Alignment.BottomStart
+                else -> Alignment.TopStart
+            }
+            SplitLabel("snapshot · ${splitSnap.name}", Modifier.align(snapAt))
+            SplitLabel("current", Modifier.align(liveAt))
+        }
     }
+}
+
+/** Brief P3h: a side's name over the photo in the split view. */
+@Composable
+private fun SplitLabel(text: String, modifier: Modifier) {
+    val c = DtTheme.colors
+    DtText(text, DtTheme.type.small, c.textBright,
+        modifier.padding(DtTheme.space.m).background(c.scrim).padding(horizontal = DtTheme.space.s, vertical = DtTheme.space.xxs)
+            .semantics { contentDescription = text })
 }
 
 /**

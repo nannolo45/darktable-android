@@ -119,6 +119,8 @@ data class DarkroomState(
     val regionPending: Boolean = false,
     val beforePreview: PhotoLayer? = null,
     val before: Boolean = false,
+    /** brief P3h: the open photo's snapshots and the split view (memory only, dropped when the photo changes) */
+    val snapshots: SnapshotsState = SnapshotsState(),
     val thumbnails: Map<Int, RenderedImage> = emptyMap(),
     val filmstrip: Boolean = false,
     val group: GroupTab = GroupTab.Active,

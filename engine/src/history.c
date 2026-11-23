@@ -421,6 +421,51 @@ int dtb_history_goto(int end)
   return DTB_OK;
 }
 
+/* P3h (engine-api.md 8): a render at another history position. The first
+ * version moved only the module state in memory (dt_dev_pop_history_items_ext
+ * and back); test C28 found its pictures differ from history_goto's (the
+ * reload rebuilds more than the replay restores) and the emulator's contract
+ * test a session left changed. Now the same steps as history_goto: write the
+ * library, move the end, reload; and back. What goto does besides, this does
+ * not: no group commit, no seal; the open item's module is found again after
+ * the reload, so the next change still merges into it. */
+static void _history_move(const int dev_end)
+{
+  dt_pthread_mutex_lock(&dtb_S.dev.history_mutex);
+  dt_dev_pop_history_items_ext(&dtb_S.dev, dev_end);
+  dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
+  dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
+  dt_dev_write_history(&dtb_S.dev);
+  dtb__reload_dev();
+}
+
+int dtb__history_at_begin(const dtb_render_opts_t *o, dtb_history_at_t *h)
+{
+  memset(h, 0, sizeof(*h));
+  if(!o || o->history_end < 0) return DTB_OK;
+  const int cur = dtb_S.rows ? dtb_S.rows_end : dtb_S.dev.history_end;
+  if(o->history_end == cur) return DTB_OK;
+  h->active = TRUE;
+  h->saved_end = dtb_S.dev.history_end;
+  h->sealed = dtb_S.dev.history_sealed;
+  if(dtb_S.merge_module)
+  {
+    g_strlcpy(h->merge_op, dtb_S.merge_module->op, sizeof(h->merge_op));
+    h->merge_priority = dtb_S.merge_module->multi_priority;
+  }
+  _history_move(dtb_S.rows ? dtb__rows_dev_end(o->history_end) : o->history_end);
+  return DTB_OK;
+}
+
+void dtb__history_at_end(dtb_history_at_t *h)
+{
+  if(!h->active) return;
+  _history_move(h->saved_end);
+  dtb_S.dev.history_sealed = h->sealed;
+  dtb_S.merge_module = h->merge_op[0] ? dtb__find(h->merge_op, h->merge_priority) : NULL;
+  h->active = FALSE;
+}
+
 /* dt_dev_history_truncate() (develop.c) is the desktop path; it reloads
  * through dt_dev_reload_history_items(), which touches the darkroom's pipes
  * and widgets (dev->full.pipe is NULL here). The bridge keeps its library

@@ -15,8 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
 import app.dtandroid.ui.icons.DtIcon
@@ -72,10 +74,63 @@ fun HistoryActions(controller: DarkroomController, s: DarkroomState, withUndo: B
     }
 }
 
-/** Phone: the history tab. */
+/**
+ * Brief P3h, mockup B3-Snapshots: the snapshots section as darktable's snapshots module (it sits above the history on
+ * desktop's left panel): heading, "take snapshot", one row per snapshot (tap: show it in the split view, tap again:
+ * end the split; delete on the right), and, while one is shown, the split view's "rotate" and "switch sides".
+ */
+@Composable
+fun SnapshotsSection(controller: DarkroomController, s: DarkroomState) {
+    val c = DtTheme.colors
+    val snaps = s.snapshots
+    Column(Modifier.fillMaxWidth().semantics { contentDescription = "snapshots" }) {
+        PanelHeading("snapshots")
+        Column(
+            Modifier.fillMaxWidth().background(c.panel)
+                .padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m),
+            verticalArrangement = Arrangement.spacedBy(DtTheme.space.xxs),
+        ) {
+            DtTextButton("take snapshot", { controller.launch { takeSnapshot() } }, Modifier.fillMaxWidth(),
+                enabled = s.info != null && !snaps.full)
+            if (snaps.list.isEmpty()) DtText("No snapshots yet.", DtTheme.type.body, c.textMuted, Modifier.padding(vertical = DtTheme.space.s))
+            for (sn in snaps.list) {
+                val sel = sn.id == snaps.selected
+                Row(
+                    Modifier.fillMaxWidth().background(if (sel) c.selected else c.panel),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        Modifier.weight(1f).height(DtTheme.sizes.touch)
+                            .clickable(role = Role.Button) { controller.selectSnapshot(sn.id) }
+                            .semantics { selected = sel; stateDescription = if (sel) "shown" else "not shown" }
+                            .padding(horizontal = DtTheme.space.l),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DtText(sn.name, DtTheme.type.body, if (sel) c.textBright else c.text)
+                    }
+                    DtIconButton(DtIcon.Close, "delete snapshot ${sn.name}", if (sel) c.textBright else c.text, { controller.deleteSnapshot(sn.id) })
+                }
+            }
+            if (snaps.selected != null) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = DtTheme.space.s),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(DtTheme.space.m),
+                ) {
+                    DtTextButton(if (snaps.split.vertical) "divider: vertical" else "divider: horizontal", { controller.rotateSplit() }, Modifier.weight(1f))
+                    DtTextButton("switch sides", { controller.switchSplitSides() }, Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+/** Phone: the history tab (brief P3h: the snapshots above it, as on desktop's left panel). */
 @Composable
 fun HistoryView(controller: DarkroomController, s: DarkroomState, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(vertical = DtTheme.space.xxs)) {
+        SnapshotsSection(controller, s)
+        PanelHeading("history")
         HistoryRows(controller, s)
         HistoryActions(controller, s, withUndo = true)
     }
