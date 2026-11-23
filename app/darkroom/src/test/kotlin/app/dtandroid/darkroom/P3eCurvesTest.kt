@@ -143,16 +143,18 @@ class P3eCurvesTest {
         val items0 = items(c)
         c.toneEqStart(eq, 0.5f, 0.5f)
         for (i in 1..10) c.toneEqMove(-0.02 * i) // up
+        waitFor("the drag has its exposure") { c.toneEqDragging }
+        c.toneEqEnd() // the modules are read again when the finger lifts
         waitFor("a band went up") { ToneEqMath.read(params(c, eq)).max() > 0.05 }
-        c.toneEqEnd()
         waitFor("sealed, one item") { items(c) == items0 + 1 }
         assertTrue("the module is on", c.state.value.modules.first { it.key == eq }.enabled)
         assertTrue(ToneEqMath.read(params(c, eq)).all { it in -2.0..2.0 })
         // down lowers
         c.toneEqStart(eq, 0.5f, 0.5f)
         for (i in 1..10) c.toneEqMove(0.04 * i)
-        waitFor("lowered") { ToneEqMath.read(params(c, eq)).min() < -0.05 }
+        waitFor("the second drag has its exposure") { c.toneEqDragging }
         c.toneEqEnd()
+        waitFor("lowered") { ToneEqMath.read(params(c, eq)).min() < -0.05 }
         waitFor("second item") { items(c) == items0 + 2 }
     }
 

@@ -48,7 +48,7 @@ abstract class P3eCurveScreens : ScreenshotBase() {
 
     /** The histogram behind the graph has arrived (the editor reads it when the controller is quiet). */
     private fun histogram(c: DarkroomController) {
-        waitUntil("histogram") { c.histogramCache != null }
+        waitUntil("histogram") { compose.mainClock.advanceTimeBy(100); c.histogramCache != null }
         settle(c)
     }
 

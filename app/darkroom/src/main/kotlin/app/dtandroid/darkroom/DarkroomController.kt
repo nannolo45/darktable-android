@@ -941,6 +941,9 @@ class DarkroomController(
     @Volatile private var eqTotal = 0.0
     @Volatile private var eqLive = false
 
+    /** A drag on the photo has read its exposure and writes bands (tests wait for it before lifting the finger). */
+    val toneEqDragging: Boolean get() = eqDrag != null
+
     /** The tone equalizer's instance whose panel is open on an editable photo: a vertical drag on the photo edits its bands. */
     fun toneEqWanted(s: DarkroomState): InstanceKey? {
         val k = s.expanded ?: return null
@@ -974,8 +977,9 @@ class DarkroomController(
             } ?: return@launch
             if (!eqLive) return@launch // the finger lifted before the picker answered
             val d = EqDrag(key, m.params, started, ToneEqMath.sigmaOf(m.params), gains)
-            eqDrag = d
             toneEqStep(d, eqTotal)
+            eqDrag = d // from here the moves go straight to the drag
+            toneEqStep(d, eqTotal) // one that came while the first was written
         }
     }
 

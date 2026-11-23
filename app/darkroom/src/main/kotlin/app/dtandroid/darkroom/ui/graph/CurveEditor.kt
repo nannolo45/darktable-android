@@ -44,6 +44,8 @@ import app.dtandroid.engine.api.paramAt
 import app.dtandroid.schema.Control
 import app.dtandroid.schema.Rules
 import app.dtandroid.ui.theme.DtTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -99,7 +101,8 @@ private fun channelOf(ctx: PanelContext): Int {
 private fun rememberHistogram(ctx: PanelContext): Histogram? {
     var h by remember { mutableStateOf(ctx.controller.histogramCache) }
     LaunchedEffect(ctx.key, ctx.instance.params) {
-        val got = ctx.controller.histogramNow()
+        // on its own clock: the controller waits for a quiet moment, whatever drives the composition's time
+        val got = withContext(Dispatchers.Default) { ctx.controller.histogramNow() }
         if (got != null) h = got
     }
     return h
