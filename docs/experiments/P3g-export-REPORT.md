@@ -109,7 +109,10 @@ reachable (mockup note: "the export waits and goes out with the next sync"), e.g
 
 ## CI
 
-Last code commit **849fbf53** (CI cache key; app and engine code last changed in d97b0504):
+After merging main (P3f, 4f920d13) into the branch, merge commit **3886a9c9**: g0-app 45147172671 success,
+p2b-real-engine 45147172639 success (emulator with P3f and P3g scenarios), p2a-app 45147172500 success.
+
+Before the merge: last code commit **849fbf53** (CI cache key; app and engine code last changed in d97b0504):
 
 | Workflow | Run | Commit | Result |
 |---|---|---|---|
