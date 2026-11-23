@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -104,7 +108,13 @@ internal fun L1Sections(controller: DarkroomController, s: DarkroomState, vertic
     val bg = DtTheme.colors.panel.let { it.copy(alpha = it.alpha * DtTheme.l1.panelAlpha) }
     if (vertical) {
         Column(Modifier.width(DtTheme.l1.sideColumn).fillMaxHeight().alpha(fade).background(bg)) {
-            for (sec in sections) cell(sec, Modifier.weight(1f).fillMaxWidth())
+            // brief PUI3b: cells share the height but are never under the touch minimum; when they do not fit, the column scrolls
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val each = maxOf(maxHeight / sections.size, DtTheme.l1.sectionCell)
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    for (sec in sections) cell(sec, Modifier.height(each).fillMaxWidth())
+                }
+            }
         }
     } else {
         Row(Modifier.fillMaxWidth().height(DtTheme.l1.sectionsRow).alpha(fade).background(bg)) {

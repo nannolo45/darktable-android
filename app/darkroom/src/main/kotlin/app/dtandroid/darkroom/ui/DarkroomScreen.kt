@@ -84,7 +84,7 @@ fun DarkroomScreen(
             l1 -> app.dtandroid.darkroom.ui.l1.L1Darkroom(controller, s, live, onBack, actions, importFiles, sideways = maxWidth > maxHeight)
             else -> PhoneLayout(controller, s, live, onBack, onDone, menu = true)
         }
-        Overlays(controller, s, tablet, actions)
+        Overlays(controller, s, tablet, if (l1) app.dtandroid.darkroom.ui.l1.L1Model.menuActions(actions) else actions)
         StylesOverlays(controller, s, tablet, importFiles, stylesInPanel = tablet || l1)
         // brief P3d: the masks tab's sheets
         val ms by controller.masks.state.collectAsState()

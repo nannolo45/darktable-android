@@ -58,7 +58,7 @@ fun L1Darkroom(
         val fade = dragFade() ?: 1f
         val tool = L1Model.tool(s)
         // the app's export, when the host offers one, gets the top bar's export button
-        val export = actions.firstOrNull { it.label.startsWith("export") }
+        val export = L1Model.exportAction(actions)
         val panel: @Composable (Modifier) -> Unit = { m -> L1Panel(controller, s, live, ms, tool, importFiles, fade, m) }
         if (sideways) {
             Row(Modifier.fillMaxSize().background(DtTheme.colors.photoBackground)) {

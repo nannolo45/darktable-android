@@ -179,4 +179,16 @@ class PUI3aL1ModelTest {
         assertFalse(rest.fading)
         assertNull(rest.pill)
     }
+
+    /** brief PUI3b: the export button is found by the action's id, not by its label; the photo menu does not repeat it */
+    @Test
+    fun exportIsFoundByIdAndLeftOutOfTheMenu() {
+        val export = HostAction("save as picture…", id = HostAction.EXPORT) {}
+        val other = HostAction("export notes") {}
+        val actions = listOf(other, export, HostAction("timings…") {})
+        assertEquals(export, L1Model.exportAction(actions))
+        assertEquals(listOf("export notes", "timings…"), L1Model.menuActions(actions).map { it.label })
+        assertNull("a label that starts with export is not enough", L1Model.exportAction(listOf(other)))
+        assertNull(L1Model.exportAction(emptyList()))
+    }
 }

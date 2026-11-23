@@ -4,6 +4,7 @@ package app.dtandroid.darkroom.ui.l1
 import app.dtandroid.darkroom.BottomView
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.DarkroomState
+import app.dtandroid.darkroom.HostAction
 import app.dtandroid.darkroom.GroupTab
 import app.dtandroid.darkroom.Overlay
 import app.dtandroid.darkroom.ui.SliderDrag
@@ -41,6 +42,12 @@ data class L1Chrome(
 )
 
 object L1Model {
+    /** brief PUI3b: the host's export action (found by its id, not its label), or null when the host offers none */
+    fun exportAction(actions: List<HostAction>): HostAction? = actions.firstOrNull { it.id == HostAction.EXPORT }
+
+    /** brief PUI3b: the photo menu's entries in l1: the export action has its own button, so it is not repeated */
+    fun menuActions(actions: List<HostAction>): List<HostAction> = actions.filter { it.id != HostAction.EXPORT }
+
     /** The chosen tool: the styles while their list is open, otherwise the darkroom's bottom view. */
     fun tool(s: DarkroomState): L1Tool = when {
         s.overlay == Overlay.Styles -> L1Tool.STYLES

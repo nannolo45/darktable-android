@@ -160,6 +160,7 @@ class TokensTest {
         assertEquals(250, t.l1.fadeOutMs)
         assertEquals(100, t.l1.fadeInMs)
         assertTrue(t.l1.toolsRow >= 44.dp && t.l1.sectionsRow >= 44.dp && t.l1.sideColumn >= 44.dp)
+        assertTrue(t.l1.sectionCell >= 44.dp)
         checkContrast(t)
         // the other skins keep the panels layout
         assertEquals(false, m.l1.layout)

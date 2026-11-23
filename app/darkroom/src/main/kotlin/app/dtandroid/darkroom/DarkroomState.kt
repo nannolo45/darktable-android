@@ -84,7 +84,12 @@ sealed interface Overlay {
 }
 
 /** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */
-data class HostAction(val label: String, val enabled: Boolean = true, val run: () -> Unit)
+data class HostAction(val label: String, val enabled: Boolean = true, val id: String? = null, val run: () -> Unit) {
+    companion object {
+        /** brief PUI3b: the [id] of the app's export action (the l1 top bar shows it as a button) */
+        const val EXPORT = "export"
+    }
+}
 
 /** A rendered picture and where it sits in the processed image at its scale. */
 class PhotoLayer(val image: RenderedImage, val x: Int, val y: Int, val scale: Double)

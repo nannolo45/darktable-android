@@ -191,6 +191,8 @@ class DtL1(t: TokenSource) {
     val sectionsRow = t.dp("size.l1SectionsRow")
     /** sideways: the width of the sections column and of the tools column */
     val sideColumn = t.dp("size.l1SideColumn")
+    /** the least height of a cell in the sideways sections column (the column scrolls when they do not fit) */
+    val sectionCell = t.dp("size.l1SectionCell")
     /** the short mark under a group that holds an enabled, non-default module */
     val sectionMark = t.dp("size.l1SectionMark")
     val sectionMarkWidth = t.dp("size.l1SectionMarkWidth")

@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
         val actions = listOf(
             HostAction("sync now") { syncCurrent() },
             HostAction("open in LightPhotoLibrary") { openCurrentInLpl() },
-            HostAction("export JPEG…") { exportJpeg.launch(vm.exportName()) },
+            HostAction("export JPEG…", id = HostAction.EXPORT) { exportJpeg.launch(vm.exportName()) },
             HostAction("save XMP…") { saveXmp.launch(vm.xmpName()) },
             HostAction("timings…") { vm.openTimings() },
         )

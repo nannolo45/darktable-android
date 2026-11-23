@@ -2,6 +2,11 @@
 package app.dtandroid.darkroom
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
+import app.dtandroid.darkroom.ui.l1.L1Model
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -28,6 +33,8 @@ import org.robolectric.annotation.GraphicsMode
  */
 abstract class PUI3aL1Screens : ScreenshotBase() {
     protected val l1 get() = DtTokens.load(Skin.L1)
+    /** the app's photo menu entries: export is found by its id, whatever its label */
+    protected val hostActions = listOf(HostAction("sync now") {}, HostAction("export JPEG…", id = HostAction.EXPORT) {}, HostAction("save XMP…") {})
     protected val exposure = InstanceKey("exposure", 0)
 
     protected fun waitUntil(what: String, cond: () -> Boolean) {
@@ -51,12 +58,19 @@ class PhoneL1Screenshots : PUI3aL1Screens() {
 
     @Test
     fun rest() {
-        val c = show(tokens = l1, group = null)
+        val c = show(tokens = l1, group = null, actions = hostActions)
         compose.onNodeWithContentDescription("tool modules").assertExists()
         compose.onNodeWithContentDescription("active modules").assertExists()
         compose.onNodeWithContentDescription("compare").assertExists()
+        // brief PUI3b: the host's export action (found by its id) is a button in the top bar
+        compose.onNodeWithContentDescription("export JPEG…").assertIsDisplayed()
         settle(c)
         capture("phone-l1-01-rest")
+        // ... and is not repeated in the photo menu
+        compose.onNodeWithContentDescription("more").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("save XMP…").assertExists()
+        compose.onNodeWithText("export JPEG…").assertDoesNotExist()
     }
 
     @Test
@@ -205,10 +219,34 @@ class SidewaysPhoneL1Screenshots : PUI3aL1Screens() {
 
     @Test
     fun sideways() {
-        val c = show(tokens = l1, group = null) { goToModule(exposure) }
+        val c = show(tokens = l1, group = null, actions = hostActions) { goToModule(exposure) }
         compose.onNodeWithContentDescription("tool modules").assertExists()
         compose.onNodeWithContentDescription("Instances of exposure").assertExists()
+        compose.onNodeWithContentDescription("export JPEG…").assertIsDisplayed()
         settle(c)
         capture("phone-l1-10-sideways")
+    }
+
+    /** brief PUI3b: nine sections in the sideways column: no cell under 44 dp, and the column scrolls so every one is reachable */
+    @Test
+    fun sidewaysNineSections() {
+        val c = show(tokens = l1, group = null, actions = hostActions)
+        val sections = L1Model.sections(c.state.value)
+        assertTrue("need nine sections, have ${sections.size}", sections.size >= 9)
+        val column = compose.onNode(hasScrollAction() and hasAnyDescendant(hasContentDescription("active modules")))
+        for (sec in sections) {
+            val d = when (sec.tab) {
+                GroupTab.Quick -> "quick access panel"
+                GroupTab.Active -> "active modules"
+                else -> "group ${sec.label}"
+            }
+            column.performScrollToNode(hasContentDescription(d, substring = true))
+            val cell = compose.onNodeWithContentDescription(d, substring = true)
+            cell.assertIsDisplayed()
+            assertTrue("$d is under 44 dp", cell.getUnclippedBoundsInRoot().height >= 44.dp)
+        }
+        column.performScrollToNode(hasContentDescription("quick access panel"))
+        settle(c)
+        capture("phone-l1-11-sideways-nine-sections")
     }
 }

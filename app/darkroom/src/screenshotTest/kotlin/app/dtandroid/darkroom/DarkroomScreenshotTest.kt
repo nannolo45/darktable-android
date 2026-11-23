@@ -57,12 +57,12 @@ abstract class ScreenshotBase {
      * opening group (the default layout's second group) is shown with `group = null`.
      */
     protected fun show(index: Int = 0, filmstrip: Boolean = false, tokens: DtTokens = DtTokens.load(), group: GroupTab? = GroupTab.Active,
-                       setup: suspend DarkroomController.() -> Unit = {}): DarkroomController {
+                       actions: List<HostAction> = emptyList(), setup: suspend DarkroomController.() -> Unit = {}): DarkroomController {
         val (c, _) = TestSetup.controller(tmp.root, index, filmstrip)
         if (group != null) c.selectGroup(group)
         runBlocking { c.setup() }
         compose.setContent {
-            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout, layoutFiles = NoFiles, importFiles = NoImport) }
+            DtTheme(tokens) { DarkroomScreen(c, onBack = {}, onDone = {}, layout = layout, layoutFiles = NoFiles, importFiles = NoImport, actions = actions) }
         }
         settle(c)
         return c
