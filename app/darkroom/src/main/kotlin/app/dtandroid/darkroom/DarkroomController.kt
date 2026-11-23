@@ -2578,7 +2578,19 @@ class DarkroomController(
      * this runs the darkroom's own actions wait for the lock; the export does not need the darkroom's screen, nor
      * an activity. With no photo open there is nothing to close or reopen.
      */
-    suspend fun <T> withExportSessions(block: suspend (ExportSession) -> T): T {
+    suspend fun <T> withExportSessions(block: suspend (ExportSession) -> T): T = withPhotoClosed("exporting the series…") {
+        block(object : ExportSession {
+            override suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit) =
+                exportSessionLocked(item, path, options, onProgress)
+        })
+    }
+
+    /**
+     * Brief P3i/P3j: run [block] under the engine's lock with no photo open: the darkroom's photo is saved to its
+     * sidecar and closed first ([working] is shown meanwhile) and opened again at the end, so [block] may open
+     * other photos or work on their XMP files. With no photo open there is nothing to close or reopen.
+     */
+    internal suspend fun <T> withPhotoClosed(working: String, block: suspend (DarktableEngine) -> T): T {
         cancelRenders()
         try {
             return fg {
@@ -2587,13 +2599,10 @@ class DarkroomController(
                 val index = st.index
                 if (home != null) {
                     leaveLocked(index, saveCurrent = true, fetch = false)
-                    _state.update { it.copy(working = "exporting the series…", workingProgress = null) }
+                    _state.update { it.copy(working = working, workingProgress = null) }
                 }
                 try {
-                    block(object : ExportSession {
-                        override suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit) =
-                            exportSessionLocked(item, path, options, onProgress)
-                    })
+                    block(engine)
                 } finally {
                     if (home != null) {
                         _state.update { it.copy(working = null) }
@@ -2636,6 +2645,9 @@ class DarkroomController(
 
     /** Stop the export in flight (engine-api.md section 7); from any thread. */
     internal fun exportCancel() = engine.exportCancel()
+
+    /** Brief P3j: copy and paste of the history (CopyPaste.kt). */
+    val copyPaste: CopyPaste by lazy { CopyPaste(this) }
 
     /** The export screen's settings and the export under way (Exports.kt). */
     val exports: Exports by lazy { Exports(this) }
