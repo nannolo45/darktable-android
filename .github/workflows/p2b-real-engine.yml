@@ -211,6 +211,15 @@ jobs:
           # brief P2j: the stock table in schema/overrides/spektrafilm.json is the pack the APK carries
           python3 -I tools/spektrafilm-stock-table.py /home/runner/sf/darktable/spektrafilm --check
 
+      - name: Gradle dependency cache (Maven Central answers 429 when p2a and p2b fetch the same jars at once)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.m2/repository
+          key: gradle-deps-${{ hashFiles('app/**/*.gradle.kts', 'app/**/libs.versions.toml') }}
+          restore-keys: gradle-deps-
+
       - name: Rule check and JVM tests (fake engine, screenshots included)
         id: tests
         run: |
@@ -533,7 +542,7 @@ jobs:
           # brief P3d: a circle and a brush stroke in exposure's mask, drawn on the emulator and written to the XMP:
           # darktable-cli's render of each XMP against the app's export of it
           p3d=ok
-          for name in circle brush tree; do
+          for name in circle brush tree parametric; do
             if [ ! -f "$A/p3d-$name.xmp" ] || [ ! -f "$A/p3d-$name.jpg" ]; then
               echo "p3d $name: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt; p3d=bad; continue
             fi

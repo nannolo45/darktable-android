@@ -154,3 +154,15 @@ Mockup: `docs/design/mockups/P3d-Masks.html`, with the owner's changes: the mask
   - Sizes are fractions of the picture's shorter side. On `done` the shape goes to the engine in original-image
     coordinates (coords_transform), joins the module's mask, and the tab shows it selected.
 - A read-only photo shows its masks; every control that would change them is disabled.
+
+### 8.1 Parametric masks (brief P3d stage 2b)
+At the pinned engine a module's mask is a flexi tree (engine-api.md 6.9), so a channel button adds a parametric element to the module's group (`mask_add` type `parametric`); ranges, boost and the output view are the element's geometry (`mask_update`), its invert the member's (`mask_member_update`). The section shows for modes `parametric` (pressing it asks the engine for `masks: "parametric"`, which it answers as the flexi group) and `drawn` next to the shapes. The classic `blend_get` `parametric` channels are not used.
+Mode `parametric` is enabled; `drawn & parametric` stays disabled (`drawn & parametric: not built yet`).
+The section follows `show mask` and `invert mask` rules of the drawn mode: `show mask` works in both modes.
+- `colour space` row (a sheet: module's default, Lab, display RGB, scene RGB). A choice is asked first (`change the colour space? the parametric elements are removed`: `change` / `cancel`), because the manual removes them.
+- Channel buttons as the manual lists them: Lab `L a b C h`; display RGB `g R G B H S L`; scene RGB `g R G B Jz Cz hz`. A tap adds an element (the same channel may appear twice).
+- Per channel row: name; the whole-range warning icon (`DtIcon.Warning`, shown while input and output ranges cover everything: the channel restricts nothing); `output range` toggle (the output slider is hidden by default; a set output range still applies hidden and says so); `invert` (the element's), remove (out of the group, form deleted). Input slider: `RangeSlider4` and a picker (`DtIcon.ColorPicker`, drag an area on the photo: the shared P3c picker tool, the range from the area's values as desktop's `_blendif_scale` and 0.01 feather). Channels with a boost factor (`boost_supported`) have `boost factor` (EV, 0..18).
+- `RangeSlider4`: four markers, inner filled (full opacity), outer open (zero opacity), a diamond of `size.rangeMarker`, open ones outlined with `size.rangeMarkerLine`. Order fixed (a <= b <= c <= d), markers may touch, never cross; touching markers: the first movement's direction picks one. One history item when the finger lifts; a double tap gives the whole range.
+
+### 8.2 Mask refinement (brief P3d stage 2b)
+`refine the mask` (collapsed by default) for every mode but off and uniform: `details threshold` (-100..100 %, disabled with a note for non-RAW photos), `feathering guide` (output before blur, input before blur, output after blur, input after blur), `feathering radius` (0..250 px), `blurring radius` (0..100 px), `mask brightness` and `mask contrast` (-100..100 %), `reset refinement` (desktop's defaults: all 0, guide input after blur). Read-only photos show the values and change nothing.

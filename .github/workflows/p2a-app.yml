@@ -127,6 +127,15 @@ jobs:
           cd app
           "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 :checkScreenRulesSelfTest :checkScreenRules 2>&1 | tee /tmp/rules.log
 
+      - name: Gradle dependency cache (Maven Central answers 429 when p2a and p2b fetch the same jars at once)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.m2/repository
+          key: gradle-deps-${{ hashFiles('app/**/*.gradle.kts', 'app/**/libs.versions.toml') }}
+          restore-keys: gradle-deps-
+
       - name: Unit and screenshot tests
         id: tests
         run: |

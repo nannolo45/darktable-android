@@ -89,6 +89,7 @@ fun DarkroomScreen(
         // brief P3d: the masks tab's sheets
         val ms by controller.masks.state.collectAsState()
         MasksOverlays(controller, s, ms, tablet)
+        ParametricOverlays(controller, s, tablet) // brief P3d stage 2b
     }
 }
 
