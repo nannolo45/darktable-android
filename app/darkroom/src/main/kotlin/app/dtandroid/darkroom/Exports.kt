@@ -370,14 +370,37 @@ class Exports internal constructor(private val c: DarkroomController) {
             }
         }
         var stopped: String? = null
+        val pending = ArrayList<Pending>()
         if (!cancelled && ready.any { it != null }) {
             try {
+                // brief P3i: under the engine's lock the files are only made; they are handed over after it is released,
+                // so the darkroom's actions never wait for a network ([deliverPending])
                 c.withExportSessions { run ->
                     for ((k, item) in ready.withIndex()) {
                         if (item == null) continue
                         if (cancelled) break
                         _job.update { it?.copy(number = k + 1, fileName = item.fileName, step = ExportJob.STEP_PREPARING, photoFraction = 0.0) }
-                        if (one(s, d, item, t) { path, o, p -> run.export(item, path, o, p) }) break
+                        val name = item.fileName.substringBeforeLast('.') + "." + s.extension
+                        val tmp = File(File(d.scratch, "s$k"), name)
+                        var stop = false
+                        try {
+                            tmp.parentFile?.mkdirs()
+                            val share = engineShare(s.target)
+                            run.export(item, tmp.path, s.options()) { p ->
+                                _job.update { j -> if (j == null || cancelled) j else j.copy(step = ExportJob.words(p), photoFraction = p.fraction * share) }
+                            }
+                            if (cancelled) { tmp.delete(); stop = true } else {
+                                // provisional: counted as done now so the bar never goes back; [deliverPending] corrects a failed hand-over
+                                t.finished++
+                                pending += Pending(item, name, tmp)
+                            }
+                        } catch (e: EngineException) {
+                            tmp.delete()
+                            if (e.error == EngineError.CANCELLED || cancelled) stop = true
+                            else { t.failed++; t.lastError = "${item.fileName}: ${e.detail}" }
+                        }
+                        _job.update { it?.copy(finished = t.finished, failed = t.failed, photoFraction = 0.0) }
+                        if (stop) break
                     }
                 }
             } catch (e: CancellationException) {
@@ -386,7 +409,39 @@ class Exports internal constructor(private val c: DarkroomController) {
                 stopped = "stopped: ${e.message} · ${t.finished} of ${items.size} exported"
             }
         }
+        deliverPending(s, d, t, pending)
         end(s, d, t, stopped)
+    }
+
+    private class Pending(val item: SeriesItem, val name: String, val tmp: File)
+
+    /** Hand the series' files to the destination, after the engine's lock is released. A failure or a cancel un-counts the photo. */
+    private suspend fun deliverPending(s: ExportSettings, d: ExportDelivery, t: Tally, pending: List<Pending>) {
+        val share = engineShare(s.target)
+        // photos made before a cancel are still handed over (as before); a cancel during the hand-over drops the rest
+        val cancelledBefore = cancelled
+        try {
+            for ((k, p) in pending.withIndex()) {
+                if (cancelled && !cancelledBefore) { t.finished--; continue }
+                _job.update { it?.copy(number = k + 1, fileName = p.item.fileName, step = s.target.delivering, photoFraction = share) }
+                try {
+                    val r = d.deliver(p.tmp, p.name, s.mime, s.target, p.item) { f ->
+                        _job.update { j -> if (j == null || cancelled) j else j.copy(photoFraction = share + (1 - share) * f.coerceIn(0f, 1f)) }
+                    }
+                    t.delivered += r.ref
+                    if (r.queued) t.queued++
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    t.finished--
+                    t.failed++
+                    t.lastError = "${p.item.fileName}: ${deliveryProblem(s.target, e)}"
+                }
+                _job.update { it?.copy(finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0) }
+            }
+        } finally {
+            for (p in pending) p.tmp.delete()
+        }
     }
 
     private fun end(s: ExportSettings, d: ExportDelivery, t: Tally, stopped: String?) {

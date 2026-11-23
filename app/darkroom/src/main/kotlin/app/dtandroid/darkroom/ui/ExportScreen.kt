@@ -108,6 +108,8 @@ fun BoxScope.ExportScreen(controller: DarkroomController, s: DarkroomState, tabl
                     ListControl("images", scopeLabel(set.scope), !running && seriesSize > 1) {
                         list = ExportList("images", scopes.map(scopeLabel), scopes.indexOf(set.scope)) { i -> ex.set { it.copy(scope = scopes[i]) } }
                     }
+                    if (set.scope == ExportScope.SERIES && seriesSize > 1 && s.info != null)
+                        ControlNote("The open photo is saved and reopened; its undo steps are cleared.")
                     ControlNote(set.target.note)
                     if (lplReason != null) ControlNote("LightPhotoLibrary is not on offer: $lplReason")
                 }
