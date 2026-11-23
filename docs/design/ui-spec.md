@@ -246,6 +246,9 @@ Mockup `B3-Snapshots`; darktable's snapshots module (manual: utility modules ›
   history item at that end with its instance name ("original" at 0), after the position number ("4 · exposure").
   At most 10, as desktop's `MAX_SNAPSHOT` (the button is off when all are used). Memory only, for the open photo:
   another photo starts with none (desktop keeps them for the session, also across images: not done here).
+  **Difference from desktop:** desktop stores a copy of the history with each snapshot
+  (`dt_history_snapshot_create`), so a snapshot survives any later change; here a snapshot is a history position,
+  rendered by the engine's `history_end` option, and it goes when the history below it changes (see "editing").
 - **list:** one 44 px row per snapshot; a tap shows it in the split view, a second tap on the shown one ends the
   split (desktop); the close icon on the right deletes it (desktop has one reset for all).
 - **split view:** the snapshot on one side of a divider, the live edit on the other, both at the same zoom and pan;

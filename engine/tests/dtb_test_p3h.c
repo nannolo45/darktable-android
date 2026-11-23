@@ -269,18 +269,32 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
   g_free(undo0);
   MUST(dtb_close());
 
-  // diagnostics (run 45181609239: the live render differed after history_end
-  // renders, which write the library and reload as history_goto does): does
-  // a plain history_goto to the session's own end change the live picture,
-  // on the XMP alone and after this test's edits (new instance, prototype
-  // circle mask)?
-  MUST(dtb_open(raw, xmp));
-  for(int k = 0; k < 2; k++)
+  // Which picture is right (reviewer, after run 45190018713): the main
+  // sequence of edits again in a fresh session, the full render and the XMP
+  // before and after a reload (history_goto to the own end); run_tests.sh
+  // renders both XMPs with darktable-cli and compares (parity). Variants
+  // narrow down the edit that makes the two differ (diagnostics only).
+  static const char *variants[] = { "full sequence", "without the new instance and its circle",
+                                    "without the first exposure change", "without the vignette" };
+  for(int k = 0; k < 4; k++)
   {
-    if(k == 1)
+    MUST(dtb_open(raw, xmp));
+    MUST(dtb_history_seal());
+    double e0 = 0;
+    module_info("exposure", 0, &e0, NULL, 0, NULL);
+    if(k != 2)
+    {
+      snprintf(v, sizeof(v), "%.9g", e0 + 0.7);
+      MUST(dtb_param_set("exposure", 0, "exposure", v));
+      MUST(dtb_history_seal());
+    }
+    if(k != 3)
     {
       MUST(dtb_param_set("vignette", 0, "brightness", "-0.4"));
       MUST(dtb_history_seal());
+    }
+    if(k != 1)
+    {
       int np2 = -1;
       MUST(dtb_instance_new("exposure", 0, &np2));
       MUST(dtb_param_set("exposure", np2, "exposure", "-0.5"));
@@ -288,17 +302,22 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
       dtb_mask_add_circle("exposure", np2, 0.5f, 0.5f, 0.2f, 0.05f);
       MUST(dtb_history_seal());
     }
+    snprintf(v, sizeof(v), "%.9g", e0 + 0.3);
+    MUST(dtb_param_set("exposure", 0, "exposure", v));  // open item
+    if(k == 0) save_render(outdir, "p3h_before_reload");
     p3h_shot_t a, b;
     MUST(p3h_shoot(NULL, &a));
     int e = 0;
     history_count(&e);
     MUST(dtb_history_goto(e));
     MUST(p3h_shoot(NULL, &b));
-    p3h_compare(k ? "diag: after the edits, history_goto(end) vs before it" : "diag: the XMP alone, history_goto(end) vs before it",
-                &b, &a);
+    if(k == 0) save_render(outdir, "p3h_after_reload");
+    char what[128];
+    snprintf(what, sizeof(what), "diag: %s: after a reload vs before", variants[k]);
+    p3h_compare(what, &b, &a);
     p3h_free(&a);
     p3h_free(&b);
+    MUST(dtb_close());
   }
-  MUST(dtb_close());
   return g_fail;
 }
