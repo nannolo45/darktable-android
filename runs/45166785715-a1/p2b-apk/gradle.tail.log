@@ -1,0 +1,111 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :checkScreenRules UP-TO-DATE
+> Task :app-engine:preBuild UP-TO-DATE
+> Task :app-engine:preArm64DebugBuild UP-TO-DATE
+> Task :app-engine:mergeArm64DebugNativeDebugMetadata NO-SOURCE
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lpl:compileKotlin UP-TO-DATE
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:processResources NO-SOURCE
+> Task :lpl:classes UP-TO-DATE
+> Task :lpl:jar UP-TO-DATE
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:compileKotlin UP-TO-DATE
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :engine-api:jar UP-TO-DATE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:compileKotlin UP-TO-DATE
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:packSchema UP-TO-DATE
+> Task :schema:processResources UP-TO-DATE
+> Task :schema:classes UP-TO-DATE
+> Task :schema:jar UP-TO-DATE
+> Task :app-engine:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app-engine:generateArm64DebugBuildConfig
+> Task :darkroom:preBuild UP-TO-DATE
+> Task :darkroom:preDebugBuild UP-TO-DATE
+> Task :darkroom:writeDebugAarMetadata UP-TO-DATE
+> Task :engine-jni:preBuild UP-TO-DATE
+> Task :engine-jni:preDebugBuild UP-TO-DATE
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :engine-jni:writeDebugAarMetadata
+> Task :ui-icons:writeDebugAarMetadata UP-TO-DATE
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:writeDebugAarMetadata UP-TO-DATE
+> Task :darkroom:processDebugNavigationResources UP-TO-DATE
+> Task :engine-jni:processDebugNavigationResources
+> Task :ui-icons:processDebugNavigationResources UP-TO-DATE
+> Task :app-engine:checkArm64DebugAarMetadata
+> Task :ui-theme:processDebugNavigationResources UP-TO-DATE
+> Task :app-engine:processArm64DebugNavigationResources
+> Task :app-engine:compileArm64DebugNavigationResources
+> Task :app-engine:appIcons FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app-engine:appIcons'.
+> darktable-icon.svg: ERROR @ line 116: <filter> is not supported
+  ERROR @ line 120: <feGaussianBlur> is not supported
+  ERROR @ line 125: <filter> is not supported
+  ERROR @ line 129: <feGaussianBlur> is not supported
+  ERROR @ line 134: <filter> is not supported
+  ERROR @ line 137: <feGaussianBlur> is not supported
+  ERROR @ line 142: <filter> is not supported
+  ERROR @ line 145: <feGaussianBlur> is not supported
+  ERROR @ line 150: <filter> is not supported
+  ERROR @ line 153: <feGaussianBlur> is not supported
+  ERROR @ line 158: <filter> is not supported
+  ERROR @ line 161: <feGaussianBlur> is not supported
+  ERROR @ line 166: <filter> is not supported
+  ERROR @ line 169: <feGaussianBlur> is not supported
+  ERROR @ line 174: <filter> is not supported
+  ERROR @ line 177: <feGaussianBlur> is not supported
+  ERROR @ line 182: <filter> is not supported
+  ERROR @ line 185: <feGaussianBlur> is not supported
+  ERROR @ line 201: <filter> is not supported
+  ERROR @ line 208: <feGaussianBlur> is not supported
+  ERROR @ line 213: <filter> is not supported
+  ERROR @ line 220: <feGaussianBlur> is not supported
+  ERROR @ line 395: <filter> is not supported
+  ERROR @ line 402: <feGaussianBlur> is not supported
+  ERROR @ line 407: <filter> is not supported
+  ERROR @ line 414: <feGaussianBlur> is not supported
+  ERROR @ line 419: <filter> is not supported
+  ERROR @ line 426: <feGaussianBlur> is not supported
+  ERROR @ line 431: <filter> is not supported
+  ERROR @ line 438: <feGaussianBlur> is not supported
+  ERROR @ line 443: <filter> is not supported
+  ERROR @ line 450: <feGaussianBlur> is not supported
+  ERROR @ line 464: <filter> is not supported
+  ERROR @ line 471: <feGaussianBlur> is not supported
+  ERROR @ line 476: <filter> is not supported
+  ERROR @ line 483: <feGaussianBlur> is not supported
+  ERROR @ line 488: <filter> is not supported
+  ERROR @ line 491: <feGaussianBlur> is not supported
+  ERROR @ line 496: <filter> is not supported
+  ERROR @ line 499: <feGaussianBlur> is not supported
+  ERROR @ line 504: <filter> is not supported
+  ERROR @ line 507: <feGaussianBlur> is not supported
+  ERROR @ line 512: <filter> is not supported
+  ERROR @ line 515: <feGaussianBlur> is not supported
+  ERROR @ line 520: <filter> is not supported
+  ERROR @ line 523: <feGaussianBlur> is not supported
+  ERROR @ line 528: <filter> is not supported
+  ERROR @ line 531: <feGaussianBlur> is not supported
+  ERROR @ line 536: <filter> is not supported
+  ERROR @ line 544: <feGaussianBlur> is not supported
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 20s
+22 actionable tasks: 7 executed, 15 up-to-date
