@@ -207,8 +207,9 @@ class P3eScenarioTest {
         TestFiles.record(res, "p1_difference", String.format(Locale.ROOT, "%.3f", d))
         assertTrue("the picture changes: $d", d > 0.5)
         // the XMP, read again by the engine, holds the same nodes
+        val live = params(c, tone)
         val back = reopened(c, item, "tonecurve", tone)
-        sameNodes(L, params(c, tone), back, 0)
+        sameNodes(L, live, back, 0)
         TestFiles.record(res, "p1_passed", "true")
     }
 
@@ -222,15 +223,17 @@ class P3eScenarioTest {
         // the picker button next to the channel tabs ("create curve"): arming picks the area at once
         c.togglePicker(rgb, 7)
         waitFor("armed and picked") { c.state.value.picker?.readout?.isNotEmpty() == true }
-        Thread.sleep(500)
+        waitFor("the nodes from the area") { L.read(params(c, rgb), 0).size >= 3 }
+        Thread.sleep(300)
         val nodes = L.read(params(c, rgb), 0)
         TestFiles.record(res, "p2_nodes", "${nodes.size} nodes $nodes, items $items0 -> ${items(c)}")
         assertTrue("nodes at min, mean and max: ${nodes.size}", nodes.size >= 3)
         assertTrue(CurveEdit.valid(nodes))
         assertEquals("one history item", items0 + 1, items(c))
         c.disarmPicker()
+        val live = params(c, rgb)
         val back = reopened(c, item, "rgbcurve", rgb)
-        sameNodes(L, params(c, rgb), back, 0)
+        sameNodes(L, live, back, 0)
         TestFiles.record(res, "p2_passed", "true")
     }
 
@@ -238,20 +241,21 @@ class P3eScenarioTest {
     fun p3_rgbLevelsBlackHandle() = runBlocking<Unit> {
         val (c, item) = open("rgblevels")
         c.toggleExpanded(levels)
-        val picture0 = render(c)
+        c.setEnabled(levels, true)
         c.setParam(levels, "autoscale", JsonPrimitive(1L))
+        val picture1 = render(c)
         val items0 = items(c)
         val start = LevelsEdit.read(params(c, levels), 1)
         val red0 = LevelsEdit.read(params(c, levels), 0)
-        for (x in listOf(0.03, 0.06, 0.1)) c.curveDrag(levels, LevelsEdit.writes(1, LevelsEdit.move(start, 0, x, LevelsEdit.pct(start))))
+        for (x in listOf(0.1, 0.2, 0.3)) c.curveDrag(levels, LevelsEdit.writes(1, LevelsEdit.move(start, 0, x, LevelsEdit.pct(start))))
         c.curveEnd(levels)
-        waitFor("moved") { abs(LevelsEdit.read(params(c, levels), 1)[0] - 0.1) < 1e-6 }
+        waitFor("moved") { abs(LevelsEdit.read(params(c, levels), 1)[0] - 0.3) < 1e-6 }
         waitFor("one item") { items(c) == items0 + 1 }
         val l = LevelsEdit.read(params(c, levels), 1)
         TestFiles.record(res, "p3_levels", "${l.toList()} (was ${start.toList()})")
         assertTrue(l[0] < l[1] && l[1] < l[2])
         assertEquals("the red channel is untouched", red0.toList(), LevelsEdit.read(params(c, levels), 0).toList())
-        val d = difference(picture0, render(c))
+        val d = difference(picture1, render(c))
         TestFiles.record(res, "p3_difference", String.format(Locale.ROOT, "%.3f", d))
         assertTrue("the picture changes: $d", d > 0.2)
         val back = reopened(c, item, "rgblevels", levels)
