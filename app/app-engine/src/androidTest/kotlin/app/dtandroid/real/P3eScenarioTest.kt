@@ -219,6 +219,7 @@ class P3eScenarioTest {
         val L = CurveLayout.RGBCURVE
         c.toggleExpanded(rgb)
         waitFor("photo on the screen") { c.photoArea != null && c.currentViewport != null }
+        c.setEnabled(rgb, true)
         val items0 = items(c)
         // the picker button next to the channel tabs ("create curve"): arming picks the area at once
         c.togglePicker(rgb, 7)
@@ -244,7 +245,7 @@ class P3eScenarioTest {
         val (c, item) = open("rgblevels")
         c.toggleExpanded(levels)
         c.setEnabled(levels, true)
-        c.setParam(levels, "autoscale", JsonPrimitive(1L))
+        c.setParam(levels, "autoscale", JsonPrimitive("DT_IOP_RGBLEVELS_INDEPENDENT_CHANNELS"))
         val picture1 = render(c)
         val items0 = items(c)
         val start = LevelsEdit.read(params(c, levels), 1)

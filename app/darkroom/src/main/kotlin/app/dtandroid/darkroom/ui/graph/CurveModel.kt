@@ -37,7 +37,11 @@ class CurveLayout(
             val y = (params.paramAt(node(ch, k, 'y')) as? JsonPrimitive)?.doubleOrNull ?: break
             out += CurveNode(x, y)
         }
-        return if (CurveEdit.valid(out)) out else defaults(ch)
+        if (CurveEdit.valid(out)) return out
+        // the engine's "create curve" can leave two nodes at one x (the default end node and the picked maximum at 1.0): the later one is dropped
+        val dedup = ArrayList<CurveNode>()
+        for (nd in out) if (dedup.isEmpty() || nd.x > dedup.last().x) dedup += nd
+        return if (dedup.size >= 2 && CurveEdit.valid(dedup)) dedup else defaults(ch)
     }
 
     /** darktable's default nodes of the channel (`init`): a straight line; the tone curve's a and b have a middle node. */

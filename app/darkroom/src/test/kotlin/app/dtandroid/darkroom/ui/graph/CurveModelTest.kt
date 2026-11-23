@@ -210,4 +210,12 @@ class CurveModelTest {
         val m = buildJsonObject { put("method", "DT_TONEEQ_MEAN"); put("details", "DT_TONEEQ_NONE") }
         assertEquals(-2.0, ToneEqMath.exposureOf(listOf(0.25, 0.25, 0.25, 0.0), m), 1e-9)
     }
+
+    @Test fun twoNodesAtOneXKeepTheFirst() {
+        // the engine's "create curve" can leave the default end node and the picked maximum both at x = 1
+        val nodes = listOf(CurveNode(0.0, 0.0), CurveNode(0.3, 0.3), CurveNode(1.0, 1.0), CurveNode(1.0, 1.0))
+        val read = CurveLayout.TONECURVE.read(params(nodes), 0)
+        assertEquals(3, read.size)
+        assertTrue(CurveEdit.valid(read))
+    }
 }

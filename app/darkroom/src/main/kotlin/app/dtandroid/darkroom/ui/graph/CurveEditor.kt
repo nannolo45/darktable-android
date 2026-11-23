@@ -214,7 +214,7 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                                 val defaults = layout.defaults(ch)
                                 ctx.controller.curveCommit(ctx.key, layout.writes(ch, defaults, previous) + (layout.typePath(ch) to JsonPrimitive(CurveLayout.DEFAULT_TYPE.toLong())))
                             } else if (!ctx.readOnly && !rgb && ch > 0) {
-                                ctx.controller.launch { setParam(ctx.key, "tonecurve_autoscale_ab", JsonPrimitive(0L)) }
+                                ctx.controller.launch { setParam(ctx.key, "tonecurve_autoscale_ab", JsonPrimitive("DT_S_SCALE_MANUAL")) }
                             }
                             do { val e = awaitPointerEvent(); e.changes.forEach { it.consume() } } while (e.changes.any { it.pressed })
                             return@awaitEachGesture
