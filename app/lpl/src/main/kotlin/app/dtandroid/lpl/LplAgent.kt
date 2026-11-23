@@ -887,6 +887,8 @@ class LplAgent(
     /** One heartbeat to one server; null when it did not answer. Reports the transfers and acts on `cancel` (brief P2k). */
     private fun heartbeatTo(origin: ServerOrigin, deviceName: String): HeartbeatAnswer? = try {
         val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin)) }
+        // brief P3i (R18): what the server can receive; no `server_caps` = an older server, exports wait
+        if (exports.capsOf(origin) != (a.serverCaps ?: emptySet())) { exports.setCaps(origin, a.serverCaps); _capsTick.update { it + 1 } }
         // `cancel` comes only from a server that knows `caps`: only then are edit jobs run as batches
         if (a.cancel != null) batchServers += origin
         transfers.applyCancel(origin, a.cancel)
@@ -896,6 +898,86 @@ class LplAgent(
         null // shown on the list screen; the next heartbeat tries again
     } catch (e: IllegalStateException) {
         null // the saved password cannot be read: the list screen asks for it
+    }
+
+    // ------------------------------------------------------------------ exports to LightPhotoLibrary (brief P3i, request R18)
+
+    /** What the app keeps about exports: the servers' `server_caps` and the exports waiting for a server. */
+    val exports = ExportBook(File(work.root.parentFile ?: work.root, "exports"))
+
+    private val _capsTick = MutableStateFlow(0)
+    /** Counts the changes of any server's `server_caps`: the export screen reads the offer again. */
+    val capsChanged: StateFlow<Int> = _capsTick.asStateFlow()
+
+    /** Whether [origin] said, in its last heartbeat answer, that it receives exports; null = it has not answered yet. */
+    fun receivesExports(origin: ServerOrigin): Boolean? = exports.capsOf(origin)?.contains("exports")
+
+    /** How many exports wait for their server. */
+    fun queuedExports(): Int = exports.count()
+
+    /** What became of an export handed to [sendExport]. */
+    sealed interface ExportOutcome {
+        /** stored by LPL: [path] as LPL answered */
+        data class Sent(val exportId: Long, val path: String) : ExportOutcome
+        /** the server did not answer: kept, and sent with the next sync */
+        data object Queued : ExportOutcome
+    }
+
+    /**
+     * Send the export [file] of photo [id] (version [version]; 0 = the photo's own edit) under [name]. The photo shows the
+     * step `exporting` with the share sent while it goes ([onProgress] gets it too). A server that cannot be reached
+     * leaves the file in the queue ([ExportOutcome.Queued]); any other refusal is thrown as [LplException].
+     */
+    suspend fun sendExport(origin: ServerOrigin, id: Long, version: Int, name: String, file: File, onProgress: (Float) -> Unit = {}): ExportOutcome =
+        withContext(Dispatchers.IO) {
+            requireAdded(origin)
+            step(origin, id, Step(Step.EXPORTING, 0.0))
+            try {
+                val total = file.length().coerceAtLeast(1)
+                val a = net(origin) { c ->
+                    c.postExport(id, servers.installId, version, name, file) { sent ->
+                        val f = (sent.toDouble() / total).coerceIn(0.0, 1.0)
+                        step(origin, id, Step(Step.EXPORTING, f))
+                        onProgress(f.toFloat())
+                    }
+                }
+                ExportOutcome.Sent(a.exportId, a.path)
+            } catch (e: LplException) {
+                if (!e.transient) throw e
+                exports.queue(origin, id, version, name, file)
+                trace("export of $name kept for the next sync: ${e.message}")
+                ExportOutcome.Queued
+            } finally {
+                step(origin, id, null)
+            }
+        }
+
+    /**
+     * Send the exports that waited for their server, in the order they were made. Stops at the first server that does
+     * not answer (the rest wait); one the server refuses (an unknown photo, a bad file) is dropped and said in the trace.
+     * Only to a server that said it receives exports. Returns how many were sent.
+     */
+    suspend fun sendQueuedExports(): Int = withContext(Dispatchers.IO) {
+        var sent = 0
+        val down = HashSet<ServerOrigin>()
+        for (q in exports.list()) {
+            if (q.server in down || servers.get(q.server) == null || receivesExports(q.server) != true) continue
+            step(q.server, q.photo, Step(Step.EXPORTING, 0.0))
+            try {
+                val total = q.file.length().coerceAtLeast(1)
+                net(q.server) { c -> c.postExport(q.photo, servers.installId, q.version, q.name, q.file) { b -> step(q.server, q.photo, Step(Step.EXPORTING, b.toDouble() / total)) } }
+                exports.remove(q)
+                sent++
+            } catch (e: LplException) {
+                if (e.transient || e.failure == LplFailure.UNAUTHORIZED) down += q.server
+                else { exports.remove(q); trace("queued export ${q.name} dropped: ${e.message}") }
+            } catch (e: IllegalStateException) {
+                down += q.server // the saved password cannot be read: the list screen asks for it
+            } finally {
+                step(q.server, q.photo, null)
+            }
+        }
+        sent
     }
 
     // ------------------------------------------------------------------ batches (brief P2k)

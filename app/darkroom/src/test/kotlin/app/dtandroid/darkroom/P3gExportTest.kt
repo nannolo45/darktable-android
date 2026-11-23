@@ -194,6 +194,35 @@ class P3gExportTest {
         assertEquals("5/12 · 38 %", j.compact)
     }
 
+    /**
+     * brief P3i: a series runs on engine sessions of its own: it goes on when the darkroom closes its photo
+     * (leaving the screen), all photos are exported, and no photo is left open by it.
+     */
+    @Test fun seriesGoesOnAfterTheDarkroomIsLeft() = runBlocking<Unit> {
+        val s = setup(msPerModule = 25, photos = 3, index = 0)
+        s.c.exports.set { it.copy(scope = ExportScope.SERIES) }
+        assertTrue(s.c.exports.start())
+        waitFor("photo 1 running") { s.c.exports.job.value?.step?.startsWith("processing") == true }
+        s.c.closePhoto() // waits for the engine's lock: queued behind the series, as the user leaving the screen would be
+        waitFor("the series ends", 60_000) { s.c.exports.job.value?.running == false }
+        val end = s.c.exports.job.value!!
+        assertEquals(ExportPhase.DONE, end.phase)
+        assertEquals(3, end.finished)
+        assertEquals(3, files(s.out).size)
+        assertEquals(emptyList<String>(), files(s.scratch))
+    }
+
+    /** brief P3i: a series with the darkroom on another photo is exported from sidecars and the darkroom's photo is open again after it */
+    @Test fun seriesLeavesTheDarkroomsPhotoOpen() = runBlocking<Unit> {
+        val s = setup(msPerModule = 2, photos = 3, index = 2)
+        s.c.exports.set { it.copy(scope = ExportScope.SERIES) }
+        assertTrue(s.c.exports.start())
+        waitFor("the series ends", 60_000) { s.c.exports.job.value?.running == false }
+        assertEquals(3, s.c.exports.job.value!!.finished)
+        waitFor("photo 3 open again") { s.c.state.value.index == 2 && s.c.state.value.info != null }
+        assertEquals(null, s.c.state.value.working)
+    }
+
     /** brief P3i: quality is a slider 5..100 (desktop), darktable's default 95, kept in range */
     @Test fun qualityIsASliderFrom5To100WithDefault95() {
         val d = ExportSettings()

@@ -50,7 +50,11 @@ data class Job(
 )
 
 /** [cancel] is null for a server that sends none (an old one): then nothing changes. */
-data class HeartbeatAnswer(val jobs: List<Job>, val serverTime: Double, val cancel: Cancel? = null)
+data class HeartbeatAnswer(
+    val jobs: List<Job>, val serverTime: Double, val cancel: Cancel? = null,
+    /** R18: `server_caps` of the answer; null = the key is absent (an older server, or none announced) */
+    val serverCaps: Set<String>? = null,
+)
 
 /** R16: a step of a download or a sync, with the share done when known. */
 data class Step(val step: String, val progress: Double? = null) {
@@ -59,6 +63,8 @@ data class Step(val step: String, val progress: Double? = null) {
         const val SENDING_EDIT = "sending edit"
         const val RENDERING_PREVIEW = "rendering preview"
         const val SENDING_PREVIEW = "sending preview"
+        /** R18: an export of the photo is being uploaded */
+        const val EXPORTING = "exporting"
     }
 }
 
@@ -121,3 +127,6 @@ internal fun JsonElement?.num(): Double? = (this as? JsonPrimitive)?.takeIf { !i
 internal fun JsonElement?.long(): Long? = num()?.takeIf { it == Math.floor(it) && it >= 0 && it < 1e15 }?.toLong()
 internal fun JsonElement?.bool(): Boolean? = (this as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toBooleanStrictOrNull()
 internal fun JsonElement?.arr(): JsonArray? = this as? JsonArray
+
+/** R18: the answer to an export upload: LPL's id of it and where the file was stored (relative to the library, or absolute). */
+data class ExportAnswer(val exportId: Long, val path: String)

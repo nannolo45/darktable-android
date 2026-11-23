@@ -44,9 +44,14 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     ) {
         /** R17: the versions n >= 1 (only with [StubLpl.r17]) */
         val versions: MutableMap<Int, Ver> = Collections.synchronizedMap(java.util.TreeMap())
+        /** R18 (P3i): the exports received (only with [StubLpl.r18]) */
+        val exports: MutableList<Exp> = Collections.synchronizedList(ArrayList())
         /** R17: what the server did with versions, in order (`post 2`, `delete 2`, `preview 2`) */
         val versionLog: MutableList<String> = Collections.synchronizedList(ArrayList())
     }
+
+    /** R18: one export as the server stored it. */
+    class Exp(val id: Long, val version: Int, val name: String, val agent: String?, val bytes: ByteArray)
 
     /** R17: one version on the server: its XMP, when the server first got it, and its preview. */
     class Ver(@Volatile var xmp: ByteArray, val created: Double, @Volatile var name: String = "", @Volatile var preview: ByteArray? = null, @Volatile var posts: Int = 0)
@@ -76,6 +81,10 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var r17: Boolean = false
     /** R17: the version numbers each agent was told at its last checkout (`<agent> <photo>` to numbers), as LPL notes them for 409 */
     val checkoutNs: MutableMap<String, Set<Int>> = Collections.synchronizedMap(HashMap())
+
+    /** R18 (P3i): receive exports (`POST /api/photos/{id}/exports`) and answer `server_caps` to a device that announces caps; off = an older server */
+    @Volatile var r18: Boolean = false
+    private val exportSeq = AtomicLong(0)
 
     /** brief P2k: answer as a server with batches (R17): a `cancel` in every heartbeat answer; off = an older server, no `cancel` */
     @Volatile var batch: Boolean = false
@@ -178,6 +187,18 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             req.method == "GET" && p == "/api/auth" -> { record(200); json(out, 200, """{"required":${password.isNotEmpty()},"ok":false}""") }
             req.method == "GET" && p == "/api/status" -> { record(200); json(out, 200, """{"photos":${photos.size},"version":"stub","mode":"nas","server_time":${now()}}""") }
             req.method == "POST" && p == "/api/agents/heartbeat" -> { record(200); heartbeat(out, req) }
+            r18 && req.method == "POST" && Regex("^/api/photos/\\d+/exports$").matches(p) -> {
+                val ph = photos[p.split('/')[3].toLong()]
+                if (ph == null) { record(404); json(out, 404, """{"detail":"photo not found"}"""); return }
+                val name = (req.query["name"] ?: "").substringAfterLast('/')
+                val want = req.query["size"]?.toLongOrNull()
+                if (!Regex("(?i).+\\.(jpe?g|png|tiff?|webp)$").matches(name) || req.body.isEmpty()) { record(400); json(out, 400, """{"detail":"bad name or empty"}"""); return }
+                if (want != null && want != req.body.size.toLong()) { record(400); json(out, 400, """{"detail":"size mismatch"}"""); return }
+                val e = Exp(exportSeq.incrementAndGet(), req.query["version"]?.toIntOrNull() ?: 0, name, req.query["agent"], req.body)
+                ph.exports += e
+                record(200)
+                json(out, 200, """{"export_id":${e.id},"path":"exports/2024/$name"}""")
+            }
             req.method == "POST" && Regex("^/api/jobs/\\d+/done$").matches(p) -> {
                 val id = p.split('/')[3].toLong()
                 val st = Regex("\"status\"\\s*:\\s*\"(\\w+)\"").find(req.body.decodeToString())?.groupValues?.get(1) ?: "done"
@@ -282,7 +303,10 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             """{"id":${j.id},"kind":"${j.kind}","payload":$payload}"""
         }
         val cancel = if (batch) ""","cancel":{"jobs":[${synchronized(cancelJobs) { cancelJobs.joinToString(",") }}],"photos":[${synchronized(cancelPhotos) { cancelPhotos.joinToString(",") }}]}""" else ""
-        json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel}""")
+        // R18: only to a device that announced caps; `exports` only when the stub is a server with R18
+        val announced = Regex("\"caps\"\\s*:\\s*\\[[^\\]]*\\]").containsMatchIn(body)
+        val serverCaps = if (announced && r18) ""","server_caps":[${listOfNotNull("\"batch\"".takeIf { batch }, "\"versions\"".takeIf { r17 }, "\"exports\"".takeIf { r18 }).joinToString(",")}]""" else ""
+        json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel$serverCaps}""")
     }
 
     private fun original(out: OutputStream, req: Req, ph: Photo, record: (Int) -> Unit) {
