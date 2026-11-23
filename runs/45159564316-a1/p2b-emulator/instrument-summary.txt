@@ -1,0 +1,235 @@
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1_startReportAndFastCores
+PASS    app.dtandroid.real.RealEngineScenarioTest.t1b_pinningRefusedByTheBridgeLeavesTheEngineWorking
+PASS    app.dtandroid.real.RealEngineScenarioTest.t2_openChangeUndoWriteReopen
+PASS    app.dtandroid.real.RealEngineScenarioTest.t3_exportOfTheTestEdit
+PASS    app.dtandroid.real.RealEngineScenarioTest.t4_readOnlyPath
+PASS    app.dtandroid.real.RealEngineScenarioTest.t5_cancellationWhileDragging
+PASS    app.dtandroid.real.RealEngineScenarioTest.t6_timingsSequence
+PASS    app.dtandroid.real.RealEngineScenarioTest.t7_appStarts
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActionsForControlsOutsideTheParameters
+PASS    app.dtandroid.real.JniEngineContractTest.infoAndStateErrors
+PASS    app.dtandroid.real.JniEngineContractTest.builtinPresetAppliesAsOneHistoryItem
+PASS    app.dtandroid.real.JniEngineContractTest.userPresetStoreApplyRenameExportImportDelete
+PASS    app.dtandroid.real.JniEngineContractTest.drawnMasksCreateAttachShareEditDelete
+PASS    app.dtandroid.real.JniEngineContractTest.compressKeepsTheResult
+PASS    app.dtandroid.real.JniEngineContractTest.historyGotoAndDiscardAbove
+PASS    app.dtandroid.real.JniEngineContractTest.paramSetChangesValueSwitchesOnAndGroupsUntilSealed
+PASS    app.dtandroid.real.JniEngineContractTest.renderCancelFromAnotherThread
+PASS    app.dtandroid.real.JniEngineContractTest.aRedoStepSurvivesBypassRenders
+PASS    app.dtandroid.real.JniEngineContractTest.colorPickersAndHistogram
+PASS    app.dtandroid.real.JniEngineContractTest.blendingGetSetValidateAndGroup
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActionsThatPick
+PASS    app.dtandroid.real.JniEngineContractTest.undoRedoRestoreExactly
+PASS    app.dtandroid.real.JniEngineContractTest.instancesNewDuplicateMoveRenameDelete
+PASS    app.dtandroid.real.JniEngineContractTest.guardAndReadOnlySession
+PASS    app.dtandroid.real.JniEngineContractTest.renderShapesAndErrors
+FAIL    app.dtandroid.real.JniEngineContractTest.aRenderOfAHistoryPositionEqualsGotoAndBack
+        java.lang.AssertionError: preview at 14 = goto + render + goto back
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.engine.api.DarktableEngineContract$aRenderOfAHistoryPositionEqualsGotoAndBack$1.invokeSuspend(DarktableEngineContract.kt:781)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteRefusesToOverwriteAFileThatFailsTheGuard
+PASS    app.dtandroid.real.JniEngineContractTest.paramErrors
+PASS    app.dtandroid.real.JniEngineContractTest.setEnabledAndCanSwitch
+PASS    app.dtandroid.real.JniEngineContractTest.openWithoutXmpIsTheDefaultEditEveryTime
+PASS    app.dtandroid.real.JniEngineContractTest.openRefusesAnEmptyFile
+PASS    app.dtandroid.real.JniEngineContractTest.anUndoBackGivesTheXmpOfThatState
+PASS    app.dtandroid.real.JniEngineContractTest.openGivesImageInfoAndModulesInPipelineOrder
+PASS    app.dtandroid.real.JniEngineContractTest.paramsSetIsOneStep
+PASS    app.dtandroid.real.JniEngineContractTest.renderTimesListTheLastRender
+PASS    app.dtandroid.real.JniEngineContractTest.moduleResetRestoresDefaults
+PASS    app.dtandroid.real.JniEngineContractTest.xmpWriteAndReopenKeepsTheHistory
+FAIL    app.dtandroid.real.JniEngineContractTest.aBypassRenderLeavesTheEditAlone
+        java.lang.AssertionError: bypass preview = switched off
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.engine.api.DarktableEngineContract$aBypassRenderLeavesTheEditAlone$1.invokeSuspend(DarktableEngineContract.kt:730)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.JniEngineContractTest.maskDisplayRender
+PASS    app.dtandroid.real.JniEngineContractTest.moduleActions
+FAIL    app.dtandroid.real.JniEngineContractTest.exposureMakesThePictureBrighter
+        java.lang.AssertionError: mean 108.71730238970588 -> 108.71730238970588
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.engine.api.DarktableEngineContract$exposureMakesThePictureBrighter$1.invokeSuspend(DarktableEngineContract.kt:485)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.JniEngineContractTest.coordinatesBetweenOriginalAndPicture
+PASS    app.dtandroid.real.JniEngineContractTest.stylesImportCreateApplyDelete
+PASS    app.dtandroid.real.LplScenarioTest.l1_linkDownloadDarkroomChangeDoneSync
+PASS    app.dtandroid.real.LplScenarioTest.l2_offlineEditIsDirtyThenTheBackgroundJobSyncsIt
+PASS    app.dtandroid.real.LplScenarioTest.l3_unknownServerIsRefusedUntilAdded
+PASS    app.dtandroid.real.LplScenarioTest.l4_aJobOfEachKind
+PASS    app.dtandroid.real.LplScenarioTest.l5_readOnlyPhotoIsNeverPostedBack
+PASS    app.dtandroid.real.LplScenarioTest.l6_theShellsHandOffIntentReachesThisApp
+PASS    app.dtandroid.real.LplScenarioTest.l7_aLateThumbnailDoesNotBringAReleasedPhotoBack
+PASS    app.dtandroid.real.LplScenarioTest.l8_aBatchJobWithoutOpeningCopiesThePhotosAndLeavesTheDarkroomClosed
+FAIL    app.dtandroid.real.P2fScenarioTest.f10_aChangeAtFitRendersThePreviewOnly
+        java.lang.AssertionError: the region render was cancelled or had ended: +0 ms	darkroom: preview render start (1080 px)
+        +77 ms	darkroom: preview rendered 1080x719 in 77 ms
+        +77 ms	darkroom: preview shown
+        +90 ms	lpl: thumbnail of 101/mire1.cr2 written
+        +179 ms	darkroom: region render start (1081x1501 at scale 0.829)
+        +238 ms	darkroom: back at fit, region render stopped and region dropped
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+PASS    app.dtandroid.real.P2fScenarioTest.f1_openRightAfterDoneTimeline
+FAIL    app.dtandroid.real.P2fScenarioTest.f2_previewFromTheFullPipeMatchesTheExport
+        java.lang.AssertionError: PSNR 16.359058778267524 dB (want >= 40, as the G0 comparison)
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P2fScenarioTest$f2_previewFromTheFullPipeMatchesTheExport$1$1.invokeSuspend(P2fScenarioTest.kt:282)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P2fScenarioTest.f3_dragPictureSizesOnA1080PxScreen
+PASS    app.dtandroid.real.P2fScenarioTest.f4_timingsRunOnAPhotoFromLightPhotoLibrary
+PASS    app.dtandroid.real.P2fScenarioTest.f5_spektrafilmHasItsDataAndIsFound
+FAIL    app.dtandroid.real.P2fScenarioTest.f6_cropAspectOnTheRealEngine
+        java.lang.AssertionError: square: 3908x2602
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P2fScenarioTest$f6_cropAspectOnTheRealEngine$1.invokeSuspend(P2fScenarioTest.kt:449)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P2fScenarioTest.f7_imageInfoOfAnUndecodableFile
+PASS    app.dtandroid.real.P2fScenarioTest.f8_undecodableFileInTheDarkroomThenTheGoodPhoto
+PASS    app.dtandroid.real.P2fScenarioTest.f9_theBridgeWasCalledAsItsHeaderAllows
+PASS    app.dtandroid.real.P2jScenarioTest.j1_colorCalibrationCustomIlluminantByHueAndChroma
+PASS    app.dtandroid.real.P2jScenarioTest.j2_spektrafilmAnotherFilmStock
+FAIL    app.dtandroid.real.P2jScenarioTest.j3_framingAspectFromItsList
+        java.lang.AssertionError: expected:<1.7777777777777777> but was:<1.5019215987701768>
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.failNotEquals(Assert.java:835)
+        	at org.junit.Assert.assertEquals(Assert.java:555)
+        	at org.junit.Assert.assertEquals(Assert.java:685)
+        	at app.dtandroid.real.P2jScenarioTest$j3_framingAspectFromItsList$1.invokeSuspend(P2jScenarioTest.kt:136)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+FAIL    app.dtandroid.real.P3aScenarioTest.c1_dragCornerAndFrameLeaveWriteExport
+        java.lang.AssertionError: the tool shows the uncropped picture
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3aScenarioTest$c1_dragCornerAndFrameLeaveWriteExport$1.invokeSuspend(P3aScenarioTest.kt:158)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P3aScenarioTest.c2_noChangeLeavesTheEditAsItWas
+PASS    app.dtandroid.real.P3aScenarioTest.c3_straightenByTouch
+PASS    app.dtandroid.real.P3bScenarioTest.s1_stylesListTime
+PASS    app.dtandroid.real.P3bScenarioTest.s2_importApplyBothModesWriteXmp
+PASS    app.dtandroid.real.P3bScenarioTest.s3_presetOnASecondInstance
+PASS    app.dtandroid.real.P3bScenarioTest.s4_framingAndLensValuesOutsideTheLimits
+PASS    app.dtandroid.real.P3cScenarioTest.p1_whiteBalanceFromAnAreaByTouch
+PASS    app.dtandroid.real.P3cScenarioTest.p2_exposureSpotByTouch
+PASS    app.dtandroid.real.P3cScenarioTest.p3_pickedValuesForTheEngineTest
+FAIL    app.dtandroid.real.P3dScenarioTest.d1_circleOnExposure
+        java.lang.AssertionError: the masked picture differs from the unmasked one: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dScenarioTest$checkMasked$1.invokeSuspend(P3dScenarioTest.kt:140)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+FAIL    app.dtandroid.real.P3dScenarioTest.d2_brushStrokeByTouch
+        java.lang.AssertionError: the masked picture differs from the unmasked one: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dScenarioTest$checkMasked$1.invokeSuspend(P3dScenarioTest.kt:140)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P3dScenarioTest.d4_existingShapeSheet
+PASS    app.dtandroid.real.P3dScenarioTest.d5a_brushIntoOtherModule
+PASS    app.dtandroid.real.P3dScenarioTest.d5b_circleIntoOtherModule
+PASS    app.dtandroid.real.P3dScenarioTest.d5c_brushGroupIntoOtherModule
+PASS    app.dtandroid.real.P3dScenarioTest.d5d_brushIntoOtherModuleWithShowMask
+PASS    app.dtandroid.real.P3dScenarioTest.d5e_removedAndAttachedAgain
+PASS    app.dtandroid.real.P3dScenarioTest.d6_oneItemPerShapeAndPerBrushSession
+FAIL    app.dtandroid.real.P3dScenarioTest.d7_differenceOrderAndTree
+        java.lang.AssertionError: difference changes with the order of its members: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dScenarioTest.d7_differenceOrderAndTree(P3dScenarioTest.kt:446)
+FAIL    app.dtandroid.real.P3dParametricScenarioTest.e1_luminanceRangeOnExposure
+        java.lang.AssertionError: where it is off the picture lacks the exposure: change against the unmasked 0.0 (on: 0.0)
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dParametricScenarioTest.e1_luminanceRangeOnExposure(P3dParametricScenarioTest.kt:124)
+PASS    app.dtandroid.real.P3dParametricScenarioTest.e2_rangeFromAPickedArea
+FAIL    app.dtandroid.real.P3dEditScenarioTest.f1_circleMovedAfterDone
+        java.lang.AssertionError: the picture changes when the circle moves: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dEditScenarioTest.f1_circleMovedAfterDone(P3dEditScenarioTest.kt:142)
+PASS    app.dtandroid.real.P3dEditScenarioTest.f2_shapeInANestedGroup
+FAIL    app.dtandroid.real.P3dEditScenarioTest.f3_drawnAndParametric
+        java.lang.AssertionError: the picture changes with the range: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3dEditScenarioTest.f3_drawnAndParametric(P3dEditScenarioTest.kt:204)
+FAIL    app.dtandroid.real.P3eScenarioTest.p1_toneCurveNodeMoved
+        java.lang.AssertionError: the picture changes: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3eScenarioTest$p1_toneCurveNodeMoved$1.invokeSuspend(P3eScenarioTest.kt:208)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P3eScenarioTest.p2_rgbCurveFromAnArea
+FAIL    app.dtandroid.real.P3eScenarioTest.p3_rgbLevelsBlackHandle
+        java.lang.AssertionError: the picture changes: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3eScenarioTest$p3_rgbLevelsBlackHandle$1.invokeSuspend(P3eScenarioTest.kt:265)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+FAIL    app.dtandroid.real.P3eScenarioTest.p4_toneEqualizerDragOnThePhoto
+        java.lang.AssertionError: the picture changes: 0.0
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3eScenarioTest$p4_toneEqualizerDragOnThePhoto$1.invokeSuspend(P3eScenarioTest.kt:290)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+PASS    app.dtandroid.real.P3eBandsScenarioTest.a_contrastEqualizerNodeMoved
+PASS    app.dtandroid.real.P3eBandsScenarioTest.b_colorZonesNodeMoved
+PASS    app.dtandroid.real.P3eBandsScenarioTest.c_colorEqualizerNodeMoved
+PASS    app.dtandroid.real.P3fScenarioTest.duplicateEditReopenAndRename
+PASS    app.dtandroid.real.P3gScenarioTest.s1_onePhotoWithProgress
+PASS    app.dtandroid.real.P3gScenarioTest.s2_cancelMidway
+PASS    app.dtandroid.real.P3gScenarioTest.s3_twoPhotoSeries
+FAIL    app.dtandroid.real.P3hScenarioTest.snapshotSplitShowsBothAndKeepsTheHistoryEnd
+        java.lang.AssertionError: left half: the snapshot is darker than the live picture
+        	at org.junit.Assert.fail(Assert.java:89)
+        	at org.junit.Assert.assertTrue(Assert.java:42)
+        	at app.dtandroid.real.P3hScenarioTest$snapshotSplitShowsBothAndKeepsTheHistoryEnd$1.invokeSuspend(P3hScenarioTest.kt:105)
+        	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+        	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+        	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+        	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:94)
+passed 83, failed 18, total 101
+runner: INSTRUMENTATION_RESULT: stream=
+runner: FAILURES!!!
+runner: Tests run: 101,  Failures: 18
+runner: INSTRUMENTATION_CODE: -1
+RESULT: NOT OK
