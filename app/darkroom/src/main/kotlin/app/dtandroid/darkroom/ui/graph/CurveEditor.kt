@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,6 +46,9 @@ import app.dtandroid.schema.Control
 import app.dtandroid.schema.Rules
 import app.dtandroid.ui.theme.DtTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.math.abs
@@ -183,6 +187,7 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
     val nowNodes by rememberUpdatedState(nodes)
     val nowParams by rememberUpdatedState(params)
     val lastTap = remember { mutableLongStateOf(0L) }
+    val scope = rememberCoroutineScope()
     val mayEdit = editable
     val note = if (!mayEdit && !ctx.readOnly) "this curve has no effect with linked channels; double tap the graph to edit it" else null
 
@@ -229,30 +234,16 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                         var added = false
                         var moved = false
                         var up = down.uptimeMillis
+                        var longPress: Job? = null
+                        var longPressed = false
                         if (sel >= 0) {
-                            // on a node: a long press removes it, a drag moves it, a tap does nothing
-                            var upAt = down.uptimeMillis
-                            val verdict: Int? = withTimeoutOrNull(vc.longPressTimeoutMillis) {
-                                var res = 0
-                                while (res == 0) {
-                                    val e = awaitPointerEvent()
-                                    upAt = e.changes.maxOf { it.uptimeMillis }
-                                    val c = e.changes.firstOrNull { it.id == down.id }
-                                    res = if (c == null || !c.pressed) 1 else if ((c.position - p0).getDistance() > vc.touchSlop) 2 else 0
-                                }
-                                res
+                            // on a node: a long press removes it (a timer, so that it fires with no event), a drag moves it
+                            val hitNode = sel
+                            longPress = scope.launch {
+                                delay(vc.longPressTimeoutMillis)
+                                longPressed = true
+                                ctx.controller.curveCommit(ctx.key, layout.writes(ch, CurveEdit.remove(base, hitNode), previous))
                             }
-                            if (verdict == null) {
-                                val next = CurveEdit.remove(base, sel)
-                                ctx.controller.curveCommit(ctx.key, layout.writes(ch, next, previous))
-                                do { val e = awaitPointerEvent(); e.changes.forEach { it.consume() } } while (e.changes.any { it.pressed })
-                                return@awaitEachGesture
-                            }
-                            if (verdict == 1) {
-                                lastTap.longValue = upAt
-                                return@awaitEachGesture
-                            }
-                            moved = true
                         } else {
                             // empty space: a node is added there (and follows the finger)
                             val add = CurveEdit.add(base, fx(p0), fy(p0), layout.maxNodes)
@@ -273,8 +264,8 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                             val e = awaitPointerEvent()
                             up = e.changes.maxOf { it.uptimeMillis }
                             val c = e.changes.firstOrNull { it.id == down.id }
-                            if (c != null && c.pressed) {
-                                if ((c.position - p0).getDistance() > vc.touchSlop) moved = true
+                            if (c != null && c.pressed && !longPressed) {
+                                if ((c.position - p0).getDistance() > vc.touchSlop) { moved = true; longPress?.cancel() }
                                 // a node dragged off the graph is dropped there
                                 off = c.position.x < -inset || c.position.x > w + inset || c.position.y < -inset || c.position.y > h + inset
                                 if (!off && moved) {
@@ -283,8 +274,10 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                                     ctx.controller.curveDrag(ctx.key, layout.writes(ch, cur, previous))
                                 }
                                 c.consume()
-                            }
+                            } else if (c != null && c.pressed) c.consume()
                         } while (e.changes.any { it.pressed })
+                        longPress?.cancel()
+                        if (longPressed) { held = -1; return@awaitEachGesture } // the node was removed by the long press
                         if (off) {
                             val final = if (added) base else CurveEdit.remove(cur, sel)
                             local = final
