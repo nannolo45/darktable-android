@@ -165,7 +165,8 @@ fun PanelHeading(text: String) {
 /** The About screen's "interface" row: one button per skin, the chosen one in the selected state. */
 @Composable
 fun SkinChooser(chosen: app.dtandroid.ui.theme.Skin, onChoose: (app.dtandroid.ui.theme.Skin) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
-        for (s in app.dtandroid.ui.theme.Skin.entries) DtTextButton(s.label, { onChoose(s) }, selected = s == chosen)
+    // one button per line: three labels side by side did not fit a phone's width (the third was cut off)
+    Column(modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.m), verticalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+        for (s in app.dtandroid.ui.theme.Skin.entries) DtTextButton(s.label, { onChoose(s) }, Modifier.fillMaxWidth(), selected = s == chosen)
     }
 }
