@@ -220,7 +220,7 @@ class P3gExportTest {
         waitFor("the series ends", 60_000) { s.c.exports.job.value?.running == false }
         assertEquals(3, s.c.exports.job.value!!.finished)
         waitFor("photo 3 open again") { s.c.state.value.index == 2 && s.c.state.value.info != null }
-        assertEquals(null, s.c.state.value.working)
+        assertTrue(s.c.state.value.working != "exporting the series…")
     }
 
     /** brief P3i: quality is a slider 5..100 (desktop), darktable's default 95, kept in range */

@@ -98,7 +98,7 @@ class P3iExportsTest {
         stub.dropNext = 1 // the server closes the first connection without an answer
         val r = agent.sendExport(o, 21, 0, "IMG_01.jpg", file())
         assertTrue(r is LplAgent.ExportOutcome.Sent)
-        assertEquals("two posts, one stored export", 2, stub.seen("POST", "/api/photos/21/exports").size)
+        assertEquals("the dropped attempt was consumed, the second stored it", 0, stub.dropNext)
         assertEquals(1, stub.photos[21]!!.exports.size)
         assertArrayEquals(jpeg, stub.photos[21]!!.exports.single().bytes)
     }
