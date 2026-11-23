@@ -183,6 +183,28 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
     char what[96];
     snprintf(what, sizeof(what), "history_end %d vs goto %d + render + goto back", pos[i], pos[i]);
     if(!r) CHECK(!p3h_compare(what, &at[i], &ref), "%s: pixels differ", what);
+    // diagnostics (run 45166894638): the same position with history_end
+    // again now, and the live picture now, against the pictures from before
+    // the history_goto round trips
+    {
+      char o[64];
+      snprintf(o, sizeof(o), "{\"history_end\": %d}", pos[i]);
+      p3h_shot_t again, live;
+      if(p3h_shoot(o, &again) == DTB_OK)
+      {
+        snprintf(what, sizeof(what), "diag: history_end %d now vs goto %d + render", pos[i], pos[i]);
+        p3h_compare(what, &again, &ref);
+        snprintf(what, sizeof(what), "diag: history_end %d now vs before the gotos", pos[i]);
+        p3h_compare(what, &again, &at[i]);
+      }
+      if(p3h_shoot(NULL, &live) == DTB_OK)
+      {
+        snprintf(what, sizeof(what), "diag: live after goto %d and back vs live before", pos[i]);
+        p3h_compare(what, &live, &live0);
+      }
+      p3h_free(&again);
+      p3h_free(&live);
+    }
     p3h_free(&ref);
   }
 
