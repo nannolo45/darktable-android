@@ -10,6 +10,7 @@ import app.dtandroid.engine.api.RenderOptions
 import app.dtandroid.engine.api.paramAt
 import app.dtandroid.engine.api.XmpCheck
 import app.dtandroid.engine.api.XmpProblemReason
+import app.dtandroid.darkroom.ui.graph.ToneEqMath
 import app.dtandroid.schema.AspectSpec
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.CropAspect
@@ -832,6 +833,26 @@ class DarkroomController(
         drags.trySend(Drag(key, controlId, binding, v, integer, end = true))
     }
 
+    /**
+     * Brief P3e: the engine's "set_nodes_from_area" can leave two nodes at one x (the default end node at 1 and the picked
+     * maximum at 1; the spline of such a curve is undefined and the render is garbage). The later one is dropped, in the
+     * same history group as the action. Reported in docs/experiments/P3e-curves-REPORT.md.
+     */
+    private suspend fun dropDuplicateNodes(key: InstanceKey, args: Any?, r: JsonObject?) {
+        val raw = r?.get("nodes") as? kotlinx.serialization.json.JsonArray ?: return
+        val nodes = raw.mapNotNull { n ->
+            val a = n as? kotlinx.serialization.json.JsonArray
+            val x = (a?.getOrNull(0) as? JsonPrimitive)?.doubleOrNull
+            val y = (a?.getOrNull(1) as? JsonPrimitive)?.doubleOrNull
+            if (x != null && y != null) app.dtandroid.darkroom.ui.graph.CurveNode(x, y) else null
+        }
+        val kept = ArrayList<app.dtandroid.darkroom.ui.graph.CurveNode>()
+        for (n in nodes) if (kept.isEmpty() || n.x > kept.last().x) kept += n
+        if (kept.size == nodes.size || kept.size < 2) return
+        val ch = ((args as? JsonObject)?.get("channel") as? JsonPrimitive)?.doubleOrNull?.toInt() ?: 0
+        for ((path, v) in app.dtandroid.darkroom.ui.graph.CurveLayout.RGBCURVE.writes(ch, kept, nodes.size)) engine.paramSet(key.op, key.priority, path, v)
+    }
+
     private suspend fun writeDrag(d: Drag) {
         val w = d.writes
         if (w == null) writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
@@ -914,6 +935,121 @@ class DarkroomController(
         }
         _live.update { it - (d.key to d.controlId) }
         requestRender()
+    }
+
+    // ------------------------------------------------------------------ brief P3e: graph editors (curves, levels, tone equalizer)
+
+    /** The newest fields of a graph drag in progress, written again when the finger lifts. */
+    private val curveLast = HashMap<InstanceKey, Map<String, JsonPrimitive>>()
+
+    /**
+     * A node, a handle or a band moves: [writes] (parameter path to value) go to the engine as single fields, so the
+     * steps of one drag merge into one history item; the small drag picture renders as for a slider.
+     */
+    fun curveDrag(key: InstanceKey, writes: Map<String, JsonPrimitive>) {
+        curveLast[key] = writes
+        drags.trySend(Drag(key, CURVE_CONTROL, Binding.None, 0.0, false, end = false, writes = writes.toList()))
+    }
+
+    /** The finger lifts: the last fields are written and the history item sealed (nothing when no drag step came). */
+    fun curveEnd(key: InstanceKey) {
+        val w = curveLast.remove(key) ?: return
+        drags.trySend(Drag(key, CURVE_CONTROL, Binding.None, 0.0, false, end = true, writes = w.toList()))
+    }
+
+    /** A tap, a long press or a double tap: [writes] as one step, in order with the drag steps before it (one channel). */
+    fun curveCommit(key: InstanceKey, writes: Map<String, JsonPrimitive>) {
+        curveDrag(key, writes)
+        curveEnd(key)
+    }
+
+    /** The same as [curveCommit], but done when it returns: [writes] as one step, one history item. */
+    suspend fun curveSet(key: InstanceKey, writes: Map<String, JsonPrimitive>) = change {
+        if (writes.size == 1) { val (p, v) = writes.entries.first(); engine.paramSet(key.op, key.priority, p, v) }
+        else engine.paramsSet(key.op, key.priority, writes)
+        engine.historySeal()
+    }
+
+    /** The histogram of the current picture for the editors' background (desktop draws the module's own); null when unavailable. */
+    suspend fun histogramNow(): app.dtandroid.engine.api.Histogram? = try {
+        bg("histogram") { it.histogram(HISTOGRAM_SIZE) }.also { histogramCache = it }
+    } catch (e: EngineException) {
+        null
+    }
+
+    /** The last histogram read: an editor shows it at once while a new one is on its way. */
+    @Volatile var histogramCache: app.dtandroid.engine.api.Histogram? = null
+
+    private class EqDrag(val key: InstanceKey, val params: JsonObject, val controlEv: Double, val sigma: Double, var gains: DoubleArray, var applied: Double = 0.0)
+
+    @Volatile private var eqDrag: EqDrag? = null
+    @Volatile private var eqTotal = 0.0
+    @Volatile private var eqLive = false
+
+    /** A drag on the photo has read its exposure and writes bands (tests wait for it before lifting the finger). */
+    val toneEqDragging: Boolean get() = eqDrag != null
+
+    /** The tone equalizer's instance whose panel is open on an editable photo: a vertical drag on the photo edits its bands. */
+    fun toneEqWanted(s: DarkroomState): InstanceKey? {
+        val k = s.expanded ?: return null
+        if (k.op != TONEEQ_OP || s.info == null || s.readOnly || s.loading || s.cropTool != null) return null
+        return k
+    }
+
+    /**
+     * A vertical drag begins on the photo at ([px], [py]) (fractions of the picture): the exposure there is read with the
+     * module's own picker on its input, and the drag then raises or lowers the bands around that exposure, as
+     * desktop's mouse wheel does (toneequal.c `scrolled`). Switches the module on, as desktop does.
+     */
+    fun toneEqStart(key: InstanceKey, px: Float, py: Float) {
+        eqTotal = 0.0
+        eqDrag = null
+        eqLive = true
+        launch {
+            val m = _state.value.modules.firstOrNull { it.key == key } ?: return@launch
+            val gains = ToneEqMath.read(m.params)
+            val started = fg {
+                try {
+                    // a parameter write switches the module on and opens the history item the drag's steps join
+                    if (!m.enabled) engine.paramSet(key.op, key.priority, ToneEqMath.BANDS[0], JsonPrimitive(gains[0]))
+                    val pick = engine.colorPick(key.op, key.priority, PickRequest(point = listOf(px.toDouble(), py.toDouble())))
+                    val mean = pick.input?.mean ?: return@fg null
+                    ToneEqMath.exposureOf(mean, m.params)
+                } catch (e: EngineException) {
+                    _state.update { it.copy(message = e.message) }
+                    null
+                }
+            } ?: return@launch
+            if (!eqLive) return@launch // the finger lifted before the picker answered
+            val d = EqDrag(key, m.params, started, ToneEqMath.sigmaOf(m.params), gains)
+            toneEqStep(d, eqTotal)
+            eqDrag = d // from here the moves go straight to the drag
+            toneEqStep(d, eqTotal) // one that came while the first was written
+        }
+    }
+
+    /** The drag so far, as a fraction of the photo's height (down is positive). */
+    fun toneEqMove(total: Double) {
+        eqTotal = total
+        eqDrag?.let { toneEqStep(it, total) }
+    }
+
+    private fun toneEqStep(d: EqDrag, total: Double) {
+        // the graph spans 4 EV over its height: the photo's height stands for the same 4 EV
+        val offset = -(total - d.applied) * ToneEqMath.SPAN_EV
+        if (offset == 0.0) return
+        val next = ToneEqMath.interactive(d.gains, d.controlEv, offset, d.sigma) ?: return
+        d.gains = next
+        d.applied = total
+        curveDrag(d.key, ToneEqMath.writes(next))
+    }
+
+    /** The finger lifts. */
+    fun toneEqEnd() {
+        eqLive = false
+        val d = eqDrag
+        eqDrag = null
+        if (d != null) curveEnd(d.key)
     }
 
     /** Brief P3a: the modules before a drag that left the crop tool, to open it again when the finger lifts. */
@@ -1425,7 +1561,16 @@ class DarkroomController(
                     val s = _state.value
                     val (name, args) = action.call(sel, { k -> settingValue(s, key.op, k) }, { t -> pickerTab(s, key, t) })
                     Timeline.mark("darkroom: picker ${key.op} $name ${args.toString().take(200)}")
-                    val r = engine.moduleAction(key.op, key.priority, name, args) as? JsonObject
+                    // rgb curve: the action and the clean-up of its nodes are one history item (one group)
+                    val grouped = key.op == "rgbcurve"
+                    if (grouped) engine.historyGroupBegin()
+                    val r = try {
+                        (engine.moduleAction(key.op, key.priority, name, args) as? JsonObject).also { if (grouped) dropDuplicateNodes(key, args, it) }
+                    } catch (e: Exception) {
+                        if (grouped) runCatching { engine.historyGroupEnd(false) }
+                        throw e
+                    }
+                    if (grouped) engine.historyGroupEnd(true)
                     engine.historySeal()
                     changed = true
                     // desktop shows some results in the settings (exposure's measured lightness)
@@ -2284,6 +2429,10 @@ class DarkroomController(
 
         /** Brief P3a: crop's operation name, and the modules after it that change the geometry (the tool waits for them). */
         const val CROP_OP = "crop"
+        /** brief P3e: the tone equalizer, the id a graph drag carries (no control has a negative id) and the histogram's size */
+        const val TONEEQ_OP = "toneequal"
+        const val CURVE_CONTROL = -1
+        const val HISTOGRAM_SIZE = 512
         val GEOMETRY_AFTER_CROP = setOf("borders")
 
         /** Brief P3a deliverable 4: rotate and perspective, its rotation; orientation (flip) for the straightening line. */

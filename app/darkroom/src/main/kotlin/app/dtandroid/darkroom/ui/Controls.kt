@@ -50,6 +50,7 @@ import app.dtandroid.engine.api.paramAt
 import app.dtandroid.schema.Binding
 import app.dtandroid.schema.ComputedList
 import app.dtandroid.schema.ComputedToggle
+import app.dtandroid.darkroom.ui.graph.CurveEditorHost
 import app.dtandroid.schema.Control
 import app.dtandroid.schema.ModuleSchema
 import app.dtandroid.schema.ParamRuleInputs
@@ -159,7 +160,9 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
             c.id in ctx.module.pickerMarks -> PickerButtonRow(c, ctx)
             // brief P3e-b: the band editor stands in for desktop's graph of contrast equalizer, colour zones and colour equalizer
             c.id == BandHost.graphId(ctx.module) -> BandEditor(ctx)
-            else -> {} // other buttons and graphs: later packages
+            // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
+            c.kind == "graph" -> CurveEditorHost(c, ctx)
+            else -> {}
         }
     }
 }
