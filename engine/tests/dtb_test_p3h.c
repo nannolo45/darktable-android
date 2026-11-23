@@ -143,8 +143,8 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
     MUST(p3h_shoot(NULL, &b));
     if(k == 0) save_render(outdir, "p3h_first_after_reload");
     char what[128];
-    snprintf(what, sizeof(what), "diag: %s: after history_goto(1) and back vs before", vnames[k]);
-    p3h_compare(what, &b, &a);
+    snprintf(what, sizeof(what), "%s: after history_goto(1) and back vs before", vnames[k]);
+    CHECK(!p3h_compare(what, &b, &a), "%s: the picture changed", what);
     p3h_free(&a);
     p3h_free(&b);
     MUST(dtb_close());

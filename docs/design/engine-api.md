@@ -643,6 +643,11 @@ library is written, the end moved, the develop object reloaded (the private libr
 module of the open item is found again after the reload, so the next change still merges into it. A first version
 moved only the module state in memory (`dt_dev_pop_history_items_ext` there and back); C28 showed its pictures
 differ from `history_goto`'s from some positions on, so it was replaced (P3h report).
+Shapes kept across the reload (C28 fix, branch c28-live-render-fix): darktable reads back only the masks of the
+items below the history end (`dt_masks_read_masks_history`: `num < history_end`), so a reload at a lower end left
+the items above it without their shapes and the next library write dropped them; `history_goto` and back lost a
+drawn mask this way. The bridge now keeps every item's shapes across that reload (history.c
+`_reload_keeping_forms`).
 In a read-only session `n` counts the rows `history()` lists (unknown items included), as `history_goto` does.
 
 Pickers, histogram and coordinates do not take `history_end` (their options are 6.1's; the member is ignored there).
