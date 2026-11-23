@@ -21,8 +21,11 @@
 #include "common/image_cache.h"
 #include "common/iop_order.h"
 #include "common/tags.h"
+#include "develop/masks.h"
 
 #include <string.h>
+
+static void _reload_keeping_forms(void);
 
 #define DTB_UNDO_MAX 100  // the specification asks for at least 50
 
@@ -414,11 +417,46 @@ int dtb_history_goto(int end)
   dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
   dt_dev_write_history(&dtb_S.dev);
-  dtb__reload_dev();
+  _reload_keeping_forms();
   if(dtb_S.rows) dtb_S.rows_end = row_end;
   dtb_S.merge_module = NULL;
   dt_dev_history_seal(&dtb_S.dev, TRUE);
   return DTB_OK;
+}
+
+/* The library's masks of the items above the history end are not read back:
+ * dt_masks_read_masks_history() (develop/masks/masks.c) selects "num <
+ * history_end". A reload at a lower end (history_goto, P3h's history_end
+ * renders) therefore left those items without their shapes, and the next
+ * write lost them for good: test C28 found a drawn mask gone after
+ * history_goto(1) and back (the picture then matched darktable-cli of the
+ * XMP written after it, not of the one before). Reload for an unchanged
+ * history: the shapes of every item are kept across the reload. */
+static void _reload_keeping_forms(void)
+{
+  const guint n = g_list_length(dtb_S.dev.history);
+  GList **kept = g_new0(GList *, MAX(1, n));
+  guint i = 0;
+  for(GList *h = dtb_S.dev.history; h; h = g_list_next(h), i++)
+  {
+    const dt_dev_history_item_t *hist = h->data;
+    if(hist->forms) kept[i] = dt_masks_dup_forms_deep(hist->forms, NULL);
+  }
+  dtb__reload_dev();
+  const gboolean same = g_list_length(dtb_S.dev.history) == n;
+  i = 0;
+  for(GList *h = dtb_S.dev.history; h && i < n; h = g_list_next(h), i++)
+  {
+    dt_dev_history_item_t *hist = h->data;
+    if(same && !hist->forms && kept[i])
+      hist->forms = kept[i];
+    else if(kept[i])
+      g_list_free_full(kept[i], (GDestroyNotify)dt_masks_free_form);
+    kept[i] = NULL;
+  }
+  for(; i < n; i++)
+    if(kept[i]) g_list_free_full(kept[i], (GDestroyNotify)dt_masks_free_form);
+  g_free(kept);
 }
 
 /* P3h (engine-api.md 8): a render at another history position. The first
@@ -436,7 +474,7 @@ static void _history_move(const int dev_end)
   dtb_S.dev.iop = g_list_sort(dtb_S.dev.iop, dt_sort_iop_by_order);
   dt_pthread_mutex_unlock(&dtb_S.dev.history_mutex);
   dt_dev_write_history(&dtb_S.dev);
-  dtb__reload_dev();
+  _reload_keeping_forms();
 }
 
 int dtb__history_at_begin(const dtb_render_opts_t *o, dtb_history_at_t *h)
