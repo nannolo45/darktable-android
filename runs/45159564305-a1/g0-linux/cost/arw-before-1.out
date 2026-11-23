@@ -1,0 +1,111 @@
+darktable 04477d3 [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> DISABLED - GPU acceleration is NOT available
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+RESULT engine 04477d3
+     0.5842 [xmp_import] creating tag: Folk
+     0.5845 [xmp_import] creating tag: darktable|exported
+     0.5847 [xmp_import] creating tag: darktable|printed|PDF
+     0.5858 [dt_dev_load_raw] loading the image. took 0.000 secs (0.000 CPU)
+     0.6481 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     0.6508 [dev_pixelpipe] took 0.003 secs (0.008 CPU) [export] processed `rawprepare' on CPU
+     0.6515 [dev_pixelpipe] took 0.001 secs (0.001 CPU) [export] processed `temperature' on CPU
+     0.6613 [dev_pixelpipe] took 0.010 secs (0.036 CPU) [export] processed `highlights' on CPU
+     0.6942 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.010 secs (0.037 CPU)
+     0.6958 [dev_pixelpipe] took 0.034 secs (0.124 CPU) [export] processed `demosaic' on CPU
+     0.6961 [dev_pixelpipe] took 0.000 secs (0.001 CPU) [export] processed `colorin' on CPU
+     0.6974 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.001 secs (0.004 CPU) [colorout]
+     0.6980 [dev_pixelpipe] took 0.002 secs (0.008 CPU) [export] processed `colorout' on CPU
+RESULT cost preview size 320x213
+DTB_STEP unchanged 320 0
+DTB_STEP unchanged 320 1
+DTB_STEP unchanged 320 2
+DTB_STEP unchanged 320 3
+DTB_STEP unchanged 320 4
+DTB_STEP unchanged 320 5
+DTB_STEP unchanged 320 6
+DTB_STEP unchanged 320 7
+DTB_STEP unchanged 320 8
+RESULT cost unchanged size 320: change 0.00 ms, preview render 32.81 ms (medians of 9; min 32.57 max 33.50)
+DTB_STEP late_drag 320 0
+DTB_STEP late_drag 320 1
+DTB_STEP late_drag 320 2
+DTB_STEP late_drag 320 3
+DTB_STEP late_drag 320 4
+DTB_STEP late_drag 320 5
+DTB_STEP late_drag 320 6
+DTB_STEP late_drag 320 7
+DTB_STEP late_drag 320 8
+RESULT cost late_drag size 320: change 0.77 ms, preview render 32.68 ms (medians of 9; min 32.58 max 33.42)
+DTB_STEP late_sealed 320 0
+DTB_STEP late_sealed 320 1
+DTB_STEP late_sealed 320 2
+DTB_STEP late_sealed 320 3
+DTB_STEP late_sealed 320 4
+DTB_STEP late_sealed 320 5
+DTB_STEP late_sealed 320 6
+DTB_STEP late_sealed 320 7
+DTB_STEP late_sealed 320 8
+RESULT cost late_sealed size 320: change 1.57 ms, preview render 32.75 ms (medians of 9; min 32.71 max 32.97)
+DTB_STEP early_drag 320 0
+DTB_STEP early_drag 320 1
+DTB_STEP early_drag 320 2
+DTB_STEP early_drag 320 3
+DTB_STEP early_drag 320 4
+DTB_STEP early_drag 320 5
+DTB_STEP early_drag 320 6
+DTB_STEP early_drag 320 7
+DTB_STEP early_drag 320 8
+RESULT cost early_drag size 320: change 0.77 ms, preview render 32.91 ms (medians of 9; min 32.67 max 35.43)
+DTB_STEP late_drag 1024 0
+     2.0278 [dev_pixelpipe] took 0.010 secs (0.037 CPU) [export] processed `highlights' on CPU
+     2.0619 [resample_plain] plan 0.000 secs (0.000 CPU) resample 0.011 secs (0.038 CPU)
+     2.0639 [dev_pixelpipe] took 0.036 secs (0.127 CPU) [export] processed `demosaic' on CPU
+     2.0668 [dev_pixelpipe] took 0.003 secs (0.007 CPU) [export] processed `colorin' on CPU
+     2.0794 [dt_ioppr_transform_image_colorspace] IOP_CS_RGB-->IOP_CS_LAB took 0.013 secs (0.049 CPU) [colorout]
+     2.0844 [dev_pixelpipe] took 0.018 secs (0.064 CPU) [export] processed `colorout' on CPU
+DTB_STEP late_drag 1024 1
+DTB_STEP late_drag 1024 2
+DTB_STEP late_drag 1024 3
+DTB_STEP late_drag 1024 4
+DTB_STEP late_drag 1024 5
+DTB_STEP late_drag 1024 6
+DTB_STEP late_drag 1024 7
+DTB_STEP late_drag 1024 8
+RESULT cost late_drag size 1024: change 0.85 ms, preview render 34.72 ms (medians of 9; min 34.31 max 100.59)
+DTB_STEP unchanged 1024 0
+DTB_STEP unchanged 1024 1
+DTB_STEP unchanged 1024 2
+DTB_STEP unchanged 1024 3
+DTB_STEP unchanged 1024 4
+DTB_STEP unchanged 1024 5
+DTB_STEP unchanged 1024 6
+DTB_STEP unchanged 1024 7
+DTB_STEP unchanged 1024 8
+RESULT cost unchanged size 1024: change 0.00 ms, preview render 34.35 ms (medians of 9; min 34.15 max 34.51)
+RESULT exit 0

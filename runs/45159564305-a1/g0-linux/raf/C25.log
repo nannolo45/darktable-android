@@ -1,0 +1,26 @@
+PICK area temperature raw mean 0.070497 0.126820 0.079174 min 0.006704 0.011715 0.007940 max 0.089749 0.160820 0.100814
+PICK area exposure rgb mean 0.137370 0.126895 0.135458 min 0.012979 0.011715 0.012981 max 0.175041 0.160820 0.174690
+PICK area global rgb mean 0.521441 0.489356 0.523253 min 0.097841 0.083081 0.104193 max 0.606183 0.565773 0.610012
+PICK corner temperature raw mean 0.071977 0.130946 0.079903 min 0.010478 0.018549 0.011390 max 0.088253 0.167133 0.103807
+PICK corner exposure rgb mean 0.140347 0.130966 0.136754 min 0.016794 0.018549 0.017898 max 0.178315 0.167793 0.177710
+PICK corner global rgb mean 0.529462 0.501951 0.524927 min 0.124057 0.124007 0.131237 max 0.604977 0.579008 0.609627
+PICK point temperature raw mean 0.000000 0.089164 0.000000 min 340282346638528859811704183484516925440.000000 0.089164 340282346638528859811704183484516925440.000000 max -340282346638528859811704183484516925440.000000 0.089164 -340282346638528859811704183484516925440.000000
+PICK point exposure rgb mean 0.101644 0.089164 0.097277 min 0.101644 0.089164 0.097277 max 0.101644 0.089164 0.097277
+PICK point global rgb mean 0.453768 0.403472 0.447705 min 0.453768 0.403472 0.447705 max 0.453768 0.403472 0.447705
+RESULT wb_area: temperature wb_from_area, picked mean 0.069921 0.125759 0.078557, max difference 0: red 1.79857135 = 1.79857135 (was 2.07637644) green 1 = 1 (was 1) blue 1.60086608 = 1.60086608 (was 1.47108078) various 0.125758663 = 0.125758663 (was nan)
+RESULT wb_corner: temperature wb_from_area, picked mean 0.072430 0.131541 0.080279, max difference 0: red 1.81611443 = 1.81611443 (was 2.07637644) green 1 = 1 (was 1) blue 1.63855267 = 1.63855267 (was 1.47108078) various 0.131541416 = 0.131541416 (was nan)
+RESULT exposure_correction_50: exposure spot, picked mean 0.146175 0.126862 0.116406, max difference 0: exposure 0.470024288 = 0.470024288 (was 0.699999988) black -0.000244140625 = -0.000244140625 (was -0.000244140625)
+RESULT exposure_correction_30: exposure spot, picked mean 0.166696 0.145910 0.130977, max difference 0: exposure -1.29938078 = -1.29938078 (was 0.699999988) black -0.000244140625 = -0.000244140625 (was -0.000244140625)
+RESULT exposure_measure: exposure spot, picked mean 0.146175 0.126862 0.116406, max difference 0: exposure 0.699999988 = 0.699999988 (was 0.699999988) black -0.000244140625 = -0.000244140625 (was -0.000244140625) answer lightness 53.601799 = 53.601799
+RESULT levels_black_point: rgblevels pick, picked mean 0.160195 0.147327 0.157174, max difference 0: levels[0][0] 0.16019541 = 0.16019541 (was 0) levels[0][1] 0.5 = 0.5 (was 0.5) levels[0][2] 1 = 1 (was 1)
+RESULT levels_black_area: rgblevels pick, picked mean 0.221832 0.213796 0.219590, max difference 0: levels[0][0] 0.221832156 = 0.221832156 (was 0) levels[0][1] 0.5 = 0.5 (was 0.5) levels[0][2] 1 = 1 (was 1)
+RESULT levels_grey_point: rgblevels pick, picked mean 0.160195 0.147327 0.157174, max difference 0: levels[0][0] 0 = 0 (was 0) levels[0][1] 0.16019541 = 0.16019541 (was 0.5) levels[0][2] 1 = 1 (was 1)
+RESULT levels_grey_area: rgblevels pick, picked mean 0.221832 0.213796 0.219590, max difference 0: levels[0][0] 0 = 0 (was 0) levels[0][1] 0.221832156 = 0.221832156 (was 0.5) levels[0][2] 1 = 1 (was 1)
+RESULT levels_white_point: rgblevels pick, picked mean 0.160195 0.147327 0.157174, max difference 0: levels[0][0] 0 = 0 (was 0) levels[0][1] 0.5 = 0.5 (was 0.5) levels[0][2] 0.500000119 = 0.500000119 (was 1)
+RESULT levels_white_area: rgblevels pick, picked mean 0.221832 0.213796 0.219590, max difference 0: levels[0][0] 0 = 0 (was 0) levels[0][1] 0.5 = 0.5 (was 0.5) levels[0][2] 0.500000119 = 0.500000119 (was 1)
+RESULT rgbcurve_channel_0_linked: rgbcurve set_nodes_from_area, picked mean 0.221840 0.213803 0.219598, max difference 0: curve_num_nodes[0] 6 = 6 (was 2) curve_type[0] 2 = 2 (was 2) curve_nodes[0][0].x 0 = 0 (was 0) curve_nodes[0][0].y 0 = 0 (was 0)
+RESULT rgbcurve_channel_1_independent_compensated: rgbcurve set_nodes_from_area, picked mean 0.254518 0.247844 0.245876, max difference 0: curve_num_nodes[1] 6 = 6 (was 2) curve_type[1] 2 = 2 (was 2) curve_nodes[1][0].x 0 = 0 (was 0) curve_nodes[1][0].y 0 = 0 (was 0)
+RESULT calibration_neutral: channelmixerrgb illuminant_from_area, picked mean 0.233406 0.211301 0.186265, max difference 0: x 0.367603809 = 0.367603809 (was 0.366296321) y 0.369135737 = 0.369135737 (was 0.381866425) illuminant 7 = 7 (was 2) temperature 4328.93311 = 4328.93311 (was 4421.98438)
+RESULT calibration_target: channelmixerrgb spot, picked mean 0.267855 0.244876 0.208456, max difference 0: x 0.305588931 = 0.305588931 (was 0.366296321) y 0.352358282 = 0.352358282 (was 0.381866425) illuminant 7 = 7 (was 2) temperature 6666.64941 = 6666.64941 (was 4421.98438)
+RESULT calibration_target_mixing: channelmixerrgb spot, picked mean 0.233406 0.211301 0.186265, max difference 0: x 0.304404318 = 0.304404318 (was 0.366296321) y 0.347949654 = 0.347949654 (was 0.381866425) illuminant 7 = 7 (was 2) temperature 6762.62354 = 6762.62354 (was 4421.98438)
+RESULT all cases: largest difference 0 (bound 1e-06), 0 failures

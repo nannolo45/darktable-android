@@ -1,0 +1,8 @@
+RESULT engine 04477d3
+RESULT cancel 0 after 0.051 s: returned -8, 0.022 s after the cancel (render alone takes 0.158 s)
+RESULT cancel 1 after 0.048 s: returned -8, 0.025 s after the cancel (render alone takes 0.158 s)
+RESULT cancel 2 after 0.095 s: returned 0, -0.023 s after the cancel (render alone takes 0.158 s)
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test.c:897: render 2 not cancelled (returned 0) [render cancelled]
+RESULT cancel_worst_latency_s 0.025
+RESULT after_cancel_vs_reference max 0 mean 0.0000
+RESULT exit 1
