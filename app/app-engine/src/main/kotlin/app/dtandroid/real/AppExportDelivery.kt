@@ -8,7 +8,12 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import app.dtandroid.darkroom.Delivered
 import app.dtandroid.darkroom.ExportDelivery
+import app.dtandroid.darkroom.LplOffer
+import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.lpl.LplAgent
+import kotlinx.coroutines.flow.Flow
 import app.dtandroid.darkroom.ExportTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,19 +29,40 @@ class AppExportDelivery(private val app: Application) : ExportDelivery {
     override val scratch: File = File(app.cacheDir, "export")
     private val shared = File(app.cacheDir, "shared")
 
-    override suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget): String = withContext(Dispatchers.IO) {
+    override suspend fun deliver(file: File, name: String, mime: String, target: ExportTarget, item: SeriesItem, progress: (Float) -> Unit): Delivered = withContext(Dispatchers.IO) {
         when (target) {
-            ExportTarget.DEVICE -> toPictures(file, name, mime).toString()
+            ExportTarget.DEVICE -> Delivered(toPictures(file, name, mime).toString())
+            ExportTarget.LPL -> {
+                // brief P3i (R18): the photo's own server, its id and version; a server that does not answer keeps it for the next sync
+                val (origin, id) = AppHost.lplPhotoOf(item) ?: throw IOException("this photo is not from LightPhotoLibrary")
+                when (val r = AppHost.agent.sendExport(origin, id, item.version, name, file, progress)) {
+                    is LplAgent.ExportOutcome.Sent -> Delivered(r.path)
+                    LplAgent.ExportOutcome.Queued -> Delivered("waiting for the next sync", queued = true)
+                }
+            }
             ExportTarget.SHARE -> {
                 shared.mkdirs()
                 // files shared by an earlier export are dropped after an hour
                 shared.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > KEEP_SHARED_MS }?.forEach { it.delete() }
                 val out = File(shared, name)
                 file.copyTo(out, overwrite = true)
-                FileProvider.getUriForFile(app, "${app.packageName}.exports", out).toString()
+                Delivered(FileProvider.getUriForFile(app, "${app.packageName}.exports", out).toString())
             }
         }
     }
+
+    /** brief P3i: LightPhotoLibrary is on offer for a photo of a server whose last heartbeat answer says `exports` */
+    override fun lplOffer(item: SeriesItem?): LplOffer {
+        val (origin, _) = item?.let { AppHost.lplPhotoOf(it) } ?: return LplOffer.Unavailable("this photo did not come from LightPhotoLibrary")
+        if (AppHost.servers.get(origin) == null) return LplOffer.Unavailable("its server is no longer in the list")
+        return when (AppHost.agent.receivesExports(origin)) {
+            true -> LplOffer.Available
+            false -> LplOffer.Unavailable("this server cannot receive exports yet: update LightPhotoLibrary")
+            null -> LplOffer.Unavailable("the server has not answered yet: try again in a moment")
+        }
+    }
+
+    override val lplOfferChanges: Flow<Int> get() = AppHost.agent.capsChanged
 
     private fun toPictures(file: File, name: String, mime: String): Uri {
         val cr = app.contentResolver

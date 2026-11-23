@@ -2566,7 +2566,7 @@ class DarkroomController(
     // ------------------------------------------------------------------ brief P3i: a series exported without the darkroom
 
     /** What [withExportSessions] gives its block: an export of one photo of the series on a session of its own. */
-    fun interface ExportSession {
+    interface ExportSession {
         suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit)
     }
 
@@ -2590,7 +2590,10 @@ class DarkroomController(
                     _state.update { it.copy(working = "exporting the series…", workingProgress = null) }
                 }
                 try {
-                    block(ExportSession { item, path, options, onProgress -> exportSessionLocked(item, path, options, onProgress) })
+                    block(object : ExportSession {
+                        override suspend fun export(item: SeriesItem, path: String, options: app.dtandroid.engine.api.ExportOptions, onProgress: (app.dtandroid.engine.api.ExportProgress) -> Unit) =
+                            exportSessionLocked(item, path, options, onProgress)
+                    })
                 } finally {
                     if (home != null) {
                         _state.update { it.copy(working = null) }

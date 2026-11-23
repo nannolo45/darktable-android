@@ -94,6 +94,9 @@ data class ExportSettings(
     }
 }
 
+/** Brief P3i: what the export's notification says. [percent] is the whole job's share done. */
+data class ExportNotice(val title: String, val text: String, val percent: Int, val ongoing: Boolean)
+
 enum class ExportPhase { RUNNING, DONE, CANCELLED, FAILED }
 
 /** The export under way or just ended. [finished] counts photos exported and delivered, exactly. */
@@ -149,6 +152,15 @@ data class ExportJob(
     /** a series: the line under the current photo's bar */
     val photoLine: String get() = "$step · $photoPercent %"
 
+    /** brief P3i: the Android notification of the job (the foreground service shows it): title, text and the bar */
+    val notice: ExportNotice get() = when (phase) {
+        ExportPhase.RUNNING -> ExportNotice(
+            title = if (series) "Exporting photo $number of $total" else "Exporting $fileName",
+            text = if (series) "$fileName · $step" else "$step · $percent %",
+            percent = percent, ongoing = true)
+        else -> ExportNotice(title = label, text = message ?: "", percent = 100, ongoing = false)
+    }
+
     /** the darkroom's top-bar indicator */
     val short: String get() = when (phase) {
         ExportPhase.RUNNING -> if (series) "export $number/$total · $percent %" else "export $percent %"
@@ -203,8 +215,8 @@ interface ExportDelivery {
     /** brief P3i: the LightPhotoLibrary destination for [item]; by default not on offer */
     fun lplOffer(item: SeriesItem?): LplOffer = LplOffer.Unavailable("this build cannot send to LightPhotoLibrary")
 
-    /** brief P3i: ticks when the answer of [lplOffer] may have changed (a heartbeat answered) */
-    val lplOfferChanges: kotlinx.coroutines.flow.Flow<Unit> get() = kotlinx.coroutines.flow.emptyFlow()
+    /** brief P3i: a new number whenever the answer of [lplOffer] may have changed (a heartbeat answered) */
+    val lplOfferChanges: kotlinx.coroutines.flow.Flow<Int> get() = kotlinx.coroutines.flow.emptyFlow()
 }
 
 class Exports internal constructor(private val c: DarkroomController) {
@@ -384,9 +396,10 @@ class Exports internal constructor(private val c: DarkroomController) {
             t.finished == 0 -> ExportPhase.FAILED
             else -> ExportPhase.DONE
         }
-        _job.update {
-            it?.copy(phase = phase, finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0,
-                message = stopped ?: t.lastError ?: if (phase == ExportPhase.DONE) "${Words.count(t.finished, "photo")} · ${it.doneText}" else null)
+        _job.update { j ->
+            if (j == null) null
+            else j.copy(phase = phase, finished = t.finished, failed = t.failed, queued = t.queued, photoFraction = 0.0,
+                message = stopped ?: t.lastError ?: if (phase == ExportPhase.DONE) "${Words.count(t.finished, "photo")} · ${j.doneText}" else null)
         }
         if (phase != ExportPhase.FAILED && t.delivered.isNotEmpty() && !cancelled) d.finished(s.target, s.mime, t.delivered)
     }
