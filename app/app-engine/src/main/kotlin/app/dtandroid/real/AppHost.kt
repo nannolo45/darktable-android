@@ -130,6 +130,8 @@ object AppHost {
             c.stylesPresets.settings = FileStyleSettings(File(app.filesDir, "styles/settings.json"))
             // brief P3g: where the export screen's files go (Pictures/darktable, the share sheet)
             c.exports.delivery = AppExportDelivery(app)
+            // brief P3j: the paste mode (append / overwrite) is remembered between starts
+            c.copyPaste.modeFile = File(app.filesDir, "settings/paste-mode.txt")
             // brief P3i: while an export runs the process is kept alive by a foreground service (notification, cancel);
             // an export to LightPhotoLibrary also heartbeats while the app is in the background (step "exporting")
             AppEngine.scope.launch {
