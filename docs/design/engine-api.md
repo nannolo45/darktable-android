@@ -585,6 +585,44 @@ Kotlin: `historyGroupBegin()`, `historyGroupEnd(keep)`, `maskAdd(op, priority, t
 `NativeBridge.p3d`. The stand-in engine keeps them as data (it merges a group's items of one instance as the bridge
 does). Bridge test C26 (`engine/tests/dtb_test_p3d.c`).
 
+### 6.10 Retouch shapes (P3m, 24 Nov 2026)
+
+At the pinned commit retouch (`IOP_FLAGS_NO_MASKS`) has two groups: its own shapes (`blend_params->mask_id`, a
+`DT_MASKS_GROUP | DT_MASKS_CLONE` group without a marker) and its blend mask (`dt_develop_blend_mask_group_id`, which
+6.7 and 6.9 edit). A shape is a circle, ellipse, path or brush form with `DT_MASKS_CLONE` (clone, heal; `source` is
+where the pixels come from, the position of the centre or of the first point) or `DT_MASKS_NON_CLONE` (blur, fill).
+The module's `rt_forms[300]` hold one entry per shape; desktop keeps them in step in `gui_update`
+(`rt_resynch_params`), which the bridge never calls, so every call below runs a copy of it (through the
+introspection, entries moved as blocks) before recording the masks history item.
+
+```c
+int dtb_retouch(const char *op, int priority, char **json);
+int dtb_retouch_add(const char *op, int priority, const char *request_json, char **json);
+int dtb_retouch_shape_set(const char *op, int priority, int id, const char *request_json);
+int dtb_retouch_shape_remove(const char *op, int priority, int id);
+int dtb_retouch_select(const char *op, int priority, int id);
+```
+
+- `dtb_retouch` -> `{ "group", "count" (shapes in the group, every scale), "max": 300, "algorithm", "num_scales",
+  "curr_scale", "merge_from_scale", "blur_type", "blur_radius", "fill_mode", "fill_color", "fill_brightness",
+  "shapes": [ { "id", "index", "type", "name", "clone", "geometry" (6.7, plus "source"), "opacity", "scale",
+  "algorithm", "blur_type", "blur_radius", "fill_mode", "fill_color", "fill_brightness" } ] }`. Names: algorithms
+  `clone heal blur fill`, blur types `gaussian bilateral`, fill modes `erase color`.
+- `dtb_retouch_add` `{ "type", "geometry", "source"?, "algorithm"?, "name"? }`: as `rt_add_shape` and
+  `dt_masks_gui_form_save_creation`; the shape takes the module's algorithm (set first from `algorithm`), its blur or
+  fill settings and `curr_scale`; one history item; the module switched on. `ARG`: clone or heal without a source, a
+  gradient; `RANGE`: 300 shapes.
+- `dtb_retouch_shape_set` `{ "geometry"?, "source"?, "opacity"? (clamped 0.05..1), "algorithm"? (clone <-> heal,
+  blur <-> fill only, desktop's ctrl+click), "blur_type"?, "blur_radius"? (blur shapes), "fill_mode"?, "fill_color"?,
+  "fill_brightness"? (fill shapes) }`: settings also become the module's (desktop's controls); with geometry, source
+  or opacity one history item, settings alone merge as `dtb_param_set`.
+- `dtb_retouch_shape_remove`: the shape deleted for good, an emptied group too (`dt_masks_form_remove`).
+- `dtb_retouch_select`: `rt_shape_selection_changed` (the module takes the shape's algorithm and blur or fill
+  settings); no item when nothing changes.
+- 6.7 changes: `dtb_masks` flags retouch shapes and the shape group `"retouch": true` and gives `geometry.source` for
+  clone forms; `dtb_mask_update` and `dtb_mask_delete` refuse retouch shapes (`ARG`, as `dtb_mask_attach` did).
+- Wavelet settings are never written by these calls. JNI: codes 7..11 of the `p3d` entry point.
+
 ## 7. P3g: export progress and cancel (23 Nov 2026)
 
 `export` (2.8) reports nothing while it runs and cannot be stopped. Two calls add both; `export` itself is
