@@ -384,9 +384,10 @@ class SharedSync(
                 if (sent) sendState(b, c, agent)
                 save(o, b)
                 publish(o, b)
-            } catch (e: LplException) {
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 save(o, b)
-                publish(o, b, e.userText)
+                publish(o, b, errorText(e))
                 if (throwing) throw e
             }
         }
@@ -484,13 +485,16 @@ class SharedSync(
                 save(o, b)
                 publish(o, b)
                 b.lastUpdate!!
-            } catch (e: LplException) {
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 save(o, b)
-                publish(o, b, e.userText)
+                publish(o, b, errorText(e))
                 throw e
             }
         }
     }
+
+    private fun errorText(e: Exception) = (e as? LplException)?.userText ?: "styles, presets or layouts could not be read or written here: ${e.message}"
 
     /** Forget the "after an update" line. */
     fun dismissSummary(o: ServerOrigin) {
