@@ -182,6 +182,10 @@ data class DarkroomState(
     /** Brief P3f: "hold to peek": the version held on the sheet, shown over the photo for as long as it is held */
     val peek: RenderedImage? = null,
     val peekNote: String? = null,
+    /** Strip versions: by series index, the versions of each photo that has more than one (the filmstrip's badge) */
+    val stripVersions: Map<Int, List<StripVersion>> = emptyMap(),
+    /** Strip versions: the series index whose versions are shown in the filmstrip; null = none expanded */
+    val stripExpanded: Int? = null,
 ) {
     val current: SeriesItem? get() = series.items.getOrNull(index)
     val readOnly: Boolean get() = info?.readOnly == true

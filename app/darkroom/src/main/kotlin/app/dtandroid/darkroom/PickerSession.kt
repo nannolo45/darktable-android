@@ -25,6 +25,8 @@ data class PickerState(
     val outside: Boolean = false,
     /** brief P3e-b: the picked area's statistics at the module's input, in the module's picker space (colour zones: LCh) */
     val moduleInput: PickStats? = null,
+    /** the same area at the module's output (tone curve and rgb curve: the "in → out" line on the graph) */
+    val moduleOutput: PickStats? = null,
     /** picks finished since the picker was armed (a gesture's pick has landed when this has grown; tests wait on it) */
     val picks: Int = 0,
 )
