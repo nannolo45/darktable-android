@@ -121,6 +121,7 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   GString *all_nums = g_string_new(NULL);
   int inst_num = -1, unsafe = 0;
   gboolean inst_mask = FALSE;
+  int inst_prio = 0;
   for(guint i = 0; i < json_array_get_length(ia); i++)
   {
     JsonObject *o = json_array_get_object_element(ia, i);
@@ -130,16 +131,18 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
     g_string_append_printf(all_nums, "%s%d", all_nums->len ? "," : "", (int)json_object_get_int_member(o, "num"));
     // the instance's newest entry: desktop's list (dt_history_get_items) groups by operation, instance name
     // and priority, so an instance whose name changed (an automatic preset's name) is listed twice
-    if(!strcmp(op, "exposure") && json_object_get_int_member(o, "priority") == 1
-       && json_object_get_int_member(o, "num") > inst_num)
+    // the new instance has the highest priority (the test XMP may have a second instance already)
+    const int pr = (int)json_object_get_int_member(o, "priority");
+    if(!strcmp(op, "exposure") && (pr > inst_prio || (pr == inst_prio && json_object_get_int_member(o, "num") > inst_num)))
     {
+      inst_prio = pr;
       inst_num = (int)json_object_get_int_member(o, "num");
       inst_mask = json_object_get_boolean_member(o, "mask");
     }
     if(!strcmp(op, "temperature") || !strcmp(op, "rawprepare"))
       CHECK(!json_object_get_boolean_member(o, "safe"), "%s is listed as safe to copy", op);
   }
-  fprintf(stdout, "RESULT items %u, unsafe %d, new instance num %d\n", json_array_get_length(ia), unsafe, inst_num);
+  fprintf(stdout, "RESULT items %u, unsafe %d, new instance num %d priority %d\n", json_array_get_length(ia), unsafe, inst_num, inst_prio);
   CHECK(inst_num >= 0, "the new exposure instance is not listed");
   CHECK(inst_mask, "the new exposure instance is not listed with its mask");
   json_node_unref(items);
@@ -222,7 +225,7 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   {
     double ev = NAN, ev1 = NAN;
     module_info("exposure", 0, &ev, NULL, 0, NULL);
-    module_info("exposure", 1, &ev1, NULL, 0, NULL);
+    module_info("exposure", inst_prio, &ev1, NULL, 0, NULL);
     fprintf(stdout, "RESULT C exposure 0: %.4f (was %.4f), new instance: %.4f\n", ev, c_ev0, ev1);
     CHECK(fabs(ev - c_ev0) < 1e-6, "append changed C's own exposure: %.6f, was %.6f", ev, c_ev0);
     CHECK(fabs(ev1 + 0.5) < 1e-4, "the pasted instance has exposure %.6f, expected -0.5", ev1);
@@ -261,7 +264,7 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_close());
     MUST(dtb_open(c, cx2));
     gchar *h3 = get_history_str();
-    CHECK(!strcmp(h2, h3), "the pasted photo's XMP does not reopen the same history");
+    CHECK(!strcmp(h2, h3), "the pasted photo's XMP does not reopen the same history:\nbefore: %s\nafter:  %s", h2, h3);
     g_free(h0); g_free(h1); g_free(h2); g_free(h3);
     free(cx2);
   }
