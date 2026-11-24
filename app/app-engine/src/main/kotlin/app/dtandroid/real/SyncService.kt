@@ -80,9 +80,10 @@ class SyncService : Service() {
             }
             beats++
             val steps = AppHost.agent.steps.value.values
-            nm.notify(NOTIFICATION_ID, build(this, SyncNotice.of(
-                SyncNotice.sum(AppHost.agent.batches.value.values), counter.total, counter.done, w0.exports,
-                steps.firstOrNull { it.progress != null }?.progress)))
+            val notice = SyncNotice.of(SyncNotice.sum(AppHost.agent.batches.value.values), counter.total, counter.done, w0.exports,
+                steps.firstOrNull { it.progress != null }?.progress)
+            titles += notice.title
+            nm.notify(NOTIFICATION_ID, build(this, notice))
             delay(AppHost.HEARTBEAT_MS)
             val passRunning = pass?.isActive == true
             if (passWasRunning && !passRunning) {
@@ -102,6 +103,7 @@ class SyncService : Service() {
                 BackgroundSync.Next.RUN -> continue
                 else -> {
                     trace("stopping: $next ($w)")
+                    lastStop = next.name
                     // a last heartbeat, so LPL sees the final states
                     runCatching { AppHost.serviceHeartbeat() }
                     if (next == BackgroundSync.Next.STOP_HANDOVER) SyncJob.schedule(this)
@@ -116,6 +118,7 @@ class SyncService : Service() {
     /** Android 15 ends a dataSync service after its daily time limit: hand the rest to the background job. */
     override fun onTimeout(startId: Int, fgsType: Int) {
         run?.cancel()
+        lastStop = "TIMEOUT"
         SyncJob.schedule(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -135,9 +138,13 @@ class SyncService : Service() {
         private const val TAG = "dt-android"
         private const val PASS_BEATS = 5
 
-        /** Whether the service runs now (for tests and the trace). */
+        /** Whether the service runs now, how often it was created, why it last stopped, its notification titles (tests, trace). */
         @Volatile var running = false
             private set
+        val created = java.util.concurrent.atomic.AtomicInteger(0)
+        @Volatile var lastStop: String? = null
+            private set
+        val titles: MutableSet<String> = java.util.Collections.synchronizedSet(LinkedHashSet())
 
         private fun trace(s: String) = android.util.Log.i(TAG, "lpl sync service: $s")
 
@@ -188,5 +195,6 @@ class SyncService : Service() {
     override fun onCreate() {
         super.onCreate()
         running = true
+        created.incrementAndGet()
     }
 }
