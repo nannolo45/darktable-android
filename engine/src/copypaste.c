@@ -104,13 +104,24 @@ void dtb__clipboard_drop(void)
 /* a new clipboard image for the photo `src` */
 static dt_imgid_t _clipboard_new(const dt_imgid_t src)
 {
+  // one clipboard image for the engine's life, overwritten by every copy: C29 on arw lost a multi-instance in a
+  // paste after earlier copies had removed and made clipboard images (dt_image_remove, then a new image that may
+  // take the removed one's id), and kept it in a fresh process (reference variant "bridge")
+  if(dt_is_valid_imgid(g_clip))
+  {
+    sqlite3_stmt *stmt;
+    DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "SELECT 1 FROM main.images WHERE id = ?1 AND version = ?2",
+                                -1, &stmt, NULL);
+    DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, g_clip);
+    DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, CLIP_VERSION);
+    const gboolean there = sqlite3_step(stmt) == SQLITE_ROW;
+    sqlite3_finalize(stmt);
+    if(there) return g_clip;
+  }
   _remove_clipboard_images();
   g_clip = NO_IMGID;
-  const dt_imgid_t id = dt_image_duplicate_with_version(src, CLIP_VERSION);
-  if(!dt_is_valid_imgid(id)) return NO_IMGID;
-  // not renamed (a first version renamed it; C29 on arw then lost a multi-instance that desktop's path keeps,
-  // and a clipboard image that is not renamed does not): photos are looked up without it (dtb__image_id)
-  return id;
+  // not renamed: photos are looked up without it (dtb__image_id)
+  return dt_image_duplicate_with_version(src, CLIP_VERSION);
 }
 
 static int _snap_max(const dt_imgid_t imgid)
