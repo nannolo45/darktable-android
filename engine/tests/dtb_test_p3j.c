@@ -120,6 +120,7 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   GHashTable *safe = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   GString *all_nums = g_string_new(NULL);
   int inst_num = -1, unsafe = 0;
+  gboolean inst_mask = FALSE;
   for(guint i = 0; i < json_array_get_length(ia); i++)
   {
     JsonObject *o = json_array_get_object_element(ia, i);
@@ -127,16 +128,20 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
     if(json_object_get_boolean_member(o, "safe")) g_hash_table_add(safe, g_strdup(op));
     else unsafe++;
     g_string_append_printf(all_nums, "%s%d", all_nums->len ? "," : "", (int)json_object_get_int_member(o, "num"));
-    if(!strcmp(op, "exposure") && json_object_get_int_member(o, "priority") == 1)
+    // the instance's newest entry: desktop's list (dt_history_get_items) groups by operation, instance name
+    // and priority, so an instance whose name changed (an automatic preset's name) is listed twice
+    if(!strcmp(op, "exposure") && json_object_get_int_member(o, "priority") == 1
+       && json_object_get_int_member(o, "num") > inst_num)
     {
       inst_num = (int)json_object_get_int_member(o, "num");
-      CHECK(json_object_get_boolean_member(o, "mask"), "the new exposure instance is not listed with its mask");
+      inst_mask = json_object_get_boolean_member(o, "mask");
     }
     if(!strcmp(op, "temperature") || !strcmp(op, "rawprepare"))
       CHECK(!json_object_get_boolean_member(o, "safe"), "%s is listed as safe to copy", op);
   }
   fprintf(stdout, "RESULT items %u, unsafe %d, new instance num %d\n", json_array_get_length(ia), unsafe, inst_num);
   CHECK(inst_num >= 0, "the new exposure instance is not listed");
+  CHECK(inst_mask, "the new exposure instance is not listed with its mask");
   json_node_unref(items);
   // the rows of A that a plain copy takes
   GString *a_safe_ops = p3j_ops(p3j_safe, safe);
@@ -166,7 +171,8 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   g_free(err);
   MUST(dtb_open(b, bx));
   {
-    GString *b_ops = p3j_ops(NULL, NULL);
+    // the unsafe modules (and hidden ones) are B's own, as on desktop: left out of both sides
+    GString *b_ops = p3j_ops(p3j_safe, safe);
     fprintf(stdout, "RESULT B after copy all + overwrite: %d items\n", history_count(NULL));
     CHECK(!strcmp(b_ops->str, a_safe_ops->str), "B's history is not A's without the unsafe modules:\nA:\n%sB:\n%s",
           a_safe_ops->str, b_ops->str);
@@ -232,7 +238,12 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   }
   save_render(outdir, "p3j_c_append");
 
-  // 4. paste onto the open photo (C, again: a second instance): one undo step
+  // 4. paste onto the open photo (C): a plain copy of A, appended (A's exposure differs from C's): one undo step
+  MUST(dtb_close());
+  MUST(dtb_open(raw, path_join(outdir, "p3j_a.xmp")));
+  MUST(dtb_history_copy(NULL));
+  MUST(dtb_close());
+  MUST(dtb_open(c, cx));
   {
     gchar *h0 = get_history_str();
     const int n0 = history_count(NULL);

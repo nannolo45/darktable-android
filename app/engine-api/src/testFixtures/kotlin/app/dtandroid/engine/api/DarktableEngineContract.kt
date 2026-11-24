@@ -1041,7 +1041,9 @@ abstract class DarktableEngineContract {
         engine.paramSet("exposure", 0, "exposure", ParamValue.of(0.8))
         engine.historySeal()
         val items = engine.historyCopyItems().items
-        val exp = items.last { it.op == "exposure" && it.priority == 0 }
+        // the instance's newest entry: as desktop's list, an instance listed under two names (an automatic preset's
+        // name, then none) has two entries
+        val exp = items.filter { it.op == "exposure" && it.priority == 0 }.maxBy { it.num }
         assertTrue("exposure is safe to copy", exp.safe)
         items.firstOrNull { it.op == "temperature" }?.let { assertFalse("white balance is not safe to copy", it.safe) }
         expect(EngineError.ARG) { engine.historyCopy(HistorySelection(listOf(99999))) }

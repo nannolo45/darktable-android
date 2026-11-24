@@ -74,7 +74,7 @@ class P3jScenarioTest {
         val evB0 = ev(c)
         c.copyPaste.openPasteSheet()
         c.copyPaste.selectAll(false)
-        val expLine = c.copyPaste.state.value.sheet!!.lines.last { it.item.op == "exposure" && it.item.priority == 0 }
+        val expLine = c.copyPaste.state.value.sheet!!.lines.filter { it.item.op == "exposure" && it.item.priority == 0 }.maxBy { it.item.num }
         c.copyPaste.toggle(expLine.item.num)
         val n0 = c.state.value.history.items.size
         c.copyPaste.paste(PasteMode.APPEND, fromSheet = true)
