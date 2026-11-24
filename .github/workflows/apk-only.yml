@@ -74,7 +74,7 @@ jobs:
         run: |
           cd app
           for attempt in 1 2 3; do
-            "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG $DTA_SF_ARG \
+            "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.abis=arm64-v8a -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG $DTA_SF_ARG \
               :app-engine:assembleArm64Debug 2>&1 | tee /tmp/gradle.log
             rc=${PIPESTATUS[0]}
             [ "$rc" = 0 ] && break
