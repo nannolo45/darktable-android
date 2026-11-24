@@ -24,6 +24,8 @@ class SyncJob : JobService() {
         running = AppEngine.scope.launch {
             // brief P2i: with automatic syncing off the job sends nothing (and is not scheduled again)
             val done = runCatching { AppHost.agent.syncPendingAutomatically() ?: true }.getOrDefault(false)
+            // brief P3l: shared styles, presets and layouts with the same pass (it sends nothing while automatic sync is off)
+            runCatching { AppHost.agent.shared.passAll() }
             // brief P3i: exports that waited for their server go out with the sync (asked for by the user, so also with automatic syncing off)
             val exported = runCatching { AppHost.agent.sendQueuedExports(); AppHost.agent.queuedExports() == 0 }.getOrDefault(false)
             jobFinished(params, !(done && exported))

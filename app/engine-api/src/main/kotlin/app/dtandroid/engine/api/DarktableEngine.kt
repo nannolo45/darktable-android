@@ -178,6 +178,20 @@ interface DarktableEngine {
     /** Create a style from the open image's history: [items] null = every item below the end, else history nums. */
     suspend fun styleCreate(name: String, description: String = "", items: List<Int>? = null, overwrite: Boolean = false)
 
+    // R11 (brief P3l, PLAN.md 4.5): styles and presets shared through LightPhotoLibrary. Bodies as 4.5 defines them.
+
+    /**
+     * Every shared item of the engine's database (user presets of processing modules, every style):
+     * `[{kind, operation, op_version, name, hash, body}]`. The fake engine leaves `hash` out (the app computes it).
+     */
+    suspend fun sharedSnapshot(): kotlinx.serialization.json.JsonArray
+
+    /** Store one preset or style body; false = an operation, module or blend version this engine cannot use (nothing written). */
+    suspend fun sharedApply(body: JsonObject): Boolean
+
+    /** Remove a user preset (name + operation + version) or a style (name). NOT_FOUND if there is none. */
+    suspend fun sharedDelete(kind: String, operation: String, opVersion: Int, name: String)
+
     // 9 (P3j): copy and paste of the history, docs/design/engine-api.md section 9.
 
     /** The open photo's items as desktop's "selective copy" dialog lists them (one per module instance). */

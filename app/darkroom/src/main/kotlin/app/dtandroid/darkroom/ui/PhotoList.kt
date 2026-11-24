@@ -110,6 +110,10 @@ fun PhotoListScreen(
     question: Pair<String, List<HostAction>>? = null,
     /** brief P3j: a job over several photos of the list (a paste of the history), or null */
     batch: PhotoList.BatchLine? = null,
+    /** brief P3l: the line about styles, presets and layouts from LightPhotoLibrary (drawn by the caller), or null */
+    banner: (@Composable () -> Unit)? = null,
+    /** brief P3l: a dot on the settings ("more") button while something waits */
+    menuDot: Boolean = false,
 ) {
     val c = DtTheme.colors
     var sheet by remember { mutableStateOf<Pair<String, List<HostAction>>?>(null) }
@@ -122,9 +126,13 @@ fun PhotoListScreen(
             ) {
                 DtText(title, DtTheme.type.title, c.textStrong, Modifier.weight(1f))
                 for (a in topActions) DtTextButton(a.label, a.run, enabled = a.enabled)
-                if (menu.isNotEmpty()) DtIconButton(DtIcon.More, "more", c.text, { sheet = title to menu }, iconSize = DtTheme.sizes.iconLarge)
+                if (menu.isNotEmpty()) Box {
+                    DtIconButton(DtIcon.More, "more", c.text, { sheet = title to menu }, iconSize = DtTheme.sizes.iconLarge)
+                    if (menuDot) WaitingDot()
+                }
             }
             Divider()
+            banner?.invoke()
             batch?.let { b -> b.label?.let { BatchProgress(it, b.fraction, onCancel = b.onStop, cancelLabel = if (b.fraction != null) "stop" else "close") } }
             for (m in messages) Note(m)
             question?.let { (text, answers) ->

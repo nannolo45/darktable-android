@@ -450,6 +450,35 @@ int dtb_style_delete(const char *name);
 int dtb_style_create(const char *name, const char *description, const char *items_json, int overwrite);
 
 /* ---------------------------------------------------------------------- */
+/* R11 styles and presets shared through LightPhotoLibrary (P3l, PLAN.md  */
+/* 4.5, request R11). Bodies and hashes exactly as 4.5; layouts are the    */
+/* app's own (layouts.json) and never pass through here.                   */
+
+/* Every shared item of the app's data.db: user presets (writeprotect = 0)
+ * of processing modules, and every style ->
+ * [ { "kind": "preset" | "style", "operation", "op_version", "name",
+ *     "hash", "body": {...} } ]. Characters outside the BMP are written as
+ * \u surrogate pairs (valid JSON, same text). */
+int dtb_shared_snapshot(char **json);
+/* Store one body (a JSON object as 4.5): a preset row is inserted or
+ * replaces the one with the same name + operation + op_version
+ * (writeprotect = 0; a built-in one of that key: DTB_E_ARG); a style
+ * replaces the style of that name and its items. One transaction. ->
+ * { "usable": true | false }: false = an operation the engine does not
+ * have or a module or blend version newer than the engine's; nothing is
+ * written then (dtb_last_error says why). Body columns the table does not
+ * have are ignored; table columns the body lacks are NULL. A body that is
+ * not a preset or style, or a value of the wrong form: DTB_E_ARG. */
+int dtb_shared_apply(const char *body_json, char **json);
+/* Remove a user preset (kind "preset": name + operation + op_version) or
+ * a style (kind "style": name). DTB_E_NOT_FOUND if there is none. */
+int dtb_shared_delete(const char *kind, const char *operation, int op_version, const char *name);
+/* The hash of any body (preset, layout or style) ->
+ * { "hash", "canonical" }: for tests and for the app to check its own
+ * computation; needs no initialised engine. */
+int dtb_shared_hash(const char *body_json, char **json);
+
+/* ---------------------------------------------------------------------- */
 /* 9 copy and paste of the history (P3j; engine-api.md 9 has the JSON)     */
 
 /* The items desktop's "selective copy" dialog lists for the open image:

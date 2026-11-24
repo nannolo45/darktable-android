@@ -93,6 +93,7 @@ add_library(dtbridge SHARED
   src/output.c      # XMP and export (2.8)
   src/presets.c     # presets (P1b, 5.2)
   src/styles.c      # styles (P1b, 5.3)
+  src/shared.c      # styles and presets shared through LightPhotoLibrary (P3l, PLAN.md 4.5)
   src/copypaste.c   # copy and paste of the history (P3j, 9)
   src/times.c       # per-module times of the last render (P1b, 5.6)
   src/maskdisplay.c # mask display for one render (P1b part 2, 6.8)

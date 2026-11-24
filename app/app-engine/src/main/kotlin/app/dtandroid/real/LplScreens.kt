@@ -108,6 +108,15 @@ fun ServerScreen(vm: AppViewModel) = Page {
                     "LightPhotoLibrary for this phone (save the edit to the NAS, remove it from the phone) are still carried out.",
                 muted = true,
             )
+            // brief P3l: styles, presets and module layouts shared through LightPhotoLibrary
+            f.editing?.let { o ->
+                val sv by vm.agent.shared.settings.values.collectAsState()
+                val views by vm.agent.shared.views.collectAsState()
+                vm.agent.capsChanged.collectAsState().value
+                Divider()
+                app.dtandroid.darkroom.ui.SharedSettingsSection(sv, views[o], vm.agent.exports.capsOf(o)?.contains("shared"),
+                    { vm.setSharedSettings(it) }, { vm.openSharedReview(o) })
+            }
             // brief P3k item 6: background syncs need the app to be let alone by Android's battery optimisation
             val exempt by vm.batteryExempt.collectAsState()
             Divider()

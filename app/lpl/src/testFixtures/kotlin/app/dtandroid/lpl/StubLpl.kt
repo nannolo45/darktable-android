@@ -86,6 +86,14 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     @Volatile var r18: Boolean = false
     private val exportSeq = AtomicLong(0)
 
+    /** brief P3l (R11): answer `/api/shared...` from [shared] and list `shared` in `server_caps`; off = an older server */
+    @Volatile var r11: Boolean = false
+    /** device names of agents that never sent a heartbeat (a PC played by a test) */
+    val agentNames: MutableMap<String, String> = Collections.synchronizedMap(HashMap())
+    val shared = StubShared { id ->
+        agentNames[id] ?: heartbeats[id]?.let { Regex("\"name\"\\s*:\\s*\"([^\"]*)\"").find(it)?.groupValues?.get(1) } ?: id
+    }
+
     /** brief P2k: answer as a server with batches (R17): a `cancel` in every heartbeat answer; off = an older server, no `cancel` */
     @Volatile var batch: Boolean = false
     /** brief P2k: what the next answers ask the device to stop (the whole list every time) */
@@ -282,6 +290,31 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                     else -> { record(405); json(out, 405, """{"detail":"Method Not Allowed"}""") }
                 }
             }
+            r11 && p.startsWith("/api/shared") -> sharedRoute(out, req, ::record)
+            else -> { record(404); json(out, 404, """{"detail":"Not Found"}""") }
+        }
+    }
+
+    private fun sharedRoute(out: OutputStream, req: Req, record: (Int) -> Unit) {
+        val p = req.path
+        val agent = req.query["agent"] ?: ""
+        fun body() = kotlinx.serialization.json.Json.parseToJsonElement(req.body.decodeToString()) as kotlinx.serialization.json.JsonObject
+        fun answer(r: Pair<Int, kotlinx.serialization.json.JsonObject>) { record(r.first); json(out, r.first, r.second.toString()) }
+        val one = Regex("^/api/shared/(\\d+)$").find(p)
+        val res = Regex("^/api/shared/(\\d+)/resolve$").find(p)
+        when {
+            req.method == "GET" && p == "/api/shared" -> answer(200 to shared.list(agent, req.query["since"]?.toLongOrNull() ?: 0))
+            req.method == "PUT" && p == "/api/shared/state" -> { shared.state(agent, body()); answer(200 to kotlinx.serialization.json.JsonObject(emptyMap())) }
+            req.method == "PUT" && p == "/api/shared" -> answer(shared.put(agent, body()))
+            req.method == "GET" && one != null -> shared.get(one.groupValues[1].toLong())?.let { answer(200 to it) }
+                ?: answer(404 to kotlinx.serialization.json.JsonObject(mapOf("detail" to kotlinx.serialization.json.JsonPrimitive("no such item"))))
+            req.method == "DELETE" && one != null -> answer(shared.delete(agent, one.groupValues[1].toLong(), req.query["base_rev"]?.toIntOrNull() ?: -1,
+                req.query["changed_at"]?.toDoubleOrNull() ?: System.currentTimeMillis() / 1000.0))
+            req.method == "POST" && res != null -> {
+                val b = body()
+                answer(shared.resolve(res.groupValues[1].toLong(), (b["agent"] as kotlinx.serialization.json.JsonPrimitive).content,
+                    (b["choice"] as kotlinx.serialization.json.JsonPrimitive).content))
+            }
             else -> { record(404); json(out, 404, """{"detail":"Not Found"}""") }
         }
     }
@@ -305,7 +338,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val cancel = if (batch) ""","cancel":{"jobs":[${synchronized(cancelJobs) { cancelJobs.joinToString(",") }}],"photos":[${synchronized(cancelPhotos) { cancelPhotos.joinToString(",") }}]}""" else ""
         // R18: only to a device that announced caps; `exports` only when the stub is a server with R18
         val announced = Regex("\"caps\"\\s*:\\s*\\[[^\\]]*\\]").containsMatchIn(body)
-        val serverCaps = if (announced && r18) ""","server_caps":[${listOfNotNull("\"batch\"".takeIf { batch }, "\"versions\"".takeIf { r17 }, "\"exports\"".takeIf { r18 }).joinToString(",")}]""" else ""
+        val serverCaps = if (announced && (r18 || r11)) ""","server_caps":[${listOfNotNull("\"batch\"".takeIf { batch }, "\"versions\"".takeIf { r17 }, "\"exports\"".takeIf { r18 }, "\"shared\"".takeIf { r11 }).joinToString(",")}]""" else ""
         json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel$serverCaps}""")
     }
 

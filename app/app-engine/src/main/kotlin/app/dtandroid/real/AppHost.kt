@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.real
 
+import app.dtandroid.lpl.SharedSettings
+import app.dtandroid.lpl.SharedPort
+import app.dtandroid.lpl.SharedLocal
+import app.dtandroid.lpl.sharedLocalsOf
+import app.dtandroid.lpl.SharedLayout
+import app.dtandroid.lpl.SharedKey
+import app.dtandroid.lpl.SharedKind
+import kotlinx.serialization.json.JsonObject
 import android.app.Application
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.FileStyleSettings
@@ -198,7 +206,59 @@ object AppHost {
         LplAgent(servers, work, Editor, ::versionText,
             // brief P2i: "sync automatically" (default on), kept with the servers
             settings = SyncSettings(File(app.filesDir, "lpl/settings.json")),
-            trace = { Timeline.mark(it) })
+            trace = { Timeline.mark(it) },
+            // brief P3l: sharing styles, presets and layouts (default on), kept with the servers
+            sharedSettings = SharedSettings(File(app.filesDir, "lpl/shared-settings.json")),
+        ).also { it.shared.port = SharedItems }
+    }
+
+    /**
+     * Brief P3l (R11, PLAN.md 4.5): the phone's shared items. Presets and styles are the engine's (its data.db, through
+     * dtb_shared_*); module layouts are the app's own (layouts.json; the built-in ones are not shared). Applying a layout
+     * adds or replaces it and never changes which one is active.
+     */
+    object SharedItems : SharedPort {
+        private suspend fun ready() { engineReady() ?: throw IllegalStateException("the engine did not start") }
+
+        override suspend fun snapshot(): List<SharedLocal> {
+            ready()
+            val engine = controller.bg("shared items") { e -> sharedLocalsOf(e.sharedSnapshot()) }
+            val mine = layouts.list().filter { !it.writeProtected }.map { SharedLayout.local(it.name, it.params) }
+            return engine + mine
+        }
+
+        override suspend fun apply(body: JsonObject): Boolean {
+            val key = SharedKey.of(body) ?: return false
+            if (key.kind == SharedKind.LAYOUT) {
+                val text = SharedLayout.params(body) ?: return false
+                // a name of a built-in layout is refused by the store: reported as not usable here
+                if (runCatching { layouts.write(key.name, text) }.isFailure) return false
+                runCatching { controller.loadLayout() }
+                return true
+            }
+            ready()
+            val usable = controller.bg("shared apply") { e -> e.sharedApply(body) }
+            if (usable && key.kind == SharedKind.STYLE) runCatching { controller.stylesPresets.loadStyles(force = true) }
+            return usable
+        }
+
+        override suspend fun engineVersion(): String? =
+            (AppEngine.status.value as? AppEngine.Status.Ready)?.let { "${it.info.darktableVersion} ${AppEngine.engineId}" }
+
+        override suspend fun delete(key: SharedKey) {
+            if (key.kind == SharedKind.LAYOUT) {
+                runCatching { layouts.delete(key.name) }
+                runCatching { controller.loadLayout() }
+                return
+            }
+            ready()
+            try {
+                controller.bg("shared delete") { e -> e.sharedDelete(key.kind.json, key.operation, key.opVersion, key.name) }
+            } catch (e: EngineException) {
+                if (e.error != EngineError.NOT_FOUND) throw e
+            }
+            if (key.kind == SharedKind.STYLE) runCatching { controller.stylesPresets.loadStyles(force = true) }
+        }
     }
 
     /** Waits for the engine (the background job may start the process); null when it did not start. */
@@ -406,6 +466,7 @@ object AppHost {
     val openRequests: SharedFlow<OpenRequest> = _openRequests.asSharedFlow()
 
     private var loop: CoJob? = null
+    @Volatile private var sharedPoll: CoJob? = null
     private val jobLock = Mutex()
 
     /**
@@ -428,6 +489,9 @@ object AppHost {
                     val jobs = agent.heartbeat()
                     // brief P3i: exports that waited for their server go out as soon as it answers (looked at every ~10 s)
                     if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) AppEngine.scope.launch { agent.sendQueuedExports() }
+                    // brief P3l: shared styles, presets and layouts: asked at most once a minute while the app is open
+                    // (each pass also sends this phone's own changes, unless automatic sync is off)
+                    if (sharedPoll?.isActive != true) sharedPoll = AppEngine.scope.launch { runCatching { agent.shared.pollIfDue() } }
                     // in the order LPL gave them, one after the other
                     if (jobs.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
                     // brief P3k: a job kept by a background heartbeat (the sync service's, or the last one) that raced
@@ -548,6 +612,8 @@ object AppHost {
             // before the user comes back, the job sends it
             // brief P3i: exports that wait for their server go out with the next sync
             if (agent.pending().isNotEmpty() || controller.openRawPath() != null || agent.queuedExports() > 0) SyncJob.schedule(app)
+            // brief P3l: changes to styles, presets and layouts made in this session go out now
+            runCatching { agent.shared.passAll() }
         }
     }
 

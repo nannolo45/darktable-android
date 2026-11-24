@@ -775,6 +775,9 @@ Java_app_dtandroid_engine_NativeBridge_historySealCode(JNIEnv *env, jclass cls)
 #define DTJ_HISTORY_CLIPBOARD 15
 #define DTJ_HISTORY_PASTE 16
 #define DTJ_HISTORY_PASTE_FILES 17
+#define DTJ_SHARED_SNAPSHOT 18      /* P3l, PLAN.md 4.5 (R11) */
+#define DTJ_SHARED_APPLY 19
+#define DTJ_SHARED_DELETE 20
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -803,6 +806,9 @@ Java_app_dtandroid_engine_NativeBridge_p1b(JNIEnv *env, jclass cls, jint what, j
     case DTJ_HISTORY_CLIPBOARD: r = dtb_history_clipboard(&s); break;
     case DTJ_HISTORY_PASTE: r = dtb_history_paste(a.s); break;
     case DTJ_HISTORY_PASTE_FILES: r = dtb_history_paste_files(a.s, b.s, &s); break;
+    case DTJ_SHARED_SNAPSHOT: r = dtb_shared_snapshot(&s); break;
+    case DTJ_SHARED_APPLY: r = dtb_shared_apply(a.s, &s); break;
+    case DTJ_SHARED_DELETE: r = dtb_shared_delete(a.s, b.s, n1, c.s); break;
     default: break;
   }
   _str_free(&a); _str_free(&b); _str_free(&c);

@@ -55,8 +55,11 @@ class LplClient(
     // ------------------------------------------------------------------ calls of PLAN.md 4.1
 
     /** `POST /api/agents/heartbeat`. Not repeated: the next heartbeat follows anyway. */
-    fun heartbeat(installId: String, deviceName: String, state: AgentState, transfers: JsonArray = JsonArray(emptyList())): HeartbeatAnswer {
-        val body = buildBody(installId, deviceName, state, transfers)
+    fun heartbeat(
+        installId: String, deviceName: String, state: AgentState, transfers: JsonArray = JsonArray(emptyList()),
+        extraCaps: List<String> = emptyList(),
+    ): HeartbeatAnswer {
+        val body = buildBody(installId, deviceName, state, transfers, extraCaps)
         val o = callJson("POST", "/api/agents/heartbeat", body, retries = 0, readTimeoutMs = settings.heartbeatTimeoutMs)
         val jobs = o["jobs"].arr()?.mapNotNull { e ->
             val j = e as? JsonObject ?: return@mapNotNull null
@@ -72,7 +75,7 @@ class LplClient(
         return HeartbeatAnswer(jobs, o["server_time"].num() ?: 0.0, cancel, caps)
     }
 
-    private fun buildBody(installId: String, deviceName: String, state: AgentState, transfers: JsonArray): ByteArray =
+    private fun buildBody(installId: String, deviceName: String, state: AgentState, transfers: JsonArray, extraCaps: List<String>): ByteArray =
         JsonObject(mapOf(
             "id" to kotlinx.serialization.json.JsonPrimitive(installId),
             "name" to kotlinx.serialization.json.JsonPrimitive(deviceName),
@@ -80,7 +83,7 @@ class LplClient(
             "os" to kotlinx.serialization.json.JsonPrimitive("android"),
             "state" to state.toJson(),
             // brief P2k: what this device can do besides the old exchange; an old server ignores both
-            "caps" to kotlinx.serialization.json.buildJsonArray { for (c in CAPS) add(kotlinx.serialization.json.JsonPrimitive(c)) },
+            "caps" to kotlinx.serialization.json.buildJsonArray { for (c in CAPS + extraCaps) add(kotlinx.serialization.json.JsonPrimitive(c)) },
             "transfers" to transfers,
         )).toString().toByteArray()
 
@@ -368,6 +371,15 @@ class LplClient(
         parseObject("$method ${path.substringBefore('?')}", r.body.readBytes())
     }
 
+    /**
+     * Brief P3l (R11): a JSON call whose answer may be one of the [allow]ed error statuses (409 `changed_elsewhere`):
+     * the status and the parsed object. Never repeated (PUT, DELETE and POST change the server).
+     */
+    internal fun callJsonStatus(method: String, path: String, body: ByteArray? = null, allow: Set<Int> = setOf(409)): Pair<Int, JsonObject> =
+        callOnce(method, path, body, if (body != null) "application/json" else null, settings.readTimeoutMs, true, allow = allow) { r ->
+            r.status to parseObject("$method ${path.substringBefore('?')}", r.body.readBytes())
+        }
+
     private fun parseObject(label: String, bytes: ByteArray): JsonObject =
         try {
             json.parseToJsonElement(bytes.decodeToString()) as? JsonObject
@@ -394,7 +406,7 @@ class LplClient(
 
     private fun <T> callOnce(
         method: String, path: String, body: ByteArray?, contentType: String?, readTimeoutMs: Int, withToken: Boolean,
-        bodyFile: File? = null, onSent: ((Long) -> Unit)? = null,
+        bodyFile: File? = null, onSent: ((Long) -> Unit)? = null, allow: Set<Int> = emptySet(),
         handle: (HttpResponse) -> T,
     ): T {
         val headers = HashMap<String, String>()
@@ -404,7 +416,7 @@ class LplClient(
         return try {
             transport.exchange(req) { r ->
                 log?.invoke("${req.label} -> ${r.status} (${ms(t0)} ms)")
-                if (r.status !in 200..299) throw statusError(req.label, r)
+                if (r.status !in 200..299 && r.status !in allow) throw statusError(req.label, r)
                 handle(r)
             }
         } catch (e: LplException) {

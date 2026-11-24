@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.real
 
+import app.dtandroid.darkroom.ui.SharedConflictDialog
+import app.dtandroid.darkroom.ui.SharedDeletionDialog
+import app.dtandroid.darkroom.ui.SharedReviewSheet
 import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -186,9 +189,24 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             ).chooseRow(choosing, "local#${item.fileName}") { choosing = it }
         },
     )
+    // brief P3l: styles, presets and layouts from LightPhotoLibrary: one banner (the first server with something to say)
+    val sharedViews by vm.agent.shared.views.collectAsState()
+    val review by vm.sharedReview.collectAsState()
+    val bannerOf = servers.firstNotNullOfOrNull { srv ->
+        sharedViews[srv.origin]?.takeIf { it.active }?.let { v -> app.dtandroid.darkroom.ui.SharedUi.banner(v)?.let { srv.origin to (it to v.waiting.isNotEmpty()) } }
+    }
+    Box(Modifier.fillMaxSize()) {
     PhotoListScreen(
         title = "dt-android",
         sections = sections,
+        banner = bannerOf?.let { (o, b) ->
+            {
+                app.dtandroid.darkroom.ui.SharedBanner(b.first,
+                    onReview = if (b.second) ({ vm.openSharedReview(o) }) else null,
+                    onDismiss = if (b.second) null else ({ vm.dismissSharedSummary(o) }))
+            }
+        },
+        menuDot = sharedViews.values.any { it.active && it.waiting.isNotEmpty() },
         topActions = choosing?.let { ch ->
             listOf(
                 HostAction("cancel") { choosing = null },
@@ -220,6 +238,20 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             )
         },
     )
+    review?.let { u ->
+        SharedReviewSheet(u.review, { vm.toggleShared(it) }, { vm.openSharedDialog(it) }, { vm.openSharedDialog(it) },
+            { vm.closeSharedReview() }, { vm.runSharedUpdate() })
+        u.dialog?.let { row ->
+            if (row.change == app.dtandroid.lpl.SharedRow.Change.DELETED) {
+                SharedDeletionDialog(row, { vm.chooseDeletion(true) }, { vm.chooseDeletion(false) }, { vm.chooseDeletion(null) })
+            } else {
+                val others = u.review.rows.count { it.change == app.dtandroid.lpl.SharedRow.Change.CONFLICT && it.meta.id != row.meta.id }
+                SharedConflictDialog(row, vm.servers.get(u.origin)?.deviceName ?: "this phone", u.sameForOthers, others,
+                    { vm.toggleSameForOthers() }, { vm.chooseConflict(it) }, { vm.closeSharedDialog() })
+            }
+        }
+    }
+    }
 }
 
 private fun lplRow(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: Step?, thumb: RenderedImage?, origin: ServerOrigin,

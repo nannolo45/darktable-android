@@ -123,6 +123,90 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         refreshLibrary()
         viewModelScope.launch { AppHost.openRequests.collect { onOpenRequest(it) } }
+        // brief P3l: what waited when the app was closed shows at once (the server is asked within the minute)
+        runCatching { agent.shared.showStored() }
+    }
+
+    // ------------------------------------------------------------------ brief P3l: shared styles, presets and layouts
+
+    /** The review sheet with its choices; [dialog] = the conflict or deletion being decided. */
+    data class SharedReviewUi(
+        val origin: ServerOrigin,
+        val review: app.dtandroid.darkroom.ui.SharedUi.Review,
+        val dialog: app.dtandroid.lpl.SharedRow? = null,
+        val sameForOthers: Boolean = false,
+    )
+
+    private val _sharedReview = MutableStateFlow<SharedReviewUi?>(null)
+    val sharedReview: StateFlow<SharedReviewUi?> = _sharedReview.asStateFlow()
+
+    /** Open the review sheet of [o]: new and changed items ticked, conflicts and deletions still to decide. */
+    fun openSharedReview(o: ServerOrigin) {
+        val v = agent.shared.views.value[o] ?: return
+        val take = v.rows.filter { it.change == app.dtandroid.lpl.SharedRow.Change.NEW || it.change == app.dtandroid.lpl.SharedRow.Change.CHANGED }.map { it.meta.id }.toSet()
+        _sharedReview.value = SharedReviewUi(o, app.dtandroid.darkroom.ui.SharedUi.Review(v.rows, take))
+        _screen.value = Screen.LIBRARY
+    }
+
+    fun closeSharedReview() { _sharedReview.value = null }
+
+    private fun review(f: (SharedReviewUi) -> SharedReviewUi) = _sharedReview.update { it?.let(f) }
+
+    fun toggleShared(id: Long) = review { u ->
+        val t = u.review.take
+        u.copy(review = u.review.copy(take = if (id in t) t - id else t + id))
+    }
+
+    fun openSharedDialog(row: app.dtandroid.lpl.SharedRow) = review { it.copy(dialog = row) }
+    fun closeSharedDialog() = review { it.copy(dialog = null) }
+    fun toggleSameForOthers() = review { it.copy(sameForOthers = !it.sameForOthers) }
+
+    /** The conflict dialog's choice; with "same choice for the others", every open conflict of this update gets it ("both" only where it is possible). */
+    fun chooseConflict(choice: String) = review { u ->
+        val row = u.dialog ?: return@review u
+        val targets = if (u.sameForOthers) u.review.rows.filter { it.change == app.dtandroid.lpl.SharedRow.Change.CONFLICT } else listOf(row)
+        val m = HashMap(u.review.conflicts)
+        for (r in targets) {
+            val deletion = r.meta.deleted || r.conflict?.deleted == true
+            m[r.meta.id] = if (choice == "both" && deletion) (if (r == row) "mine" else m[r.meta.id] ?: continue) else choice
+        }
+        u.copy(review = u.review.copy(conflicts = m), dialog = null)
+    }
+
+    /** The deletion dialog's choice: true = delete here too, false = keep on this phone, null = decide later. */
+    fun chooseDeletion(delete: Boolean?) = review { u ->
+        val row = u.dialog ?: return@review u
+        val m = HashMap(u.review.deletions)
+        if (delete == null) m.remove(row.meta.id) else m[row.meta.id] = delete
+        u.copy(review = u.review.copy(deletions = m), dialog = null)
+    }
+
+    /** "Update n": everything chosen is done now; the banner then says what was taken in and what kept waiting. */
+    fun runSharedUpdate() {
+        val u = _sharedReview.value ?: return
+        review { it.copy(review = it.review.copy(busy = true, error = null)) }
+        AppEngine.scope.launch {
+            try {
+                agent.shared.update(u.origin, app.dtandroid.lpl.SharedChoices(u.review.take, u.review.deletions, u.review.conflicts))
+                _sharedReview.value = null
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                review { it.copy(review = it.review.copy(busy = false, error = "The update stopped: " + ((e as? app.dtandroid.lpl.LplException)?.userText ?: e.message))) }
+            }
+        }
+    }
+
+    fun dismissSharedSummary(o: ServerOrigin) = agent.shared.dismissSummary(o)
+
+    /** Settings › LightPhotoLibrary: sharing on or off, the kinds, the policy. A change is told to the server at the next pass, started now. */
+    fun setSharedSettings(v: app.dtandroid.lpl.SharedSettings.Values) {
+        try {
+            agent.shared.settings.set(v)
+        } catch (e: java.io.IOException) {
+            _server.update { it.copy(error = "the change could not be saved on this phone (storage full?)") }
+            return
+        }
+        AppEngine.scope.launch { runCatching { agent.shared.passAll() } }
     }
 
     fun refreshLibrary() = viewModelScope.launch(Dispatchers.IO) {

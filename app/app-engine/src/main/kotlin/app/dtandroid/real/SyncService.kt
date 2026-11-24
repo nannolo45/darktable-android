@@ -77,6 +77,8 @@ class SyncService : Service() {
                 pass = AppEngine.scope.launch {
                     runCatching { AppHost.agent.syncPendingAutomatically() }
                     if (AppHost.agent.queuedExports() > 0) runCatching { AppHost.agent.sendQueuedExports() }
+                    // brief P3l: the sync pass also sends shared styles, presets and layouts changed on this phone
+                    runCatching { AppHost.agent.shared.passAll() }
                 }
                 passWasRunning = true
             }
