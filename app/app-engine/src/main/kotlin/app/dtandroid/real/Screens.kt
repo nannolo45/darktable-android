@@ -28,6 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.engine.api.PasteMode
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -128,6 +133,11 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
     // brief P2i: the "sync automatically" switch
     val autoSync by vm.agent.settings.autoSync.collectAsState()
     val servers = remember(photos, lib) { vm.servers.list() }
+    // brief P3j: photos chosen for "paste history" (row keys), null = not choosing; the paste's progress
+    var choosing by remember { mutableStateOf<Set<String>?>(null) }
+    val cp by vm.controller.copyPaste.state.collectAsState()
+    LaunchedEffect(Unit) { vm.controller.copyPaste.refresh() }
+    val choosable = LinkedHashMap<String, SeriesItem>()
     val sections = ArrayList<PhotoList.Section>()
     for (srv in servers) {
         val mine = photos.filter { it.server == srv.origin }
@@ -143,7 +153,12 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             key = srv.origin.url, title = "LightPhotoLibrary", line = line,
             action = HostAction("sync now", enabled = mine.isNotEmpty()) { vm.syncAll() },
             empty = "No photos from LightPhotoLibrary yet. In LightPhotoLibrary, open a photo and tap \"Edit on this phone\".",
-            rows = mine.map { r -> lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl, autoSync).copy(note = notes[r.key]) },
+            rows = mine.map { r ->
+                val key = "${srv.origin.url}#${r.id}"
+                if (!r.readOnly) choosable[key] = AppHost.itemFor(r.server, r.id)
+                lplRow(vm, r, progress[r.key], steps[r.key], lplThumbs[r.key], srv.origin, onOpenInLpl, autoSync).copy(note = notes[r.key])
+                    .chooseRow(choosing, key.takeIf { !r.readOnly }) { choosing = it }
+            },
             note = serverNotes[srv.origin],
             batch = batches[srv.origin]?.let { b ->
                 PhotoList.BatchLine(
@@ -163,18 +178,36 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
         empty = if (lib.busy == null) "Tap \"open photos\" and pick one or several RAW files, optionally with their .xmp files. " +
             "The app works on copies in its own folder; your originals are never changed." else null,
         rows = lib.items.mapIndexed { i, item ->
+            choosable["local#${item.fileName}"] = item
             PhotoList.Row(
                 key = item.fileName, name = item.fileName,
                 status = if (File(item.xmpPath).isFile) "edited" else "not edited yet",
                 thumb = lib.thumbnails[item.fileName], onOpen = { vm.openDarkroom(i) },
-            )
+            ).chooseRow(choosing, "local#${item.fileName}") { choosing = it }
         },
     )
     PhotoListScreen(
         title = "dt-android",
         sections = sections,
-        topActions = listOf(HostAction("open photos", enabled = lib.busy == null) { onOpen() }),
+        topActions = choosing?.let { ch ->
+            listOf(
+                HostAction("cancel") { choosing = null },
+                HostAction("paste (${cp.mode.json}) onto ${ch.size}", enabled = ch.isNotEmpty()) {
+                    vm.controller.copyPaste.pasteOnto(ch.mapNotNull { choosable[it] })
+                    choosing = null
+                },
+            )
+        } ?: listOf(HostAction("open photos", enabled = lib.busy == null) { onOpen() }),
+        batch = cp.job?.let { j ->
+            PhotoList.BatchLine(j.label, if (j.running) j.fraction else null,
+                onStop = if (j.running) ({ vm.controller.copyPaste.stop() }) else ({ vm.controller.copyPaste.dismissJob() }))
+        },
         menu = listOf(
+            // brief P3j: paste the copied history onto photos of the list (copy it in the darkroom first)
+            HostAction("paste history onto photos…", enabled = cp.clipboard != null && cp.job?.running != true) { choosing = emptySet() },
+            HostAction("paste mode · ${cp.mode.json}") {
+                vm.controller.copyPaste.setMode(if (cp.mode == PasteMode.APPEND) PasteMode.OVERWRITE else PasteMode.APPEND)
+            },
             HostAction("LightPhotoLibrary server…") { vm.showServerForm() },
             HostAction("timings…") { vm.openTimings() },
             HostAction("about") { vm.show(Screen.ABOUT) },
@@ -309,3 +342,8 @@ fun TimingsScreen(vm: AppViewModel, appVersion: String, onShare: (String) -> Uni
         }
     }
 }
+
+/** Brief P3j: while photos are being chosen, a row with [key] is chosen by a tap; without a key it cannot be chosen. */
+private fun PhotoList.Row.chooseRow(choosing: Set<String>?, key: String?, set: (Set<String>) -> Unit): PhotoList.Row =
+    if (choosing == null || key == null) this
+    else copy(selected = key in choosing, onSelect = { set(if (key in choosing) choosing - key else choosing + key) }, actions = emptyList())

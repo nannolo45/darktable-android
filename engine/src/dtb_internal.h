@@ -285,6 +285,15 @@ float dtb__boost_min(int csp, int index);
  * closed and kept; undo, redo, history_goto and compress call it first */
 void dtb__group_commit(void);
 
+/* P3j (engine-api.md 9): session.c's default edit for an image of the
+ * library; output.c's atomic XMP write of any image of the library (no
+ * guard: callers check); copypaste.c's clipboard, at init and shutdown */
+void dtb__reset_to_default_edit(const dt_imgid_t imgid);
+int dtb__xmp_write_image(const dt_imgid_t imgid, const char *xmp_path);
+void dtb__clipboard_init(void);
+dt_imgid_t dtb__image_id(const dt_filmid_t film, const char *filename);
+void dtb__clipboard_drop(void);
+
 /* actions3.c: module actions that pick (P1b part 2); 1 = no such action there */
 int dtb__module_action3(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 

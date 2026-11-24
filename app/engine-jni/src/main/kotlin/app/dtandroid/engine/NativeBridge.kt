@@ -137,6 +137,12 @@ object NativeBridge {
     const val STYLE_DELETE = 10
     const val STYLE_CREATE = 11
     const val RENDER_TIMES = 12
+    // P3j (engine-api.md 9)
+    const val HISTORY_COPY_ITEMS = 13
+    const val HISTORY_COPY = 14
+    const val HISTORY_CLIPBOARD = 15
+    const val HISTORY_PASTE = 16
+    const val HISTORY_PASTE_FILES = 17
     @JvmStatic external fun p1b(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
 
     // P1b part 2 (engine-api.md section 6): renders with options (JSON, null = none)

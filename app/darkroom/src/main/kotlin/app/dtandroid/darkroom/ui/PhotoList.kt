@@ -29,6 +29,8 @@ import androidx.compose.ui.semantics.semantics
 import app.dtandroid.darkroom.HostAction
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.ui.icons.DtIcon
+import app.dtandroid.ui.icons.DtIconImage
+import androidx.compose.foundation.border
 import app.dtandroid.ui.theme.DtTheme
 
 /**
@@ -51,6 +53,9 @@ object PhotoList {
         val thumb: RenderedImage? = null,
         val actions: List<HostAction> = emptyList(),
         val onOpen: () -> Unit = {},
+        /** brief P3j: while photos are being chosen, whether this one is (a tap then chooses it); null = not choosing */
+        val selected: Boolean? = null,
+        val onSelect: () -> Unit = {},
     )
 
     /** A part of the list with its own heading: a server, or the phone's own files. */
@@ -103,6 +108,8 @@ fun PhotoListScreen(
     messages: List<String> = emptyList(),
     /** a question that needs an answer ("remove anyway?"), with its two answers, shown above the list */
     question: Pair<String, List<HostAction>>? = null,
+    /** brief P3j: a job over several photos of the list (a paste of the history), or null */
+    batch: PhotoList.BatchLine? = null,
 ) {
     val c = DtTheme.colors
     var sheet by remember { mutableStateOf<Pair<String, List<HostAction>>?>(null) }
@@ -118,6 +125,7 @@ fun PhotoListScreen(
                 if (menu.isNotEmpty()) DtIconButton(DtIcon.More, "more", c.text, { sheet = title to menu }, iconSize = DtTheme.sizes.iconLarge)
             }
             Divider()
+            batch?.let { b -> b.label?.let { BatchProgress(it, b.fraction, onCancel = b.onStop, cancelLabel = if (b.fraction != null) "stop" else "close") } }
             for (m in messages) Note(m)
             question?.let { (text, answers) ->
                 Note(text, strong = true)
@@ -181,14 +189,21 @@ private fun PhotoRow(r: PhotoList.Row, onMore: () -> Unit) {
     val bmp = remember(r.thumb) { r.thumb?.toImageBitmap() }
     Row(
         Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.listRow)
-            .clickable(role = Role.Button, onClick = r.onOpen)
-            .semantics { contentDescription = "${r.name}: ${r.status}" }
+            .clickable(role = if (r.selected != null) Role.Checkbox else Role.Button, onClick = if (r.selected != null) r.onSelect else r.onOpen)
+            .semantics { contentDescription = "${r.name}: ${r.status}" + if (r.selected == true) " · chosen" else "" }
             .padding(start = DtTheme.space.l, end = DtTheme.space.xs, top = DtTheme.space.m, bottom = DtTheme.space.m),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DtTheme.space.l),
     ) {
         Box(Modifier.size(DtTheme.sizes.listThumb).background(c.photoBackground)) {
             if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
+        // brief P3j: the photos chosen for "paste history" show darktable's check-style box
+        if (r.selected != null) {
+            Box(Modifier.size(DtTheme.sizes.checkbox).border(DtTheme.sizes.border, c.text).background(if (r.selected) c.header else c.sliderTrack),
+                contentAlignment = Alignment.Center) {
+                if (r.selected) DtIconImage(DtIcon.Check, null, c.textStrong, DtTheme.sizes.checkbox)
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DtTheme.space.xxs)) {
             DtText(r.name, DtTheme.type.body, c.textStrong, middle = true)

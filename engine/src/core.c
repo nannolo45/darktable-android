@@ -178,6 +178,7 @@ int dtb_init(const dtb_paths_t *p, int threads)
   }
   dtb__times_install();
   dtb_inited = TRUE;
+  dtb__clipboard_init();
   return DTB_OK;
 }
 
@@ -185,6 +186,7 @@ void dtb_shutdown(void)
 {
   if(!dtb_inited) return;
   if(dtb_S.open) dtb_close();
+  dtb__clipboard_drop();
   dt_cleanup();
   dtb_inited = FALSE;
   for(int i = 0; g_argv_store[i]; i++)

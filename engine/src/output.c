@@ -29,7 +29,11 @@ int dtb_xmp_write(const char *xmp_path)
                       xmp_path, n);
   }
   dt_dev_write_history(&dtb_S.dev);
+  return dtb__xmp_write_image(dtb_S.imgid, xmp_path);
+}
 
+int dtb__xmp_write_image(const dt_imgid_t imgid, const char *xmp_path)
+{
   // atomically: a temporary file in the same folder (same file system),
   // then a rename over the target
   gchar *dir = g_path_get_dirname(xmp_path);
@@ -46,7 +50,7 @@ int dtb_xmp_write(const char *xmp_path)
   }
   close(fd);
   // force_write: no merge with whatever the file holds
-  if(dt_exif_xmp_write(dtb_S.imgid, tmpl, TRUE))
+  if(dt_exif_xmp_write(imgid, tmpl, TRUE))
   {
     g_unlink(tmpl);
     g_free(tmpl);

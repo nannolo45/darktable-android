@@ -23,6 +23,7 @@ import app.dtandroid.darkroom.ui.MasksTab
 import app.dtandroid.darkroom.ui.ModuleList
 import app.dtandroid.darkroom.ui.SearchLine
 import app.dtandroid.darkroom.ui.SheetItem
+import app.dtandroid.darkroom.ui.CopyPasteItems
 import app.dtandroid.darkroom.ui.StylesPanel
 import app.dtandroid.ui.theme.DtTheme
 
@@ -54,6 +55,8 @@ internal fun L1Panel(
                 // only what the app has: the module layouts menu (the other layouts have it beside the group tabs),
                 // then the history with undo, redo and "compress history stack"
                 SheetItem("module layouts · ${s.layoutName}…", enabled = true) { controller.setOverlay(Overlay.Layouts) }
+                // brief P3j: copy and paste of the history
+                CopyPasteItems(controller, s) {}
                 HistoryView(controller, s)
             }
             else -> Column(Modifier.fillMaxSize()) {

@@ -276,3 +276,28 @@ Mockup `B3-Snapshots`; darktable's snapshots module (manual: utility modules ›
 - **l1:** the compare button opens the split with the newest snapshot (and closes it again); without snapshots it
   is "before" as until now.
 - **before:** rendered with the same engine option at position 0; no history_goto.
+
+## 15. Copy and paste of the history (brief P3j)
+
+As darktable's lighttable "history stack" module and its darkroom shortcuts (ctrl+c, ctrl+shift+c, ctrl+v,
+ctrl+shift+v). Engine calls: engine-api.md section 9.
+
+- **Where.** darktable and modern skins: the photo menu ("more" in the top bar) after "export…": `copy history`,
+  `selective copy…`, `paste history`, `selective paste…`, `paste onto photos…`, `paste mode · append|overwrite`
+  (a tap switches it). l1: the same entries in the `more` tool, under "module layouts" (not in the top row's "more").
+  Photo list: the menu has `paste history onto photos…` and `paste mode · …`; choosing photos shows darktable's
+  check-style box on each row (a tap chooses; LightPhotoLibrary photos with a newer darktable's edit cannot be
+  chosen), the top bar then has `cancel` and `paste (mode) onto n`.
+- **Selective copy sheet.** One line per module instance (desktop's dialog list), with "off", "mask" and "unsafe to
+  copy" after the name; `select all`, `select none`; under a ticked line "reset its parameters" (desktop's "reset"
+  column); "module order (v3.0)" (desktop's box, on); `cancel`, `copy`. Ticked at first: what a plain copy takes;
+  the modules unsafe to copy (white balance, raw black/white point, orientation…) are not ticked. Desktop's dialog at
+  the pinned commit starts with nothing ticked: the brief asked for these defaults.
+- **Selective paste sheet.** The copied items, ticked as the last copy or paste chose them (all after a plain copy);
+  `cancel`, `overwrite`, `append` (as desktop's buttons; the choice also becomes the remembered mode).
+- **Paste onto photos.** A sheet of the series' photos (the open one is pasted onto with `paste history`); then a
+  [BatchProgress] bar "pasting the history · photo n of N" with `stop`, ending with "history pasted onto n photos ·
+  m not pasted · reason" and `close`. LightPhotoLibrary photos are fetched first; each pasted photo is reported to the
+  photo source as an edited photo (marked edited, synced like any edit). A photo whose XMP comes from a newer
+  darktable is left unchanged and counted as not pasted.
+- **Mode.** Remembered between starts (app setting); append by default, as darktable.

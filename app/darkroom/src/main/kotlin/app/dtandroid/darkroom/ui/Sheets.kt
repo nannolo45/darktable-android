@@ -236,6 +236,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
             SheetItem("styles…", enabled = s.info != null) { controller.setOverlay(Overlay.Styles) }
             // brief P3g: the export screen (darktable's export module, with progress)
             SheetItem("export…", enabled = s.info != null) { controller.setOverlay(Overlay.Export) }
+            // brief P3j: copy and paste of the history (l1 has them in its `more` tool)
+            if (tablet || !DtTheme.l1.layout) CopyPasteItems(controller, s) { controller.setOverlay(null) }
             // brief P3f: the l1 skin has no versions chip: its "more" opens the same sheet as "duplicate"
             if (!tablet && DtTheme.l1.layout && s.versionsAvailable) {
                 SheetItem("duplicate…", enabled = s.info != null) { controller.launch { openVersions() } }

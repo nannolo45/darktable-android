@@ -87,6 +87,7 @@ fun DarkroomScreen(
         Overlays(controller, s, tablet, actions)
         VersionsOverlays(controller, s, tablet) // brief P3f
         StylesOverlays(controller, s, tablet, importFiles, stylesInPanel = tablet || l1)
+        CopyPasteOverlays(controller, s, tablet) // brief P3j
         // brief P3d: the masks tab's sheets
         val ms by controller.masks.state.collectAsState()
         MasksOverlays(controller, s, ms, tablet)
