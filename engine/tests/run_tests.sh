@@ -404,7 +404,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # brief P3g (engine-api.md 6.10): export progress events and cancel; the export equals darktable-cli's
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
-    for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added; do parity C32 $f; done
+    for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done
   fi
   if want C27; then
     drv C27 exportprog "export progress in order to 100 %, cancel leaves no file"

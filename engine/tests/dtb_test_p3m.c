@@ -254,13 +254,59 @@ static int cmd_retouch(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_params_set("colorchecker", 0, "{\"target_L[3]\":70,\"target_a[3]\":-30,\"target_b[3]\":40}"));
   MUST(dtb_history_seal());
   save_render(outdir, "p3m_lut_changed");
-  // add a patch (desktop's shift+click on empty space), delete patch 0 (right-click: the others move up), reset patch 2
+  // add a patch (desktop's shift+click on empty space); then reset and delete below
   MUST(dtb_params_set("colorchecker", 0, "{\"num_patches\":25,\"source_L[24]\":60,\"source_a[24]\":20,\"source_b[24]\":-10,"
                                          "\"target_L[24]\":50,\"target_a[24]\":30,\"target_b[24]\":-20}"));
   MUST(dtb_history_seal());
   save_render(outdir, "p3m_lut_added");
   fprintf(stdout, "RESULT lut: source_L[3] %g, patches %g\n", L3, param_num("colorchecker", 0, "num_patches"));
   CHECK(param_num("colorchecker", 0, "num_patches") == 25, "25 patches");
+  // reset patch 3 (double-click): its target back to its source, as Lut.reset writes it
+  int wl, hl;
+  uint8_t *added = render_full(&wl, &hl, NULL);
+  {
+    char q[256];
+    snprintf(q, sizeof(q), "{\"target_L[3]\":%.9g,\"target_a[3]\":%.9g,\"target_b[3]\":%.9g}",
+             param_num("colorchecker", 0, "source_L/3"), param_num("colorchecker", 0, "source_a/3"),
+             param_num("colorchecker", 0, "source_b/3"));
+    MUST(dtb_params_set("colorchecker", 0, q));
+  }
+  MUST(dtb_history_seal());
+  CHECK(param_num("colorchecker", 0, "target_L/3") == param_num("colorchecker", 0, "source_L/3"), "reset: target is source");
+  uint8_t *reset = render_full(&wl, &hl, NULL);
+  md = max_diff(added, reset, (size_t)4 * wl * hl, &mean);
+  fprintf(stdout, "RESULT lut reset: render max diff %d mean %.4f\n", md, mean);
+  CHECK(md > 0, "resetting a changed patch changes the picture");
+  save_render(outdir, "p3m_lut_reset");
+  // delete patch 0 (right-click): the patches after it move up one place, as Lut.deleteValues writes it
+  {
+    const int n = (int)param_num("colorchecker", 0, "num_patches");
+    const double moved_L = param_num("colorchecker", 0, "target_L/1");
+    GString *q = g_string_new("{");
+    static const char *f[] = { "source_L", "source_a", "source_b", "target_L", "target_a", "target_b" };
+    for(int k = 0; k < n - 1; k++)
+      for(size_t j = 0; j < G_N_ELEMENTS(f); j++)
+      {
+        char path[32];
+        snprintf(path, sizeof(path), "%s/%d", f[j], k + 1);
+        g_string_append_printf(q, "\"%s[%d]\":%.9g,", f[j], k, param_num("colorchecker", 0, path));
+      }
+    g_string_append_printf(q, "\"num_patches\":%d}", n - 1);
+    MUST(dtb_params_set("colorchecker", 0, q->str));
+    g_string_free(q, TRUE);
+    MUST(dtb_history_seal());
+    CHECK(param_num("colorchecker", 0, "num_patches") == n - 1, "delete: one patch fewer");
+    CHECK(param_num("colorchecker", 0, "target_L/0") == moved_L, "delete: patch 1 moved up to 0");
+  }
+  uint8_t *deleted = render_full(&wl, &hl, NULL);
+  md = max_diff(reset, deleted, (size_t)4 * wl * hl, &mean);
+  fprintf(stdout, "RESULT lut delete: render max diff %d mean %.4f, patches %g\n", md, mean,
+          param_num("colorchecker", 0, "num_patches"));
+  CHECK(md > 0, "deleting a patch changes the picture");
+  save_render(outdir, "p3m_lut_deleted");
+  free(added);
+  free(reset);
+  free(deleted);
   MUST(dtb_close());
   return g_fail;
 }
