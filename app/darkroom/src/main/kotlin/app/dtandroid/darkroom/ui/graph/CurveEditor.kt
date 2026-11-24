@@ -333,8 +333,7 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                     drawRect(pickLine, Offset(xm - lw / 2, inset), Size(lw, ph))
                     // the picked value as a point on the curve
                     val ym = inset + ph - eval(nodes, type, pick.mean).toFloat().coerceIn(0f, 1f) * ph
-                    drawCircle(look.node, radius = look.nodeSize.toPx() * 0.6f, center = Offset(xm, ym))
-                    drawCircle(pickLine, radius = look.nodeSize.toPx() * 0.4f, center = Offset(xm, ym))
+                    nodeMark(xm, ym, look, true)
                     drawText(textMeasurer, pick.text, Offset(inset + pw * 0.02f, inset + ph * 0.02f), pickTextStyle)
                 }
                 nodes.forEachIndexed { i, n -> nodeMark(inset + pw * n.x.toFloat(), inset + ph - ph * n.y.toFloat(), look, held == i) }
