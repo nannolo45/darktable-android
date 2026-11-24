@@ -11,6 +11,7 @@ import app.dtandroid.darkroom.RETOUCH_OP
 import app.dtandroid.darkroom.RetouchTool
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import app.dtandroid.engine.api.RenderedImage
 import app.dtandroid.engine.api.ExportOptions
 import app.dtandroid.engine.api.ExportProfile
