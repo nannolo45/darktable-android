@@ -467,6 +467,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     fi
     rm -f "$D"/p3j_b.* "$D"/p3j_b2.* "$D"/p3j_c.* "$D"/p3j_d.* "$D"/p3j_cref1.* "$D"/p3j_cref2.* 2>/dev/null
   fi
+  # brief P3l: styles and presets shared through LightPhotoLibrary (PLAN.md 4.5); once, on the first image
+  if want C31 && [ -z "${C31_DONE:-}" ]; then
+    C31_DONE=1
+    DTB_TEST_R11="$HERE/../../docs/design/R11-hash-vectors.json" drv C31 shared "R11: hash vectors, snapshot, apply, refuse, delete"
+  fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
