@@ -87,11 +87,38 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
                     oneInstance = flags?.get("one_instance")?.jsonPrimitive?.booleanOrNull ?: false,
                     supportsBlending = flags?.get("supports_blending")?.jsonPrimitive?.booleanOrNull ?: false,
                     fields = withImageDefaults,
-                    defaultParams = buildParams(withImageDefaults.values.toList(), ARRAY_DIMS[op] ?: emptyMap()),
+                    defaultParams = codeDefaults(op, buildParams(withImageDefaults.values.toList(), ARRAY_DIMS[op] ?: emptyMap())),
                 )
             }
             return FakeModuleCatalog(version, mods)
         }
+
+        /**
+         * Brief P3m: defaults a module sets in its init() code rather than in its parameter description, which the
+         * schema therefore lists as zeros. The colour look up table starts with the 24 colour checker patches
+         * (colorchecker.c colorchecker_Lab, from argyll's ColorChecker.cie), source and target equal.
+         */
+        private fun codeDefaults(op: String, p: JsonObject): JsonObject {
+            if (op != "colorchecker") return p
+            val n = CHECKER_LAB.size / 3
+            fun arr(k: String, ch: Int) = (p[k] as? kotlinx.serialization.json.JsonArray)?.let { a ->
+                kotlinx.serialization.json.JsonArray(a.mapIndexed { i, v -> if (i < n) JsonPrimitive(CHECKER_LAB[3 * i + ch]) else v })
+            }
+            val out = p.toMutableMap()
+            for ((k, ch) in listOf("source_L" to 0, "source_a" to 1, "source_b" to 2, "target_L" to 0, "target_a" to 1, "target_b" to 2))
+                arr(k, ch)?.let { out[k] = it }
+            out["num_patches"] = JsonPrimitive(n)
+            return JsonObject(out)
+        }
+
+        private val CHECKER_LAB = doubleArrayOf(
+            37.99, 13.56, 14.06, 65.71, 18.13, 17.81, 49.93, -4.88, -21.93, 43.14, -13.10, 21.91,
+            55.11, 8.84, -25.40, 70.72, -33.40, -0.20, 62.66, 36.07, 57.10, 40.02, 10.41, -45.96,
+            51.12, 48.24, 16.25, 30.33, 22.98, -21.59, 72.53, -23.71, 57.26, 71.94, 19.36, 67.86,
+            28.78, 14.18, -50.30, 55.26, -38.34, 31.37, 42.10, 53.38, 28.19, 81.73, 4.04, 79.82,
+            51.94, 49.99, -14.57, 51.04, -28.63, -28.64, 96.54, -0.43, 1.19, 81.26, -0.64, -0.34,
+            66.77, -0.73, -0.50, 50.87, -0.15, -0.27, 35.66, -0.42, -1.23, 20.46, -0.08, -0.97,
+        )
 
         private fun parseFields(params: JsonObject?): Map<String, FieldDef> {
             val out = LinkedHashMap<String, FieldDef>()
