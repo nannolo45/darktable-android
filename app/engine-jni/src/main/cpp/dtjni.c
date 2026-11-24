@@ -936,6 +936,12 @@ Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, 
 #define DTJ3_MEMBER_REMOVE 4
 #define DTJ3_MEMBER_UPDATE 5
 #define DTJ3_GROUP_WRAP 6
+/* P3m (engine-api.md 6.10) */
+#define DTJ3_RETOUCH 7
+#define DTJ3_RETOUCH_ADD 8
+#define DTJ3_RETOUCH_SET 9
+#define DTJ3_RETOUCH_REMOVE 10
+#define DTJ3_RETOUCH_SELECT 11
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p3d(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -953,6 +959,11 @@ Java_app_dtandroid_engine_NativeBridge_p3d(JNIEnv *env, jclass cls, jint what, j
     case DTJ3_MEMBER_REMOVE: r = dtb_mask_member_remove(n1, n2); break;
     case DTJ3_MEMBER_UPDATE: r = dtb_mask_member_update(n1, n2, b.s); break;
     case DTJ3_GROUP_WRAP: r = dtb_mask_group_wrap(n1, b.s, a.s, &s); break;
+    case DTJ3_RETOUCH: r = dtb_retouch(a.s, n1, &s); break;
+    case DTJ3_RETOUCH_ADD: r = dtb_retouch_add(a.s, n1, b.s, &s); break;
+    case DTJ3_RETOUCH_SET: r = dtb_retouch_shape_set(a.s, n1, n2, b.s); break;
+    case DTJ3_RETOUCH_REMOVE: r = dtb_retouch_shape_remove(a.s, n1, n2); break;
+    case DTJ3_RETOUCH_SELECT: r = dtb_retouch_select(a.s, n1, n2); break;
     default: break;
   }
   _str_free(&a); _str_free(&b);

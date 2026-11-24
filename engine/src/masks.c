@@ -215,6 +215,8 @@ static void _param_geometry(JsonBuilder *b, const dt_masks_form_t *f)
 static void _geometry(JsonBuilder *b, const dt_masks_form_t *f)
 {
   json_builder_begin_object(b);
+  // P3m: where a retouch clone or heal shape takes its pixels from
+  if((f->type & DT_MASKS_CLONE) && !(f->type & DT_MASKS_GROUP)) _pt(b, "source", f->source);
   if((f->type & DT_MASKS_CIRCLE) && f->points)
   {
     const dt_masks_point_circle_t *c = f->points->data;
@@ -350,6 +352,9 @@ int dtb_masks(char **json)
     json_builder_add_int_value(b, f->version);
     json_builder_set_member_name(b, "geometry");
     _geometry(b, f);
+    // P3m: retouch's own shapes (and its shape group) are not masks; dtb_retouch lists them
+    json_builder_set_member_name(b, "retouch");
+    json_builder_add_boolean_value(b, (f->type & (DT_MASKS_CLONE | DT_MASKS_NON_CLONE)) != 0);
     json_builder_set_member_name(b, "used_by");
     json_builder_begin_array(b);
     for(GList *i = dtb_S.dev.iop; i; i = g_list_next(i))
@@ -850,6 +855,8 @@ int dtb_mask_update(int id, const char *geometry_json)
   if(!(f->type & (DT_MASKS_CIRCLE | DT_MASKS_ELLIPSE | DT_MASKS_GRADIENT | DT_MASKS_PATH | DT_MASKS_BRUSH
                   | DT_MASKS_PARAMETRIC)) || (f->type & DT_MASKS_CLONE))
     return dtb__err(DTB_E_ARG, "form %d: the bridge does not edit this type", id);
+  if(f->type & DT_MASKS_NON_CLONE)
+    return dtb__err(DTB_E_ARG, "form %d is a retouch shape: use dtb_retouch_shape_set", id);
   JsonNode *root = dtb__json_parse(geometry_json ? geometry_json : "");
   if(!root) return DTB_E_ARG;
   if(!JSON_NODE_HOLDS_OBJECT(root))
@@ -914,6 +921,8 @@ int dtb_mask_delete(int id)
   NEED_WRITABLE();
   dt_masks_form_t *f = _form(id);
   if(!f) return dtb__err(DTB_E_NOT_FOUND, "no form %d", id);
+  if(f->type & (DT_MASKS_CLONE | DT_MASKS_NON_CLONE))
+    return dtb__err(DTB_E_ARG, "form %d is a retouch shape: use dtb_retouch_shape_remove", id);
   for(GList *l = dtb_S.dev.iop; l; l = g_list_next(l))
     if(_root(l->data) == f)
       return dtb__err(DTB_E_ARG, "form %d is the mask of %s %d: switch its mask off first", id,
@@ -1734,4 +1743,37 @@ int dtb_mask_group_wrap(int group, const char *member_ids_json, const char *op, 
     *json = dtb__json_finish(b);
   }
   return DTB_OK;
+}
+
+/* ------------------------------------------------------------------ */
+/* for retouch.c (P3m)                                                */
+
+void dtb__mask_geometry(JsonBuilder *b, const struct dt_masks_form_t *f)
+{
+  _geometry(b, f);
+}
+
+GList *dtb__mask_points(const int type, JsonObject *g, int *err)
+{
+  return _points_from((dt_masks_type_t)type, g, err);
+}
+
+struct dt_masks_form_t *dtb__mask_form_new(const int type, GList *pts, const char *name)
+{
+  return _form_new((dt_masks_type_t)type, pts, name);
+}
+
+void dtb__mask_init_ctrl(struct dt_masks_form_t *f)
+{
+  _init_ctrl(f);
+}
+
+void dtb__mask_record(dt_iop_module_t *m)
+{
+  _record(m, TRUE);
+}
+
+int dtb__mask_pair(JsonObject *o, const char *k, float *v)
+{
+  return _g_pair(o, k, v, TRUE, POS_LO, POS_HI);
 }

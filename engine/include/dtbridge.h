@@ -638,6 +638,45 @@ int dtb_mask_member_update(int group, int id, const char *options_json);
  * -> { "id": the new group }. */
 int dtb_mask_group_wrap(int group, const char *member_ids_json, const char *op, char **json);
 
+/* ---------------------------------------------------------------------- */
+/* 6.10 retouch (P3m; engine-api.md 6.10 has the JSON)                     */
+
+/* Retouch instance (op "retouch", else DTB_E_ARG): its own shapes, in its
+ * parameter order, and the module's settings -> { "group": id | null,
+ * "count": shapes in its group (every wavelet scale), "max": 300,
+ * "algorithm": "clone" | "heal" | "blur" | "fill", "num_scales",
+ * "curr_scale", "merge_from_scale", "blur_type": "gaussian" | "bilateral",
+ * "blur_radius", "fill_mode": "erase" | "color", "fill_color": [3],
+ * "fill_brightness", "shapes": [ { "id", "index", "type": "circle" |
+ * "ellipse" | "path" | "brush", "name", "clone": bool, "geometry": {...}
+ * (as dtb_masks, plus "source": [x, y] for clone and heal), "opacity",
+ * "scale", "algorithm", "blur_type", "blur_radius", "fill_mode",
+ * "fill_color", "fill_brightness" } ] }. */
+int dtb_retouch(const char *op, int priority, char **json);
+/* [M] A new shape, as desktop's shape buttons: { "type": "circle" |
+ * "ellipse" | "path" | "brush", "geometry": {...} (as dtb_mask_add),
+ * "source": [x, y] (needed for clone and heal), "algorithm"?: name (the
+ * module's algorithm from now on, as desktop's algorithm buttons), "name"? }
+ * -> { "id" }. The shape takes the module's algorithm and its blur or fill
+ * settings and the current wavelet scale; the module is switched on; one
+ * history item. DTB_E_RANGE when the module holds 300 shapes. */
+int dtb_retouch_add(const char *op, int priority, const char *request_json, char **json);
+/* [M] Change shape `id`: { "geometry"?, "source"?, "opacity"? (clamped to
+ * 0.05..1 as desktop), "algorithm"? (only clone <-> heal and blur <-> fill,
+ * as desktop's ctrl+click; else DTB_E_ARG), "blur_type"?, "blur_radius"?
+ * (blur shapes), "fill_mode"?, "fill_color"?, "fill_brightness"? (fill
+ * shapes) }. Settings also become the module's, as desktop's controls do.
+ * With geometry, source or opacity: one history item; settings alone merge
+ * as dtb_param_set until dtb_history_seal(). */
+int dtb_retouch_shape_set(const char *op, int priority, int id, const char *request_json);
+/* [M] Delete shape `id` for good (desktop's remove); an emptied shape group
+ * goes too. One history item. */
+int dtb_retouch_shape_remove(const char *op, int priority, int id);
+/* [M] Desktop's selection of a shape: the module's algorithm and blur or
+ * fill settings take the shape's (no history item when nothing changes;
+ * merges as dtb_param_set). */
+int dtb_retouch_select(const char *op, int priority, int id);
+
 #ifdef __cplusplus
 }
 #endif
