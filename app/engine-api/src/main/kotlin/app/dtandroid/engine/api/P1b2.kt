@@ -258,6 +258,8 @@ data class MaskForm(
     val version: Int,
     val geometry: JsonObject,
     val usedBy: List<MaskUser>,
+    /** P3m: one of retouch's own shapes or its shape group (not a mask; [DarktableEngine.retouch] lists them) */
+    val retouch: Boolean = false,
 ) {
     /** For a group: its members' ids in order. */
     val members: List<Int>
@@ -266,13 +268,15 @@ data class MaskForm(
     fun toJson(): JsonObject = buildJsonObject {
         put("id", id); put("type", type); put("name", name); put("version", version); put("geometry", geometry)
         put("used_by", JsonArray(usedBy.map { buildJsonObject { put("op", it.op); put("priority", it.priority); put("root", it.root) } }))
+        if (retouch) put("retouch", true)
     }
 
     companion object {
         fun listFromJson(e: JsonElement): List<MaskForm> = e.a("masks").map { f ->
             val o = f.o("form")
             MaskForm(o.i("id"), o.s("type"), o.s("name"), o.i("version"), o["geometry"]!!.o("geometry"),
-                o["used_by"]!!.a("used_by").map { u -> u.o("user").let { MaskUser(it.s("op"), it.i("priority"), (it["root"] as JsonPrimitive).content == "true") } })
+                o["used_by"]!!.a("used_by").map { u -> u.o("user").let { MaskUser(it.s("op"), it.i("priority"), (it["root"] as JsonPrimitive).content == "true") } },
+                (o["retouch"] as? JsonPrimitive)?.content == "true")
         }
     }
 }

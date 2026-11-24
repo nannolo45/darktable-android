@@ -294,4 +294,29 @@ interface DarktableEngine {
 
     /** Wrap in group (one id) / group together (several): a new flexi group in the place of the topmost; its id. */
     suspend fun maskGroupWrap(group: Int, ids: List<Int>, operator: String? = null): Int
+
+    // ---- 6.10 (P3m): retouch's own shapes
+
+    /** The retouch instance's shapes (every wavelet scale) and the module's settings. ARG for another module. */
+    suspend fun retouch(op: String, priority: Int): RetouchState
+
+    /**
+     * A new retouch shape as one history item ([type] circle, ellipse, path, brush; [geometry] as [maskAdd];
+     * [source] original-image fractions, needed for clone and heal; [algorithm] becomes the module's first). It takes
+     * the module's algorithm, blur or fill settings and current scale; the module is switched on. Returns its id.
+     */
+    suspend fun retouchAdd(op: String, priority: Int, type: String, geometry: JsonObject, source: Pair<Double, Double>?,
+                           algorithm: String? = null): Int
+
+    /**
+     * Change a shape: "geometry", "source", "opacity" (one history item), "algorithm" (clone <-> heal, blur <-> fill
+     * only), "blur_type", "blur_radius", "fill_mode", "fill_color", "fill_brightness" (merge as [paramSet]).
+     */
+    suspend fun retouchShapeSet(op: String, priority: Int, id: Int, changes: JsonObject)
+
+    /** Delete a shape for good (one history item). */
+    suspend fun retouchShapeRemove(op: String, priority: Int, id: Int)
+
+    /** Desktop's selection: the module's algorithm and blur or fill settings take the shape's. */
+    suspend fun retouchSelect(op: String, priority: Int, id: Int)
 }

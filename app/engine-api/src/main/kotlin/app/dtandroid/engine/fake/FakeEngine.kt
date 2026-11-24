@@ -3,6 +3,8 @@ package app.dtandroid.engine.fake
 
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
+import app.dtandroid.engine.api.RetouchShape
+import app.dtandroid.engine.api.RetouchState
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
@@ -133,6 +135,8 @@ class FakeEngine(
         )
 
         private const val UNDO_LIMIT = 100
+        /** P3m: the stand-in has no shape group of its own; this id stands for it */
+        private const val RT_GROUP = 999
 
         /** P3j: darktable's modules flagged IOP_FLAGS_UNSAFE_COPY (the iop sources at the pinned commit) */
         val FAKE_UNSAFE_COPY = setOf("flip", "gamma", "mask_manager", "rotatepixels", "scalepixels", "temperature", "rawprepare")
@@ -169,7 +173,9 @@ class FakeEngine(
     )
 
     /** P1b part 2: a drawn form, kept as data (the stand-in does not render masks) */
-    private data class FakeForm(val id: Int, val type: String, val name: String, val geometry: JsonObject)
+    private data class FakeForm(val id: Int, val type: String, val name: String, val geometry: JsonObject,
+                                /** P3m: one of retouch's own shapes, and its opacity in retouch's shape group */
+                                val retouch: Boolean = false, val opacity: Double = 1.0)
 
     private data class Snapshot(val insts: List<Inst>, val items: List<Item>, val end: Int, val forms: List<FakeForm> = emptyList())
 
@@ -1762,7 +1768,7 @@ class FakeEngine(
         s.forms.map { f ->
             val users = s.insts.filter { s.treeHas(s.rootOf(it.op, it.priority), f.id) }
                 .map { MaskUser(it.op, it.priority, s.rootOf(it.op, it.priority) == f.id) }
-            MaskForm(f.id, f.type, f.name, 7, f.geometry, users)
+            MaskForm(f.id, f.type, f.name, 7, f.geometry, users, retouch = f.retouch)
         }
     }
 
@@ -2073,6 +2079,160 @@ class FakeEngine(
     override suspend fun renderTimes(): RenderTimes = onEngine {
         requireSession()
         lastTimes ?: RenderTimes(null, 0.0, emptyList())
+    }
+
+    // ---- 6.10 (P3m): retouch's own shapes, kept as the bridge keeps them: forms plus the module's rt_forms table
+
+    private fun rtShort(c: String?, prefix: String) = c?.removePrefix(prefix)?.lowercase() ?: "unknown"
+    private fun JsonObject.rtStr(k: String) = (this[k] as? JsonPrimitive)?.content
+    private fun JsonObject.rtNum(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull ?: 0.0
+    private fun JsonObject.rtInt(k: String) = (this[k] as? JsonPrimitive)?.doubleOrNull?.toInt() ?: 0
+    private fun JsonObject.rtRgb(k: String) = (this[k] as? JsonArray)?.map { (it as? JsonPrimitive)?.doubleOrNull ?: 0.0 } ?: listOf(0.0, 0.0, 0.0)
+
+    private fun Session.rtParams(op: String, priority: Int): JsonObject {
+        if (op != "retouch") fail(EngineError.ARG, "$op is not retouch")
+        inst(op, priority)
+        return live()[op to priority]!!.params
+    }
+
+    private fun rtTable(p: JsonObject) = (p["rt_forms"] as JsonArray).map { it as JsonObject }
+
+    override suspend fun retouch(op: String, priority: Int): RetouchState = onEngine {
+        val s = requireSession()
+        val p = s.rtParams(op, priority)
+        val shapes = rtTable(p).mapIndexedNotNull { i, e ->
+            val id = e.rtInt("formid")
+            val f = if (id > 0) s.form(id) else null
+            f?.let {
+                RetouchShape(id, i, f.type, f.name, f.geometry["source"] != null, f.geometry, f.opacity, e.rtInt("scale"),
+                    rtShort(e.rtStr("algorithm"), "DT_IOP_RETOUCH_"), rtShort(e.rtStr("blur_type"), "DT_IOP_RETOUCH_BLUR_"), e.rtNum("blur_radius"),
+                    rtShort(e.rtStr("fill_mode"), "DT_IOP_RETOUCH_FILL_"), e.rtRgb("fill_color"), e.rtNum("fill_brightness"))
+            }
+        }
+        RetouchState(if (shapes.isEmpty()) null else RT_GROUP, shapes.size, rtTable(p).size, rtShort(p.rtStr("algorithm"), "DT_IOP_RETOUCH_"),
+            p.rtInt("num_scales"), p.rtInt("curr_scale"), p.rtInt("merge_from_scale"), rtShort(p.rtStr("blur_type"), "DT_IOP_RETOUCH_BLUR_"),
+            p.rtNum("blur_radius"), rtShort(p.rtStr("fill_mode"), "DT_IOP_RETOUCH_FILL_"), p.rtRgb("fill_color"), p.rtNum("fill_brightness"), shapes)
+    }
+
+    private fun rtAlgo(a: String) = JsonPrimitive("DT_IOP_RETOUCH_" + a.uppercase())
+
+    override suspend fun retouchAdd(op: String, priority: Int, type: String, geometry: JsonObject, source: Pair<Double, Double>?, algorithm: String?): Int = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        var p = s.rtParams(op, priority)
+        if (type !in listOf("circle", "ellipse", "path", "brush")) fail(EngineError.ARG, "type is circle, ellipse, path or brush")
+        val algo = algorithm ?: rtShort(p.rtStr("algorithm"), "DT_IOP_RETOUCH_")
+        if (algo !in RetouchState.ALGORITHMS) fail(EngineError.ARG, "algorithm: unknown name '$algo'")
+        val clone = algo == "clone" || algo == "heal"
+        if (clone && source == null) fail(EngineError.ARG, "clone and heal need a source")
+        val g = checkGeometry(type, geometry)
+        val k = rtTable(p).indexOfFirst { it.rtInt("formid") <= 0 }
+        if (k < 0) fail(EngineError.RANGE, "retouch holds ${rtTable(p).size} shapes already")
+        s.beginChange()
+        val id = s.nextFormId++
+        val geo = if (clone) JsonObject(g + ("source" to JsonArray(listOf(JsonPrimitive(source!!.first), JsonPrimitive(source.second))))) else g
+        s.forms = s.forms + FakeForm(id, type, "$type #${s.forms.count { it.type == type } + 1}", geo, retouch = true)
+        p = setPath(d, p, "algorithm", rtAlgo(algo))
+        val e = "rt_forms[$k]."
+        p = setPath(d, p, e + "formid", JsonPrimitive(id))
+        p = setPath(d, p, e + "scale", JsonPrimitive(p.rtInt("curr_scale")))
+        p = setPath(d, p, e + "algorithm", rtAlgo(algo))
+        p = setPath(d, p, e + "distort_mode", JsonPrimitive(2))
+        if (algo == "blur") {
+            p = setPath(d, p, e + "blur_type", JsonPrimitive(p.rtStr("blur_type")!!))
+            p = setPath(d, p, e + "blur_radius", JsonPrimitive(p.rtNum("blur_radius")))
+        } else if (algo == "fill") {
+            p = setPath(d, p, e + "fill_mode", JsonPrimitive(p.rtStr("fill_mode")!!))
+            p.rtRgb("fill_color").forEachIndexed { c, v -> p = setPath(d, p, e + "fill_color[$c]", JsonPrimitive(v)) }
+            p = setPath(d, p, e + "fill_brightness", JsonPrimitive(p.rtNum("fill_brightness")))
+        }
+        s.addItem(op, priority, true, p)
+        id
+    }
+
+    override suspend fun retouchShapeSet(op: String, priority: Int, id: Int, changes: JsonObject) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        var p = s.rtParams(op, priority)
+        val f = s.form(id)?.takeIf { it.retouch } ?: fail(EngineError.NOT_FOUND, "form $id is not a shape of retouch $priority")
+        val k = rtTable(p).indexOfFirst { it.rtInt("formid") == id }.takeIf { it >= 0 } ?: fail(EngineError.NOT_FOUND, "form $id has no entry")
+        val e = "rt_forms[$k]."
+        val old = rtShort(rtTable(p)[k].rtStr("algorithm"), "DT_IOP_RETOUCH_")
+        var algo = old
+        var geo = f.geometry
+        var opacity = f.opacity
+        var shape = false
+        changes["algorithm"]?.let { a ->
+            algo = (a as? JsonPrimitive)?.content ?: fail(EngineError.TYPE, "algorithm: a name")
+            if (algo !in RetouchState.ALGORITHMS) fail(EngineError.ARG, "algorithm: unknown name '$algo'")
+            if ((algo == "clone" || algo == "heal") != (old == "clone" || old == "heal")) fail(EngineError.ARG, "a $old shape cannot become $algo")
+            p = setPath(d, p, e + "algorithm", rtAlgo(algo)); p = setPath(d, p, "algorithm", rtAlgo(algo))
+        }
+        for ((key, v) in changes) {
+            val prim = v as? JsonPrimitive
+            when (key) {
+                "algorithm" -> {}
+                "geometry" -> { geo = JsonObject(checkGeometry(f.type, v as? JsonObject ?: fail(EngineError.TYPE, "geometry: an object")) + (f.geometry["source"]?.let { mapOf("source" to it) } ?: emptyMap())); shape = true }
+                "source" -> { if (f.geometry["source"] == null) fail(EngineError.ARG, "source: shape $id has none"); geo = JsonObject(geo + ("source" to v)); shape = true }
+                "opacity" -> { opacity = (prim?.doubleOrNull ?: fail(EngineError.TYPE, "opacity: a number")).also { if (it !in 0.0..1.0) fail(EngineError.RANGE, "opacity") }.coerceIn(0.05, 1.0); shape = true }
+                "blur_type", "blur_radius" -> {
+                    if (algo != "blur") fail(EngineError.ARG, "$key: shape $id is not a blur shape")
+                    val x = if (key == "blur_type") JsonPrimitive("DT_IOP_RETOUCH_BLUR_" + (prim?.content ?: "").uppercase()) else prim!!
+                    if (key == "blur_radius" && (x.doubleOrNull ?: -1.0) !in 0.1..200.0) fail(EngineError.RANGE, "blur_radius")
+                    p = setPath(d, p, e + key, x); p = setPath(d, p, key, x)
+                }
+                "fill_mode", "fill_brightness" -> {
+                    if (algo != "fill") fail(EngineError.ARG, "$key: shape $id is not a fill shape")
+                    val x = if (key == "fill_mode") JsonPrimitive("DT_IOP_RETOUCH_FILL_" + (prim?.content ?: "").uppercase()) else prim!!
+                    p = setPath(d, p, e + key, x); p = setPath(d, p, key, x)
+                }
+                "fill_color" -> {
+                    if (algo != "fill") fail(EngineError.ARG, "$key: shape $id is not a fill shape")
+                    val c = (v as? JsonArray)?.map { (it as? JsonPrimitive)?.doubleOrNull ?: fail(EngineError.TYPE, "fill_color") } ?: fail(EngineError.TYPE, "fill_color")
+                    if (c.size != 3 || c.any { it !in 0.0..1.0 }) fail(EngineError.RANGE, "fill_color")
+                    c.forEachIndexed { i, x -> p = setPath(d, p, e + "fill_color[$i]", JsonPrimitive(x)); p = setPath(d, p, "fill_color[$i]", JsonPrimitive(x)) }
+                }
+                else -> fail(EngineError.NOT_FOUND, "no field '$key'")
+            }
+        }
+        if (shape) {
+            s.beginChange()
+            s.forms = s.forms.map { if (it.id == id) it.copy(geometry = geo, opacity = opacity) else it }
+            s.addItem(op, priority, true, p)
+        } else if (p != s.live()[op to priority]!!.params) {
+            s.setParams(op, priority, emptyMap(), merge = true)
+            s.items = s.items.dropLast(1) + s.items.last().copy(params = p)
+        }
+    }
+
+    override suspend fun retouchShapeRemove(op: String, priority: Int, id: Int) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        var p = s.rtParams(op, priority)
+        s.form(id)?.takeIf { it.retouch } ?: fail(EngineError.NOT_FOUND, "form $id is not a shape of retouch $priority")
+        val table = rtTable(p)
+        val blank = (d.defaultParams["rt_forms"] as JsonArray)[0]
+        val kept = table.filter { it.rtInt("formid") != id }
+        p = JsonObject(p + ("rt_forms" to JsonArray(kept + List(table.size - kept.size) { blank })))
+        s.beginChange()
+        s.forms = s.forms.filter { it.id != id }
+        s.addItem(op, priority, true, p)
+    }
+
+    override suspend fun retouchSelect(op: String, priority: Int, id: Int) = onEngine {
+        val s = requireWritable()
+        val d = def(op)
+        var p = s.rtParams(op, priority)
+        val e = rtTable(p).firstOrNull { it.rtInt("formid") == id } ?: fail(EngineError.NOT_FOUND, "form $id is not a shape of retouch $priority")
+        val algo = rtShort(e.rtStr("algorithm"), "DT_IOP_RETOUCH_")
+        p = setPath(d, p, "algorithm", rtAlgo(algo))
+        val keys = when (algo) { "blur" -> listOf("blur_type", "blur_radius"); "fill" -> listOf("fill_mode", "fill_brightness"); else -> emptyList() }
+        for (k in keys) p = setPath(d, p, k, e[k] as JsonPrimitive)
+        if (algo == "fill") e.rtRgb("fill_color").forEachIndexed { i, x -> p = setPath(d, p, "fill_color[$i]", JsonPrimitive(x)) }
+        if (p != s.live()[op to priority]!!.params) {
+            s.setParams(op, priority, emptyMap(), merge = true)
+            s.items = s.items.dropLast(1) + s.items.last().copy(params = p)
+        }
     }
 }
 

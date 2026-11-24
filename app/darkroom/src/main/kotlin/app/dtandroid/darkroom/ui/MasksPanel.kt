@@ -531,7 +531,7 @@ fun maskLook() = MaskLook(DtTheme.colors.maskOverlay, DtTheme.colors.maskLine, D
     DtTheme.sizes.maskLine, DtTheme.sizes.maskHandle, DtTheme.alpha.maskFill)
 
 /** A straight piece from (x0, y0) to (x1, y1), [width] wide (the screen rules keep lines to rectangles). */
-private fun DrawScope.segment(x0: Float, y0: Float, x1: Float, y1: Float, width: Float, color: Color, alpha: Float = 1f) {
+internal fun DrawScope.segment(x0: Float, y0: Float, x1: Float, y1: Float, width: Float, color: Color, alpha: Float = 1f) {
     val dx = x1 - x0
     val dy = y1 - y0
     val length = sqrt(dx * dx + dy * dy)
@@ -540,14 +540,14 @@ private fun DrawScope.segment(x0: Float, y0: Float, x1: Float, y1: Float, width:
     rotate(angle, Offset(x0, y0)) { drawRect(color, Offset(x0, y0 - width / 2), Size(length, width), alpha = alpha) }
 }
 
-private fun DrawScope.line(pts: List<Offset>, closed: Boolean, look: MaskLook) {
+internal fun DrawScope.line(pts: List<Offset>, closed: Boolean, look: MaskLook) {
     val w = look.lineWidth.toPx()
     val all = if (closed && pts.size > 2) pts + pts.first() else pts
     for (i in 1 until all.size) segment(all[i - 1].x, all[i - 1].y, all[i].x, all[i].y, w * 3, look.shadow, 0.6f)
     for (i in 1 until all.size) segment(all[i - 1].x, all[i - 1].y, all[i].x, all[i].y, w, look.line)
 }
 
-private fun DrawScope.handle(p: Offset, look: MaskLook) {
+internal fun DrawScope.handle(p: Offset, look: MaskLook) {
     val h = look.handle.toPx()
     drawRect(look.shadow, Offset(p.x - h / 2 - 1, p.y - h / 2 - 1), Size(h + 2, h + 2))
     drawRect(look.line, Offset(p.x - h / 2, p.y - h / 2), Size(h, h))

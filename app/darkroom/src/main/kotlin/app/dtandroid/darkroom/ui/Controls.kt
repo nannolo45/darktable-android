@@ -96,7 +96,12 @@ fun ModulePanel(ctx: PanelContext, modifier: Modifier = Modifier) {
         modifier.fillMaxWidth().background(bg)
             .padding(start = sp.panel, end = sp.panel, top = sp.xs, bottom = sp.m),
     ) {
-        if (ctx.module.editableCount == 0) {
+        if (ctx.module.op == app.dtandroid.darkroom.RETOUCH_OP) {
+            // brief P3m: retouch's and the colour look up table's editors are hand-built, inside the module as desktop
+            RetouchPanel(ctx)
+        } else if (ctx.module.op == app.dtandroid.darkroom.LUT_OP) {
+            LutPanel(ctx)
+        } else if (ctx.module.editableCount == 0) {
             DtText(
                 "The editor for this module is not available yet. It still renders and can be switched.",
                 DtTheme.type.label, DtTheme.colors.textMuted, Modifier.padding(vertical = sp.s), maxLines = 3,

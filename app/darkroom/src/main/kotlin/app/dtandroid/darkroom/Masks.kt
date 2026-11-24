@@ -266,7 +266,8 @@ class Masks internal constructor(private val c: DarkroomController) {
         if (s.info == null) return
         val asked = _state.value.key
         val key = (asked ?: defaultKey())?.takeIf { k -> s.modules.any { it.key == k } }
-        val raw = e.masks()
+        // brief P3m: retouch's own shapes are not masks (its panel edits them)
+        val raw = e.masks().filter { !it.retouch }
         val forms = raw.map { f ->
             val members = (f.geometry["members"] as? JsonArray)?.mapNotNull { m ->
                 val o = m as? JsonObject ?: return@mapNotNull null
@@ -838,7 +839,7 @@ class Masks internal constructor(private val c: DarkroomController) {
     }
 
     /** The tool's shape as engine geometry (engine-api.md 6.7), mapped to the original image. */
-    private suspend fun geometries(e: DarktableEngine, d: DrawTool): List<JsonObject> {
+    internal suspend fun geometries(e: DarktableEngine, d: DrawTool): List<JsonObject> {
         // one call for every point of the shape, plus a probe a unit to the right of the first for the length scale
         val own: List<Pair<Double, Double>> = when (d.type) {
             ShapeType.BRUSH -> d.strokes.flatMap { it.points }
