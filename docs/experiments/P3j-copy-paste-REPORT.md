@@ -1,5 +1,15 @@
 # P3j: copy and selective paste of the history — report
 
+**Not all acceptance tests pass.** Bridge test C29 passes on cr2 and raf and **fails on arw** (run 45301042706, last
+code commit 657d436d): the arw test XMP (0179-spektrafilm) already has a second exposure instance ("after"), so the
+test's new instance is priority 2. (1) A selective copy of that priority-2 instance (with its circle) appended onto
+C (the same XMP) does not show up at priority 2 on C and no circle arrives (exposure of priority 2 on C: NaN, masks
+[]); where it merged is not known yet. (2) After a plain paste onto the open photo, undo and redo, `history()` lists
+22 items with `end` 23; the written XMP reopens with the same 22 items and end 22. All pixel comparisons of C29 pass
+on the three images (max 0). Not fixed: two fix attempts were spent on the test's own errors; this needs a bridge
+investigation (probably `dt_history_merge_target` with a multi-instance target, and an item the bridge's history list
+leaves out, such as mask_manager, counted in the end).
+
 Branch `p3j-copy-paste` from `main` 1c39df7. Brief: `docs/briefs/P3j-copy-paste-history.md`. No pull request (per
 the brief); this file is its description.
 
@@ -30,8 +40,9 @@ needed an approval nobody gave). Upstream's source at the pinned commit is the r
 
 ## 3. Results
 
-CI runs on the last code commit: p2a-app 45293622459 success; p2b-real-engine 45293622649 success (emulator 104+
-tests, P3j included); g0-app 45293622468 (bridge C29): see the line added at the end of this report.
+CI runs: on 09e62060 p2a-app 45293622459 success, p2b-real-engine 45293622649 success (emulator, P3j included), g0-app
+45293622468 failure (C29 arw only); on 657d436d (C29 test fix) p2b-real-engine 45301042753 success, g0-app 45301042706
+failure (C29 arw only, see the top); bridge tests otherwise 403 PASS lines, no other FAIL.
 
 Emulator (x86_64 emulator, real engine, public test RAW), `p3j-results.txt`:
 ```
