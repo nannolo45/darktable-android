@@ -448,6 +448,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
           echo "C29 $C $(basename "$1") vs $(basename "$2"): $r" >> "$OUT/comparisons.txt"
           if [ $s -eq 0 ]; then pass C29 "$C" "$3: $r"; else fail C29 "$C" "$3: $r"; fi; }
         cmp_xmp "$D/p3j_c_append.xmp" "$D/p3j_c_append_ref.xmp" "selective append onto C vs desktop's path"
+        # diagnosis: desktop's path after the session's write-back of A, through a clipboard image, both (info only)
+        for v in write hop "write hop"; do
+          n=$(echo "$v" | tr ' ' '-'); cp "$RAW" "$D/p3j_cref3.$EXT"
+          timeout 900 "$BRIDGE_BUILD/tests/dtb_p3jref" "$W-p3jref-$n" "$RAW" "$D/p3j_a.xmp" "$D/p3j_cref3.$EXT" "$XMP" \
+            "$D/p3j_c_append_ref_$n.xmp" exposure "$PR" $v > "$D/C29-ref-$n.log" 2>&1
+          echo "C29 $C info selective append, desktop's path with $v: $(python3 -I "$HERE/p3j_xmp_compare.py" "$D/p3j_c_append.xmp" "$D/p3j_c_append_ref_$n.xmp" 2>&1 | tr '\n' ' ')" >> "$OUT/comparisons.txt"
+          rm -f "$D/p3j_cref3.$EXT"
+        done
         if timeout 900 "$BRIDGE_BUILD/tests/dtb_p3jref" "$W-p3jref2" "$RAW" "$D/p3j_a.xmp" "$D/p3j_cref2.$EXT" "$D/p3j_c_append.xmp" \
              "$D/p3j_c_open_paste_ref.xmp" all > "$D/C29-ref-all.log" 2>&1; then
           cmp_xmp "$D/p3j_c_open_paste.xmp" "$D/p3j_c_open_paste_ref.xmp" "paste onto the open photo vs desktop's path"

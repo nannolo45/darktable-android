@@ -25,6 +25,7 @@
 #include "common/history.h"
 #include "common/image.h"
 #include "common/image_cache.h"
+#include "develop/develop.h"
 
 #include <glib/gstdio.h>
 #include <stdio.h>
@@ -112,15 +113,45 @@ static void print_library(const char *tag, const dt_imgid_t id)
 int main(int argc, char **argv)
 {
   setvbuf(stdout, NULL, _IOLBF, 0);
+  // diagnosis (C29 on arw): "write" = A's history loaded and written back as a bridge session does
+  // (dt_dev_load_image, dt_dev_write_history); "hop" = through a clipboard image as the bridge's copy does
+  gboolean do_write = FALSE, do_hop = FALSE;
+  while(argc > 9 && (!strcmp(argv[argc - 1], "write") || !strcmp(argv[argc - 1], "hop")))
+  {
+    if(!strcmp(argv[argc - 1], "write")) do_write = TRUE;
+    else do_hop = TRUE;
+    argc--;
+  }
   if(argc != 8 && argc != 9)
   {
     fprintf(stderr, "usage: dtb_p3jref <workdir> <rawA> <xmpA> <rawC> <xmpC> <out.xmp> all | <op> <priority>\n");
     return 2;
   }
   engine_start(argv[1]);
-  const dt_imgid_t a = import(argv[2], argv[3]);
+  dt_imgid_t a = import(argv[2], argv[3]);
   const dt_imgid_t c = import(argv[4], argv[5]);
   if(a == c) { fprintf(stdout, "FAIL A and C are one image\n"); return 1; }
+  if(do_write)
+  {
+    dt_develop_t d;
+    dt_dev_init(&d, FALSE);
+    dt_dev_load_image(&d, a);
+    dt_dev_pop_history_items_ext(&d, d.history_end);
+    dt_dev_write_history(&d);
+    dt_dev_cleanup(&d);
+    print_library("A written back", a);
+  }
+  if(do_hop)
+  {
+    const dt_imgid_t h = dt_image_duplicate_with_version(a, 32000);
+    if(!dt_history_copy_and_paste_on_image(a, h, FALSE, NULL, TRUE, TRUE, FALSE))
+    {
+      fprintf(stdout, "FAIL copy into the clipboard image\n");
+      return 1;
+    }
+    print_library("clipboard image", h);
+    a = h;
+  }
   GList *ops = NULL;
   gboolean full = FALSE;
   if(argc == 9)
