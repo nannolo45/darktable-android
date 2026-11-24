@@ -221,7 +221,9 @@ static int cmd_copypaste(const char *raw, const char *xmp, const char *outdir)
   }
   MUST(dtb_close());
   char *c = p3j_copy_raw(raw, outdir, "p3j_c");
-  char *cx = path_join(outdir, "p3j_c_append.xmp");
+  // the XMP the paste writes (compared with desktop's in run_tests.sh); the photo is then opened from it and
+  // saved as p3j_c_append.xmp (compared with desktop's after its darkroom reads the history back)
+  char *cx = path_join(outdir, "p3j_c_pasted.xmp");
   {
     gchar *data = NULL;
     gsize len = 0;

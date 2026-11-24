@@ -25,12 +25,14 @@
 #include "common/history.h"
 #include "common/image.h"
 #include "common/image_cache.h"
+#include "common/iop_order.h"
 #include "develop/develop.h"
 
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #define MUST(x)                                                                          \
   do {                                                                                   \
@@ -226,7 +228,31 @@ int main(int argc, char **argv)
     return 1;
   }
   print_library("after", c);
+  {
+    GList *order = dt_ioppr_get_iop_order_list(c, FALSE);
+    fprintf(stdout, "RESULT C's module order has exposure 0, 1, 2: %d %d %d\n",
+            dt_ioppr_get_iop_order(order, "exposure", 0) != INT_MAX, dt_ioppr_get_iop_order(order, "exposure", 1) != INT_MAX,
+            dt_ioppr_get_iop_order(order, "exposure", 2) != INT_MAX);
+    g_list_free_full(order, g_free);
+  }
   if(dt_exif_xmp_write(c, argv[6], TRUE)) { fprintf(stdout, "FAIL cannot write %s\n", argv[6]); return 1; }
+  // desktop's darkroom after a paste onto its image (dt_dev_reload_history_items) and on leaving it
+  // (dt_dev_write_history): the history read back and written; then the XMP again, as <out>-reloaded.xmp
+  {
+    dt_develop_t d;
+    dt_dev_init(&d, FALSE);
+    dt_dev_load_image(&d, c);
+    dt_dev_pop_history_items_ext(&d, d.history_end);
+    fprintf(stdout, "RESULT read back: %d items, history end %d\n", g_list_length(d.history), d.history_end);
+    dt_dev_write_history(&d);
+    dt_dev_cleanup(&d);
+    print_library("read back", c);
+    gchar *base = g_strndup(argv[6], strlen(argv[6]) - 4);
+    gchar *rel = g_strdup_printf("%s-reloaded.xmp", base);
+    if(dt_exif_xmp_write(c, rel, TRUE)) { fprintf(stdout, "FAIL cannot write %s\n", rel); return 1; }
+    g_free(rel);
+    g_free(base);
+  }
   g_list_free(ops);
   dtb_shutdown();
   fprintf(stdout, "RESULT exit 0\n");
