@@ -145,7 +145,7 @@ either side is a deletion, a taken copy name gets " 2", " 3".
    and the state is sent. Test: `P3lSharedTest.unusableMarksAreClearedWhenTheEngineChanges`.
 3. **The user preset of a fresh library:** C31 now prints every preset of the fresh snapshot (`RESULT fresh preset:`),
    and the emulator test l1 records the phone's presets before the first pass (`l1_fresh_presets` in
-   `p3l-results.txt`). FRESH_PRESET
+   `p3l-results.txt`). Found (g0-app 45447820993, C31): `exposure` v7 "p1b test", left by the bridge tests' own library (P1b), not made by darktable: no exclusion needed.
 4. **Interop with the real LightPhotoLibrary server** (`/home/claude/lpl`, branch `shared-r11` at `93ca7f7`, started
    locally with `PHOTO_ROOT=/tmp/lplphotos DATA_DIR=/tmp/lpldata PORT=18791 python3 -m lpl.main` from `server/`):
    `P3lInteropTest` drives the deliverable-5 scenarios only over HTTP (the PC is an agent that heartbeats with caps
