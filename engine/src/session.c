@@ -280,7 +280,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
   }
 
   gchar *base = g_path_get_basename(raw_path);
-  dt_imgid_t imgid = dt_image_get_id(filmid, base);
+  dt_imgid_t imgid = dtb__image_id(filmid, base);
   g_free(base);
   if(!dt_is_valid_imgid(imgid))
     imgid = dt_image_import(filmid, raw_path, TRUE, FALSE);

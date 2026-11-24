@@ -115,11 +115,14 @@ int main(int argc, char **argv)
   setvbuf(stdout, NULL, _IOLBF, 0);
   // diagnosis (C29 on arw): "write" = A's history loaded and written back as a bridge session does
   // (dt_dev_load_image, dt_dev_write_history); "hop" = through a clipboard image as the bridge's copy does
-  gboolean do_write = FALSE, do_hop = FALSE;
-  while(argc > 9 && (!strcmp(argv[argc - 1], "write") || !strcmp(argv[argc - 1], "hop")))
+  // "bridge" = the bridge's own calls in a fresh process (dtb_open, dtb_history_copy, dtb_close,
+  // dtb_history_paste_files): tells a fault of the bridge's calls from one of the state earlier steps leave
+  gboolean do_write = FALSE, do_hop = FALSE, do_bridge = FALSE;
+  while(argc > 9 && (!strcmp(argv[argc - 1], "write") || !strcmp(argv[argc - 1], "hop") || !strcmp(argv[argc - 1], "bridge")))
   {
     if(!strcmp(argv[argc - 1], "write")) do_write = TRUE;
-    else do_hop = TRUE;
+    else if(!strcmp(argv[argc - 1], "hop")) do_hop = TRUE;
+    else do_bridge = TRUE;
     argc--;
   }
   if(argc != 8 && argc != 9)
@@ -128,6 +131,42 @@ int main(int argc, char **argv)
     return 2;
   }
   engine_start(argv[1]);
+  if(do_bridge && argc == 9)
+  {
+    MUST(dtb_open(argv[2], argv[3]));
+    char *items = NULL;
+    MUST(dtb_history_copy_items(&items));
+    JsonNode *n = json_from_string(items, NULL);
+    JsonArray *ia = json_object_get_array_member(json_node_get_object(n), "items");
+    int best = -1;
+    for(guint i = 0; i < json_array_get_length(ia); i++)
+    {
+      JsonObject *o = json_array_get_object_element(ia, i);
+      if(!strcmp(json_object_get_string_member(o, "op"), argv[7]) && json_object_get_int_member(o, "priority") == atoi(argv[8])
+         && json_object_get_int_member(o, "num") > best)
+        best = (int)json_object_get_int_member(o, "num");
+    }
+    json_node_unref(n);
+    dtb_free(items);
+    gchar *opt = g_strdup_printf("{\"items\": [%d]}", best);
+    MUST(dtb_history_copy(opt));
+    g_free(opt);
+    MUST(dtb_close());
+    // the XMP to paste onto: a copy of the given one at the output path
+    gchar *data = NULL;
+    gsize len = 0;
+    if(!g_file_get_contents(argv[5], &data, &len, NULL) || !g_file_set_contents(argv[6], data, len, NULL)) return 1;
+    g_free(data);
+    gchar *t = g_strdup_printf("[{\"raw\": \"%s\", \"xmp\": \"%s\"}]", argv[4], argv[6]);
+    char *res = NULL;
+    MUST(dtb_history_paste_files(t, "{\"mode\": \"append\"}", &res));
+    fprintf(stdout, "RESULT bridge paste of num %d: %s\n", best, res);
+    dtb_free(res);
+    g_free(t);
+    dtb_shutdown();
+    fprintf(stdout, "RESULT exit 0\n");
+    return 0;
+  }
   dt_imgid_t a = import(argv[2], argv[3]);
   const dt_imgid_t c = import(argv[4], argv[5]);
   if(a == c) { fprintf(stdout, "FAIL A and C are one image\n"); return 1; }

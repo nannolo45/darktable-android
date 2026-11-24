@@ -10,7 +10,7 @@
  * photo's history from its XMP into the library when it opens it, so the
  * copied history is kept under an image of its own in the private library:
  * the clipboard image, a library duplicate of the copied photo
- * (dt_image_duplicate_with_version) that no file name finds (it is renamed)
+ * (dt_image_duplicate_with_version, version 32000; dtb__image_id never returns it)
  * and that holds a verbatim copy of the photo's history rows, masks, module
  * order and history end, made with upstream's overwrite paste of the whole
  * history (copy_full). It lives until the next copy or the engine's end,
@@ -45,9 +45,8 @@
 
 #include <string.h>
 
-/* the clipboard image: version and file name no photo of the library has */
+/* the clipboard image: a version no photo of the library has */
 #define CLIP_VERSION 32000
-#define CLIP_NAME ".dtb-clipboard"
 
 static dt_imgid_t g_clip = NO_IMGID;
 // the photo it was copied from: desktop does not paste onto it (dt_history_copy_and_paste_on_image)
@@ -58,14 +57,28 @@ static GList *g_ops = NULL;
 static gboolean g_full = FALSE;
 static gboolean g_order = TRUE;
 
+/* a photo of the library by film and file name, never the clipboard image (dt_image_get_id() takes whichever
+ * row of that name comes first) */
+dt_imgid_t dtb__image_id(const dt_filmid_t film, const char *filename)
+{
+  sqlite3_stmt *stmt;
+  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
+                              "SELECT id FROM main.images WHERE film_id = ?1 AND filename = ?2 AND version != ?3"
+                              " ORDER BY id LIMIT 1", -1, &stmt, NULL);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, film);
+  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, filename, -1, SQLITE_TRANSIENT);
+  DT_DEBUG_SQLITE3_BIND_INT(stmt, 3, CLIP_VERSION);
+  const dt_imgid_t id = sqlite3_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : NO_IMGID;
+  sqlite3_finalize(stmt);
+  return id;
+}
+
 static void _remove_clipboard_images(void)
 {
   sqlite3_stmt *stmt;
   DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db),
-                              "SELECT id FROM main.images WHERE version = ?1 AND filename = ?2", -1, &stmt,
-                              NULL);
+                              "SELECT id FROM main.images WHERE version = ?1", -1, &stmt, NULL);
   DT_DEBUG_SQLITE3_BIND_INT(stmt, 1, CLIP_VERSION);
-  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 2, CLIP_NAME, -1, SQLITE_STATIC);
   GList *ids = NULL;
   while(sqlite3_step(stmt) == SQLITE_ROW) ids = g_list_prepend(ids, GINT_TO_POINTER(sqlite3_column_int(stmt, 0)));
   sqlite3_finalize(stmt);
@@ -95,16 +108,8 @@ static dt_imgid_t _clipboard_new(const dt_imgid_t src)
   g_clip = NO_IMGID;
   const dt_imgid_t id = dt_image_duplicate_with_version(src, CLIP_VERSION);
   if(!dt_is_valid_imgid(id)) return NO_IMGID;
-  // dt_image_get_id() (film, file name) must never find it in place of the
-  // photo: dtb_open looks photos up that way
-  sqlite3_stmt *stmt;
-  DT_DEBUG_SQLITE3_PREPARE_V2(dt_database_get(darktable.db), "UPDATE main.images SET filename = ?1 WHERE id = ?2",
-                              -1, &stmt, NULL);
-  DT_DEBUG_SQLITE3_BIND_TEXT(stmt, 1, CLIP_NAME, -1, SQLITE_STATIC);
-  DT_DEBUG_SQLITE3_BIND_INT(stmt, 2, id);
-  sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-  dt_image_cache_remove(id);
+  // not renamed (a first version renamed it; C29 on arw then lost a multi-instance that desktop's path keeps,
+  // and a clipboard image that is not renamed does not): photos are looked up without it (dtb__image_id)
   return id;
 }
 
@@ -480,7 +485,7 @@ static int _paste_file(const char *raw, const char *xmp, const _paste_t *p)
   g_free(dir);
   if(!dt_is_valid_filmid(filmid)) return dtb__err(DTB_E_ENGINE, "cannot create film roll");
   gchar *base = g_path_get_basename(raw);
-  dt_imgid_t imgid = dt_image_get_id(filmid, base);
+  dt_imgid_t imgid = dtb__image_id(filmid, base);
   g_free(base);
   if(!dt_is_valid_imgid(imgid)) imgid = dt_image_import(filmid, raw, TRUE, FALSE);
   if(!dt_is_valid_imgid(imgid))

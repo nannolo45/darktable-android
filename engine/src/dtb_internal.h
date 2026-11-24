@@ -291,6 +291,7 @@ void dtb__group_commit(void);
 void dtb__reset_to_default_edit(const dt_imgid_t imgid);
 int dtb__xmp_write_image(const dt_imgid_t imgid, const char *xmp_path);
 void dtb__clipboard_init(void);
+dt_imgid_t dtb__image_id(const dt_filmid_t film, const char *filename);
 void dtb__clipboard_drop(void);
 
 /* actions3.c: module actions that pick (P1b part 2); 1 = no such action there */
