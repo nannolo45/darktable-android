@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import app.dtandroid.darkroom.ui.PhotoList
 import app.dtandroid.darkroom.ui.PhotoListScreen
 import app.dtandroid.darkroom.ui.SharedBanner
@@ -75,8 +76,22 @@ class P3lSharedScreenshotTest {
         SharedRow(meta(6, SharedKind.STYLE, "old look", deleted = true), SharedRow.Change.DELETED),
     )
 
+    // the test rule takes one setContent per test: the skin and the content are states it shows
+    private val skinState = mutableStateOf(Skin.DARKTABLE)
+    private val contentState = mutableStateOf<(@androidx.compose.runtime.Composable androidx.compose.foundation.layout.BoxScope.() -> Unit)?>(null)
+    private var contentSet = false
+
     private fun skinned(skin: Skin, content: @androidx.compose.runtime.Composable androidx.compose.foundation.layout.BoxScope.() -> Unit) {
-        compose.setContent { DtTheme(DtTokens.load(skin)) { Box(Modifier.fillMaxSize().background(DtTheme.colors.bg)) { content() } } }
+        skinState.value = skin
+        contentState.value = content
+        if (!contentSet) {
+            contentSet = true
+            compose.setContent {
+                val k by skinState
+                val tokens = androidx.compose.runtime.remember(k) { DtTokens.load(k) }
+                DtTheme(tokens) { Box(Modifier.fillMaxSize().background(DtTheme.colors.bg)) { contentState.value?.invoke(this) } }
+            }
+        }
         compose.waitForIdle()
     }
 
@@ -123,14 +138,14 @@ class P3lSharedScreenshotTest {
             compose.onNodeWithText("Deleted elsewhere").assertExists()
             compose.onNodeWithText("needs a newer darktable").assertExists()
             compose.onRoot().captureRoboImage(File(outDir, "phone-p3l-03-review-${skin.key}.png").path)
-            compose.onNodeWithContentDescription("shared film | portra 400", substring = true).performClick()
+            compose.onNodeWithContentDescription("shared film | portra 400", substring = true).performScrollTo().performClick()
             compose.onNodeWithText("Update 2").assertExists()
-            compose.onNodeWithText("changed here too ›").performClick()
-            compose.onNodeWithText("Decide ›").performClick()
+            compose.onNodeWithText("changed here too ›").performScrollTo().performClick()
+            compose.onNodeWithText("Decide ›").performScrollTo().performClick()
             assertEquals(listOf("conflict bright day", "deletion old look"), opened)
             // a greyed line cannot be chosen
             compose.onNodeWithContentDescription("shared future preset", substring = true).assertIsNotEnabled()
-            compose.onNodeWithText("Update 2").performClick()
+            compose.onNodeWithText("Update 2").performScrollTo().performClick()
             assertEquals(1, updated)
         }
     }
@@ -144,9 +159,9 @@ class P3lSharedScreenshotTest {
             compose.onNodeWithText("Take Desktop's").assertExists()
             compose.onNodeWithText("The other copy arrives as \"bright day (Desktop)\".").assertExists()
             compose.onRoot().captureRoboImage(File(outDir, "phone-p3l-04-conflict-${skin.key}.png").path)
-            compose.onNodeWithContentDescription("same choice for the other conflicts").performClick()
+            compose.onNodeWithContentDescription("same choice for the other conflicts").performScrollTo().performClick()
             assertTrue(same)
-            compose.onNodeWithText("Keep both").performClick()
+            compose.onNodeWithText("Keep both").performScrollTo().performClick()
             assertEquals(listOf("both"), chosen)
         }
         // the other side deleted the item: no "keep both"
@@ -161,9 +176,9 @@ class P3lSharedScreenshotTest {
             compose.onNodeWithText("Deleted on Desktop", substring = true).assertExists()
             compose.onNodeWithText("A kept item stays on this phone only", substring = true).assertExists()
             compose.onRoot().captureRoboImage(File(outDir, "phone-p3l-05-deletion-${skin.key}.png").path)
-            compose.onNodeWithText("Delete here too").performClick()
-            compose.onNodeWithText("Keep on this phone").performClick()
-            compose.onNodeWithText("Decide later").performClick()
+            compose.onNodeWithText("Delete here too").performScrollTo().performClick()
+            compose.onNodeWithText("Keep on this phone").performScrollTo().performClick()
+            compose.onNodeWithText("Decide later").performScrollTo().performClick()
             assertEquals(listOf("delete", "keep", "later"), chosen)
         }
     }
@@ -178,9 +193,9 @@ class P3lSharedScreenshotTest {
             }
             compose.onNodeWithText("5 waiting", substring = true).assertExists()
             compose.onRoot().captureRoboImage(File(outDir, "phone-p3l-06-settings-${skin.key}.png").path)
-            compose.onNodeWithText("Newest wins").performClick()
+            compose.onNodeWithText("Newest wins").performScrollTo().performClick()
             assertEquals(SharedPolicy.NEWEST, v.policy)
-            compose.onNodeWithText("Review").performClick()
+            compose.onNodeWithText("Review").performScrollTo().performClick()
             assertEquals(1, reviewed)
         }
     }
