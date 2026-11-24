@@ -1,0 +1,8 @@
+RESULT engine 04477d3
+RESULT undo to a state at a lower end, then history_goto(all) vs before: preview 720x479 max 37 mean 19.6880; region 977x650 max 37 mean 19.5750
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:398: undo lost the mask above the end []
+RESULT redo to a state at a lower end, then history_goto(all) vs before: preview 720x479 max 37 mean 19.6880; region 977x650 max 37 mean 19.5750
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3h.c:411: redo lost the mask above the end []
+RESULT compress at end 15 vs the picture at that end before: preview 720x479 max 0 mean 0.0000; region 977x650 max 0 mean 0.0000
+RESULT compress at end 1 vs the picture at that end before: preview 720x479 max 0 mean 0.0000; region 977x650 max 0 mean 0.0000
+RESULT exit 1
