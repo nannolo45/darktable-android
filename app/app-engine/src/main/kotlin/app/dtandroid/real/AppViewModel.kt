@@ -201,13 +201,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "done" and back: the edit is written to the photo's sidecar in the working folder, then the library. */
     fun leaveDarkroom() {
         _screen.value = Screen.LIBRARY
+        // brief P3k: the photo's sync goes on if the app leaves the screen right after "done": the sync service is
+        // started now, while the activity is visible, and counts this hand-over as work until it ends
+        val handing = agent.autoSync && current()?.let { AppHost.lplPhotoOf(it) } != null
+        if (handing) AppHost.handOverStarted()
+        AppHost.startSyncIfNeeded()
         AppEngine.scope.launch {
-            controller.closePhoto()
-            refreshLibrary()
-            // brief P2e: previews that waited for the engine (another photo was open) can be made now
-            // brief P2i: not with automatic syncing off ("done" keeps the edit on the phone)
-            if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically()
-            refreshLibrary()
+            try {
+                controller.closePhoto()
+                refreshLibrary()
+                // brief P2e: previews that waited for the engine (another photo was open) can be made now
+                // brief P2i: not with automatic syncing off ("done" keeps the edit on the phone)
+                if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically()
+                refreshLibrary()
+            } finally {
+                if (handing) AppHost.handOverEnded()
+            }
         }
     }
 
@@ -431,6 +440,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Brief P2i: the "sync automatically" switch. Switched on again: what waited is sent now, and the background
      * job takes over what cannot be sent yet.
      */
+    // brief P3k item 6: whether Android exempts the app from battery optimisation (read again when the app is resumed,
+    // so coming back from the system's list shows the new state)
+    private val _batteryExempt = MutableStateFlow(true)
+    val batteryExempt: StateFlow<Boolean> = _batteryExempt.asStateFlow()
+
+    fun refreshBattery() {
+        val app = getApplication<Application>()
+        val pm = app.getSystemService(android.os.PowerManager::class.java)
+        _batteryExempt.value = pm?.isIgnoringBatteryOptimizations(app.packageName) == true
+    }
+
+    /** The system's list of apps and their battery optimisation (no permission needed for this screen). */
+    fun openBatterySettings() {
+        val app = getApplication<Application>()
+        runCatching {
+            app.startActivity(android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure { _server.update { f -> f.copy(error = "this phone has no battery optimisation list") } }
+    }
+
     fun setAutoSync(on: Boolean) {
         try {
             agent.settings.setAutoSync(on)

@@ -210,6 +210,19 @@ class MainActivity : ComponentActivity() {
         AppEngine.onForeground()
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.refreshBattery()  // brief P3k: the settings line shows the state after a visit to the system's list
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // brief P3k: LightPhotoLibrary work in flight goes on in the sync service. Started here, while the activity is
+        // still visible: Android 12 and later refuse a foreground service started from the background, and onStop
+        // comes after the activity is hidden. The service stops by itself when nothing is left.
+        AppHost.startSyncIfNeeded()
+    }
+
     override fun onStop() {
         super.onStop()
         vm.saveNow()
