@@ -507,6 +507,33 @@ if want C23; then
   done
 fi
 
+# C30: a data.db.lock left behind by a process Android ended. Its pid now
+# belongs to another live process; darktable takes over the lock only when
+# the pid is dead or (Linux) its command line lacks "darktable", so the
+# foreign process is named darktable-stale here (on Android, /proc hides
+# other apps and kill() says EPERM: the same verdict "alive"). The bridge
+# removes the stale lock and the engine starts; an empty lock likewise.
+if want C30; then
+  D="$OUT/C30"; W30="$OUT/C30-work"; mkdir -p "$D" "$W30/config"
+  X30="$TESTS/0001-exposure/exposure.xmp"
+  "$DTB" "$W30" check "$X30" > "$D/first.log" 2>&1   # creates data.db
+  bash -c 'exec -a darktable-stale sleep 60' & SP=$!
+  sleep 0.3
+  printf '%s\0' "$SP" > "$W30/config/data.db.lock"
+  if "$DTB" "$W30" check "$X30" > "$D/stale-pid.log" 2>&1 && [ ! -f "$W30/config/data.db.lock" ]; then
+    pass C30 live-pid "stale lock with a reused live pid ($SP) removed, engine started"
+  else
+    fail C30 live-pid "engine did not start over a stale lock: $(grep -m1 'FAIL\|dt_init' "$D/stale-pid.log") see $D/stale-pid.log"
+  fi
+  kill "$SP" 2>/dev/null
+  : > "$W30/config/data.db.lock"
+  if "$DTB" "$W30" check "$X30" > "$D/empty.log" 2>&1; then
+    pass C30 empty "empty lock removed, engine started"
+  else
+    fail C30 empty "engine did not start over an empty lock, see $D/empty.log"
+  fi
+fi
+
 md5_after=$(cd "$TESTS" && md5sum images/mire1.cr2 images/xtransIV.raf images/hlrecovery.arw)
 if [ "$md5_before" = "$md5_after" ]; then note "PASS safety: RAW files unchanged"
 else note "FAIL safety: a RAW file changed"; fi

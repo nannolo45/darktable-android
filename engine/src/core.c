@@ -11,12 +11,14 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#include <glib/gstdio.h>
 #include <sched.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
 #include "dtb_internal.h"
 
+#include "common/database.h"
 #include "common/styles.h"
 #include "control/conf.h"
 #include "imageio/imageio_common.h"
@@ -99,6 +101,54 @@ void dtb__tlog(const char *what, const double t0)
   if(on) fprintf(stderr, "DTB_TIMING %s %.3f\n", what, dtb__t() - t0);
 }
 
+/* data.db.lock in the configuration folder (common/database.c,
+ * _lock_single_database) holds the pid of the process that opened data.db.
+ * Android ends an app's process without darktable's clean-up, so the file
+ * stays behind. darktable takes such a file over only when the pid is dead
+ * (kill() gives ESRCH) or, on Linux, when /proc/<pid>/cmdline lacks
+ * "darktable". On Android both checks call a stale file live: the pid is soon
+ * reused by another app, kill() then gives EPERM, and /proc hides other apps'
+ * processes. dt_init then fails at every start until that pid ends. The
+ * configuration folder is the app's own: the lock is kept only when its pid
+ * is another live process with exactly this process's command line (a second
+ * process of the same program); otherwise it is stale and removed here. An
+ * empty or unreadable lock (process ended between creating and writing it)
+ * is removed too. */
+static gboolean dtb__same_program(const int pid)
+{
+  gchar *mine = NULL, *theirs = NULL;
+  gsize nm = 0, nt = 0;
+  gchar fn[64];
+  snprintf(fn, sizeof(fn), "/proc/%d/cmdline", pid);
+  gboolean same = FALSE;
+  if(g_file_get_contents("/proc/self/cmdline", &mine, &nm, NULL)
+     && g_file_get_contents(fn, &theirs, &nt, NULL))
+    same = nm == nt && nm > 0 && memcmp(mine, theirs, nm) == 0;
+  g_free(mine);
+  g_free(theirs);
+  return same;
+}
+
+static void dtb__clear_stale_lock(const char *configdir)
+{
+  gchar *lock = g_build_filename(configdir, "data.db.lock", NULL);
+  gchar *text = NULL;
+  if(g_file_test(lock, G_FILE_TEST_EXISTS))
+  {
+    const int pid = g_file_get_contents(lock, &text, NULL, NULL) && text ? atoi(text) : 0;
+    const gboolean live = pid > 0 && pid != (int)getpid() && dtb__same_program(pid);
+    if(!live)
+    {
+      if(g_unlink(lock) == 0)
+        fprintf(stderr, "dtbridge: removed stale data.db.lock (pid %d)\n", pid);
+      else
+        fprintf(stderr, "dtbridge: could not remove stale data.db.lock (pid %d)\n", pid);
+    }
+  }
+  g_free(text);
+  g_free(lock);
+}
+
 int dtb_init(const dtb_paths_t *p, int threads)
 {
   if(dtb_inited) return dtb__err(DTB_E_STATE, "already initialised");
@@ -153,11 +203,19 @@ int dtb_init(const dtb_paths_t *p, int threads)
   g_mkdir_with_parents(p->configdir, 0700);
   g_mkdir_with_parents(p->cachedir, 0700);
   if(p->tmpdir) g_mkdir_with_parents(p->tmpdir, 0700);
+  dtb__clear_stale_lock(p->configdir);
 
   // init_gui FALSE as darktable-cli; load_data TRUE = darktable-cli's
   // default (custom_presets), so presets and styles come from data.db
   if(dt_init(argc, a, FALSE, TRUE, NULL))
-    return dtb__err(DTB_E_ENGINE, "dt_init failed");
+  {
+    // say which step failed, so a screenshot of the app's start screen tells
+    if(!darktable.db)
+      return dtb__err(DTB_E_ENGINE, "dt_init failed: the database could not be opened (data.db in the configuration folder)");
+    if(!dt_database_get_lock_acquired(darktable.db))
+      return dtb__err(DTB_E_ENGINE, "dt_init failed: data.db is locked by another live process");
+    return dtb__err(DTB_E_ENGINE, "dt_init failed after opening the database");
+  }
 
   memset(&dtb_S, 0, sizeof(dtb_S));
   g_init_threads = darktable.num_openmp_threads;
