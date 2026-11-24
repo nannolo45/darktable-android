@@ -152,6 +152,8 @@ static void _change_timestamp_set(const gint64 t)
   dt_image_cache_write_release(img, DT_IMAGE_CACHE_RELAXED);
 }
 
+static void _reload_keeping_forms(void);
+
 static void _snapshot_restore(const dtb_undo_entry_t *e)
 {
   // dt_history_snapshot_restore() empties the image's history with
@@ -202,7 +204,18 @@ static void _snapshot_restore(const dtb_undo_entry_t *e)
     dt_history_hash_write(dtb_S.imgid, &h);
   }
 
-  dtb__reload_dev();
+  // T1 (C28 follow-up): a state with items above its end (an edit made after history_goto records one): a reload
+  // at that end does not read the masks of those items, and the next write would lose them. Read them first by
+  // a reload at the full end, then reload at the end keeping the shapes, as history_goto does.
+  if(e->history_end < e->n_items)
+  {
+    dt_image_set_history_end(dtb_S.imgid, e->n_items);
+    dtb__reload_dev();
+    dt_image_set_history_end(dtb_S.imgid, e->history_end);
+    _reload_keeping_forms();
+  }
+  else
+    dtb__reload_dev();
 }
 
 static void _redo_clear(void)
