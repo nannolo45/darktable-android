@@ -1,0 +1,21 @@
+dt-android G0 benchmark (diagnostic test app, unofficial darktable port)
+app g0-app-c52e9f3b2b68, engine darktable 04477d3
+device: Google sdk_gphone64_x86_64 (AOSP ranchu)
+android: 13 (API 33), ABI x86_64
+cores: 4
+memory: 6.2 GB total, 4.0 GB available
+image: cr2 file, 3908x2602 after the edit (10.2 MP)
+screen region: 1080x2400 at 100 %, +16 px margin
+engine start: unpack 2323 ms, dtb_init 6591 ms, 111 of 111 plugins loaded
+
+milliseconds
+                                            1 thread   4 threads
+open (import, XMP, history)                      146         142
+preview 1024 px, first                           278         132
+preview after exposure change                     56          21
+screen region, first                             435         155
+screen region after exposure change              321         152
+full size render after exposure change          1617         589
+export JPEG full size                           1646        1652
+
+Each thread setting starts from the RAW file (image closed, caches dropped).
