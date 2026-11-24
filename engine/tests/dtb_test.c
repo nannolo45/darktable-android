@@ -42,6 +42,7 @@
  *   masktree                       C26: P3d stage 2a, see dtb_test_p3d.c
  *   exportprog                     C27: P3g export progress and cancel, see dtb_test_p3g.c
  *   snaphist                       C28: P3h render of another history position, see dtb_test_p3h.c
+ *   undomask                       C28 (T1): masks above the history end across undo, redo and compress
  *   copypaste                      C29: P3j copy and selective paste of the history, see dtb_test_p3j.c
  * Results are "RESULT key value" lines; exit code 0 = the checks the driver
  * can do on its own passed. Pixel comparisons with darktable-cli are done by
@@ -3245,7 +3246,7 @@ int main(int argc, char **argv)
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
       { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
-      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "copypaste", cmd_copypaste },
+      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

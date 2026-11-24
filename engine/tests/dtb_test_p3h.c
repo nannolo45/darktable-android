@@ -376,3 +376,63 @@ static int cmd_snaphist(const char *raw, const char *xmp, const char *outdir)
   }
   return g_fail;
 }
+
+/* T1 (follow-up of C28): undo, redo and history compress reload at a lower history end as history_goto does; a
+ * drawn mask of an item above the end must survive them (the next write lost it for good). Every case ends with
+ * the full history back and the picture compared with the one before; run_tests.sh compares the XMP written
+ * at the end of each with darktable-cli (parity t1_*). */
+static int cmd_undomask(const char *raw, const char *xmp, const char *outdir)
+{
+  int e = 0;
+  // 1. an edit made at a lower end records a state with the items above it; its undo restores that state
+  MUST(p3h_edits(raw, xmp, 3));
+  const int n0 = history_count(&e);
+  p3h_shot_t a, b;
+  MUST(p3h_shoot(NULL, &a));
+  MUST(dtb_history_goto(1));
+  MUST(dtb_param_set("exposure", 0, "exposure", "0.1"));
+  MUST(dtb_history_seal());
+  MUST(dtb_undo());  // the state with end 1 and the items above it
+  MUST(dtb_history_goto(n0));
+  MUST(p3h_shoot(NULL, &b));
+  CHECK(!p3h_compare("undo to a state at a lower end, then history_goto(all) vs before", &b, &a), "undo lost the mask above the end");
+  CHECK(history_count(&e) == n0, "undo: %d items, expected %d", history_count(&e), n0);
+  save_render(outdir, "t1_undo_after");
+  p3h_free(&b);
+  MUST(dtb_close());
+
+  // 2. redo to such a state: goto(1), undo the edit before it, redo
+  MUST(p3h_edits(raw, xmp, 3));
+  MUST(dtb_history_goto(1));
+  MUST(dtb_undo());
+  MUST(dtb_redo());
+  MUST(dtb_history_goto(n0));
+  MUST(p3h_shoot(NULL, &b));
+  CHECK(!p3h_compare("redo to a state at a lower end, then history_goto(all) vs before", &b, &a), "redo lost the mask above the end");
+  save_render(outdir, "t1_redo_after");
+  p3h_free(&b);
+  MUST(dtb_close());
+
+  // 3. compress at a lower end: the shapes of the items below the end stay (the items above are dropped, as on
+  // desktop). Just below the last item (the mask is below it), then at 1 (the mask is above: gone with them)
+  for(int k = 0; k < 2; k++)
+  {
+    MUST(p3h_edits(raw, xmp, 3));
+    const int at = k == 0 ? n0 - 1 : 1;
+    MUST(dtb_history_goto(at));
+    MUST(p3h_shoot(NULL, &b));
+    MUST(dtb_history_compress());
+    p3h_shot_t c;
+    MUST(p3h_shoot(NULL, &c));
+    char what[128];
+    snprintf(what, sizeof(what), "compress at end %d vs the picture at that end before", at);
+    CHECK(!p3h_compare(what, &c, &b), "%s: the picture changed", what);
+    save_render(outdir, k == 0 ? "t1_compress_below" : "t1_compress_first");
+    p3h_free(&b);
+    p3h_free(&c);
+    MUST(dtb_close());
+  }
+  p3h_free(&a);
+  return g_fail;
+}
+
