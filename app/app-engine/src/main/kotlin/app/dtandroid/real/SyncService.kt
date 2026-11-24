@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  */
 class SyncService : Service() {
     private var run: Job? = null
+    @Volatile private var lastStartId = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -48,6 +49,7 @@ class SyncService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        lastStartId = startId
         if (run?.isActive != true) run = AppEngine.scope.launch { loop() }
         return START_NOT_STICKY
     }
@@ -107,9 +109,11 @@ class SyncService : Service() {
                     // a last heartbeat, so LPL sees the final states
                     runCatching { AppHost.serviceHeartbeat() }
                     if (next == BackgroundSync.Next.STOP_HANDOVER) SyncJob.schedule(this)
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                    return
+                    // only if no start came in meanwhile (onPause, "done", a batch): that one's work is looked at again;
+                    // the notification goes with the service
+                    if (stopSelfResult(lastStartId)) return
+                    trace("a new start came in: going on")
+                    stalled = 0; attempted = false
                 }
             }
         }

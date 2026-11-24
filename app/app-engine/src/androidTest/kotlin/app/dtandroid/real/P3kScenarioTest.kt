@@ -10,7 +10,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.lpl.StubLpl
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.FixMethodOrder
@@ -37,6 +39,20 @@ class P3kScenarioTest {
     private var scenario: ActivityScenario<MainActivity>? = null
 
     @get:org.junit.Rule val guard = HangGuard.rule(12)
+
+    /**
+     * Each scenario starts clean: the photos earlier scenario classes left on the phone (some with edits for stub servers
+     * that are gone, which the service would try and hand over) are removed, and no sync service runs.
+     */
+    @Before fun clean() {
+        runBlocking {
+            runCatching { AppHost.controller.closePhoto() }
+            for (r in AppHost.agent.photos.value) runCatching { AppHost.agent.remove(r.server, r.id, evenUnsynced = true) }
+        }
+        waitFor("no sync service left from before", 120_000) { !SyncService.running }
+        SyncService.titles.clear()
+        TestFiles.record(res, "before", "photos left ${AppHost.agent.photos.value.size}, queued exports ${AppHost.agent.queuedExports()}, work ${AppHost.syncWork()}")
+    }
 
     @After fun tearDown() {
         runCatching { AppHost.agent.settings.setAutoSync(true) }
@@ -98,7 +114,6 @@ class P3kScenarioTest {
         val v = openLink(s, 81)
         change(v, 0.7)
         val before = SyncService.created.get()
-        SyncService.titles.clear()
         var seen = false
         val t0 = System.nanoTime()
         doneAndLeave()
@@ -112,8 +127,8 @@ class P3kScenarioTest {
         TestFiles.record(res, "s1_end", "synced after $ms ms; service created ${SyncService.created.get() - before}x, seen running: $seen, " +
             "gone after $gone ms, stop: ${SyncService.lastStop}; titles ${SyncService.titles}")
         assertTrue("the posted XMP has the edit", s.photos[81]!!.xmp!!.decodeToString().contains("darktable:operation=\"exposure\""))
-        assertTrue("the sync service started", SyncService.created.get() > before)
-        assertTrue(seen)
+        assertTrue("the sync service was seen running after done", seen)
+        assertEquals("nothing left: the service stopped by itself", "STOP_DONE", SyncService.lastStop)
         TestFiles.record(res, "s1", "passed")
     }
 
@@ -128,9 +143,10 @@ class P3kScenarioTest {
         AppHost.servers.put(s.origin, "Phone", null)
         TestFiles.engine()
         val before = SyncService.created.get()
-        SyncService.titles.clear()
-        val job = s.queueJob(AppHost.servers.installId, "edit", listOf(91, 92), open = false)
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        // the job is queued once the app's own heartbeat runs, so the foreground takes it (not a background heartbeat)
+        waitFor("the app's heartbeat", 60_000) { AppHost.inForeground }
+        val job = s.queueJob(AppHost.servers.installId, "edit", listOf(91, 92), open = false)
         waitFor("the batch is copying", 120_000) { s.seen("GET", "/api/photos/91/original").isNotEmpty() }
         var seen = SyncService.running
         scenario!!.moveToState(Lifecycle.State.CREATED)
@@ -144,8 +160,8 @@ class P3kScenarioTest {
             "stop: ${SyncService.lastStop}; titles ${SyncService.titles}")
         assertEquals("done", job.status)
         assertTrue(job.doneBody!!.contains("\"arrived\":[91,92]"))
-        assertTrue("the sync service started", SyncService.created.get() > before)
-        assertTrue(seen)
+        assertTrue("the sync service was seen running", seen)
+        assertEquals("STOP_DONE", SyncService.lastStop)
         TestFiles.record(res, "s2", "passed")
     }
 
@@ -168,6 +184,7 @@ class P3kScenarioTest {
         assertEquals(0, s.photos[101]!!.xmpPosts)
         assertEquals(0, s.photos[101]!!.previewPosts)
         assertEquals("no sync service", before, SyncService.created.get())
+        assertTrue("no sync service seen", !seen)
         TestFiles.record(res, "s3", "passed")
     }
 
@@ -185,7 +202,7 @@ class P3kScenarioTest {
         var seen = false
         val t0 = System.nanoTime()
         doneAndLeave()
-        waitFor("service started", 30_000) { SyncService.created.get() > before }
+        waitFor("service started", 30_000) { SyncService.running }
         waitFor("service gone", 180_000) { if (SyncService.running) seen = true; !SyncService.running }
         val gone = (System.nanoTime() - t0) / 1_000_000
         val pending = js.getPendingJob(4201)

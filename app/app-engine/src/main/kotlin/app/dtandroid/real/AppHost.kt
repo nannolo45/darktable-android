@@ -427,6 +427,9 @@ object AppHost {
                     if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) launch { agent.sendQueuedExports() }
                     // in the order LPL gave them, one after the other
                     if (jobs.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
+                    // brief P3k: a job kept by a background heartbeat (the sync service's, or the last one) that raced
+                    // with the app coming back is run now, not only at the next start of the activity
+                    if (keptJobs.isFile) runKeptJobs()
                 }
                 delay(HEARTBEAT_MS)
             }
@@ -469,7 +472,10 @@ object AppHost {
 
     // ------------------------------------------------------------------ brief P3k: the sync service
 
-    /** "done" is handing its photo to the sync (the darkroom is closing it): counts as work in flight. */
+    /**
+     * Work in flight the service must wait for: "done" handing its photo to the sync (the darkroom is closing it), or a
+     * batch job being carried out (from its start to its `/done`).
+     */
     private val handingOver = AtomicInteger(0)
 
     fun handOverStarted() { handingOver.incrementAndGet() }
@@ -485,7 +491,7 @@ object AppHost {
             editsClosed = pending.size - openCount,
             editsOpen = openCount,
             exports = agent.queuedExports(),
-            downloading = agent.batches.value.values.any { it.running },
+            downloading = agent.transfers.copying(),
             inFlight = handingOver.get() > 0 || agent.steps.value.isNotEmpty(),
         )
     }
@@ -580,8 +586,13 @@ object AppHost {
                 // brief P3k: the batch goes on with the app in the background (the sync service keeps the process);
                 // the job is entered first (receive is idempotent) so the service sees the download from its first pass
                 agent.transfers.receive(origin, job.id, agent.jobIds(origin, job).distinct())
-                SyncService.start(app)
-                val r = agent.runEditJob(origin, job)
+                handOverStarted()
+                val r = try {
+                    SyncService.start(app)
+                    agent.runEditJob(origin, job)
+                } finally {
+                    handOverEnded()
+                }
                 if (job.open && r.toOpen.isNotEmpty()) {
                     // not awaited: the job is reported already, and the next job must not wait for the user's editing
                     _openRequests.tryEmit(OpenRequest(origin, r.toOpen, true, CompletableDeferred()))

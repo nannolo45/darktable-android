@@ -161,6 +161,12 @@ class TransferBook {
         return true
     }
 
+    /**
+     * Brief P3k: whether some job is copying now (begun, not ended). A job only received (queued, for example kept for
+     * the app by a background heartbeat) does not count: the sync service must not wait for it.
+     */
+    @Synchronized fun copying(): Boolean = entries.values.any { it.held && it.state == TransferState.RUNNING }
+
     /** The photo being copied now and the bytes of its original on the device. */
     @Synchronized fun current(o: ServerOrigin, job: Long, photo: Long?, bytes: Long = 0) {
         val e = entries[o to job] ?: return
