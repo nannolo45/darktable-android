@@ -52,6 +52,15 @@ static JsonObject *p3l_find(JsonNode *snap, const char *kind, const char *op, in
   return hit;
 }
 
+/* a deep copy (json_node_copy shares the object or array it holds) */
+static JsonNode *p3l_copy(JsonNode *n)
+{
+  gchar *t = json_to_string(n, FALSE);
+  JsonNode *c = json_from_string(t, NULL);
+  g_free(t);
+  return c;
+}
+
 static char *p3l_hash_of(JsonNode *body)
 {
   gchar *t = json_to_string(body, FALSE);
@@ -218,12 +227,12 @@ static int cmd_shared(const char *raw, const char *xmp, const char *outdir)
 
   // 4. replaced, not added
   {
-    JsonNode *b2 = json_node_copy(preset_body);
+    JsonNode *b2 = p3l_copy(preset_body);
     json_object_set_string_member(json_object_get_object_member(json_node_get_object(b2), "row"), "description", "changed");
     gchar *t = json_to_string(b2, FALSE);
     CHECK(p3l_apply(t), "changed preset not usable");
     g_free(t);
-    JsonNode *s2 = json_node_copy(style_body);
+    JsonNode *s2 = p3l_copy(style_body);
     JsonArray *items = json_object_get_array_member(json_node_get_object(s2), "items");
     json_array_remove_element(items, 0);
     t = json_to_string(s2, FALSE);
@@ -242,7 +251,7 @@ static int cmd_shared(const char *raw, const char *xmp, const char *outdir)
 
   // 5. refused
   {
-    JsonNode *b = json_node_copy(preset_body);
+    JsonNode *b = p3l_copy(preset_body);
     JsonObject *row = json_object_get_object_member(json_node_get_object(b), "row");
     json_object_set_string_member(row, "name", "p3l newer module");
     json_object_set_int_member(row, "op_version", 999);
@@ -262,7 +271,7 @@ static int cmd_shared(const char *raw, const char *xmp, const char *outdir)
     g_free(t);
     json_node_unref(b);
     // a style with one item of a newer module version: the stored style of that name stays as it was
-    JsonNode *s = json_node_copy(style_body);
+    JsonNode *s = p3l_copy(style_body);
     JsonObject *it = json_array_get_object_element(json_object_get_array_member(json_node_get_object(s), "items"), 0);
     json_object_set_int_member(it, "module", 999);
     t = json_to_string(s, FALSE);
