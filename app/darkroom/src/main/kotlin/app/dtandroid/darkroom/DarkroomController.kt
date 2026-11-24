@@ -1183,6 +1183,8 @@ class DarkroomController(
     @Volatile private var eqDrag: EqDrag? = null
     @Volatile private var eqTotal = 0.0
     @Volatile private var eqLive = false
+    /** Counts the drags begun: a drag whose pick answers after a newer one began is dropped. */
+    @Volatile private var eqGen = 0
 
     /** A drag on the photo has read its exposure and writes bands (tests wait for it before lifting the finger). */
     val toneEqDragging: Boolean get() = eqDrag != null
@@ -1203,6 +1205,7 @@ class DarkroomController(
         eqTotal = 0.0
         eqDrag = null
         eqLive = true
+        val gen = ++eqGen
         launch {
             val m = _state.value.modules.firstOrNull { it.key == key } ?: return@launch
             val gains = ToneEqMath.read(m.params)
@@ -1218,11 +1221,17 @@ class DarkroomController(
                     null
                 }
             } ?: return@launch
-            if (!eqLive) return@launch // the finger lifted before the picker answered
+            if (gen != eqGen) return@launch // a newer drag began meanwhile
             val d = EqDrag(key, m.params, started, ToneEqMath.sigmaOf(m.params), gains)
             toneEqStep(d, eqTotal)
             eqDrag = d // from here the moves go straight to the drag
             toneEqStep(d, eqTotal) // one that came while the first was written
+            // T1: a quick drag whose finger lifted before the picker answered is still applied (it was dropped, so a
+            // fast flick on a slow device did nothing); toneEqEnd found no drag, so the item is sealed here
+            if (!eqLive && gen == eqGen) {
+                eqDrag = null
+                curveEnd(key)
+            }
         }
     }
 
@@ -1814,7 +1823,7 @@ class DarkroomController(
             if (e.error == EngineError.CANCELLED) return
             null
         } else null
-        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = moduleInput)) } ?: s }
+        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = moduleInput, picks = it.picks + 1)) } ?: s }
     }
 
     /**

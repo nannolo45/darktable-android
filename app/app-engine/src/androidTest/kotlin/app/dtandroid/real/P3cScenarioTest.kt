@@ -127,8 +127,12 @@ class P3cScenarioTest {
     private fun areaByTouch(c: DarkroomController, x0: Float, y0: Float, dx: Float, dy: Float): List<Double> {
         val a0 = c.state.value.picker!!.selection!!.area!!
         val picks0 = c.state.value.history.items.size
+        val n0 = c.state.value.picker!!.picks
         swipe(onScreen(c, a0[0].toFloat() + 0.004f, a0[1].toFloat() + 0.004f), onScreen(c, x0, y0))
         waitFor("corner dragged") { c.state.value.picker!!.selection!!.area!![0] > a0[0] + 0.1 && !c.state.value.picker!!.dragging }
+        // the pick of the corner drag has landed (it runs after the finger lifts; the next drag must not start before)
+        waitFor("corner picked") { c.state.value.picker!!.picks > n0 }
+        val n1 = c.state.value.picker!!.picks
         val a1 = c.state.value.picker!!.selection!!.area!!
         TestFiles.record(res, "corner", "$a0 -> $a1")
         val mx = ((a1[0] + a1[2]) / 2).toFloat()
@@ -139,8 +143,8 @@ class P3cScenarioTest {
         TestFiles.record(res, "moved", "$a1 -> $a2, history items $picks0 -> ${c.state.value.history.items.size}")
         assertEquals("moved, same width", a1[2] - a1[0], a2[2] - a2[0], 1e-3)
         // the pick after the move has been made (its readout is there and no finger is down)
-        waitFor("picked") { !c.state.value.picker!!.dragging && c.state.value.picker!!.readout.size == 3 }
-        Thread.sleep(500)
+        // the pick after the move has landed, with its history item: a readout alone may be the one before
+        waitFor("picked") { !c.state.value.picker!!.dragging && c.state.value.picker!!.picks > n1 && c.state.value.picker!!.readout.size == 3 }
         return a2
     }
 

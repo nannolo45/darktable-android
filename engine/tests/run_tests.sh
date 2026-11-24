@@ -425,6 +425,9 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     # the session after history_goto(1) and back against darktable-cli of the state before it
     [ -f "$D/p3h_first_before_reload_cli.png" ] && cmp_rec C28 "$C" "$D/p3h_first_after_reload_bridge.ppm" "$D/p3h_first_before_reload_cli.png"
     parity C28 p3h_before_reload; parity C28 p3h_after_reload
+    # T1: masks above the history end across undo, redo and compress: the XMP written after each against darktable-cli
+    drv C28b undomask "a drawn mask above the history end survives undo, redo and compress"
+    for f in t1_undo_after t1_redo_after t1_compress_below t1_compress_first; do parity C28b $f; done
   fi
   # brief P3j (engine-api.md 9): copy and selective paste of the history
   if want C29; then
