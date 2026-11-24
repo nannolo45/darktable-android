@@ -25,6 +25,7 @@ typedef struct dtb_pipe_t
   dt_dev_pixelpipe_t pipe;
   dt_mipmap_buffer_t buf;
   dt_mipmap_size_t size;
+  GHashTable *shape_hash;  // piece -> dtb_shape_hash_t, see render.c _shapes_into_hash
 } dtb_pipe_t;
 
 /* one whole-history state for undo and redo, kept in darktable's
