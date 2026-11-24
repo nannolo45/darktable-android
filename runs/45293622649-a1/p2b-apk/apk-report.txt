@@ -1,0 +1,26 @@
+app tag: dt-android-09e620606e16
+engine: engine-04477d32-c7af3cd7167f
+commit: 09e620606e16e0ac2fd7e2f6e9f017d4ef112584
+
+== arm64-v8a
+apk_bytes 38477159
+package: name='app.dtandroid' versionCode='2' versionName='dt-android-09e620606e16' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+application-label:'dt-android'
+native-code: 'arm64-v8a'
+  10096	lib/arm64-v8a/libandroidx.graphics.path.so
+  37248	lib/arm64-v8a/libdtjni.so
+  17	assets/engine/engine.id
+  22002647	assets/engine/engine.zip
+  permissions:
+    package: app.dtandroid
+    uses-permission: name='android.permission.INTERNET'
+    uses-permission: name='android.permission.ACCESS_NETWORK_STATE'
+    uses-permission: name='android.permission.RECEIVE_BOOT_COMPLETED'
+    uses-permission: name='android.permission.FOREGROUND_SERVICE'
+    uses-permission: name='android.permission.FOREGROUND_SERVICE_DATA_SYNC'
+    uses-permission: name='android.permission.POST_NOTIFICATIONS'
+    permission: app.dtandroid.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    uses-permission: name='app.dtandroid.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
+unexpected permissions: android.permission.FOREGROUND_SERVICE
+android.permission.FOREGROUND_SERVICE_DATA_SYNC
+android.permission.POST_NOTIFICATIONS
