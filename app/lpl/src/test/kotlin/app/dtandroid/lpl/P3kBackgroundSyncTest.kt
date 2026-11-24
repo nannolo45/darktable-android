@@ -134,6 +134,10 @@ class P3kBackgroundSyncTest {
         assertEquals(0.2f, n.fraction!!, 1e-6f)
         assertTrue(n.canStop)
         assertNull(SyncNotice.sum(emptyList()))
+        // a batch that ended on another server is not counted (emulator run 45392518528 showed "3 of 4" for a 2-photo batch)
+        val one = SyncNotice.sum(listOf(BatchView(2, 0, 0, true, false), BatchView(2, 2, 2, false, false)))!!
+        assertEquals("Downloading · 1 of 2", SyncNotice.of(one, 0, 0, 0, null).title)
+        assertNull(SyncNotice.sum(listOf(BatchView(2, 2, 2, false, true))))
     }
 
     @Test fun noticeExportsOnly() {

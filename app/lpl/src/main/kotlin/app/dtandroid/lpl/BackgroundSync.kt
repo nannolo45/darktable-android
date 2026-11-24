@@ -95,11 +95,14 @@ data class SyncNotice(val title: String, val text: String, val fraction: Float?,
             return SyncNotice("LightPhotoLibrary", "syncing", null, canStop = false)
         }
 
-        /** All servers' batches as one: "n of N" over every job held. */
-        fun sum(views: Collection<BatchView>): BatchView? = if (views.isEmpty()) null else BatchView(
+        /**
+         * The running batches of all servers as one: "n of N" over the jobs held. A server whose batch ended (its view
+         * stays for the list's "stopped · n of N") is left out.
+         */
+        fun sum(all: Collection<BatchView>): BatchView? = all.filter { it.running }.let { views -> if (views.isEmpty()) null else BatchView(
             total = views.sumOf { it.total }, onPhone = views.sumOf { it.onPhone }, processed = views.sumOf { it.processed },
-            running = views.any { it.running }, stopped = views.any { it.stopped },
-        )
+            running = true, stopped = views.any { it.stopped },
+        ) }
     }
 }
 
