@@ -108,6 +108,10 @@ fun ServerScreen(vm: AppViewModel) = Page {
                     "LightPhotoLibrary for this phone (save the edit to the NAS, remove it from the phone) are still carried out.",
                 muted = true,
             )
+            // brief P3k item 6: background syncs need the app to be let alone by Android's battery optimisation
+            val exempt by vm.batteryExempt.collectAsState()
+            Divider()
+            app.dtandroid.darkroom.ui.BatteryHint(exempt) { vm.openBatterySettings() }
         }
     }
 }

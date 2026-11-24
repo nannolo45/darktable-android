@@ -18,7 +18,10 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.FileLayoutStore
 import app.dtandroid.engine.api.RenderedImage
+import app.dtandroid.lpl.BackgroundSync
 import app.dtandroid.lpl.EditorPort
+import app.dtandroid.lpl.SyncWork
+import java.util.concurrent.atomic.AtomicInteger
 import app.dtandroid.lpl.Job
 import app.dtandroid.lpl.LplAgent
 import app.dtandroid.lpl.LplException
@@ -415,15 +418,21 @@ object AppHost {
         loop = AppEngine.scope.launch {
             // edits that waited while the app was away are sent now (the app is in front: no battery concern)
             // brief P2i: not with automatic syncing off
-            launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
+            // brief P3k: this work, the queued exports and the jobs below run in the process's scope, not as children
+            // of this loop: leaving the foreground cancels the loop, and must not cancel a sync or a batch half-way
+            // (the sync service carries them on with the app in the background)
+            AppEngine.scope.launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
             var beats = 0
             while (isActive) {
                 if (servers.list().isNotEmpty()) {
                     val jobs = agent.heartbeat()
                     // brief P3i: exports that waited for their server go out as soon as it answers (looked at every ~10 s)
-                    if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) launch { agent.sendQueuedExports() }
+                    if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) AppEngine.scope.launch { agent.sendQueuedExports() }
                     // in the order LPL gave them, one after the other
-                    if (jobs.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
+                    if (jobs.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
+                    // brief P3k: a job kept by a background heartbeat (the sync service's, or the last one) that raced
+                    // with the app coming back is run now, not only at the next start of the activity
+                    if (keptJobs.isFile) runKeptJobs()
                 }
                 delay(HEARTBEAT_MS)
             }
@@ -448,14 +457,81 @@ object AppHost {
         }
     }
 
-    /** One heartbeat of the background kind: sync and release jobs are done now, edit and open are kept for the screen. */
+    /**
+     * One heartbeat of the background kind: sync and release jobs are done now, edit and open are kept for the screen
+     * (on disk, run when the app is in the foreground again). Brief P3k: a sync or release of the photo open in the
+     * darkroom is kept too: it is never synced behind the user's back.
+     */
     private suspend fun heartbeatAndKeep() {
-        val now = ArrayList<Pair<ServerOrigin, Job>>()
-        for ((origin, job) in agent.heartbeat()) {
-            if (job.kind == "sync" || job.kind == "release") now += origin to job else keepJob(origin, job)
-        }
+        val (now, kept) = BackgroundSync.splitJobs(agent.heartbeat(), controller.openRawPath() != null) { o, id -> isOpenInDarkroom(o, id) }
+        for ((origin, job) in kept) keepJob(origin, job)
         if (now.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in now) runJob(origin, job) } }
     }
+
+    private fun isOpenInDarkroom(o: ServerOrigin, id: Long): Boolean {
+        val open = controller.openRawPath() ?: return false
+        return agent.record(o, id)?.let { work.raw(it).path == open } == true
+    }
+
+    // ------------------------------------------------------------------ brief P3k: the sync service
+
+    /**
+     * Work in flight the service must wait for: "done" handing its photo to the sync (the darkroom is closing it), or a
+     * batch job being carried out (from its start to its `/done`).
+     */
+    private val handingOver = AtomicInteger(0)
+
+    fun handOverStarted() { handingOver.incrementAndGet() }
+    fun handOverEnded() { handingOver.decrementAndGet() }
+
+    /** What LPL work there is now, for [BackgroundSync] (the service adds its own sync pass and counters). */
+    fun syncWork(): SyncWork {
+        val pending = agent.pending()
+        val open = controller.openRawPath()
+        val openCount = if (open == null) 0 else pending.count { work.raw(it).path == open }
+        return SyncWork(
+            autoSync = agent.autoSync,
+            editsClosed = pending.size - openCount,
+            editsOpen = openCount,
+            exports = agent.queuedExports(),
+            downloading = agent.transfers.copying(),
+            inFlight = handingOver.get() > 0 || agent.steps.value.isNotEmpty(),
+        )
+    }
+
+    /** The photos waiting to be sent that are not open in the darkroom (the notification's "n of N"). */
+    fun waitingClosed(): List<Pair<ServerOrigin, Long>> {
+        val open = controller.openRawPath()
+        return agent.pending().filter { open == null || work.raw(it).path != open }.map { it.server to it.id }
+    }
+
+    /** Whether a server with waiting work did not answer its last call. */
+    fun waitingServerUnreachable(): Boolean {
+        val errors = agent.lastError.value
+        val origins = agent.pending().map { it.server }.toSet() + if (agent.queuedExports() > 0) servers.list().map { it.origin } else emptyList()
+        return origins.any { errors[it] != null }
+    }
+
+    /**
+     * Start the sync service when there is LPL work in flight. Called while the activity is still visible (its
+     * `onPause`, "done", a batch starting): Android 12 and later refuse a foreground service started from the
+     * background. True when it was asked to start.
+     */
+    fun startSyncIfNeeded(): Boolean {
+        if (servers.list().isEmpty()) return false
+        val w = syncWork()
+        if (!BackgroundSync.shouldStart(w)) return false
+        return SyncService.start(app)
+    }
+
+    /** One heartbeat from the sync service, unless the foreground loop or the export's heartbeat already beats. */
+    suspend fun serviceHeartbeat() {
+        if (loop?.isActive == true || exportBeat?.isActive == true || servers.list().isEmpty()) return
+        heartbeatAndKeep()
+    }
+
+    /** Whether the app is in the foreground (its own heartbeat loop runs). */
+    val inForeground: Boolean get() = loop?.isActive == true
 
     /** The app left the foreground: stop the heartbeat, send a last one, leave pending syncs to the background job. */
     @Synchronized
@@ -510,7 +586,16 @@ object AppHost {
             "sync", "release" -> agent.runSyncOrRelease(origin, job)
             "edit" -> if (agent.runsAsBatch(origin, job)) {
                 // brief P2k: copy first (progress, Stop), then open; the job is reported when the copying ends
-                val r = agent.runEditJob(origin, job)
+                // brief P3k: the batch goes on with the app in the background (the sync service keeps the process);
+                // the job is entered first (receive is idempotent) so the service sees the download from its first pass
+                agent.transfers.receive(origin, job.id, agent.jobIds(origin, job).distinct())
+                handOverStarted()
+                val r = try {
+                    SyncService.start(app)
+                    agent.runEditJob(origin, job)
+                } finally {
+                    handOverEnded()
+                }
                 if (job.open && r.toOpen.isNotEmpty()) {
                     // not awaited: the job is reported already, and the next job must not wait for the user's editing
                     _openRequests.tryEmit(OpenRequest(origin, r.toOpen, true, CompletableDeferred()))
