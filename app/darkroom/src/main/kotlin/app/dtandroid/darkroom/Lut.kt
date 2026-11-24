@@ -96,6 +96,9 @@ class Lut internal constructor(private val c: DarkroomController) {
 
     fun open(key: InstanceKey) { if (_state.value.key != key) _state.value = LutUi(key = key) }
 
+    /** Another module expanded or the table collapsed: the picker goes. */
+    fun focusChanged() { if (_state.value.key != null && _state.value.key != wanted(c.state.value)) close() }
+
     fun close() = _state.update { it.copy(key = null, picking = false, menu = null) }
 
     private fun patches(): LutPatches? {

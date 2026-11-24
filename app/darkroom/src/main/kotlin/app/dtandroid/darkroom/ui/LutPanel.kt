@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,7 +61,6 @@ private val cSlider = maskSlider(SL_C, "saturation", -128.0, 128.0, 0.0, 1.0, 2,
 fun LutPanel(ctx: PanelContext) {
     val lut = ctx.controller.lut
     LaunchedEffect(ctx.key) { lut.open(ctx.key) }
-    DisposableEffect(ctx.key) { onDispose { lut.close() } }
     val u by lut.state.collectAsState()
     val c = DtTheme.colors
     val sp = DtTheme.space

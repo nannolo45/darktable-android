@@ -139,6 +139,12 @@ class Retouch internal constructor(private val c: DarkroomController) {
         reload()
     }
 
+    /** Another module expanded or retouch collapsed (DarkroomController.toggleExpanded, goToModule): its tools go. */
+    fun focusChanged() {
+        val k = _state.value.key ?: return
+        if (k != wanted(c.state.value)) close()
+    }
+
     /** The panel closed: tools off; "temporarily switch off shapes" ends with it, as desktop's (only while focused). */
     fun close() {
         val was = _state.value.suppress

@@ -2573,13 +2573,21 @@ class DarkroomController(
             else s.copy(group = GroupTab.Active, forceShow = key, expanded = key, search = "", overlay = null)
         }
         pickerCheck() // brief P3c: another module's panel: the picker goes
+        retouchFocus()
         launch { syncCropTool() } // brief P3a: crop's panel opened or another module's
     }
 
     fun toggleExpanded(key: InstanceKey) {
         _state.update { it.copy(expanded = if (it.expanded == key) null else key, overlay = null) }
         pickerCheck() // brief P3c: leaving the picker's module disarms it
+        retouchFocus()
         launch { syncCropTool() } // brief P3a: opening crop's panel opens the tool; closing it or opening another leaves it
+    }
+
+    /** Brief P3m: retouch's tools and "switch off shapes", the look up table's picker, only while their module is expanded. */
+    private fun retouchFocus() {
+        retouchOrNull?.focusChanged()
+        if (lutLazyInit) lut.focusChanged()
     }
 
     fun setView(v: BottomView) {
@@ -2738,8 +2746,11 @@ class DarkroomController(
     /** Retouch's shapes and tools (Retouch.kt). */
     val retouch: Retouch get() = retouchLazy.value
 
+    private val lutLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Lut(this) }
+    private val lutLazyInit: Boolean get() = lutLazy.isInitialized()
+
     /** The colour look up table's patch editor (Lut.kt). */
-    val lut: Lut by lazy { Lut(this) }
+    val lut: Lut get() = lutLazy.value
 
     /** Brief P3d: "show mask" on for [key] or off (null); renders again. */
     fun setShowMask(key: InstanceKey?) {

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,8 +86,8 @@ private val blueSlider = maskSlider(SL_B, "blue", 0.0, 1.0, 0.0, 100.0, 1, "%")
 @Composable
 fun RetouchPanel(ctx: PanelContext) {
     val rt = ctx.controller.retouch
-    LaunchedEffect(ctx.key) { rt.open(ctx.key) }
-    DisposableEffect(ctx.key) { onDispose { rt.close() } }
+    // the panel may leave the composition when the list scrolls: retouch stays focused while its module is expanded
+    LaunchedEffect(ctx.key, ctx.state.info) { rt.open(ctx.key) }
     val u by rt.state.collectAsState()
     val c = DtTheme.colors
     val sp = DtTheme.space
