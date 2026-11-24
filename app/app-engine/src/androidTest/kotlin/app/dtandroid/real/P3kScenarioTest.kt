@@ -147,13 +147,22 @@ class P3kScenarioTest {
         // the job is queued once the app's own heartbeat runs, so the foreground takes it (not a background heartbeat)
         waitFor("the app's heartbeat", 60_000) { AppHost.inForeground }
         val job = s.queueJob(AppHost.servers.installId, "edit", listOf(91, 92), open = false)
+        val t0 = System.currentTimeMillis()
+        fun phase(what: String) = TestFiles.record(res, "s2_phase", "+${System.currentTimeMillis() - t0} ms $what; job ${job.status}; " +
+            "copying ${AppHost.agent.transfers.copying()}; batches ${AppHost.agent.batches.value.values}; service ${SyncService.running}")
         waitFor("the batch is copying", 120_000) { s.seen("GET", "/api/photos/91/original").isNotEmpty() }
+        phase("copying seen")
         var seen = SyncService.running
         scenario!!.moveToState(Lifecycle.State.CREATED)
+        phase("activity stopped")
         gate.countDown()
-        waitFor("the batch job reported", 300_000) {
-            if (SyncService.running) seen = true
-            job.status == "done" || job.status == "failed" || job.status == "stopped"
+        try {
+            waitFor("the batch job reported", 300_000) {
+                if (SyncService.running) seen = true
+                job.status == "done" || job.status == "failed" || job.status == "stopped"
+            }
+        } finally {
+            phase("end of wait; originals asked ${s.seen("GET", "/api/photos/").filter { it.path.contains("/original") }.map { it.path }}")
         }
         waitFor("service gone", 120_000) { if (SyncService.running) seen = true; !SyncService.running }
         TestFiles.record(res, "s2_end", "job ${job.status} ${job.doneBody}; service created ${SyncService.created.get() - before}x, seen running: $seen, " +

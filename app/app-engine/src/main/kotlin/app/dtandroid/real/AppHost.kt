@@ -418,15 +418,18 @@ object AppHost {
         loop = AppEngine.scope.launch {
             // edits that waited while the app was away are sent now (the app is in front: no battery concern)
             // brief P2i: not with automatic syncing off
-            launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
+            // brief P3k: this work, the queued exports and the jobs below run in the process's scope, not as children
+            // of this loop: leaving the foreground cancels the loop, and must not cancel a sync or a batch half-way
+            // (the sync service carries them on with the app in the background)
+            AppEngine.scope.launch { if (agent.pending().isNotEmpty()) agent.syncPendingAutomatically() }
             var beats = 0
             while (isActive) {
                 if (servers.list().isNotEmpty()) {
                     val jobs = agent.heartbeat()
                     // brief P3i: exports that waited for their server go out as soon as it answers (looked at every ~10 s)
-                    if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) launch { agent.sendQueuedExports() }
+                    if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) AppEngine.scope.launch { agent.sendQueuedExports() }
                     // in the order LPL gave them, one after the other
-                    if (jobs.isNotEmpty()) launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
+                    if (jobs.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
                     // brief P3k: a job kept by a background heartbeat (the sync service's, or the last one) that raced
                     // with the app coming back is run now, not only at the next start of the activity
                     if (keptJobs.isFile) runKeptJobs()
