@@ -143,6 +143,10 @@ object NativeBridge {
     const val HISTORY_CLIPBOARD = 15
     const val HISTORY_PASTE = 16
     const val HISTORY_PASTE_FILES = 17
+    // P3l (R11, PLAN.md 4.5): SHARED_SNAPSHOT; SHARED_APPLY (s1 body JSON); SHARED_DELETE (s1 kind, s2 operation, s3 name, n1 op_version)
+    const val SHARED_SNAPSHOT = 18
+    const val SHARED_APPLY = 19
+    const val SHARED_DELETE = 20
     @JvmStatic external fun p1b(what: Int, s1: String?, s2: String?, s3: String?, n1: Int, n2: Int, status: IntArray): String?
 
     // P1b part 2 (engine-api.md section 6): renders with options (JSON, null = none)

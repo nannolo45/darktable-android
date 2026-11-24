@@ -80,6 +80,8 @@ class LplAgent(
     val settings: SyncSettings = SyncSettings.inMemory(),
     /** Brief P2i: a line for the app's timeline (removals, refused writes); nothing by default */
     private val trace: (String) -> Unit = {},
+    /** Brief P3l: the phone's settings for shared styles, presets and layouts (in memory unless given) */
+    sharedSettings: SharedSettings = SharedSettings(null),
 ) {
     private val _photos = MutableStateFlow<List<PhotoRecord>>(emptyList())
     /** Every photo held, in the order taken. */
@@ -886,7 +888,7 @@ class LplAgent(
 
     /** One heartbeat to one server; null when it did not answer. Reports the transfers and acts on `cancel` (brief P2k). */
     private fun heartbeatTo(origin: ServerOrigin, deviceName: String): HeartbeatAnswer? = try {
-        val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin)) }
+        val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin), shared.caps(origin)) }
         // brief P3i (R18): what the server can receive; no `server_caps` = an older server, exports wait
         if (exports.capsOf(origin) != (a.serverCaps ?: emptySet<String>())) { exports.setCaps(origin, a.serverCaps); _capsTick.value = _capsTick.value + 1 }
         // `cancel` comes only from a server that knows `caps`: only then are edit jobs run as batches
@@ -904,6 +906,14 @@ class LplAgent(
 
     /** What the app keeps about exports: the servers' `server_caps` and the exports waiting for a server. */
     val exports = ExportBook(File(work.root.parentFile ?: work.root, "exports"))
+
+    /**
+     * Brief P3l (R11, PLAN.md 4.5): styles, presets and module layouts shared through LightPhotoLibrary. The app sets
+     * its [SharedSync.port] (the engine and the layout store); `shared` goes into the heartbeat's caps once the server
+     * lists it in `server_caps` and sharing is on.
+     */
+    val shared = SharedSync(servers, File(work.root.parentFile ?: work.root, "shared"), { o -> client(o) }, { o -> exports.capsOf(o) },
+        { autoSync }, sharedSettings, clock, trace)
 
     private val _capsTick = MutableStateFlow<Int>(0)
     /** Counts the changes of any server's `server_caps`: the export screen reads the offer again. */

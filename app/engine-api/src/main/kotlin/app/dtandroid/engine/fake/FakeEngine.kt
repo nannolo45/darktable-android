@@ -1228,6 +1228,57 @@ class FakeEngine(
         Unit
     }
 
+    // R11 (brief P3l): the fake keeps shared bodies as they came, apart from its own presets and styles; versions
+    // above 99 stand for "newer than this engine"
+    private val sharedDb = sortedMapOf<String, JsonObject>()
+
+    private fun sharedKey(kind: String, op: String, v: Int, name: String) = if (kind == "style") "style\u0000$name" else "$kind\u0000$op\u0000$v\u0000$name"
+
+    override suspend fun sharedSnapshot(): kotlinx.serialization.json.JsonArray = onEngine {
+        requireInit()
+        kotlinx.serialization.json.JsonArray(sharedDb.values.map { b ->
+            val kind = (b["kind"] as JsonPrimitive).content
+            val row = (if (kind == "style") b["style"] else b["row"]) as JsonObject
+            kotlinx.serialization.json.buildJsonObject {
+                put("kind", JsonPrimitive(kind))
+                put("operation", row["operation"] ?: JsonPrimitive(""))
+                put("op_version", row["op_version"] ?: JsonPrimitive(0))
+                put("name", row["name"] ?: JsonPrimitive(""))
+                put("body", b)
+            }
+        })
+    }
+
+    override suspend fun sharedApply(body: JsonObject): Boolean = onEngine {
+        requireInit()
+        fun int(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        fun str(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.takeIf { it.isString }?.content
+        when ((body["kind"] as? JsonPrimitive)?.content) {
+            "preset" -> {
+                val row = body["row"] as? JsonObject ?: fail(EngineError.ARG, "a preset body needs a row")
+                val name = str(row, "name") ?: fail(EngineError.ARG, "no name")
+                val op = str(row, "operation") ?: fail(EngineError.ARG, "no operation")
+                if (int(row, "op_version") > 99 || int(row, "blendop_version") > 99) return@onEngine false
+                sharedDb[sharedKey("preset", op, int(row, "op_version"), name)] = body
+            }
+            "style" -> {
+                val st = body["style"] as? JsonObject ?: fail(EngineError.ARG, "a style body needs a style")
+                val name = str(st, "name") ?: fail(EngineError.ARG, "no name")
+                val items = body["items"] as? kotlinx.serialization.json.JsonArray ?: fail(EngineError.ARG, "no items")
+                if (items.any { int(it as? JsonObject, "module") > 99 || int(it as? JsonObject, "blendop_version") > 99 }) return@onEngine false
+                sharedDb[sharedKey("style", "", 0, name)] = body
+            }
+            else -> fail(EngineError.ARG, "not a preset or style body")
+        }
+        true
+    }
+
+    override suspend fun sharedDelete(kind: String, operation: String, opVersion: Int, name: String) = onEngine {
+        requireInit()
+        sharedDb.remove(sharedKey(kind, operation, opVersion, name)) ?: fail(EngineError.NOT_FOUND, "no $kind '$name'")
+        Unit
+    }
+
     override suspend fun styleCreate(name: String, description: String, items: List<Int>?, overwrite: Boolean) = onEngine {
         val s = requireSession()
         if (name.isEmpty()) fail(EngineError.ARG, "a style name must be non-empty")

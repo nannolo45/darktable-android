@@ -432,6 +432,28 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun renderTimes(): RenderTimes = onEngine { RenderTimes.fromJson(p1b(NativeBridge.RENDER_TIMES)) }
 
+    // ---------------------------------------------------------------- R11 (P3l): shared styles and presets
+
+    override suspend fun sharedSnapshot(): kotlinx.serialization.json.JsonArray = onEngine {
+        p1b(NativeBridge.SHARED_SNAPSHOT) as? kotlinx.serialization.json.JsonArray
+            ?: throw EngineException(EngineError.ENGINE, "shared snapshot: not a list")
+    }
+
+    override suspend fun sharedApply(body: JsonObject): Boolean = onEngine {
+        // JNI hands the text over as modified UTF-8, in which a character outside the BMP is not valid UTF-8 for the
+        // bridge: such characters travel as JSON \u escapes (the same text once parsed)
+        val o = p1b(NativeBridge.SHARED_APPLY, astralEscaped(body.toString())) as? JsonObject
+        (o?.get("usable") as? JsonPrimitive)?.content == "true"
+    }
+
+    override suspend fun sharedDelete(kind: String, operation: String, opVersion: Int, name: String) = onEngine {
+        p1b(NativeBridge.SHARED_DELETE, kind, operation, name, n1 = opVersion); Unit
+    }
+
+    private fun astralEscaped(json: String): String = buildString(json.length) {
+        for (ch in json) if (ch.isSurrogate()) append("\\u%04x".format(ch.code)) else append(ch)
+    }
+
     // ---------------------------------------------------------------- 9 (P3j): copy and paste of the history
 
     override suspend fun historyCopyItems(): CopyItems = onEngine { CopyItems.fromJson(p1b(NativeBridge.HISTORY_COPY_ITEMS)) }
