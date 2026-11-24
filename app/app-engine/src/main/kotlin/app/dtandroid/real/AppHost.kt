@@ -242,6 +242,9 @@ object AppHost {
             return usable
         }
 
+        override suspend fun engineVersion(): String? =
+            (AppEngine.status.value as? AppEngine.Status.Ready)?.let { "${it.info.darktableVersion} ${AppEngine.engineId}" }
+
         override suspend fun delete(key: SharedKey) {
             if (key.kind == SharedKind.LAYOUT) {
                 runCatching { layouts.delete(key.name) }

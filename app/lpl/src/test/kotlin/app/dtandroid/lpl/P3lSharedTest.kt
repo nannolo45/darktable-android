@@ -37,10 +37,13 @@ class P3lSharedTest {
     class MemPort : SharedPort {
         val items = LinkedHashMap<SharedKey, JsonObject>()
         var applied = 0
+        var engine: String? = "4.9.0 a"
+        var newest = 50
+        override suspend fun engineVersion() = engine
         override suspend fun snapshot() = items.map { (k, b) -> SharedLocal(k, SharedHash.hash(b)!!, b) }
         override suspend fun apply(body: JsonObject): Boolean {
             val k = SharedKey.of(body)!!
-            if (k.opVersion > 50) return false
+            if (k.opVersion > newest) return false
             items[k] = body; applied++
             return true
         }
@@ -365,6 +368,42 @@ class P3lSharedTest {
         a.port.items.clear(); a.pass()
         assertTrue(stub.seen("DELETE", "/api/shared/").single().path.contains("changed_at=2000000.5"))
         assertEquals(2_000_000.5, stub.shared.itemNamed("warm")!!.changedAt, 0.0)
+    }
+
+    @Test fun shippedStylesAndLastModifiedLayoutAreNeitherSentNorOffered() = runBlocking<Unit> {
+        val ex = SharedExclusions.default
+        assertEquals("_l10n_", ex.stylePrefix)
+        assertTrue(ex.layoutNames.containsAll(listOf("last modified layout", "zuletzt geändertes Layout")))
+        pcPut(style("_l10n_darktable|looks|from pc", "sigmoid"), 0)
+        pcPut(SharedLayout.body("zuletzt geändertes Layout", "1|0ꬹ0||"), 0)
+        pcPut(SharedLayout.body("pc layout", "1|0ꬹ0||"), 0)
+        stub.shared.log.clear()
+        val a = Device("Phone A").apply {
+            port.put(style("_l10n_darktable|effects|shipped", "sigmoid")); port.put(SharedLayout.body("last modified layout", "1|1ꬹ0||"))
+            port.put(style("user style", "sigmoid"))
+        }
+        a.start(); a.pass()
+        assertEquals(listOf("PUT user style"), stub.shared.log.filter { it.startsWith("PUT") })
+        assertEquals(listOf("pc layout"), a.view.rows.map { it.meta.key.name })
+        a.port.items.clear(); a.pass()
+        assertEquals("only the shared item is deleted", listOf("DELETE user style"), stub.shared.log.filter { it.startsWith("DELETE") })
+    }
+
+    @Test fun unusableMarksAreClearedWhenTheEngineChanges() = runBlocking<Unit> {
+        pcPut(preset("future", opv = 77), 0)
+        val a = Device("Phone A")
+        a.start(); a.pass()
+        val id = a.row("future")!!.meta.id
+        a.agent.shared.update(o, SharedChoices(take = setOf(id)))
+        a.pass()
+        assertEquals(SharedRow.Change.UNUSABLE, a.row("future")?.change)
+        a.port.engine = "5.0.0 b"; a.port.newest = 99
+        a.pass()
+        assertEquals("offered again", SharedRow.Change.NEW, a.row("future")?.change)
+        val st = stub.shared.states[a.id]!!["items"] as JsonObject
+        assertEquals("ok", ((st[id.toString()] as JsonObject)["state"] as JsonPrimitive).content)
+        assertEquals("1 taken in", a.agent.shared.update(o, SharedChoices(take = setOf(id))))
+        assertNotNull(a.port.hashOf("future"))
     }
 
     @Test fun anOlderServerIsLeftAlone() = runBlocking<Unit> {

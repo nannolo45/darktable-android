@@ -131,6 +131,37 @@ cd app && gradle :darkroom:testDebugUnitTest --tests 'app.dtandroid.darkroom.P3l
 behaviour described: a deleted item revives only from `base_rev` equal to the deletion's rev, "keep both" refused when
 either side is a deletion, a taken copy name gets " 2", " 3".
 
+
+## 8. Second round (supervisor's review, 24 Nov)
+
+1. **Exclusions** (PLAN.md 4.5 as updated in 6537f86): applied in one place, the client (`SharedExclusions` in
+   `app/lpl/.../SharedSync.kt`), from `docs/design/R11-excluded-names.json`, packed into the `lpl` module's resources
+   at build time (`packShared` in `app/lpl/build.gradle.kts`, like the schema files). An excluded item (style named
+   `_l10n_…`, a layout named "last modified layout" in any listed translation) is neither uploaded, nor offered, nor
+   deleted on the server when it disappears locally. Test: `P3lSharedTest.shippedStylesAndLastModifiedLayoutAreNeitherSentNorOffered`.
+   Changes to the JSON file now trigger p2a and p2b.
+2. **`unusable` reset:** the port reports the engine version (app: darktable version + engine package id); when it
+   differs from the one the book last saw, every `unusable` entry becomes `ok` at rev 0, so the item is offered again,
+   and the state is sent. Test: `P3lSharedTest.unusableMarksAreClearedWhenTheEngineChanges`.
+3. **The user preset of a fresh library:** C31 now prints every preset of the fresh snapshot (`RESULT fresh preset:`),
+   and the emulator test l1 records the phone's presets before the first pass (`l1_fresh_presets` in
+   `p3l-results.txt`). FRESH_PRESET
+4. **Interop with the real LightPhotoLibrary server** (`/home/claude/lpl`, branch `shared-r11` at `93ca7f7`, started
+   locally with `PHOTO_ROOT=/tmp/lplphotos DATA_DIR=/tmp/lpldata PORT=18791 python3 -m lpl.main` from `server/`):
+   `P3lInteropTest` drives the deliverable-5 scenarios only over HTTP (the PC is an agent that heartbeats with caps
+   `shared` and calls the R11 API), against the stub by default and against a real server with
+   `gradle :lpl:test --tests app.dtandroid.lpl.P3lInteropTest -Pdta.r11Url=http://127.0.0.1:18791 [-Pdta.lplLog=<file>]`.
+   **Result: 10 of 10 pass against the real server** (and against the stub): first sync identical (no conflict, only
+   the new item sent), one-side change taken in on Update and not sent back, conflict + mine / theirs / both (the copy
+   arrives as "warm ·… (Studio PC)"), newest wins both ways at PUT, deletion offered + delete / keep (not offered
+   again), kept item changed again comes back at the deletion's rev + 1, rename = new item + deletion, an item for a
+   newer darktable kept `unusable`. 171 requests; the only non-200 answers were the three expected
+   `PUT /api/shared -> 409` of the conflict scenarios. The real server's `hash_mismatch` answer was checked by hand:
+   `PUT` with `"hash":"00"` -> `400 {"error":"hash_mismatch","hash":"0547abf0…"}`, the same hash `tools/r11/r11_hash.py`
+   gives for that body. **No mismatch found.** Two test adjustments for a shared server (not protocol differences): item
+   names carry a suffix per test, and the update summary is compared by its start, because a real server also lists
+   other tests' items ("· 7 still waiting").
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 https://claude.ai/code/session_01SnXMKoep891vjXMfqGv9Mc

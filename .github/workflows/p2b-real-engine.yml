@@ -12,7 +12,7 @@ name: p2b-real-engine
 on:
   push:
     branches: [main, p2b-real-engine, p2e-lpl-client, p1c-engine-followups, p2e-state-fix, pui3a-l1-layout, hotfix-stale-lock, t1-stability, p3k-background-sync, p3l-shared-styles-presets]
-    paths: ["app/**", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", "tools/spektrafilm-stock-table.py", ".github/workflows/p2b-real-engine.yml"]
+    paths: ["app/**", "docs/design/R11-excluded-names.json", "schema/**", "engine/**", "tools/app/**", "tools/ci/**", "tools/spektrafilm-stock-table.py", ".github/workflows/p2b-real-engine.yml"]
   workflow_dispatch:
 
 # nothing by default; jobs ask for what they need

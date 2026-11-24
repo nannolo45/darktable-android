@@ -11,7 +11,7 @@ name: p2a-app
 on:
   push:
     branches: [main, p2a-app-foundation, p2d-module-layouts, p2e-lpl-client, p2e-state-fix, pui3a-l1-layout, t1-stability, p3k-background-sync, p3l-shared-styles-presets]
-    paths: ["app/**", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "tools/colorharmonizer-hue-tables.py", "tools/p2j-reference-vectors.py", "tools/p3a-crop-reference.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
+    paths: ["app/**", "docs/design/R11-excluded-names.json", "schema/**", "tools/app/**", "tools/layouts/**", "tools/schema-module-names.py", "tools/schema-unbound-controls.py", "tools/colorharmonizer-hue-tables.py", "tools/p2j-reference-vectors.py", "tools/p3a-crop-reference.py", "docs/experiments/P2j-results/**", ".github/workflows/p2a-app.yml"]
   workflow_dispatch:
 
 # nothing by default; the job asks for what it needs

@@ -110,6 +110,9 @@ class P3lScenarioTest {
         val e = TestFiles.engine()
         val s = newStub()
         val agent = AppHost.agent
+        // supervisor's question: which user presets (writeprotect 0) of processing modules a fresh library has
+        val presets0 = AppHost.SharedItems.snapshot().filter { it.key.kind == SharedKind.PRESET }
+        TestFiles.record(res, "l1_fresh_presets", presets0.joinToString(" | ") { "${it.key.operation} v${it.key.opVersion} '${it.key.name}' ${it.body["row"]}" })
         agent.heartbeat(); agent.heartbeat()
         assertTrue("shared in caps: ${s.heartbeats[AppHost.servers.installId]}", s.heartbeats[AppHost.servers.installId]!!.contains("\"shared\""))
         val layoutText = "1|0ꬹ1|||exposure/exposureꬹp3l group|basic||exposure|colorbalancergb"

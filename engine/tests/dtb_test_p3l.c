@@ -180,6 +180,9 @@ static int cmd_shared(const char *raw, const char *xmp, const char *outdir)
     if(!strcmp(kind, "style")) { styles0++; continue; }
     presets0++;
     const char *op = json_object_get_string_member(o, "operation");
+    // which user presets a fresh library already has (asked by the reviewer)
+    fprintf(stdout, "RESULT fresh preset: %s v%d '%s'\n", op, (int)json_object_get_int_member(o, "op_version"),
+            json_object_get_string_member(o, "name"));
     gboolean builtin = FALSE;
     if(!p3l_listed_preset(op, json_object_get_string_member(o, "name"), &builtin)) lib_listed++;
     else if(builtin) builtin_listed++;

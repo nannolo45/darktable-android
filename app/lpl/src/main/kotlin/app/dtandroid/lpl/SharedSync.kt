@@ -31,6 +31,35 @@ interface SharedPort {
     suspend fun apply(body: JsonObject): Boolean
     /** Remove the item of [key]; nothing happens if there is none. */
     suspend fun delete(key: SharedKey)
+    /** The engine's version; when it changes, items marked `unusable` are offered again (4.5). Null = not known yet. */
+    suspend fun engineVersion(): String? = null
+}
+
+/**
+ * PLAN.md 4.5 "Not shared": darktable's shipped styles (names starting `_l10n_`) and desktop's "last modified layout"
+ * in every translation, from docs/design/R11-excluded-names.json (packed as a resource). The one place the phone
+ * applies the exclusions: neither uploaded nor offered.
+ */
+class SharedExclusions(val stylePrefix: String, val layoutNames: Set<String>) {
+    fun excluded(k: SharedKey) = when (k.kind) {
+        SharedKind.STYLE -> k.name.startsWith(stylePrefix)
+        SharedKind.LAYOUT -> k.name in layoutNames
+        SharedKind.PRESET -> false
+    }
+
+    companion object {
+        fun parse(text: String): SharedExclusions {
+            val o = Json.parseToJsonElement(text) as JsonObject
+            return SharedExclusions(o["style_prefix"].str() ?: error("no style_prefix"),
+                o["layout_names"].arr()?.mapNotNull { it.str() }?.toSet() ?: error("no layout_names"))
+        }
+
+        val default: SharedExclusions by lazy {
+            val text = SharedExclusions::class.java.getResourceAsStream("/dtandroid/lpl/R11-excluded-names.json")?.use { it.readBytes().decodeToString() }
+                ?: error("R11-excluded-names.json is not packed")
+            parse(text)
+        }
+    }
 }
 
 /**
@@ -141,6 +170,7 @@ class SharedSync(
     val settings: SharedSettings = SharedSettings(null),
     private val clock: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val trace: (String) -> Unit = {},
+    private val exclusions: () -> SharedExclusions = { SharedExclusions.default },
 ) {
     @Volatile var port: SharedPort? = null
 
@@ -154,6 +184,7 @@ class SharedSync(
         val sent: ArrayDeque<SharedSent> = ArrayDeque(),
         var stateSent: Boolean = false,
         var policySent: SharedPolicy? = null,
+        var engineVersion: String? = null,
     ) {
         fun entryOf(k: SharedKey) = entries.values.firstOrNull { it.key == k }
         fun metaOf(k: SharedKey) = meta.values.firstOrNull { it.key == k }
@@ -184,7 +215,8 @@ class SharedSync(
     private fun load(o: ServerOrigin): Book {
         val f = file(o) ?: return Book()
         val obj = readWhole(f)?.let { runCatching { Json.parseToJsonElement(it.decodeToString()) as JsonObject }.getOrNull() } ?: return Book()
-        val b = Book(since = obj["since"].long() ?: 0, checkedAt = obj["checked_at"].num() ?: 0.0, lastUpdate = obj["last_update"].str())
+        val b = Book(since = obj["since"].long() ?: 0, checkedAt = obj["checked_at"].num() ?: 0.0, lastUpdate = obj["last_update"].str(),
+            engineVersion = obj["engine_version"].str())
         for (e in obj["entries"].arr().orEmpty()) {
             val x = e as? JsonObject ?: continue
             val kind = SharedKind.of(x["kind"].str()) ?: continue
@@ -206,6 +238,7 @@ class SharedSync(
         val obj = buildJsonObject {
             put("format", 1); put("since", b.since); put("checked_at", b.checkedAt)
             put("last_update", b.lastUpdate?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("engine_version", b.engineVersion?.let { JsonPrimitive(it) } ?: JsonNull)
             put("entries", buildJsonArray {
                 for (e in b.entries.values) add(buildJsonObject {
                     put("id", e.id); put("kind", e.key.kind.json); put("operation", e.key.operation); put("op_version", e.key.opVersion)
@@ -224,12 +257,27 @@ class SharedSync(
     // ------------------------------------------------------------------ rules
 
     private fun enabled(k: SharedKind) = settings.values.value.enabled(k)
+    private fun shared(k: SharedKey) = enabled(k.kind) && !exclusions().excluded(k)
+
+    /** 4.5: a device clears its `unusable` marks when its engine version changes, so those items are offered again. */
+    private fun engineChanged(b: Book, version: String?): Boolean {
+        if (version == null || version == b.engineVersion) return false
+        val first = b.engineVersion == null
+        b.engineVersion = version
+        if (first) return false
+        var cleared = 0
+        for (e in b.entries.values.toList()) if (e.state == SharedState.UNUSABLE) {
+            b.entries[e.id] = e.copy(state = SharedState.OK, rev = 0); cleared++
+        }
+        if (cleared > 0) trace("shared: engine now $version: $cleared items that needed a newer darktable are offered again")
+        return cleared > 0
+    }
 
     /** The review sheet's lines (4.5 "Waiting"), and the greyed ones that need a newer darktable. */
     private fun rows(b: Book): List<SharedRow> {
         val out = ArrayList<SharedRow>()
         for (m in b.meta.values) {
-            if (!enabled(m.key.kind)) continue
+            if (!shared(m.key)) continue
             val e = b.entries[m.id]
             val cf = b.conflicts[m.id]
             when {
@@ -257,7 +305,7 @@ class SharedSync(
      */
     private fun reconcile(b: Book, locals: Map<SharedKey, SharedLocal>) {
         for (m in b.meta.values) {
-            if (!enabled(m.key.kind)) continue
+            if (!shared(m.key)) continue
             val l = locals[m.key]
             val e = b.entries[m.id]
             if (e == null) {
@@ -326,7 +374,7 @@ class SharedSync(
             }
         }
         for (e in b.entries.values.toList()) {
-            if (!enabled(e.key.kind) || e.state == SharedState.CONFLICT || e.state == SharedState.UNUSABLE || e.localHash == null) continue
+            if (!shared(e.key) || e.state == SharedState.CONFLICT || e.state == SharedState.UNUSABLE || e.localHash == null) continue
             if (e.key in locals) continue
             val m = b.meta[e.id]
             if (m != null && m.deleted) { b.entries[e.id] = e.copy(localHash = null, rev = maxOf(e.rev, m.rev)); continue }
@@ -376,10 +424,11 @@ class SharedSync(
                 b.conflicts.clear(); for (cf in list.conflicts) b.conflicts[cf.itemId] = cf
                 b.checkedAt = clock()
                 lastPoll[o] = System.currentTimeMillis()
-                val locals = port.snapshot().filter { enabled(it.key.kind) }.associateBy { it.key }
+                val locals = port.snapshot().filter { shared(it.key) }.associateBy { it.key }
+                val cleared = engineChanged(b, port.engineVersion())
                 reconcile(b, locals)
                 // once on start, before anything is uploaded: the server then knows this phone's policy for a conflict
-                if (!b.stateSent || b.policySent != settings.values.value.policy) sendState(b, c, agent)
+                if (!b.stateSent || cleared || b.policySent != settings.values.value.policy) sendState(b, c, agent)
                 val sent = upload && autoSync() && upload(b, locals, c, agent)
                 if (sent) sendState(b, c, agent)
                 save(o, b)
@@ -447,7 +496,7 @@ class SharedSync(
                 for (id in take) {
                     val (m, body) = c.sharedGet(id)
                     b.meta[m.id] = m
-                    if (m.deleted || !enabled(m.key.kind)) continue
+                    if (m.deleted || !shared(m.key)) continue
                     applied += m to port.apply(body)
                 }
                 for ((id, del) in deletions) {

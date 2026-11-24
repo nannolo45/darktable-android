@@ -19,6 +19,16 @@ kotlin {
     compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
+// brief P3l: the names PLAN.md 4.5 does not share (docs/design/R11-excluded-names.json), packed as a resource
+val packShared by tasks.registering(Sync::class) {
+    from(rootDir.resolve("../docs/design/R11-excluded-names.json"))
+    into(layout.buildDirectory.dir("generated/shared/dtandroid/lpl"))
+}
+
+sourceSets.main {
+    resources.srcDir(packShared.map { layout.buildDirectory.dir("generated/shared").get() })
+}
+
 dependencies {
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
@@ -30,8 +40,8 @@ dependencies {
 tasks.test {
     // the run against a real LPL server (RealServerRun) only happens when its address is given:
     //   -Pdta.lplUrl=http://127.0.0.1:18790 [-Pdta.lplPassword=...] [-Pdta.lplLog=<file>]
-    for (p in listOf("dta.lplUrl", "dta.lplPassword", "dta.lplLog", "dta.lplRawId")) {
+    for (p in listOf("dta.lplUrl", "dta.lplPassword", "dta.lplLog", "dta.lplRawId", "dta.r11Url")) {
         providers.gradleProperty(p).orNull?.let { systemProperty(p, it) }
     }
-    outputs.upToDateWhen { !providers.gradleProperty("dta.lplUrl").isPresent }
+    outputs.upToDateWhen { !providers.gradleProperty("dta.lplUrl").isPresent && !providers.gradleProperty("dta.r11Url").isPresent }
 }
