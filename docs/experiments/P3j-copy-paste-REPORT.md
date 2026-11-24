@@ -1,23 +1,30 @@
 # P3j: copy and selective paste of the history — report
 
-**Not all acceptance tests pass.** Bridge test C29 passes on cr2 and raf and **fails on arw** (run 45301042706, last
-code commit 657d436d): the arw test XMP (0179-spektrafilm) already has a second exposure instance ("after"), so the
-test's new instance is priority 2. (1) A selective copy of that priority-2 instance (with its circle) appended onto
-C (the same XMP) does not show up at priority 2 on C and no circle arrives (exposure of priority 2 on C: NaN, masks
-[]); where it merged is not known yet. (2) After a plain paste onto the open photo, undo and redo, `history()` lists
-22 items with `end` 23; the written XMP reopens with the same 22 items and end 22. All pixel comparisons of C29 pass
-on the three images (max 0). Not fixed: two fix attempts were spent on the test's own errors; this needs a bridge
-investigation (probably `dt_history_merge_target` with a multi-instance target, and an item the bridge's history list
-leaves out, such as mask_manager, counted in the end).
+**State (24 Nov, after review round 2).** All three workflows green on 767ef5d2 (run ids in section 3). The arw
+failures of the first rounds were investigated with a reference built from desktop's own path:
 
-Branch `p3j-copy-paste` from `main` 1c39df7. Brief: `docs/briefs/P3j-copy-paste-history.md`. No pull request (per
-the brief); this file is its description.
-
-**Reference.** The darktable manual's history stack page could not be fetched from the build workspace (the fetch
-needed an approval nobody gave). Upstream's source at the pinned commit is the reference: `common/history.c`
-(`dt_history_copy`, `dt_history_copy_parts`, `dt_history_paste`, `dt_history_copy_and_paste_on_image`),
-`gui/hist_dialog.c` (the selective dialog), `libs/copy_history.c`, `control/jobs/control_jobs.c` (paste job),
-`data/darktableconfig.xml.in` (`plugins/lighttable/copy_history/pastemode`).
+- **Item 1 (arw: the priority-2 instance with its circle, selectively appended onto C, "lost") is upstream's own
+  behaviour.** `engine/tests/dtb_p3jref.c` calls `dt_history_copy_and_paste_on_image()` on plain library images
+  (darktable-cli's import and XMP read, no bridge session, clipboard image or undo). The XMP it writes has the
+  instance and its two shapes (15 entries), and so does the bridge's (`p3j_c_pasted.xmp`: equal). But with the module
+  order copied (`copy_iop_order`, as desktop's copy always does), upstream writes the source's order merged with the
+  target's multi-instances (`dt_ioppr_merge_multi_instance_iop_order_list`) after the merge, over the order the merge
+  needed: C's module order then has exposure 0 and 1 but not 2 (`RESULT C's module order has exposure 0, 1, 2:
+  1 1 0`). Reading the history back drops the item (`develop.c dt_dev_read_history_ext`: "illegal iop_order"),
+  in desktop's darkroom after a paste onto its image (`dt_dev_reload_history_items`) and when the photo opens again:
+  desktop's path read back gives 14 items, end 15. The bridge's photo opened from the pasted XMP equals that read-back
+  exactly. C29 now expects desktop's result at both points (the XMP written, the photo read back). On cr2 and raf
+  (the new instance is priority 1) everything is kept on both sides.
+- **Item 2 (22 items, end 23 after paste, undo, redo)** comes from the same upstream step, not from the undo
+  snapshot clean-up: the end counts the item the read-back drops (desktop's read-back: end 15 of 14 items). Fixed in
+  the bridge: after a paste onto the open photo the end is set to the number of items when it is above (logged on
+  stderr), so `history()`, undo/redo and the reopened XMP agree (C29 checks end <= items after the paste and after
+  undo and redo; the comparator reads an end above the entries as the entries, as darktable does).
+- **Refusal**: pasting onto the photo the history was copied from is refused (ARG), as desktop; versions of one RAW
+  share one library image and count as that photo. Tested in C29, the contract test and the JVM test.
+- On the way: the clipboard image is no longer renamed (photos are looked up without it, `dtb__image_id`) and one
+  clipboard image serves the engine's life. Neither changed the arw result (the cause was upstream's, above); kept as
+  simpler.
 
 ## 1. Brief item by item
 
@@ -26,7 +33,7 @@ needed an approval nobody gave). Upstream's source at the pinned commit is the r
 | D1 engine: copy all or a list of instances to a clipboard; paste onto the open photo or onto XMP/raw pairs, append or overwrite; one undo step on the open photo | **done** — `engine/src/copypaste.c`, five calls (engine-api.md section 9). Every copy and paste is upstream's own `dt_history_copy_and_paste_on_image()`. "One history item per paste" read as one undo step: the history gets one item per pasted module, as desktop (needed for the same XMP as desktop). |
 | D2 app: copy, selective copy… (ticked = what a plain copy takes, unsafe modules unticked), paste, selective paste…, mode append/overwrite remembered; darktable and modern: photo menu; photo list: choose photos, paste with BatchProgress, LPL photos fetched first; l1: `more` | **done** — `darkroom/CopyPaste.kt`, `ui/CopyPasteSheets.kt`, photo menu (`Sheets.kt`), l1 `more` tool (`L1Panel.kt`), photo list choose mode (`PhotoList.kt`, app-engine `Screens.kt`); also "paste onto photos…" over the series in the darkroom. Mode remembered in `files/settings/paste-mode.txt`. |
 | D3 pasted LPL photos marked edited and synced | **done (by the existing path)** — each pasted photo is reported with `PhotoSource.left(item)`, the call the darkroom makes after saving a photo, which marks it and schedules the sync (AppHost). Not tested against a stub server in this package. |
-| Tests: bridge | **see 3** — C29 (`engine/tests/dtb_test_p3j.c`). |
+| Tests: bridge | **done** — C29 (`engine/tests/dtb_test_p3j.c`), reference `engine/tests/dtb_p3jref.c` (desktop's own path) and `p3j_xmp_compare.py`. |
 | Tests: JVM | **done** — `P3jCopyPasteTest` (3 tests), contract test `copyAndPasteTheHistoryBetweenPhotos` (stand-in). |
 | Screenshots | **done** — `phone-p3j-{darktable,modern}-{menu,copy-sheet,paste-sheet}`, `phone-p3j-l1-more`, `phone-p3j-paste-onto` (p2a-app job screenshots). |
 | Emulator | **done** — `P3jScenarioTest` (copy A, selective paste onto B, B renders, B's XMP reopens identical, paste onto two photos) and the contract test on the real engine: both pass (run 45293622649). |
@@ -40,9 +47,11 @@ needed an approval nobody gave). Upstream's source at the pinned commit is the r
 
 ## 3. Results
 
-CI runs: on 09e62060 p2a-app 45293622459 success, p2b-real-engine 45293622649 success (emulator, P3j included), g0-app
-45293622468 failure (C29 arw only); on 657d436d (C29 test fix) p2b-real-engine 45301042753 success, g0-app 45301042706
-failure (C29 arw only, see the top); bridge tests otherwise 403 PASS lines, no other FAIL.
+CI runs on 767ef5d2: g0-app 45342762685 success (bridge tests, C29 on cr2, raf, arw: every comparison equal);
+p2b-real-engine 45342762698 (first attempt: the known flake P3eScenarioTest.p4_toneEqualizerDragOnThePhoto, whole
+workflow re-run as the brief says; see the line at the end); p2a-app 45349847064 (dispatched; app code unchanged since
+c761954e, whose JVM tests and screenshots passed but whose release-publish step failed with HTTP 403 "Resource not
+accessible by integration", a token permission outside this branch).
 
 Emulator (x86_64 emulator, real engine, public test RAW), `p3j-results.txt`:
 ```
@@ -81,7 +90,8 @@ did not leave out on B's side; (c) pasting an identical instance again adds no h
    upstream's function unchanged.
 2. Pasting onto a photo without an XMP first makes its default edit (decodes the RAW, as `dtb_open`): slower, but
    white balance defaults need the RAW. Desktop's images have it from their thumbnail.
-3. Pasting onto the photo the history was copied from is allowed (desktop refuses the same image id; here versions
-   of one RAW share one image).
+3. Answered: refused as desktop.
 4. Selective paste keeps its choice for later pastes (desktop's `copy_paste.selops`); fine for the app?
+6. Upstream's paste with the module order copied loses a pasted multi-instance whose priority the target's order
+   lacks (above). The bridge reproduces desktop; a patch in `patches/` could keep it. Wanted?
 5. The photo list's choose mode is new (the list had no selection); rows of read-only LPL photos cannot be chosen.

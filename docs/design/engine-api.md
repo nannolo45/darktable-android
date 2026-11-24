@@ -678,19 +678,18 @@ fetched from the build workspace (no approval for the fetch); upstream's source 
 **How (engine/src/copypaste.c).** Desktop's copy remembers only the image; its paste reads that image's history from
 the library. The engine re-reads a photo's XMP into the library at every open, and versions of one RAW share one
 library image, so the copied history is kept under an image of its own: the clipboard image, a library duplicate of
-the copied photo (`dt_image_duplicate_with_version`, version 32000, renamed `.dtb-clipboard` so `dt_image_get_id`
-never finds it) holding a verbatim copy of its history rows, masks, module order and history end. Both that copy and
+the copied photo (`dt_image_duplicate_with_version`, version 32000; the bridge looks photos up without it, `dtb__image_id`) holding a verbatim copy of its history rows, masks, module order and history end. Both that copy and
 every paste are upstream's own `dt_history_copy_and_paste_on_image()` (the copy: its overwrite of the whole stack with
 `copy_full`), so selection, append (`_history_copy_and_paste_on_image_merge` through
 `dt_history_merge_module_into_history`, masks of pasted modules included), overwrite (a verbatim row copy without the
 unsafe modules), module order and locked masks are desktop's. Its interface parts do nothing without the interface
 (no view manager, `darktable.develop` holds no image, `darktable.undo` NULL), except the two undo snapshots it takes of
-the target in `memory.snapshot_*`, the tables of the bridge's own undo: they are cleared right after the call. The
-clipboard image is removed at the next copy, at `dtb_shutdown`, and at `dtb_init` if an earlier process left one.
+the target in `memory.snapshot_*`, the tables of the bridge's own undo: they are cleared right after the call. One
+clipboard image serves the engine's life (each copy overwrites it); it is removed at `dtb_shutdown`, and at `dtb_init` if an earlier process left one.
 Raster-mask data files (`dt_dtdata_merge`) follow upstream's call too; the app makes none.
 
-Differences from desktop, on purpose: pasting onto the photo the history was copied from is allowed (desktop refuses
-the same image; here versions of one RAW share an image, and the copy is a snapshot); a photo without an XMP gets the
+As desktop, pasting onto the photo the history was copied from is refused (ARG; versions of one RAW share one image, so
+they count as that photo). Difference from desktop, on purpose: a photo without an XMP gets the
 default edit first (desktop's images have it from their first thumbnail).
 
 Tests: C29 (`engine/tests/dtb_test_p3j.c`, run_tests.sh): copy all + overwrite onto a byte copy of the RAW equals the
