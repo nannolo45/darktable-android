@@ -50,6 +50,8 @@
 #define CLIP_NAME ".dtb-clipboard"
 
 static dt_imgid_t g_clip = NO_IMGID;
+// the photo it was copied from: desktop does not paste onto it (dt_history_copy_and_paste_on_image)
+static dt_imgid_t g_src = NO_IMGID;
 // desktop's dt_history_copy_item_t: selops (NULL = the whole history),
 // full_copy, copy_iop_order
 static GList *g_ops = NULL;
@@ -373,6 +375,7 @@ int dtb_history_copy(const char *options_json)
     return dtb__err(DTB_E_ENGINE, "copying the history to the clipboard failed");
   }
   g_clip = clip;
+  g_src = dtb_S.imgid;
   g_list_free(g_ops);
   g_ops = ops;
   // dt_history_copy: full_copy FALSE, copy_iop_order TRUE;
@@ -431,11 +434,22 @@ int dtb_history_paste(const char *options_json)
   _paste_t p;
   const int r = _paste_options(options_json, &p);
   if(r) return r;
+  if(dtb_S.imgid == g_src) return dtb__err(DTB_E_ARG, "this is the photo the history was copied from");
   dtb__change_begin(DTB_CHANGE_OTHER, NULL);
   // as desktop in the darkroom: the image's history is written first
   dt_dev_write_history(&dtb_S.dev);
   const gboolean ok = _paste(g_clip, dtb_S.imgid, p.merge, g_ops, g_order, g_full);
   dtb__reload_dev();
+  // the history end never above the items: a reopened XMP has it so (darktable clamps it when it reads the
+  // file), and undo and redo keep what this state says (C29 on arw had 23 of 22 after a paste)
+  const int n = g_list_length(dtb_S.dev.history);
+  if(dtb_S.dev.history_end > n)
+  {
+    fprintf(stderr, "[dtb] history_paste: history end %d above its %d items after the paste; set to %d\n",
+            dtb_S.dev.history_end, n, n);
+    dtb_S.dev.history_end = n;
+    dt_dev_write_history(&dtb_S.dev);
+  }
   dtb__pipes_dirty(DT_DEV_PIPE_REMOVE | DT_DEV_PIPE_SYNCH);
   dtb__change_end(DTB_CHANGE_OTHER, NULL);
   return ok ? DTB_OK : dtb__err(DTB_E_ENGINE, "the paste failed");
@@ -492,6 +506,7 @@ static int _paste_file(const char *raw, const char *xmp, const _paste_t *p)
     dt_dev_cleanup(&dev);
     dt_mipmap_cache_evict_at_size(imgid, DT_MIPMAP_FULL);
   }
+  if(imgid == g_src) return dtb__err(DTB_E_ARG, "%s is the photo the history was copied from", raw);
   if(!_paste(g_clip, imgid, p->merge, g_ops, g_order, g_full))
     return dtb__err(DTB_E_ENGINE, "the paste onto %s failed", raw);
   return dtb__xmp_write_image(imgid, xmp);

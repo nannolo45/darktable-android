@@ -1255,7 +1255,7 @@ class FakeEngine(
     // empty history. Modules unsafe to copy (white balance, raw black/white point, orientation) are left out by a
     // plain copy, as darktable's IOP_FLAGS_UNSAFE_COPY.
 
-    private class FClip(val items: List<Pair<Int, Item>>, val parts: Boolean, val order: Boolean, var selected: Set<Int>?)
+    private class FClip(val items: List<Pair<Int, Item>>, val parts: Boolean, val order: Boolean, var selected: Set<Int>?, val source: String)
     private var clip: FClip? = null
 
     private fun Session.copyList(): List<Pair<Int, Item>> {
@@ -1283,7 +1283,7 @@ class FakeEngine(
         val s = requireWritable()
         val list = s.copyList()
         selection?.let { checkSelection(it, list.map { p -> p.first }.toSet()) }
-        clip = FClip(list, selection != null, selection?.moduleOrder ?: true, selection?.items?.toSet())
+        clip = FClip(list, selection != null, selection?.moduleOrder ?: true, selection?.items?.toSet(), File(s.rawPath).absolutePath)
     }
 
     override suspend fun historyClipboard(): Clipboard? = onEngine {
@@ -1316,6 +1316,8 @@ class FakeEngine(
     override suspend fun historyPaste(mode: PasteMode?, selection: HistorySelection?) = onEngine {
         val s = requireWritable()
         val c = clip ?: fail(EngineError.STATE, "nothing copied")
+        // as desktop: not onto the photo it was copied from
+        if (File(s.rawPath).absolutePath == c.source) fail(EngineError.ARG, "this is the photo the history was copied from")
         pasteSelection(c, selection)
         pasteOnto(s, c, mode)
     }
@@ -1329,6 +1331,7 @@ class FakeEngine(
             try {
                 // as open: the stand-in decodes nothing, so only an empty file is refused
                 if (File(t.raw).let { it.isFile && it.length() == 0L }) fail(EngineError.IO, "cannot decode ${t.raw}")
+                if (File(t.raw).absolutePath == c.source) fail(EngineError.ARG, "${t.raw} is the photo the history was copied from")
                 val insts = catalog.modules.values.sortedBy { it.pipePosition }.map { Inst(it.op, 0, "") }
                 val name = File(t.raw).name
                 val s = Session(t.raw, false, (name.hashCode() and 0x7fffffff) % 6, samples[name], insts, emptyList(), 0, 0, emptyList())

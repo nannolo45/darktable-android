@@ -435,7 +435,32 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     [ -f "$D/p3j_b2_parts_overwrite_bridge.ppm" ] && cmp_rec C29 "$C" "$D/p3j_b2_parts_overwrite_bridge.ppm" "$D/p3j_a_bridge.ppm"
     # for information: a plain copy leaves the unsafe modules (white balance ...) at the target's own
     [ -f "$D/p3j_b_overwrite_bridge.ppm" ] && echo "C29 $C info plain copy vs source: $($CMP "$D/p3j_b_overwrite_bridge.ppm" "$D/p3j_a_bridge.ppm" 2>&1)" >> "$OUT/comparisons.txt"
-    rm -f "$D"/p3j_b.* "$D"/p3j_b2.* "$D"/p3j_c.* "$D"/p3j_d.* 2>/dev/null
+    # the reference: desktop's own dt_history_copy_and_paste_on_image on plain library images (dtb_p3jref), the
+    # same pastes as the bridge's step 3 (selective copy of the new instance, append onto C) and step 4 (plain copy
+    # of A, append onto the C of step 3); the bridge's XMP must equal it (p3j_xmp_compare.py)
+    PR=$(grep '^RESULT items' "$D/C29.log" | sed -n 's/.*priority \([0-9]*\).*/\1/p')
+    EXT="${RAW##*.}"
+    if [ -n "$PR" ] && [ -f "$D/p3j_a.xmp" ] && [ -f "$D/p3j_c_append.xmp" ]; then
+      cp "$RAW" "$D/p3j_cref1.$EXT"; cp "$RAW" "$D/p3j_cref2.$EXT"
+      if timeout 900 "$BRIDGE_BUILD/tests/dtb_p3jref" "$W-p3jref1" "$RAW" "$D/p3j_a.xmp" "$D/p3j_cref1.$EXT" "$XMP" \
+           "$D/p3j_c_append_ref.xmp" exposure "$PR" > "$D/C29-ref-parts.log" 2>&1; then
+        cmp_xmp() { r=$(python3 -I "$HERE/p3j_xmp_compare.py" "$1" "$2" 2>&1); s=$?
+          echo "C29 $C $(basename "$1") vs $(basename "$2"): $r" >> "$OUT/comparisons.txt"
+          if [ $s -eq 0 ]; then pass C29 "$C" "$3: $r"; else fail C29 "$C" "$3: $r"; fi; }
+        cmp_xmp "$D/p3j_c_append.xmp" "$D/p3j_c_append_ref.xmp" "selective append onto C vs desktop's path"
+        if timeout 900 "$BRIDGE_BUILD/tests/dtb_p3jref" "$W-p3jref2" "$RAW" "$D/p3j_a.xmp" "$D/p3j_cref2.$EXT" "$D/p3j_c_append.xmp" \
+             "$D/p3j_c_open_paste_ref.xmp" all > "$D/C29-ref-all.log" 2>&1; then
+          cmp_xmp "$D/p3j_c_open_paste.xmp" "$D/p3j_c_open_paste_ref.xmp" "paste onto the open photo vs desktop's path"
+        else
+          fail C29 "$C" "reference (plain copy) failed: $(grep '^FAIL' "$D/C29-ref-all.log" | head -2 | tr '\n' ';')"
+        fi
+      else
+        fail C29 "$C" "reference (selective copy) failed: $(grep '^FAIL' "$D/C29-ref-parts.log" | head -2 | tr '\n' ';')"
+      fi
+    else
+      fail C29 "$C" "no reference: the bridge test wrote no p3j_a.xmp / p3j_c_append.xmp or no priority"
+    fi
+    rm -f "$D"/p3j_b.* "$D"/p3j_b2.* "$D"/p3j_c.* "$D"/p3j_d.* "$D"/p3j_cref1.* "$D"/p3j_cref2.* 2>/dev/null
   fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
   if want C25; then

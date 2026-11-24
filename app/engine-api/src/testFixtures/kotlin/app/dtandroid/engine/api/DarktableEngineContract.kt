@@ -1048,6 +1048,7 @@ abstract class DarktableEngineContract {
         items.firstOrNull { it.op == "temperature" }?.let { assertFalse("white balance is not safe to copy", it.safe) }
         expect(EngineError.ARG) { engine.historyCopy(HistorySelection(listOf(99999))) }
         engine.historyCopy(HistorySelection(listOf(exp.num)))
+        expect(EngineError.ARG) { engine.historyPaste() } // as desktop: not onto the photo it was copied from
         val clip = engine.historyClipboard()!!
         assertTrue(clip.parts)
         assertEquals(listOf(exp.num), clip.items.filter { it.selected == true }.map { it.num })

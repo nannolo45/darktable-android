@@ -76,6 +76,8 @@ class P3jCopyPasteTest {
         c.engineChange { it.paramSet("exposure", 0, "exposure", ParamValue.of(0.8)) }
         c.copyPaste.copy()
         assertNotNull(c.copyPaste.state.value.clipboard)
+        c.copyPaste.paste()
+        assertEquals("this is the photo the history was copied from", c.state.value.message)
 
         // onto the open photo of another index
         val items = c.state.value.series.items
@@ -85,22 +87,22 @@ class P3jCopyPasteTest {
         c.copyPaste.paste(PasteMode.APPEND)
         assertEquals(0.8, exposureOf(c), 1e-6)
 
-        // onto photos 1 and 3 while photo 2 stays open in the darkroom
+        // onto photos 3 and 4 while photo 2 stays open in the darkroom (photo 1 is the one copied from: refused, as desktop)
         c.copyPaste.choosePhotos()
-        c.copyPaste.togglePhoto(0)
         c.copyPaste.togglePhoto(2)
+        c.copyPaste.togglePhoto(3)
         c.copyPaste.pasteOntoChosen()
         waitFor("the paste ends") { c.copyPaste.state.value.job?.running == false }
         val job = c.copyPaste.state.value.job!!
         assertEquals(job.message, 2, job.done)
         assertEquals(0, job.failed)
         waitFor("the darkroom's photo is open again") { c.state.value.info != null && c.state.value.index == 1 }
-        assertTrue(left.containsAll(listOf(items[0].fileName, items[2].fileName)))
+        assertTrue(left.containsAll(listOf(items[2].fileName, items[3].fileName)))
 
         // each pasted XMP opens with the copied exposure on a fresh engine
         val e = InterfacePreview.engine(TestSetup.schemaText, FakeEngine.Timing.NONE)
         e.init(EnginePaths(tmp.root.path, tmp.root.path, tmp.root.path, tmp.root.path, tmp.root.path))
-        for (i in listOf(0, 2)) {
+        for (i in listOf(2, 3)) {
             assertTrue("XMP of photo ${i + 1} written", File(items[i].xmpPath).isFile)
             e.open(items[i].rawPath, items[i].xmpPath)
             val v = (e.modules().first { it.op == "exposure" && it.priority == 0 }.params["exposure"] as JsonPrimitive).doubleOrNull!!

@@ -33,3 +33,12 @@ target_compile_definitions(dtb_pickref PRIVATE ${DT_DEFS})
 target_compile_options(dtb_pickref PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
 target_link_libraries(dtb_pickref PRIVATE dtbridge ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::PICKREF_GTK OpenMP::OpenMP_C m)
 set_target_properties(dtb_pickref PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:dtbridge>;${DARKTABLE_LIBDIR}")
+
+# brief P3j (C29): desktop's own copy and paste on plain library images, the reference for the bridge's
+add_executable(dtb_p3jref dtb_p3jref.c)
+target_include_directories(dtb_p3jref PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src" ${DT_INCS})
+target_include_directories(dtb_p3jref SYSTEM PRIVATE ${DT_SYS_INCS})
+target_compile_definitions(dtb_p3jref PRIVATE ${DT_DEFS})
+target_compile_options(dtb_p3jref PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
+target_link_libraries(dtb_p3jref PRIVATE dtbridge ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::PICKREF_GTK OpenMP::OpenMP_C m)
+set_target_properties(dtb_p3jref PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:dtbridge>;${DARKTABLE_LIBDIR}")
