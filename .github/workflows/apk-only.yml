@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# The phone APK only, without tests: for a quick build the owner asked to try before the test runs.
+# Builds arm64-v8a from the released engine archive (the same recipe as p2b-real-engine's apk job) and
+# publishes it as release "dt-android-<commit>". Main's own p2b run still tests everything after a merge.
+name: apk-only
+
+on:
+  push:
+    branches: [strip-versions-picker]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: apk-only-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SF_REF: b15cfe18fb35ec15084f78c986b0ebc730338e6e
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write   # release files
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tags
+        run: |
+          tools/ci/tags.sh | grep ENGINE_TAG >> "$GITHUB_ENV"
+          echo "APP_TAG=dt-android-$(git rev-parse HEAD | cut -c1-12)" >> "$GITHUB_ENV"
+
+      - name: Fetch the arm64 engine archive
+        run: |
+          mkdir -p /home/runner/engines
+          gh release download -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --pattern "engine-arm64-v8a.tar.gz" --dir /home/runner/engines
+          tar -xzf /home/runner/engines/engine-arm64-v8a.tar.gz -C /home/runner/engines
+
+      - name: Android SDK packages, Gradle and the signing key
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;35.0.0" "ndk;30.0.16248370" "cmake;3.22.1" > /tmp/sdkmanager.log 2>&1 || { tail -20 /tmp/sdkmanager.log; exit 1; }
+          echo "GRADLE=$(tools/app/setup-gradle.sh /home/runner/gradle)" >> "$GITHUB_ENV"
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          if [ -z "$SIGNING_KEYSTORE_B64" ]; then echo "no SIGNING_KEYSTORE_B64: the APK would not install over the owner's app"; exit 1; fi
+          printf '%s' "$SIGNING_KEYSTORE_B64" | tr -d '[:space:]' | base64 -d > ~/.android/debug.keystore
+          cp ~/.android/debug.keystore "$HOME/owner.keystore"
+          echo "DTA_KEYSTORE_ARG=-Pdta.keystore=$HOME/owner.keystore" >> "$GITHUB_ENV"
+
+      - name: Spektrafilm data pack for the APK
+        run: |
+          for i in 1 2 3; do python3 -I schema/extractor/fetch_spektrafilm_pack.py /home/runner/sf "$SF_REF" && break; echo "pack fetch attempt $i failed"; sleep 10; done
+          curl -fsSL --retry 5 --retry-all-errors -o /home/runner/sf/LICENSE "https://raw.githubusercontent.com/darktable-org/darktable-spektrafilm/$SF_REF/LICENSE"
+          echo "DTA_SF_ARG=-Pdta.spektrafilmDir=/home/runner/sf" >> "$GITHUB_ENV"
+
+      - name: Gradle dependency cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.m2/repository
+          key: gradle-deps-${{ hashFiles('app/**/*.gradle.kts', 'app/**/libs.versions.toml') }}
+          restore-keys: gradle-deps-
+
+      - name: Build the phone APK
+        run: |
+          cd app
+          for attempt in 1 2 3; do
+            "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" $DTA_KEYSTORE_ARG $DTA_SF_ARG \
+              :app-engine:assembleArm64Debug 2>&1 | tee /tmp/gradle.log
+            rc=${PIPESTATUS[0]}
+            [ "$rc" = 0 ] && break
+            grep -qE "Could not (find|resolve|GET) |status code 429" /tmp/gradle.log || exit "$rc"
+            sleep $((attempt * 60))
+          done
+          [ "$rc" = 0 ] || exit "$rc"
+          mkdir -p /home/runner/apk
+          cp app-engine/build/outputs/apk/arm64/debug/app-engine-arm64-debug.apk /home/runner/apk/dt-android-arm64-v8a.apk
+
+      - name: Publish the phone APK as a release file
+        run: |
+          cd /home/runner/apk
+          gh release view -R "$GITHUB_REPOSITORY" "$APP_TAG" >/dev/null 2>&1 || \
+            gh release create -R "$GITHUB_REPOSITORY" "$APP_TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "dt-android $APP_TAG (untested build)" \
+              --notes "Untested build from commit $GITHUB_SHA with engine $ENGINE_TAG (apk-only workflow: no tests ran). Unofficial port of darktable, debug build. Phone: dt-android-arm64-v8a.apk. Source: this repository at that commit (GPL-3.0-or-later)." || true
+          gh release upload -R "$GITHUB_REPOSITORY" "$APP_TAG" dt-android-arm64-v8a.apk --clobber

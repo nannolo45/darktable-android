@@ -43,6 +43,14 @@ data class VersionUiRow(
     val thumb: RenderedImage?,
 )
 
+/** Strip versions: one version of a photo as the filmstrip shows it when the photo's versions are expanded. */
+data class StripVersion(
+    val n: Int,
+    val name: String,
+    /** the version's last picture seen in this run; null = not opened yet (the tile shows its number) */
+    val thumb: RenderedImage?,
+)
+
 /**
  * What the app gives the darkroom for versions beyond files: whether LightPhotoLibrary lets a version be made, where
  * each version stands in the sync, and what to do on LPL when a version is deleted or made the cover. The defaults are

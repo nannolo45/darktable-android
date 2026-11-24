@@ -52,6 +52,9 @@ class DtColors(t: TokenSource) {
     val curveRed = t.color("color.curveRed")
     val curveGreen = t.color("color.curveGreen")
     val curveBlue = t.color("color.curveBlue")
+    /** the picker on tone curve / rgb curve's graph: the band from the picked minimum to maximum, the line at the mean */
+    val curvePickBand = t.color("color.curvePickBand")
+    val curvePickLine = t.color("color.curvePickLine")
     /** brief P3c, colour picker on the photo: its area or point, drawn light over a dark outline (desktop: dashed) */
     val pickerFrame = t.color("color.pickerFrame")
     val pickerShadow = t.color("color.pickerShadow")

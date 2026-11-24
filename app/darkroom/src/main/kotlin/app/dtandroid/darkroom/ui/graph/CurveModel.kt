@@ -238,3 +238,56 @@ object LevelsEdit {
     /** The handle nearest to [x] (0 black, 1 grey, 2 white), as desktop picks it on a press. */
     fun nearest(levels: DoubleArray, x: Double): Int = (0..2).minByOrNull { kotlin.math.abs(levels[it] - x) } ?: 0
 }
+
+/** Where what the colour picker took lies on a curve's graph (x from 0 to 1), and the "in → out" line desktop writes. */
+data class CurvePickMark(val min: Double, val mean: Double, val max: Double, val text: String)
+
+/**
+ * The picker on tone curve and rgb curve's graph, as desktop draws it (tonecurve.c `dt_iop_tonecurve_draw` with
+ * `picker_scale`; rgbcurve.c `rgbcurve_draw` with its `picker_scale`): a band from the picked minimum to maximum, a
+ * line at the mean, and "mean in → mean out". The numbers are the module's own input and output in its picker space
+ * (tone curve: Lab; rgb curve: the working RGB).
+ */
+object CurvePick {
+    fun mark(op: String, ch: Int, params: kotlinx.serialization.json.JsonObject, input: app.dtandroid.engine.api.PickStats?, output: app.dtandroid.engine.api.PickStats?): CurvePickMark? {
+        input ?: return null
+        val c = ch.coerceIn(0, 2)
+        return when (op) {
+            "tonecurve" -> {
+                fun sc(v: Double) = if (c == 0) (v / 100.0).coerceIn(0.0, 1.0) else ((v + 128.0) / 256.0).coerceIn(0.0, 1.0)
+                val mean = input.mean.getOrNull(c) ?: return null
+                val lo = input.min.getOrNull(c) ?: mean
+                val hi = input.max.getOrNull(c) ?: mean
+                val out = output?.mean?.getOrNull(c)
+                CurvePickMark(sc(lo), sc(mean), sc(hi), if (out != null) "%.1f → %.1f".format(mean, out) else "%.1f".format(mean))
+            }
+            "rgbcurve" -> {
+                val manual = paramString(params, "curve_autoscale").let { it == "DT_S_SCALE_MANUAL_RGB" || it == "1" }
+                val grey = paramString(params, "compensate_middle_grey").let { it == "true" || it == "1" }
+                fun scale(v: List<Double?>): Double? {
+                    val x = if (manual) v.getOrNull(c) ?: return null
+                    else {
+                        val r = v.getOrNull(0) ?: return null; val g = v.getOrNull(1) ?: return null; val b = v.getOrNull(2) ?: return null
+                        // the luminance in the working profile; darktable's default working space is linear Rec 2020
+                        REC2020_Y[0] * r + REC2020_Y[1] * g + REC2020_Y[2] * b
+                    }
+                    return (if (grey) middleGrey(x) else x).coerceIn(0.0, 1.0)
+                }
+                val mean = scale(input.mean) ?: return null
+                val lo = scale(input.min) ?: mean
+                val hi = scale(input.max) ?: mean
+                val out = output?.let { scale(it.mean) }
+                CurvePickMark(lo, mean, hi, if (out != null) "%.1f → %.1f".format(mean * 255, out * 255) else "%.1f".format(mean * 255))
+            }
+            else -> null
+        }
+    }
+
+    /** dt_ioppr_compensate_middle_grey for a linear profile: a grey of linear value [x] as Lab lightness / 100. */
+    fun middleGrey(x: Double): Double = if (x > 216.0 / 24389.0) 1.16 * Math.cbrt(x) - 0.16 else x * 24389.0 / 27.0 / 100.0
+
+    private val REC2020_Y = doubleArrayOf(0.2627, 0.6780, 0.0593)
+
+    private fun paramString(params: kotlinx.serialization.json.JsonObject, name: String): String? =
+        (params.paramAt(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
+}

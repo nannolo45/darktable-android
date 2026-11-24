@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -779,7 +781,7 @@ fun InfoLine(s: DarkroomState) {
     }
 }
 
-/** The series in the caller's order; tap opens a photo. */
+/** The series in the caller's order; tap opens a photo. Strip versions: a badge on a photo with versions, tapped, shows them. */
 @Composable
 fun Filmstrip(controller: DarkroomController, s: DarkroomState, height: Dp, thumbWidth: Dp, thumbHeight: Dp, centered: Boolean) {
     val c = DtTheme.colors
@@ -792,17 +794,59 @@ fun Filmstrip(controller: DarkroomController, s: DarkroomState, height: Dp, thum
         itemsIndexed(s.series.items) { i, item ->
             val thumb = s.thumbnails[i]
             val bmp = remember(thumb) { thumb?.toImageBitmap() }
-            Box(
-                Modifier.size(thumbWidth, thumbHeight)
-                    .border(DtTheme.sizes.thumbRing, if (i == s.index) c.textBright else c.filmstrip)
-                    .padding(DtTheme.sizes.thumbRing)
-                    .background(c.photoBackground)
-                    .clickable(role = Role.Image) { if (i != s.index) controller.launch { openPhoto(i) } }
-                    .semantics { contentDescription = "Photo ${i + 1} of ${s.series.items.size}, ${item.fileName}" },
+            val versions = s.stripVersions[i]
+            val expanded = versions != null && s.stripExpanded == i
+            Row(
+                Modifier.then(if (expanded) Modifier.background(c.panel) else Modifier),
+                horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xs),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                // brief P2e: a photo not on the phone yet (or without a thumbnail) shows its name
-                else DtText(item.fileName, DtTheme.type.tiny, c.textMuted, Modifier.align(Alignment.Center).padding(DtTheme.space.xs), maxLines = 3)
+                Box(
+                    Modifier.size(thumbWidth, thumbHeight)
+                        .border(DtTheme.sizes.thumbRing, if (i == s.index) c.textBright else c.filmstrip)
+                        .padding(DtTheme.sizes.thumbRing)
+                        .background(c.photoBackground)
+                        .clickable(role = Role.Image) { if (i != s.index) controller.launch { openPhoto(i) } }
+                        .semantics { contentDescription = "Photo ${i + 1} of ${s.series.items.size}, ${item.fileName}" },
+                ) {
+                    if (bmp != null) Image(bmp, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    // brief P2e: a photo not on the phone yet (or without a thumbnail) shows its name
+                    else DtText(item.fileName, DtTheme.type.tiny, c.textMuted, Modifier.align(Alignment.Center).padding(DtTheme.space.xs), maxLines = 3)
+                    if (versions != null) {
+                        // strip versions: how many versions, and which one is open when it is not the original
+                        val label = if (item.version > 0) "v${item.version}·${versions.size}" else "${versions.size}"
+                        Box(
+                            Modifier.align(Alignment.TopEnd)
+                                .background(if (expanded) c.accent else c.scrim)
+                                .clickable(role = Role.Button) { controller.toggleStripVersions(i) }
+                                .padding(horizontal = DtTheme.space.xxs)
+                                .semantics {
+                                    contentDescription = "${versions.size} versions of ${item.fileName}"
+                                    stateDescription = if (expanded) "expanded" else "collapsed"
+                                },
+                        ) { DtText(label, DtTheme.type.tiny, if (expanded) c.bg else c.textBright) }
+                    }
+                }
+                if (expanded && versions != null) {
+                    for (v in versions) {
+                        val open = i == s.index && v.n == item.version
+                        // the open version's picture is the photo's own thumbnail when none was kept yet
+                        val pic = v.thumb ?: if (v.n == item.version) thumb else null
+                        val vb = remember(pic) { pic?.toImageBitmap() }
+                        Box(
+                            Modifier.size(thumbWidth, thumbHeight)
+                                .border(DtTheme.sizes.thumbRing, if (open) c.accent else c.panel)
+                                .padding(DtTheme.sizes.thumbRing)
+                                .background(c.photoBackground)
+                                .clickable(role = Role.Image) { if (!open) controller.launch { openStripVersion(i, v.n) } }
+                                .semantics { contentDescription = "Version ${v.n}${if (v.name.isNotBlank()) ", ${v.name}" else ""} of ${item.fileName}" },
+                        ) {
+                            if (vb != null) Image(vb, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            DtText(if (v.n == 0) "orig" else "v${v.n}", DtTheme.type.tiny, c.textBright,
+                                Modifier.align(Alignment.BottomStart).background(c.scrim).padding(horizontal = DtTheme.space.xxs), maxLines = 1)
+                        }
+                    }
+                }
             }
         }
     }

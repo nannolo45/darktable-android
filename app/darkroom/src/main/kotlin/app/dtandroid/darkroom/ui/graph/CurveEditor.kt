@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.semantics.contentDescription
@@ -181,6 +182,15 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
         else -> look.line
     }
     val hist = counts(rememberHistogram(ctx), if (rgb && independent) ch else null)
+    // the picker armed on this module: what it took, on the graph (desktop: band, line at the mean, "in → out")
+    val pickState = ctx.state.picker?.takeIf { it.key == ctx.key }
+    val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, params, ch) {
+        pickState?.let { CurvePick.mark(layout.op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput) }
+    }
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val pickTextStyle = DtTheme.type.small.copy(color = look.line)
+    val pickBand = DtTheme.colors.curvePickBand
+    val pickLine = DtTheme.colors.curvePickLine
     val vc = LocalViewConfiguration.current
     val insetDp = DtTheme.space.l
     val touchDp = DtTheme.sizes.touch
@@ -314,6 +324,18 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                     val qy = inset + ph - eval(nodes, type, x).toFloat() * ph
                     segment(px, py, qx, qy, lw, tint.copy(alpha = dim))
                     px = qx; py = qy
+                }
+                if (pick != null) {
+                    val x0 = inset + pw * pick.min.toFloat()
+                    val x1 = inset + pw * pick.max.toFloat()
+                    if (x1 > x0) drawRect(pickBand, Offset(x0, inset), Size(x1 - x0, ph))
+                    val xm = inset + pw * pick.mean.toFloat()
+                    drawRect(pickLine, Offset(xm - lw / 2, inset), Size(lw, ph))
+                    // the picked value as a point on the curve
+                    val ym = inset + ph - eval(nodes, type, pick.mean).toFloat().coerceIn(0f, 1f) * ph
+                    drawCircle(look.node, radius = look.nodeSize.toPx() * 0.6f, center = Offset(xm, ym))
+                    drawCircle(pickLine, radius = look.nodeSize.toPx() * 0.4f, center = Offset(xm, ym))
+                    drawText(textMeasurer, pick.text, Offset(inset + pw * 0.02f, inset + ph * 0.02f), pickTextStyle)
                 }
                 nodes.forEachIndexed { i, n -> nodeMark(inset + pw * n.x.toFloat(), inset + ph - ph * n.y.toFloat(), look, held == i) }
             }

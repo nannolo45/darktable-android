@@ -321,6 +321,7 @@ class DarkroomController(
             lastOpened = _state.value.series to index
             src?.opened(item, _state.value.series.items.getOrNull(index + 1))
         }
+        refreshStripVersions()
         requestRender()
     }
 
@@ -530,7 +531,48 @@ class DarkroomController(
         }
     }
 
-    private fun refreshVersionRows(note: String? = null) = _state.update { it.copy(versionRows = versionRows(), versionNote = note ?: it.versionNote) }
+    private fun refreshVersionRows(note: String? = null) {
+        _state.update { it.copy(versionRows = versionRows(), versionNote = note ?: it.versionNote) }
+        refreshStripVersions()
+    }
+
+    // ------------------------------------------------------------------ strip versions: badge and expand in the filmstrip
+
+    /**
+     * The versions of every photo of the series whose files are on the phone, for the filmstrip: a photo with more
+     * than one version gets a badge. A photo not on the phone yet shows none (its version files are not here).
+     */
+    fun refreshStripVersions() {
+        if (versionHost == null) { _state.update { it.copy(stripVersions = emptyMap(), stripExpanded = null) }; return }
+        val items = _state.value.series.items
+        val out = HashMap<Int, List<StripVersion>>()
+        for ((i, item) in items.withIndex()) {
+            val dir = File(item.rawPath).parentFile ?: continue
+            if (!dir.isDirectory) continue
+            val rows = runCatching { versionFolderOf(item).rows() }.getOrNull() ?: continue
+            if (rows.size < 2) continue
+            out[i] = rows.map { r -> StripVersion(r.n, r.name, versionPics[item.atVersion(r.n).xmpPath]) }
+        }
+        _state.update { st ->
+            st.copy(stripVersions = out, stripExpanded = st.stripExpanded?.takeIf { it in out })
+        }
+    }
+
+    /** Show or hide the versions of photo [index] in the filmstrip. */
+    fun toggleStripVersions(index: Int) = _state.update { it.copy(stripExpanded = if (it.stripExpanded == index) null else index) }
+
+    /** Open version [n] of photo [index] from the filmstrip: the open photo switches version, another photo opens at it. */
+    suspend fun openStripVersion(index: Int, n: Int) {
+        val s = _state.value
+        if (index == s.index) { switchVersion(n); return }
+        val item = s.series.items.getOrNull(index) ?: return
+        if (item.version != n) {
+            val target = item.atVersion(n)
+            if (!File(target.xmpPath).isFile) { _state.update { it.copy(message = "version $n of ${item.fileName} has no file") }; return }
+            replaceItem(index, target)
+        }
+        openPhoto(index)
+    }
 
     /**
      * Open the versions sheet. The open version is written first, so its row says "edited" when it is (the files are
@@ -1817,13 +1859,14 @@ class DarkroomController(
             emptyList()
         }
         // brief P3e-b: colour zones' graph marks the picked value on its axis: the module's own input in its picker space
-        val moduleInput = if (sel != null && p.key.op == "colorzones") try {
-            engine.colorPick(p.key.op, p.key.priority, PickRequest(sel.area, sel.point)).input
+        // tone curve and rgb curve mark it on their graph too (tonecurve.c / rgbcurve.c draw: band min..max, line at the mean, "in → out")
+        val pick = if (sel != null && p.key.op in GRAPH_PICK_OPS) try {
+            engine.colorPick(p.key.op, p.key.priority, PickRequest(sel.area, sel.point))
         } catch (e: EngineException) {
             if (e.error == EngineError.CANCELLED) return
             null
         } else null
-        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = moduleInput, picks = it.picks + 1)) } ?: s }
+        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = pick?.input, moduleOutput = pick?.output, picks = it.picks + 1)) } ?: s }
     }
 
     /**
@@ -2810,6 +2853,8 @@ class DarkroomController(
         const val FIT_PREVIEW_MAX = 1152
         /** brief P3f: the longer side of the pictures kept for the versions sheet and "hold to peek" */
         const val VERSION_PIC_SIZE = 384
+        /** modules whose graph marks what the picker took (their own input, in their picker space) */
+        val GRAPH_PICK_OPS = setOf("colorzones", "tonecurve", "rgbcurve")
 
         /** Brief P2i: a zoom up to this counts as fit (the gesture code rounds near 1). */
         const val ZOOM_FIT_LIMIT = 1.001f
