@@ -1,0 +1,96 @@
+{
+ "format": 1,
+ "note": "PLAN.md 4.5. canonical = the core object, JSON with sorted keys, separators , : and UTF-8; hash = sha256 hex.",
+ "vectors": [
+  {
+   "body": {
+    "kind": "preset",
+    "row": {
+     "name": "mono red filter",
+     "description": "",
+     "operation": "channelmixerrgb",
+     "op_version": 3,
+     "op_params": "00000000cdcc4c3e0000803f",
+     "enabled": 1,
+     "blendop_params": "67676f6400000000",
+     "blendop_version": 14,
+     "multi_priority": 0,
+     "multi_name": "",
+     "multi_name_hand_edited": 0,
+     "model": "%",
+     "maker": "%",
+     "lens": "%",
+     "iso_min": "0",
+     "iso_max": "3.4028234663852886e+38",
+     "exposure_min": "0",
+     "exposure_max": "100000000",
+     "aperture_min": "0",
+     "aperture_max": "100000000",
+     "focal_length_min": "0",
+     "focal_length_max": "1000",
+     "autoapply": 0,
+     "filter": 0,
+     "def": 0,
+     "format": 0,
+     "extra_column_ignored": 7
+    }
+   },
+   "canonical": "{\"kind\":\"preset\",\"row\":{\"aperture_max\":\"100000000\",\"aperture_min\":\"0\",\"autoapply\":0,\"blendop_params\":\"67676f6400000000\",\"blendop_version\":14,\"def\":0,\"description\":\"\",\"enabled\":1,\"exposure_max\":\"100000000\",\"exposure_min\":\"0\",\"filter\":0,\"focal_length_max\":\"1000\",\"focal_length_min\":\"0\",\"format\":0,\"iso_max\":\"3.4028234663852886e+38\",\"iso_min\":\"0\",\"lens\":\"%\",\"maker\":\"%\",\"model\":\"%\",\"multi_name\":\"\",\"multi_name_hand_edited\":0,\"multi_priority\":0,\"name\":\"mono red filter\",\"op_params\":\"00000000cdcc4c3e0000803f\",\"op_version\":3,\"operation\":\"channelmixerrgb\"}}",
+   "hash": "9951add9bff31f3903cfec4c3cbfd50109ceae86c8853f0732f6977cf10edbe9"
+  },
+  {
+   "body": {
+    "kind": "layout",
+    "row": {
+     "name": "my workflow · 4 groups",
+     "operation": "modulegroups",
+     "op_version": 1,
+     "op_params": "313031ea61",
+     "enabled": 1,
+     "description": null,
+     "writeprotect_absent": true
+    }
+   },
+   "canonical": "{\"kind\":\"layout\",\"row\":{\"name\":\"my workflow · 4 groups\",\"op_params\":\"313031ea61\",\"op_version\":1,\"operation\":\"modulegroups\"}}",
+   "hash": "45343a15e4e256ab87dfcbbf0c0137c5bc9402f28f1a846320fff5406d69120a"
+  },
+  {
+   "body": {
+    "kind": "style",
+    "style": {
+     "name": "bw | sélénium",
+     "description": "toned B&N",
+     "iop_list": null
+    },
+    "items": [
+     {
+      "num": 1,
+      "module": 1,
+      "operation": "sigmoid",
+      "op_params": "0000a040",
+      "enabled": 1,
+      "blendop_params": null,
+      "blendop_version": 14,
+      "multi_priority": 0,
+      "multi_name": "",
+      "multi_name_hand_edited": 0
+     },
+     {
+      "num": 0,
+      "module": 3,
+      "operation": "channelmixerrgb",
+      "op_params": "deadbeef",
+      "enabled": 1,
+      "blendop_params": "67676f64",
+      "blendop_version": 14,
+      "multi_priority": 1,
+      "multi_name": "mono",
+      "multi_name_hand_edited": 1
+     }
+    ]
+   },
+   "canonical": "{\"items\":[{\"blendop_params\":\"67676f64\",\"blendop_version\":14,\"enabled\":1,\"module\":3,\"multi_name\":\"mono\",\"multi_name_hand_edited\":1,\"multi_priority\":1,\"num\":0,\"op_params\":\"deadbeef\",\"operation\":\"channelmixerrgb\"},{\"blendop_params\":null,\"blendop_version\":14,\"enabled\":1,\"module\":1,\"multi_name\":\"\",\"multi_name_hand_edited\":0,\"multi_priority\":0,\"num\":1,\"op_params\":\"0000a040\",\"operation\":\"sigmoid\"}],\"kind\":\"style\",\"style\":{\"description\":\"toned B&N\",\"iop_list\":null,\"name\":\"bw | sélénium\"}}",
+   "hash": "74ff1111472b030ae39c7ab9cd37de3444f00870f8b0ab828d6fe7dd20acb552"
+  }
+ ]
+}
