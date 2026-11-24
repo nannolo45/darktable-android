@@ -48,10 +48,10 @@ failures of the first rounds were investigated with a reference built from deskt
 ## 3. Results
 
 CI runs on 767ef5d2: g0-app 45342762685 success (bridge tests, C29 on cr2, raf, arw: every comparison equal);
-p2b-real-engine 45342762698 (first attempt: the known flake P3eScenarioTest.p4_toneEqualizerDragOnThePhoto, whole
-workflow re-run as the brief says; see the line at the end); p2a-app 45349847064 (dispatched; app code unchanged since
-c761954e, whose JVM tests and screenshots passed but whose release-publish step failed with HTTP 403 "Resource not
-accessible by integration", a token permission outside this branch).
+p2b-real-engine 45342762698 success (first attempt failed only on the known flake
+P3eScenarioTest.p4_toneEqualizerDragOnThePhoto; whole workflow re-run as the brief says); p2a-app 45349847064 success
+(dispatched; c761954e's p2a had passed its tests but failed to publish its release files with HTTP 403, a token
+permission outside this branch). Earlier: one P3iExportsTest heartbeat flake in lpl on 5c129808, passed on re-run.
 
 Emulator (x86_64 emulator, real engine, public test RAW), `p3j-results.txt`:
 ```
