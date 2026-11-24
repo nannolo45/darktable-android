@@ -6,7 +6,7 @@ implements 4.5 (`app/lpl/src/testFixtures/.../StubShared.kt`), with the supervis
 
 **CI (head `c52e9f3`, all x86_64 numbers on GitHub's 2-core runners and the API 33 x86_64 emulator, not phone numbers):**
 p2a-app 45436645761 success; p2b-real-engine 45436645805 (apk, emulator 111 of 111 instrumented tests incl.
-P3lScenarioTest l1 and l2, compare) success; g0-app 45436645974 still running when this report was written (same engine and C31 code as 45423775629). The bridge test C31 ran in g0-app
+P3lScenarioTest l1 and l2, compare) success; g0-app 45436645974 success (bridge tests incl. C31). The bridge test C31 ran in g0-app
 45423775629 (head `ecf6ca7`; the engine has not changed since) and passed. Earlier failures on this branch, all fixed:
 g0-app 45412422104 (C31 test bug, see 4), p2a 45423775483 and p2b 45423775451 (the new screenshot tests called
 `setContent` twice and tapped a line outside the sheet's scrolled area).
