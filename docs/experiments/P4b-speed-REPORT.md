@@ -21,6 +21,25 @@ unchanged.
   - diffuse's preset "lens deblur | medium" was not found by name on the emulator. The heavy edit now sets that
     preset's parameters directly.
 
+## 0b. After the review (25 Nov 2026)
+
+The reviewer accepted the 40 dB threshold, fetching the test RAW on first use, and `clplatform_other`. Two fixes were
+asked for and are made:
+- **Compiled kernels outside the cache folder.** darktable puts them under its cache folder
+  (`common/opencl.c _opencl_init_device`: `dt_loc_get_user_cache_dir`), and only reads that path while
+  `dt_opencl_init` runs. The new start-up option `opencl_kernel_dir` points `darktable.cachedir` at a folder of its own
+  for that one call. The app passes `noBackupFilesDir/opencl-kernels`. C36 checks that the `cached_v…` folder is there.
+- **Exports are counted.** `dtb_export` counts as a render (cpu / gpu / fallback). `JniEngine` checks for OpenCL
+  trouble after an export as after a render, with the same crash-log entry and the same switch-off when darktable stops
+  OpenCL. C36 checks that an export with the GPU on is counted.
+
+Final CI runs on `a2d4e654d`, all green:
+- **g0-app 45588492571**: 486 PASS, 0 FAIL. In C36 PoCL started in 70.4 s and the render ran on the GPU with PSNR 95.8 dB. The kernels were in `…/work/kernels/cached_v8_stdkernels_for_…`, and the export was counted as "gpu".
+- **p2b-real-engine 45588499292**: passed.
+- **p2a-app 45588505271**: passed.
+
+The runs in section 3 are from before the review.
+
 ## 1. Item by item
 
 | Brief item | State |
@@ -148,10 +167,10 @@ cache about 540 MB, the preview pipeline about 135 MB, and 3 decoded photos stay
 
 1. **PSNR threshold of 40 dB** (`GpuCheck.PSNR_MIN_DB`) for "the pictures agree": PoCL gave 95.8 dB. Is 40 too lenient or too strict for Adreno's fast maths? The phone's first run will tell.
 2. **The test photo is fetched from GitHub** (raw.githubusercontent.com, pinned commit, 16 MB) when the owner first taps "measure speed" or switches the GPU on. The alternative is to carry it in the APK (+16 MB). Which do you prefer?
-3. **darktable's compiled kernels live in the app's cache folder.** Android may clear that folder, and the next GPU start then takes minutes again (59 s with PoCL on the runner). Should they move to app files?
-4. **Exports also use OpenCL when it is on** (darktable's own export pipe). An OpenCL error there falls back as in darktable but is not counted by the bridge (only its own renders are counted).
+3. ~~Kernels in the cache folder~~: moved to the app's no-backup files after the review (section 0b).
+4. ~~Exports not counted~~: fixed after the review (section 0b).
 5. **The 12 GB "normal" values** (384/1024 to plan with, 3 decoded photos) are a choice. If the crash log shows "stopped by Android: low memory" on the phone, "less" is the first step.
-6. **Diffuse's built-in preset was not found by name through `dtb_preset_apply` on the emulator** ("diffuse has no preset 'lens deblur | medium'"). I did not look further. It may matter for the presets sheet (P3b) on modules whose presets depend on the workflow.
+6. **Diffuse's built-in preset was not found by name through `dtb_preset_apply` on the emulator** ("diffuse has no preset 'lens deblur | medium'"; p2b run 45566360272, `p4b-speed.txt`). Not investigated; left for the leftovers package. What I found: the name is the one in the pinned `iop/diffuse.c` `init_presets` (`dt_gui_presets_add_generic(_("lens deblur | medium"), …)`). `develop/imageop.c` deletes and re-adds built-in presets for modules with `pref_based_presets` (the workflow-dependent ones). So the presets table the bridge reads may not hold this preset, or may hold it under another name. A first step: list `dtb_presets("diffuse")` on the emulator. The benchmark sets the preset's parameters directly, so it does not depend on this.
 
 ## 6. Owner's phone checklist
 
