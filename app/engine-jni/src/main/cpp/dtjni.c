@@ -505,6 +505,7 @@ static jstring _json_status(JNIEnv *env, int code, char *s, jintArray status)
 #define DTJ_MODULES 2
 #define DTJ_HISTORY 3
 #define DTJ_UNDO_STATE 4
+#define DTJ_MEMORY_INFO 5
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint what, jintArray status)
@@ -518,8 +519,18 @@ Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint wha
     case DTJ_MODULES: r = dtb_modules(&s); break;
     case DTJ_HISTORY: r = dtb_history(&s); break;
     case DTJ_UNDO_STATE: r = dtb_undo_state(&s); break;
+    case DTJ_MEMORY_INFO: r = dtb_memory_info(&s); break;
     default: r = DTB_E_ARG; break;
   }
+  return _json_status(env, r, s, status);
+}
+
+/* brief P4a: give memory back (engine-api.md 10); the memory_info afterwards */
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_memoryTrim(JNIEnv *env, jclass cls, jint level, jintArray status)
+{
+  char *s = NULL;
+  const int r = dtb_memory_trim(level, &s);
   return _json_status(env, r, s, status);
 }
 

@@ -66,6 +66,16 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     data class Seen(val method: String, val path: String, val status: Int, val token: String?, val range: String?, val ifRange: String?, val bodyBytes: Int)
 
     @Volatile var password: String = ""
+    /** brief P4a: (method, path prefix) of requests that are carried out and whose answer is then lost, once each */
+    val loseAnswers: MutableList<Pair<String, String>> = Collections.synchronizedList(ArrayList())
+    /** brief P4a: the drops of the next originals, one per request ([dropOriginalAfter] first); empty = no more drops */
+    val dropPlan: java.util.ArrayDeque<Long> = java.util.ArrayDeque()
+    /** brief P4a: answer every original whole (200), ignoring `Range`, as a server without R4 would */
+    @Volatile var ignoreRange: Boolean = false
+    /** brief P4a: `/checkout` gives the original's `sha256` (LPL does not today) */
+    @Volatile var checksums: Boolean = false
+    /** brief P4a: the next [corruptNext] originals sent have one byte changed (a transfer that went wrong unnoticed) */
+    @Volatile var corruptNext: Int = 0
     @Volatile var dropOriginalAfter: Long = -1
     @Volatile var redirect: Boolean = false
     /** every answer waits this long first (a slow network), in ms */
@@ -104,6 +114,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     /** only for this photo (-1 = any) */
     @Volatile var stallPhoto: Long = -1
     @Volatile var stallGate: java.util.concurrent.CountDownLatch? = null
+    /** brief P4a: when the stall's gate opens, the connection closes without the rest of the file */
+    @Volatile var stallThenCut: Boolean = false
     /** brief P2k: every heartbeat body in order, with the time it came (ms) */
     val heartbeatLog: MutableList<String> = Collections.synchronizedList(ArrayList())
     /** brief P2k: what the server saw in order: `hb`, or `done <job> <status>` */
@@ -162,9 +174,19 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     private fun serve(c: Socket) {
         c.soTimeout = 15_000
         val input = BufferedInputStream(c.getInputStream())
-        val out = c.getOutputStream()
         val req = read(input) ?: return
         if (!running) return
+        // brief P4a: the request is carried out, but its answer never reaches the device (the connection drops after it)
+        val lose = synchronized(loseAnswers) {
+            // "path?k=v&…": the path starts so and the query has each k=v
+            val k = loseAnswers.indexOfFirst { (m, spec) ->
+                val prefix = spec.substringBefore('?')
+                val wants = spec.substringAfter('?', "").split('&').filter { it.isNotEmpty() }
+                m == req.method && req.path.startsWith(prefix) && wants.all { w -> req.query[w.substringBefore('=')] == w.substringAfter('=') }
+            }
+            if (k >= 0) { loseAnswers.removeAt(k); true } else false
+        }
+        val out = if (lose) OutputStream.nullOutputStream() else c.getOutputStream()
         if (delayMs > 0) Thread.sleep(delayMs)
         if (dropNext > 0) { dropNext--; return }
         val token = req.headers["x-lpl-token"]
@@ -202,10 +224,25 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                 val want = req.query["size"]?.toLongOrNull()
                 if (!Regex("(?i).+\\.(jpe?g|png|tiff?|webp)$").matches(name) || req.body.isEmpty()) { record(400); json(out, 400, """{"detail":"bad name or empty"}"""); return }
                 if (want != null && want != req.body.size.toLong()) { record(400); json(out, 400, """{"detail":"size mismatch"}"""); return }
-                val e = Exp(exportSeq.incrementAndGet(), req.query["version"]?.toIntOrNull() ?: 0, name, req.query["agent"], req.body)
-                ph.exports += e
+                // as LPL's exports.free_name: a taken name becomes "stem (2).ext", "(3)", ...
+                val stored = synchronized(ph.exports) {
+                    val taken = ph.exports.map { it.name }.toSet()
+                    var n = name; var k = 2
+                    while (n in taken) { n = name.substringBeforeLast('.') + " ($k)." + name.substringAfterLast('.'); k++ }
+                    Exp(exportSeq.incrementAndGet(), req.query["version"]?.toIntOrNull() ?: 0, n, req.query["agent"], req.body).also { ph.exports += it }
+                }
                 record(200)
-                json(out, 200, """{"export_id":${e.id},"path":"exports/2024/$name"}""")
+                json(out, 200, """{"export_id":${stored.id},"path":"exports/2024/${stored.name}"}""")
+            }
+            // R18: the photo's exports, newest first, with the fields LPL's list has (brief P4a: the app checks it after a lost answer)
+            r18 && req.method == "GET" && Regex("^/api/photos/\\d+/exports$").matches(p) -> {
+                val ph = photos[p.split('/')[3].toLong()]
+                if (ph == null) { record(404); json(out, 404, """{"detail":"photo not found"}"""); return }
+                record(200)
+                val rows = synchronized(ph.exports) { ph.exports.reversed().joinToString(",") { e ->
+                    """{"id":${e.id},"version":${e.version},"name":"${e.name}","path":"exports/2024/${e.name}","size":${e.bytes.size},"format":"jpg","created":${now()},"agent":${e.agent?.let { "\"$it\"" } ?: "null"},"device":null,"has_file":true}"""
+                } }
+                json(out, 200, """{"id":${ph.id},"exports":[$rows]}""")
             }
             req.method == "POST" && Regex("^/api/jobs/\\d+/done$").matches(p) -> {
                 val id = p.split('/')[3].toLong()
@@ -220,7 +257,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                 when (m.groupValues[2] to req.method) {
                     "checkout" to "GET" -> {
                         record(200)
-                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}${versionsJson(ph, req.query["agent"])}}""")
+                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}${versionsJson(ph, req.query["agent"])}${shaJson(ph)}}""")
                     }
                     "original" to "GET" -> original(out, req, ph, ::record)
                     "xmp" to "GET" -> {
@@ -342,11 +379,14 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel$serverCaps}""")
     }
 
+    private fun shaJson(ph: Photo): String = if (!checksums) "" else
+        ",\"sha256\":\"" + java.security.MessageDigest.getInstance("SHA-256").digest(ph.bytes).joinToString("") { "%02x".format(it) } + "\""
+
     private fun original(out: OutputStream, req: Req, ph: Photo, record: (Int) -> Unit) {
-        val all = ph.bytes
+        val all = if (corruptNext > 0) { corruptNext--; ph.bytes.copyOf().also { it[it.size / 2] = (it[it.size / 2] + 1).toByte() } } else ph.bytes
         val size = all.size.toLong()
         val etag = "\"${ph.mtime.toLong()}-$size\""
-        val range = req.headers["range"]
+        val range = req.headers["range"].takeUnless { ignoreRange }
         var start = 0L
         var end = size - 1
         var partial = false
@@ -367,7 +407,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val headers = linkedMapOf("Accept-Ranges" to "bytes", "ETag" to etag)
         if (partial) headers["Content-Range"] = "bytes $start-$end/$size"
         record(if (partial) 206 else 200)
-        val drop = dropOriginalAfter
+        val drop = dropOriginalAfter.takeIf { it >= 0 } ?: synchronized(dropPlan) { dropPlan.pollFirst() } ?: -1L
         if (drop >= 0) {
             dropOriginalAfter = -1
             // announce the whole length, send part of it, close: a connection that breaks off
@@ -383,6 +423,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             out.write(slice, 0, n)
             out.flush()
             stallGate?.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            // brief P4a: the transfer is cut there (the connection closes without the rest)
+            if (stallThenCut) return
             out.write(slice, n, slice.size - n)
             out.flush()
             return

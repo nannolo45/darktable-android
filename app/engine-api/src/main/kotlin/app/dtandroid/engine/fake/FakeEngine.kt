@@ -3,6 +3,7 @@ package app.dtandroid.engine.fake
 
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
+import app.dtandroid.engine.api.EngineMemory
 import app.dtandroid.engine.api.RetouchShape
 import app.dtandroid.engine.api.RetouchState
 import app.dtandroid.engine.api.PerspectiveState
@@ -856,6 +857,7 @@ class FakeEngine(
 
     override suspend fun renderPreview(maxSize: Int, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        outOfMemoryCheck()
         s.atEnd(options) {
             val bypass = s.bypassOf(options)
             if (maxSize < 16) fail(EngineError.ARG, "max_size $maxSize")
@@ -883,6 +885,7 @@ class FakeEngine(
 
     override suspend fun renderRegion(x: Int, y: Int, w: Int, h: Int, scale: Double, options: RenderOptions): RenderedImage = onEngine {
         val s = requireSession()
+        outOfMemoryCheck()
         s.atEnd(options) {
             val bypass = s.bypassOf(options)
             if (!(scale > 0.0) || scale > 16.0) fail(EngineError.ARG, "scale $scale")
@@ -944,6 +947,27 @@ class FakeEngine(
     }
 
     override suspend fun cacheDrop() = onEngine { requireInit() }
+
+    /** Brief P4a: the trim levels asked, in order (tests). */
+    val memoryTrims: MutableList<Int> = java.util.Collections.synchronizedList(ArrayList())
+    /** Brief P4a: the next renders fail as the bridge's do when memory runs out, until a trim of level 2 (tests) */
+    @Volatile var outOfMemoryRenders: Int = 0
+    /** Brief P4a: whether a trim of level 2 ends [outOfMemoryRenders] (false: memory stays short) */
+    @Volatile var trimFreesEnough: Boolean = true
+
+    private fun outOfMemoryCheck() {
+        if (outOfMemoryRenders > 0) { outOfMemoryRenders--; fail(EngineError.ENGINE, "out of memory") }
+    }
+
+    override suspend fun memoryInfo(): EngineMemory = onEngine { requireInit(); EngineMemory(pipesReady = if (session != null) 2 else 0) }
+
+    override suspend fun memoryTrim(level: Int): EngineMemory = onEngine {
+        requireInit()
+        if (level !in 1..2) fail(EngineError.ARG, "level is 1 or 2")
+        memoryTrims += level
+        if (level == 2 && trimFreesEnough) outOfMemoryRenders = 0
+        EngineMemory(pipesReady = if (level == 2) 0 else 2)
+    }
 
     // ------------------------------------------------------------ 2.8 output
 

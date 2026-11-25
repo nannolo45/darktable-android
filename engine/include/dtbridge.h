@@ -346,6 +346,26 @@ void dtb_render_cancel(void);
  * again. Only while no image is open. For measurements. */
 int dtb_cache_drop(void);
 
+/* Brief P4a (engine-api.md 10): what the engine holds in memory, in bytes,
+ * as JSON: {"pipe_full", "pipe_full_peak", "pipe_preview",
+ * "pipe_preview_peak" (the pipelines' cached intermediate buffers, now and
+ * the most so far), "pipes_ready" (0..2), "mipmap_full", "mipmap_f",
+ * "mipmap_thumbs" (the image cache's bytes per level) each with "_entries"
+ * and "_quota" (darktable's limit: bytes for thumbs, entries for full and f),
+ * "rss" (the process's resident memory)}. Works with or without an image
+ * open. */
+int dtb_memory_info(char **json);
+
+/* Give memory back (Android's onTrimMemory). Level 1: the pipelines'
+ * cached intermediate buffers and every image cache entry not in use
+ * (other images, thumbnails); the next render recomputes the modules.
+ * Level 2: also the pipelines themselves and the open image's decoded
+ * input; the next render reads the RAW again. The open image's history and
+ * its undo steps are not touched at either level. On the engine thread
+ * like every call (so never during a render). json (may be NULL): the
+ * memory_info afterwards. DTB_E_ARG for another level. */
+int dtb_memory_trim(int level, char **json);
+
 /* ---------------------------------------------------------------------- */
 /* 2.8 output                                                              */
 

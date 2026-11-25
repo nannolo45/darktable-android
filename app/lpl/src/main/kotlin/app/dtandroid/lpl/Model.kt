@@ -37,6 +37,11 @@ data class Checkout(
     val versions: List<ServerVersion>? = null,
     /** R17: the version LPL shows for the photo (`cover` of the answer); 0 when absent */
     val cover: Int = 0,
+    /**
+     * Brief P4a: the original's SHA-256 (hex), when the server gives one (`sha256` of the answer; LPL does not today).
+     * A download is checked against it before it is used.
+     */
+    val sha256: String? = null,
 )
 
 /** R17: one entry of `/checkout`'s `versions`; [n] 0 is the photo's own edit. */
@@ -130,3 +135,21 @@ internal fun JsonElement?.arr(): JsonArray? = this as? JsonArray
 
 /** R18: the answer to an export upload: LPL's id of it and where the file was stored (relative to the library, or absolute). */
 data class ExportAnswer(val exportId: Long, val path: String)
+
+/** R18: one entry of `GET /api/photos/{id}/exports` (the fields the app uses). */
+data class ServerExport(val id: Long, val version: Int, val name: String, val path: String, val size: Long, val agent: String?) {
+    /**
+     * Brief P4a: whether this is the export an upload of [name] ([size] bytes, [version], from [agent]) stored, when that
+     * upload's answer was lost: not among [known] (what the photo had before the first attempt) or [claimed] (what
+     * other uploads of this device already took as theirs), same device, version and size, and the name as sent or as
+     * LPL renames a taken one ("stem (2).ext").
+     */
+    fun isUpload(agent: String, version: Int, name: String, size: Long, known: Set<Long>, claimed: Set<Long>): Boolean {
+        if (id in known || id in claimed || this.agent != agent || this.version != version || this.size != size) return false
+        if (this.name == name) return true
+        val dot = name.lastIndexOf('.')
+        if (dot <= 0) return false
+        val stem = name.substring(0, dot); val ext = name.substring(dot + 1)
+        return Regex("^" + Regex.escape(stem) + " \\(\\d+\\)\\." + Regex.escape(ext) + "$").matches(this.name)
+    }
+}

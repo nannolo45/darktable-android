@@ -65,6 +65,9 @@ class SyncService : Service() {
         var beats = 0
         var lastPass = -PASS_BEATS
         trace("started")
+        // brief P4a: if the process is killed with work under way (an upload half sent, a batch half copied), Android
+        // still runs the background job later; cancelled again when this run ends with nothing left
+        SyncJob.scheduleSafetyNet(this)
         while (true) {
             AppHost.serviceHeartbeat()
             val w0 = AppHost.syncWork()
@@ -84,8 +87,10 @@ class SyncService : Service() {
             }
             beats++
             val steps = AppHost.agent.steps.value.values
+            // brief P4a: say so when the connection is gone or a call is being repeated
+            val link = app.dtandroid.lpl.LinkWords.notice(AppHost.waitingServerUnreachable(), AppHost.agent.retrying.value.isNotEmpty(), AppHost.online.value)
             val notice = SyncNotice.of(SyncNotice.sum(AppHost.agent.batches.value.values), counter.total, counter.done, w0.exports,
-                steps.firstOrNull { it.progress != null }?.progress)
+                steps.firstOrNull { it.progress != null }?.progress, link)
             titles += notice.title
             nm.notify(NOTIFICATION_ID, build(this, notice))
             delay(AppHost.HEARTBEAT_MS)
@@ -111,6 +116,7 @@ class SyncService : Service() {
                     // a last heartbeat, so LPL sees the final states
                     runCatching { AppHost.serviceHeartbeat() }
                     if (next == BackgroundSync.Next.STOP_HANDOVER) SyncJob.schedule(this)
+                    if (next == BackgroundSync.Next.STOP_DONE) SyncJob.cancelSafetyNet(this)
                     // only if no start came in meanwhile (onPause, "done", a batch): that one's work is looked at again;
                     // the notification goes with the service
                     if (stopSelfResult(lastStartId)) return

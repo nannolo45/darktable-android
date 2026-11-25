@@ -104,6 +104,7 @@ add_library(dtbridge SHARED
   src/masks.c       # drawn masks (P1b part 2, 6.7)
   src/retouch.c     # retouch shapes (P3m, 6.10)
   src/perspective.c # rotate and perspective: structure, guides, fit (P3n, 6.11)
+  src/memory.c      # memory held and given back (P4a, 10)
 )
 # P3n: perspective.c compiles darktable's own iop/ashift.c (unmodified) to call
 # its structure, fit and mouse functions; every symbol of it stays inside the

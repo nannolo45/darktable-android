@@ -407,6 +407,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C33 perspective "perspective guides: rectangle, lines found (each enhancement), drawn lines, selection, fits, crop drag, focus, undo, XMP"
     for f in p3n_rect_fit p3n_drawn_fit p3n_found_fit p3n_crop; do parity C33 $f; done
   fi
+  # brief P4a (engine-api.md 10): memory held, trim levels keep the edit and give the same renders
+  if want C34; then
+    drv C34 memory "memory: info, trim levels 1 and 2 keep history, parameters and undo; renders after a trim equal the ones before"
+    cp -f "$D/p4a_memory.txt" "$OUT/" 2>/dev/null || true
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

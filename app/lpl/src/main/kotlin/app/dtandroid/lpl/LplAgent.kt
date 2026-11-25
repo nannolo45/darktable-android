@@ -120,7 +120,16 @@ class LplAgent(
     private val clients = ConcurrentHashMap<ServerOrigin, LplClient>()
 
     private fun lockOf(o: ServerOrigin, id: Long) = locks.getOrPut(o to id) { Mutex() }
-    fun client(o: ServerOrigin): LplClient = clients.getOrPut(o) { clientFor(o) }
+    fun client(o: ServerOrigin): LplClient = clients.getOrPut(o) {
+        clientFor(o).also { c -> c.onRetry = { attempt, wait, _ -> _retrying.update { it + (o to Retrying(attempt, wait)) } } }
+    }
+
+    /** Brief P4a: a call to the server failed and is about to be repeated (attempt n, after a wait). */
+    data class Retrying(val attempt: Int, val waitMs: Long)
+
+    private val _retrying = MutableStateFlow<Map<ServerOrigin, Retrying>>(emptyMap())
+    /** Brief P4a: servers whose call is being repeated now; gone when the call ended (answered or given up). */
+    val retrying: StateFlow<Map<ServerOrigin, Retrying>> = _retrying.asStateFlow()
 
     init {
         _photos.value = load()
@@ -248,6 +257,8 @@ class LplAgent(
         } catch (e: LplException) {
             if (e.transient || e.failure == LplFailure.UNAUTHORIZED || e.failure == LplFailure.TLS) noteReachable(o, e)
             throw e
+        } finally {
+            if (o in _retrying.value) _retrying.update { it - o }
         }
     }
 
@@ -344,12 +355,20 @@ class LplAgent(
             val part = work.part(r)
             _progress.update { it + ((origin to id) to Progress(if (part.isFile) part.length() else 0, co.size)) }
             step(origin, id, Step(Step.DOWNLOADING, if (co.size > 0 && part.isFile) part.length().toDouble() / co.size else null))
-            net(origin) { c ->
-                c.downloadOriginal(id, part, co.size, progress = { d, t ->
-                    _progress.update { it + ((origin to id) to Progress(d, t)) }
-                    step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
-                    onBytes(d)
-                }, cancelled = cancelled)
+            var checks = 0
+            while (true) {
+                net(origin) { c ->
+                    c.downloadOriginal(id, part, co.size, progress = { d, t ->
+                        _progress.update { it + ((origin to id) to Progress(d, t)) }
+                        step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
+                        onBytes(d)
+                    }, cancelled = cancelled)
+                }
+                // brief P4a: the engine never sees a partial or wrong file: size, and the checksum where LPL gives one
+                val bad = DownloadCheck.problem(part, co.size, co.sha256) ?: break
+                part.delete(); File(part.path + ".etag").delete()
+                trace("download of $name failed its check ($bad)" + if (checks == 0) "; downloading it again" else "")
+                if (++checks > 1) throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/original: $bad")
             }
             val raw = work.raw(r)
             if (!part.renameTo(raw)) throw LplException(LplFailure.LOCAL, "cannot move the download into place")
@@ -586,13 +605,18 @@ class LplAgent(
             var retried = false
             var refreshed = false
             while (answer == null) {
-                mutate(origin, id) { it?.copy(status = PhotoStatus.SYNCING) }
+                // brief P4a: noted on disk before the post: if its answer is lost (or the app killed), the next 409 for this
+                // number may be this very post, stored by the server
+                val posted = number
+                mutate(origin, id) { cur -> cur?.let { c -> withVersion(c, (c.versionState(posted) ?: VersionState(posted)).copy(posting = true)).copy(status = PhotoStatus.SYNCING) } }
                 step(origin, id, Step(Step.SENDING_EDIT))
                 try {
                     answer = net(origin) { it.postXmp(id, bytes, r.checkoutTs, servers.installId, number) }
                 } catch (e: LplException) {
                     step(origin, id, null)
-                    if (e.failure == LplFailure.VERSION_EXISTS && !refreshed && st?.syncedHash?.isNotEmpty() == true) {
+                    val mine = e.failure == LplFailure.VERSION_EXISTS && !refreshed &&
+                        (st?.syncedHash?.isNotEmpty() == true || (record(origin, id)?.versionState(number)?.posting == true && serverHasThisEdit(origin, id, number, bytes)))
+                    if (mine) {
                         // a version this phone sent before: LPL notes the numbers a device was told about at checkout, and
                         // not the ones it sent itself; asking again tells it, then the same number is posted again
                         refreshed = true
@@ -635,6 +659,17 @@ class LplAgent(
                 ?.let { c -> c.copy(status = if (editor.isOpen(raw)) PhotoStatus.EDITING else settledStatus(c)) }
         }
         return SyncOutcome.SYNCED
+    }
+
+    /**
+     * Brief P4a: whether LPL's version [n] of the photo carries the edit in [bytes] (its darktable history is the same),
+     * so a 409 for [n] after a post whose answer was lost is that post, stored, and not another device's version.
+     */
+    private fun serverHasThisEdit(origin: ServerOrigin, id: Long, n: Int, bytes: ByteArray): Boolean = try {
+        val theirs = net(origin) { it.getXmp(id, n) }
+        theirs.contentEquals(bytes) || XmpHistory.of(theirs)?.let { it == XmpHistory.of(bytes) } == true
+    } catch (e: LplException) {
+        false
     }
 
     private suspend fun postVersionPreview(r: PhotoRecord, n: Int) {
@@ -937,46 +972,78 @@ class LplAgent(
      * Send the export [file] of photo [id] (version [version]; 0 = the photo's own edit) under [name]. The photo shows the
      * step `exporting` with the share sent while it goes ([onProgress] gets it too). A server that cannot be reached
      * leaves the file in the queue ([ExportOutcome.Queued]); any other refusal is thrown as [LplException].
+     *
+     * Brief P4a: safe to repeat. The photo's export list is read first and the file is queued (with that list) before
+     * it is sent, so an app killed during the upload sends it again from the queue on its next sync; a lost answer is
+     * checked against the list before the file goes again ([LplClient.postExport]), so the server keeps one copy.
      */
     suspend fun sendExport(origin: ServerOrigin, id: Long, version: Int, name: String, file: File, onProgress: (Float) -> Unit = {}): ExportOutcome =
         withContext(Dispatchers.IO) {
             requireAdded(origin)
             step(origin, id, Step(Step.EXPORTING, 0.0))
+            var q: QueuedExport? = null
             try {
+                val known = try {
+                    net(origin) { c -> c.listExports(id) }.map { it.id }.toSet()
+                } catch (e: LplException) {
+                    if (!e.transient) throw e
+                    exports.queue(origin, id, version, name, file)
+                    trace("export of $name kept for the next sync: ${e.message}")
+                    return@withContext ExportOutcome.Queued
+                }
+                // queued and marked as being sent in one step, so the sync service does not send it at the same time
+                q = synchronized(exportsInFlight) { exports.queue(origin, id, version, name, file, known).also { exportsInFlight += it.n } }
                 val total = file.length().coerceAtLeast(1)
-                val a = net(origin) { c ->
-                    c.postExport(id, servers.installId, version, name, file) { sent ->
-                        val f = (sent.toDouble() / total).coerceIn(0.0, 1.0)
-                        step(origin, id, Step(Step.EXPORTING, f))
-                        onProgress(f.toFloat())
-                    }
+                val a = sendQueued(q) { sent ->
+                    val f = (sent.toDouble() / total).coerceIn(0.0, 1.0)
+                    step(origin, id, Step(Step.EXPORTING, f))
+                    onProgress(f.toFloat())
                 }
                 ExportOutcome.Sent(a.exportId, a.path)
             } catch (e: LplException) {
-                if (!e.transient) throw e
-                exports.queue(origin, id, version, name, file)
+                if (!e.transient) { q?.let { exports.remove(it) }; throw e }
                 trace("export of $name kept for the next sync: ${e.message}")
                 ExportOutcome.Queued
             } finally {
+                q?.let { synchronized(exportsInFlight) { exportsInFlight -= it.n } }
                 step(origin, id, null)
             }
         }
 
+    /** Brief P4a: queue numbers of the exports being sent now (by [sendExport] or [sendQueuedExports]). */
+    private val exportsInFlight = HashSet<Long>()
+
+    /** One queued export to its server; removed from the queue once the server confirmed it (or already had it). */
+    private fun sendQueued(q0: QueuedExport, checkFirst: Boolean = false, onBytes: (Long) -> Unit): ExportAnswer {
+        var q = q0
+        val first = q.known == null
+        if (first) q = exports.setKnown(q, net(q.server) { c -> c.listExports(q.photo) }.map { it.id }.toSet())
+        val a = net(q.server) { c ->
+            c.postExport(q.photo, servers.installId, q.version, q.name, q.file, onBytes, q.known, exports.claimed(q.server), checkFirst && !first)
+        }
+        exports.claim(q.server, a.exportId)
+        exports.remove(q)
+        return a
+    }
+
     /**
      * Send the exports that waited for their server, in the order they were made. Stops at the first server that does
      * not answer (the rest wait); one the server refuses (an unknown photo, a bad file) is dropped and said in the trace.
-     * Only to a server that said it receives exports. Returns how many were sent.
+     * Only to a server that said it receives exports. Returns how many were sent. Brief P4a: one that may have arrived in
+     * an earlier attempt (the app was killed, the answer lost) is looked for on the server before its file goes again.
      */
     suspend fun sendQueuedExports(): Int = withContext(Dispatchers.IO) {
         var sent = 0
         val down = HashSet<ServerOrigin>()
         for (q in exports.list()) {
             if (q.server in down || servers.get(q.server) == null || receivesExports(q.server) != true) continue
+            if (!synchronized(exportsInFlight) { exportsInFlight.add(q.n) }) continue
             step(q.server, q.photo, Step(Step.EXPORTING, 0.0))
             try {
                 val total = q.file.length().coerceAtLeast(1)
-                net(q.server) { c -> c.postExport(q.photo, servers.installId, q.version, q.name, q.file) { b -> step(q.server, q.photo, Step(Step.EXPORTING, b.toDouble() / total)) } }
-                exports.remove(q)
+                // the list is read again: another sender may have finished it meanwhile
+                if (exports.list().none { it.n == q.n }) continue
+                sendQueued(q, checkFirst = true) { b -> step(q.server, q.photo, Step(Step.EXPORTING, b.toDouble() / total)) }
                 sent++
             } catch (e: LplException) {
                 if (e.transient || e.failure == LplFailure.UNAUTHORIZED) down += q.server
@@ -984,6 +1051,7 @@ class LplAgent(
             } catch (e: IllegalStateException) {
                 down += q.server // the saved password cannot be read: the list screen asks for it
             } finally {
+                synchronized(exportsInFlight) { exportsInFlight -= q.n }
                 step(q.server, q.photo, null)
             }
         }

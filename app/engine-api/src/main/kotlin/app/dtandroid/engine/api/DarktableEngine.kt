@@ -124,6 +124,16 @@ interface DarktableEngine {
     /** Drop the pipeline caches (for measurements). */
     suspend fun cacheDrop()
 
+    /** Brief P4a (engine-api.md 10): what the engine holds in memory. An engine without the call reports nothing. */
+    suspend fun memoryInfo(): EngineMemory = EngineMemory.NONE
+
+    /**
+     * Brief P4a: give memory back. [level] 1: cached intermediate buffers and image cache entries not in use; 2: also the
+     * pipelines and the open image's decoded input (the next render reads the RAW again). The open edit (history, undo)
+     * is kept at both levels. Returns the memory afterwards.
+     */
+    suspend fun memoryTrim(level: Int): EngineMemory = EngineMemory.NONE
+
     // 2.8 output
 
     /** Refused for a read-only session and when an existing file at [path] fails the guard. Atomic. */

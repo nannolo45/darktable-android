@@ -58,7 +58,11 @@ data class PhotoRecord(
  * an unsynced edit), whether its file fails the engine's version guard (never sent, never rewritten), and a
  * pending preview.
  */
-data class VersionState(val n: Int, val syncedHash: String = "", val readOnly: Boolean = false, val previewPending: Boolean = false)
+data class VersionState(
+    val n: Int, val syncedHash: String = "", val readOnly: Boolean = false, val previewPending: Boolean = false,
+    /** brief P4a: a post of this number was started and not confirmed (the server may have stored it all the same) */
+    val posting: Boolean = false,
+)
 
 /** The photos' folders and their state files. Files only; the rules live in [LplAgent]. */
 class WorkStore(val root: File) {
@@ -130,7 +134,7 @@ class WorkStore(val root: File) {
         if (r.cover != 0) put("cover", r.cover)
         if (r.versions.isNotEmpty()) put("versions", kotlinx.serialization.json.buildJsonArray {
             for (v in r.versions) add(buildJsonObject {
-                put("n", v.n); put("synced_hash", v.syncedHash); put("read_only", v.readOnly); put("preview_pending", v.previewPending)
+                put("n", v.n); put("synced_hash", v.syncedHash); put("read_only", v.readOnly); put("preview_pending", v.previewPending); if (v.posting) put("posting", true)
             })
         })
         if (r.deletedVersions.isNotEmpty()) put("deleted_versions", kotlinx.serialization.json.buildJsonArray {
@@ -152,7 +156,7 @@ class WorkStore(val root: File) {
             versions = o["versions"].arr().orEmpty().mapNotNull { e ->
                 val v = e as? JsonObject ?: return@mapNotNull null
                 val n = v["n"].long()?.toInt()?.takeIf { it > 0 } ?: return@mapNotNull null
-                VersionState(n, v["synced_hash"].str() ?: "", v["read_only"].bool() ?: false, v["preview_pending"].bool() ?: false)
+                VersionState(n, v["synced_hash"].str() ?: "", v["read_only"].bool() ?: false, v["preview_pending"].bool() ?: false, v["posting"].bool() ?: false)
             },
             versionsCap = o["versions_cap"].bool() ?: false,
             deletedVersions = o["deleted_versions"].arr().orEmpty().mapNotNull { it.long()?.toInt() },

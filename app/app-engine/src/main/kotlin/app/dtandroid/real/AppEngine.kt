@@ -53,6 +53,8 @@ object AppEngine {
         // P2e follow-up: a failure in background work (a sync, a status write) is a bug to fix, but it must
         // not end the process with the user's darkroom in it. Logged under this tag; CI collects it.
         android.util.Log.e("dt-android", "uncaught in background work", e)
+        // brief P4a: kept in the crash log as well (the process lives on)
+        runCatching { AppHost.crashLog.append("error in background work", app.dtandroid.darkroom.robust.CrashLog.stackOf(e)) }
     })
 
     /** The packed engine's id (first 16 hex digits of its SHA-256), for the timings page. */

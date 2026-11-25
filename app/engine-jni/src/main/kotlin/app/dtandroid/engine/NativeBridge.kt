@@ -87,7 +87,11 @@ object NativeBridge {
     const val JSON_MODULES = 2
     const val JSON_HISTORY = 3
     const val JSON_UNDO_STATE = 4
+    /** brief P4a: dtb_memory_info */
+    const val JSON_MEMORY_INFO = 5
     @JvmStatic external fun jsonGet(what: Int, status: IntArray): String?
+    /** brief P4a: dtb_memory_trim; the memory_info afterwards */
+    @JvmStatic external fun memoryTrim(level: Int, status: IntArray): String?
     /** modules() with times[0] = bridge call, times[1] = copy into a Java string, in ns */
     @JvmStatic external fun modulesTimed(times: LongArray, status: IntArray): String?
     @JvmStatic external fun setThreadsCode(n: Int): Int

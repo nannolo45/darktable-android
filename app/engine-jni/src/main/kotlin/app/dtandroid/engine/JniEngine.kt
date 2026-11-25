@@ -4,6 +4,7 @@ package app.dtandroid.engine
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
+import app.dtandroid.engine.api.EngineMemory
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
 import app.dtandroid.engine.api.RetouchState
@@ -122,7 +123,12 @@ class JniEngine private constructor() : DarktableEngine {
 
     private fun <T> render(block: () -> T): T {
         synchronized(cancelGuard) { rendering = true }
-        try { return block() } finally { synchronized(cancelGuard) { rendering = false } }
+        try {
+            return block()
+        } catch (e: OutOfMemoryError) {
+            // brief P4a: the picture's Java buffer could not be made: an engine error the darkroom handles, not a crash
+            throw EngineException(EngineError.ENGINE, "out of memory for the rendered picture")
+        } finally { synchronized(cancelGuard) { rendering = false } }
     }
 
     /** Run [block] on the engine thread; skip it if the caller is cancelled before it starts. */
@@ -347,6 +353,15 @@ class JniEngine private constructor() : DarktableEngine {
         // dtbridge.h: "dtb_render_cancel() may be called from any thread while a render runs on the engine
         // thread", and never concurrently with dtb_close(): only then is it passed on
         synchronized(cancelGuard) { if (initialised && rendering) NativeBridge.renderCancel() else cancelsWithoutRender.incrementAndGet() }
+    }
+
+    // brief P4a (engine-api.md 10)
+    override suspend fun memoryInfo(): EngineMemory = onEngine { EngineMemory.fromJson(get(NativeBridge.JSON_MEMORY_INFO)) }
+
+    override suspend fun memoryTrim(level: Int): EngineMemory = onEngine {
+        requireInit()
+        val st = IntArray(1)
+        EngineMemory.fromJson(json(NativeBridge.memoryTrim(level, st), st))
     }
 
     override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }

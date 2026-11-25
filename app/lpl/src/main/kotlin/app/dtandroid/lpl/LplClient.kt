@@ -52,6 +52,18 @@ class LplClient(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Brief P4a: told before each automatic repeat after a failure that can pass (attempt 1 = the first repeat, the wait
+     * before it in ms), so the app can say "retrying" while it waits. Set by [LplAgent].
+     */
+    @Volatile var onRetry: ((attempt: Int, waitMs: Long, e: LplException) -> Unit)? = null
+
+    private fun backoff(attempt: Int, e: LplException) {
+        val wait = settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L }
+        onRetry?.invoke(attempt + 1, wait, e)
+        sleep(wait)
+    }
+
     // ------------------------------------------------------------------ calls of PLAN.md 4.1
 
     /** `POST /api/agents/heartbeat`. Not repeated: the next heartbeat follows anyway. */
@@ -102,6 +114,7 @@ class LplClient(
             serverTime = o["server_time"].num()
                 ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no server time"),
             cover = o["cover"].long()?.toInt() ?: 0,
+            sha256 = o["sha256"].str()?.lowercase()?.takeIf { Regex("^[0-9a-f]{64}$").matches(it) },
             versions = o["versions"].arr()?.mapNotNull { e ->
                 val v = e as? JsonObject ?: return@mapNotNull null
                 val n = v["n"].long()?.toInt() ?: return@mapNotNull null
@@ -162,14 +175,37 @@ class LplClient(
         if (e.failure == LplFailure.NOT_FOUND) emptyList() else throw e
     }
 
+    /** R18: `GET /api/photos/{id}/exports`, newest first. Repeated after a transient failure (it changes nothing). */
+    fun listExports(id: Long): List<ServerExport> = call("GET", "/api/photos/$id/exports", retries = settings.retries) { r ->
+        val o = parseObject("GET /api/photos/$id/exports", r.body.readBytes())
+        o["exports"].arr().orEmpty().mapNotNull { e ->
+            val x = e as? JsonObject ?: return@mapNotNull null
+            ServerExport(x["id"].long() ?: return@mapNotNull null, x["version"].long()?.toInt() ?: 0, x["name"].str() ?: "",
+                x["path"].str() ?: "", x["size"].long() ?: -1L, x["agent"].str())
+        }
+    }
+
     /**
      * R18: `POST /api/photos/{id}/exports?agent=&version=&name=&size=` with the file as the body, streamed; [onBytes]
      * gets the bytes sent so far. LPL has no resumable upload: a failure that can pass (no answer, 502/503/504) repeats
      * the whole file, up to [ClientSettings.retries] more times; `size` makes the server refuse a cut-off body.
+     *
+     * Brief P4a: never two copies on the server. [known] is what the photo's export list held before the first attempt
+     * (null: do not check). When an attempt fails without an answer, the server may have stored the file all the same:
+     * the list is read, and an export that [ServerExport.isUpload] says is this one is taken as the answer instead of
+     * sending the file again. [checkFirst]: look before the first attempt too (an upload of an earlier run that may have
+     * arrived). [claimed]: exports other uploads of this device already took as theirs.
      */
-    fun postExport(id: Long, agentId: String, version: Int, name: String, file: File, onBytes: (Long) -> Unit = {}): ExportAnswer {
+    fun postExport(
+        id: Long, agentId: String, version: Int, name: String, file: File, onBytes: (Long) -> Unit = {},
+        known: Set<Long>? = null, claimed: Set<Long> = emptySet(), checkFirst: Boolean = false,
+    ): ExportAnswer {
         val enc = { t: String -> java.net.URLEncoder.encode(t, "UTF-8") }
         val path = "/api/photos/$id/exports?agent=${enc(agentId)}&version=$version&name=${enc(name)}&size=${file.length()}"
+        fun arrived(): ExportAnswer? = known?.let { k ->
+            listExports(id).firstOrNull { it.isUpload(agentId, version, name, file.length(), k, claimed) }?.let { ExportAnswer(it.id, it.path) }
+        }
+        if (checkFirst) arrived()?.let { log?.invoke("POST /api/photos/$id/exports: already stored by an earlier attempt (export ${it.exportId})"); return it }
         var attempt = 0
         while (true) {
             try {
@@ -178,8 +214,11 @@ class LplClient(
                     ExportAnswer(o["export_id"].long() ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/photos/$id/exports: no export_id in the answer"), o["path"].str() ?: "")
                 }
             } catch (e: LplException) {
-                if (!e.transient || attempt >= settings.retries) throw e
-                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                if (!e.transient) throw e
+                // the answer may be what was lost: look before sending the file again
+                arrived()?.let { log?.invoke("POST /api/photos/$id/exports: the answer was lost, the server has it (export ${it.exportId})"); return it }
+                if (attempt >= settings.retries) throw e
+                backoff(attempt, e)
                 attempt++
             }
         }
@@ -238,7 +277,7 @@ class LplClient(
             } catch (e: LplException) {
                 if (!e.transient || attempts >= settings.downloadResumes) throw e
                 attempts++
-                sleep(settings.backoffMs.getOrElse(attempts - 1) { settings.backoffMs.lastOrNull() ?: 0L })
+                backoff(attempts - 1, e)
             }
         }
     }
@@ -268,6 +307,8 @@ class LplClient(
                             val start = r.header("content-range")?.let { Regex("bytes (\\d+)-").find(it)?.groupValues?.get(1)?.toLongOrNull() }
                             if (start != have) throw LplException(LplFailure.BAD_ANSWER, "$label: range answer starts at $start, not at $have")
                         } else {
+                            // brief P4a: a server that does not answer Range (or whose file changed, If-Range) sends it all: start again
+                            if (have > 0) log?.invoke("$label: the server sent the whole file instead of the rest (Range not answered or file changed); downloading it again")
                             r.header("etag")?.let { e -> writeSmall(etagFile, e) } ?: etagFile.delete()
                         }
                         val total = when {
@@ -283,6 +324,7 @@ class LplClient(
                                 f.seek(done)
                                 val buf = ByteArray(1 shl 16)
                                 var lastReport = 0L
+                                var lastSync = done
                                 while (true) {
                                     if (cancelled()) throw LplException(LplFailure.CANCELLED, "$label: cancelled")
                                     val n = r.body.read(buf)
@@ -290,6 +332,8 @@ class LplClient(
                                     f.write(buf, 0, n)
                                     done += n
                                     if (done - lastReport >= (1 shl 18)) { progress(done, total); lastReport = done }
+                                    // brief P4a: what is on disk is on disk, so a resume after the phone died starts from real bytes
+                                    if (done - lastSync >= SYNC_EVERY) { f.fd.sync(); lastSync = done }
                                 }
                                 f.fd.sync()
                             }
@@ -305,6 +349,9 @@ class LplClient(
                             expectedSize > 0 && done == expectedSize -> true
                             expectedSize > 0 && done < expectedSize -> throw LplException(LplFailure.UNREACHABLE, "$label: the download broke off at $done of $expectedSize bytes")
                             expectedSize > 0 -> false
+                            // brief P4a: no size from checkout: the answer's own length decides whether the file is whole
+                            total in 1 until done -> false
+                            total > 0 && done < total -> throw LplException(LplFailure.UNREACHABLE, "$label: the download broke off at $done of $total bytes")
                             else -> true
                         }
                     }
@@ -398,7 +445,7 @@ class LplClient(
                 return callOnce(method, path, body, contentType, readTimeoutMs, withToken, handle = handle)
             } catch (e: LplException) {
                 if (!e.transient || attempt >= retries) throw e
-                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                backoff(attempt, e)
                 attempt++
             }
         }
@@ -453,6 +500,9 @@ class LplClient(
         /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
         /** `caps` of every heartbeat (brief P2k): `batch` = reports transfers, `cancel` = acts on Stop, `open` = honours `payload.open` */
         val CAPS = listOf("batch", "cancel", "open", "versions", "exports")
+
+        /** brief P4a: a download in progress is flushed to storage after this many bytes */
+        const val SYNC_EVERY = 4L shl 20
 
         fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
     }

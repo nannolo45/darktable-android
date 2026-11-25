@@ -4,6 +4,7 @@ package app.dtandroid.darkroom
 import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
+import app.dtandroid.darkroom.robust.MemoryTrim
 import app.dtandroid.engine.api.ImageInfo
 import app.dtandroid.engine.api.ModuleInstance
 import app.dtandroid.engine.api.RenderedImage
@@ -466,6 +467,8 @@ class DarkroomController(
             // brief P2h: the app's sentence as it is, without the error's name in front
             val why = if (isNoPicture(e)) NO_PICTURE else e.message
             _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: $why", working = null, workingProgress = null) }
+            // brief P4a: shown in the app's words; the engine's own message goes to the crash log
+            onEngineErrorShown?.invoke("cannot open ${item.fileName}: ${e.message}")
         }
         _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) RENDERING else it.working) }
     }
@@ -1160,7 +1163,8 @@ class DarkroomController(
                     _state.update { it.copy(message = null) }
                     val info = _state.value.info ?: return@fg null
                     val t0 = System.nanoTime()
-                    val img = engine.renderPreview(size)
+                    // brief P4a: through [wanted] for its out-of-memory handling; a cancel (the next drag) is not run again
+                    val img = wanted({ false }) { engine.renderPreview(size) }
                     dragPicture.record(img.width * img.height, System.nanoTime() - t0, drag = true)
                     PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
                 } catch (e: EngineException) {
@@ -2082,14 +2086,63 @@ class DarkroomController(
      */
     private suspend fun <T> wanted(still: () -> Boolean = { true }, block: suspend () -> T): T {
         var n = 0
+        var trimmed = false
         while (true) {
             try {
                 return block()
             } catch (e: EngineException) {
+                // brief P4a: out of memory: give back what can be given (the edit stays), once, and try again; if it
+                // fails again the render fails with a message, and the darkroom and its edit stay as they are
+                if (e.isOutOfMemory) {
+                    if (!trimmed) {
+                        trimmed = true
+                        Timeline.mark("darkroom: render out of memory, giving memory back and trying once more")
+                        trimLocked(MemoryTrim.Plan(engineLevel = 2, thumbnailsKept = 1))
+                        System.gc()
+                        continue
+                    }
+                    onOutOfMemory?.invoke(e.detail)
+                    throw EngineException(EngineError.ENGINE, OUT_OF_MEMORY_TEXT)
+                }
                 if (e.error != EngineError.CANCELLED || !kotlinx.coroutines.currentCoroutineContext().isActive || !still() || ++n > 2) throw e
                 Timeline.mark("darkroom: a render stopped by a cancel not meant for it, run again")
             }
         }
+    }
+
+    /** Brief P4a: an engine error the darkroom shows in its own words (opening a photo); the app logs the engine's text. */
+    @Volatile var onEngineErrorShown: ((String) -> Unit)? = null
+
+    /** Brief P4a: told when a render failed for lack of memory even after giving memory back (the app logs it). */
+    @Volatile var onOutOfMemory: ((String) -> Unit)? = null
+
+    /**
+     * Brief P4a: give memory back as Android asks ([MemoryTrim.plan] of its trim level): the engine's caches (level 1 or 2,
+     * engine-api.md 10) and the filmstrip's thumbnails apart from those near the open photo. The open edit (history, undo,
+     * snapshots) stays. Waits for a running render. Returns the engine's memory afterwards.
+     */
+    suspend fun trimMemory(plan: MemoryTrim.Plan): app.dtandroid.engine.api.EngineMemory = lock.withLock { trimLocked(plan) }
+
+    private suspend fun trimLocked(plan: MemoryTrim.Plan): app.dtandroid.engine.api.EngineMemory {
+        val before = _state.value.thumbnails.size
+        plan.thumbnailsKept?.let { keep ->
+            _state.update { s -> s.copy(thumbnails = MemoryTrim.keepNear(s.thumbnails, s.index, keep)) }
+        }
+        val m = if (plan.engineLevel > 0) runCatching { engine.memoryTrim(plan.engineLevel) }.getOrElse { app.dtandroid.engine.api.EngineMemory.NONE }
+                else app.dtandroid.engine.api.EngineMemory.NONE
+        Timeline.mark("memory: trim engine level ${plan.engineLevel}, thumbnails ${before} -> ${_state.value.thumbnails.size}; ${m.describe()}")
+        return m
+    }
+
+    /** Brief P4a: the thumbnails dropped by a trim come back from storage (when the app is in front again). */
+    suspend fun restoreThumbnails() {
+        val st = _state.value
+        val store = thumbnailStore ?: return
+        val missing = st.series.items.withIndex().filter { (i, _) -> i !in st.thumbnails }
+        if (missing.isEmpty()) return
+        val loaded = HashMap<Int, app.dtandroid.engine.api.RenderedImage>()
+        for ((i, item) in missing) store.load(item)?.let { loaded[i] = it }
+        if (loaded.isNotEmpty()) _state.update { s -> if (s.series == st.series) s.copy(thumbnails = loaded + s.thumbnails) else s }
     }
 
     private suspend fun renderPreview() {
@@ -2267,7 +2320,7 @@ class DarkroomController(
             // clamp P2b needed here is gone
             // brief P3h: position 0 rendered without moving the history end (engine-api.md 8): no goto and back
             // brief P2i: at the preview's size, so "before" and "after" look alike on screen
-            val img = engine.renderPreview(previewSize(), RenderOptions.at(0))
+            val img = wanted { engine.renderPreview(previewSize(), RenderOptions.at(0)) }
             PhotoLayer(img, 0, 0, img.width.toDouble() / info.width.coerceAtLeast(1))
         } ?: return
         _state.update { it.copy(beforePreview = layer) }
@@ -2891,6 +2944,9 @@ class DarkroomController(
     fun paramValue(m: ModuleInstance, path: String) = m.params.paramAt(path)
 
     companion object {
+        /** Brief P4a: what the darkroom says when a render fails for lack of memory (after giving memory back once). */
+        const val OUT_OF_MEMORY_TEXT = "not enough memory for this picture right now; your edit is kept. Close other apps, or zoom out, and try again"
+
         /** brief P3e-b: the control id of a band graph's drag (a drag of fields, not of one slider) */
         const val BAND_DRAG = -7
 

@@ -152,7 +152,8 @@ class MainActivity : ComponentActivity() {
                 val screen by vm.screen.collectAsState()
                 val ready = status as? AppEngine.Status.Ready
                 when {
-                    ready == null -> StartScreen(status, onRetry = { AppEngine.retry(this@MainActivity) })
+                    screen == Screen.CRASH_LOG -> CrashLogPage(onCopy = { copyText(it) }, onBack = { vm.show(if (ready == null) Screen.LIBRARY else Screen.ABOUT) })
+                    ready == null -> StartScreen(status, onRetry = { AppEngine.retry(this@MainActivity) }, onCrashLog = { vm.show(Screen.CRASH_LOG) })
                     screen == Screen.LIBRARY -> LibraryScreen(vm, onOpen = { openPhotos.launch(arrayOf("*/*")) }, onOpenInLpl = { o, id -> openInLpl(o, id) })
                     screen == Screen.SERVER -> ServerScreen(vm)
                     screen == Screen.HANDOFF -> HandOffScreen(vm)
@@ -177,10 +178,17 @@ class MainActivity : ComponentActivity() {
                 else if (vm.controller.state.value.overlay != null) { if (!vm.controller.stylesPresets.back()) vm.controller.setOverlay(null) }
                 else vm.leaveDarkroom()
             Screen.ABOUT -> vm.show(Screen.LIBRARY)
+            Screen.CRASH_LOG -> vm.show(Screen.ABOUT)
             Screen.SERVER -> vm.show(Screen.LIBRARY)
             Screen.HANDOFF -> vm.cancelHandOff()
             Screen.TIMINGS -> vm.show(if (vm.controller.state.value.info != null) Screen.DARKROOM else Screen.LIBRARY)
         }
+    }
+
+    /** brief P4a: "copy" on the crash log: the text goes to the clipboard, nowhere else */
+    private fun copyText(text: String) {
+        val cm = getSystemService(android.content.ClipboardManager::class.java) ?: return
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("dt-android crash log", text))
     }
 
     private fun share(text: String) {

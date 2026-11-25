@@ -59,6 +59,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import app.dtandroid.darkroom.robust.CrashLog
+import app.dtandroid.darkroom.robust.MemoryTrim
 import java.util.Locale
 
 /**
@@ -76,6 +78,12 @@ object AppHost {
         app = a
         // installed over the old interface preview (same id until P2e): its sample series is of no use here
         runCatching { File(a.filesDir, "preview-series").takeIf { it.isDirectory }?.deleteRecursively() }
+    }
+
+    /** brief P4a: the local crash log (Settings › About › crash log); nothing in it is sent anywhere */
+    val crashLog: CrashLog by lazy {
+        val v = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
+        CrashLog(File(app.filesDir, "logs/crash-log.jsonl"), v)
     }
 
     /** brief P3i: set by the activity: asks for the notification permission once */
@@ -133,8 +141,29 @@ object AppHost {
         return !f.isFile || (xmp.isFile && xmp.lastModified() > f.lastModified())
     }
 
+    /** brief P4a: whether [controller] was made (a memory signal must not create it) */
+    @Volatile private var controllerMade = false
+
+    /**
+     * Brief P4a: Android's memory signal ([level] of onTrimMemory, or MemoryTrim.LOW_MEMORY): the darkroom and the engine
+     * give back what [MemoryTrim.plan] says; the open edit stays. Off the main thread; the numbers go to the timeline.
+     */
+    fun trimMemory(level: Int) {
+        val plan = MemoryTrim.plan(level)
+        if (plan.engineLevel == 0 && plan.thumbnailsKept == null) return
+        if (AppEngine.status.value !is AppEngine.Status.Ready) return
+        AppEngine.scope.launch {
+            val m = if (controllerMade) controller.trimMemory(plan) else runCatching { AppEngine.engine.memoryTrim(plan.engineLevel) }.getOrNull()
+            android.util.Log.i("dt-android", "memory trim (Android level $level): engine level ${plan.engineLevel}; ${m?.describe()}")
+        }
+    }
+
     val controller: DarkroomController by lazy {
+        controllerMade = true
         DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
+            // brief P4a: a render that failed for lack of memory even after memory was given back is logged
+            c.onEngineErrorShown = { text -> crashLog.append(CrashLog.KIND_BRIDGE, text) }
+            c.onOutOfMemory = { detail -> crashLog.append(CrashLog.KIND_RENDER_OOM, "a render failed for lack of memory after the engine gave memory back: $detail") }
             c.source = Source
             c.versionHost = Versions // brief P3f
             // brief P3b: favourite and recently used styles and the apply mode, in the app's settings (not darktable's database)
@@ -143,6 +172,12 @@ object AppHost {
             c.exports.delivery = AppExportDelivery(app)
             // brief P3j: the paste mode (append / overwrite) is remembered between starts
             c.copyPaste.modeFile = File(app.filesDir, "settings/paste-mode.txt")
+            // brief P4a: engine (bridge) errors the darkroom shows go into the crash log as well
+            AppEngine.scope.launch {
+                c.state.map { it.message }.distinctUntilChanged().collect { m ->
+                    if (CrashLog.isBridgeMessage(m)) crashLog.append(CrashLog.KIND_BRIDGE, m!!)
+                }
+            }
             // brief P3i: while an export runs the process is kept alive by a foreground service (notification, cancel);
             // an export to LightPhotoLibrary also heartbeats while the app is in the background (step "exporting")
             AppEngine.scope.launch {
@@ -475,6 +510,8 @@ object AppHost {
      */
     @Synchronized
     fun foreground() {
+        // brief P4a: thumbnails a memory trim dropped come back from storage
+        if (controllerMade) AppEngine.scope.launch { runCatching { controller.restoreThumbnails() } }
         if (loop?.isActive == true) return
         loop = AppEngine.scope.launch {
             // edits that waited while the app was away are sent now (the app is in front: no battery concern)
@@ -570,6 +607,24 @@ object AppHost {
     }
 
     /** Whether a server with waiting work did not answer its last call. */
+    /**
+     * Brief P4a: whether the phone has a network now (Android's ConnectivityManager; true until it said otherwise), for
+     * "waiting for connection" in the list and the sync notification.
+     */
+    val online: kotlinx.coroutines.flow.StateFlow<Boolean> by lazy {
+        val flow = kotlinx.coroutines.flow.MutableStateFlow(true)
+        runCatching {
+            val cm = app.getSystemService(android.net.ConnectivityManager::class.java)
+            fun now() = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            flow.value = now()
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) { flow.value = true }
+                override fun onLost(network: android.net.Network) { flow.value = now() }
+            })
+        }
+        flow
+    }
+
     fun waitingServerUnreachable(): Boolean {
         val errors = agent.lastError.value
         val origins = agent.pending().map { it.server }.toSet() + if (agent.queuedExports() > 0) servers.list().map { it.origin } else emptyList()

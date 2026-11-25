@@ -776,3 +776,21 @@ modules and values and brings the circle; paste onto the open photo is one undo 
 history; refusals (nothing copied, a session open for `paste_files`, a target XMP with an unknown module left
 unchanged, a read-only session, items not listed, bad mode); the RAW's checksum is unchanged. Kotlin contract test
 `copyAndPasteTheHistoryBetweenPhotos` (stand-in on the JVM, real engine on the emulator).
+
+## 10. P4a: memory held and given back (25 Nov 2026)
+
+| C | Kotlin | Behaviour |
+|---|---|---|
+| `int dtb_memory_info(char **json)` | `memoryInfo(): EngineMemory` | `{ "pipe_full", "pipe_full_peak", "pipe_preview", "pipe_preview_peak", "pipes_ready", "mipmap_full", "mipmap_full_entries", "mipmap_full_quota", "mipmap_f", …, "mipmap_thumbs", …, "rss" }`: the two bridge pipelines' cached intermediate buffers in bytes (`dt_dev_pixelpipe_cache_t.allmem`, now and the most so far), how many pipelines exist (0..2), darktable's image cache per level (`mip_full`, `mip_f`, `mip_thumbs`: bytes summed over the entries' `data_size`, the number of entries, and `cost_quota`, which upstream counts in bytes for thumbs but in buffers for full and f, `dt_mipmap_cache_init`: worker threads + 1), and the process's resident memory (`/proc/self/statm`). With or without a photo open. |
+| `int dtb_memory_trim(int level, char **json)` | `memoryTrim(level): EngineMemory` | Level 1: every cache line of both pipelines invalidated and freed (`dt_dev_pixelpipe_cache_flush`, then `dt_dev_pixelpipe_cache_checkmem(pipe, TRUE)`; the two alternating lines below `DT_PIPECACHE_MIN` stay), and the image cache's entries that nobody holds removed (`dt_cache_gc(cache, 0)` under the cache's lock, each level). The pipelines keep their read locks on the open image's inputs, so those stay. Level 2: the pipelines are freed as at `dtb_close` (`dtb__pipes_free`: their input locks released), then the same gc, which now also removes the open image's decoded inputs: the next render builds its pipeline and reads the RAW again. At neither level is `dtb_S.dev` (history, module parameters, masks) or the undo list touched. ARG for another level. `json` (may be NULL): `memory_info` afterwards. |
+
+On the engine thread like every call, so never during a render. The app maps Android's `onTrimMemory` levels to these
+(`MemoryTrim.plan`: running low 1, running critical 2, UI hidden 1, background and above 2, `onLowMemory` 2) and also
+drops filmstrip thumbnails far from the open photo (they come back from storage in the foreground). A render whose
+engine or Java buffer runs out of memory (`EngineException.isOutOfMemory`) gets one level-2 trim and one more try in
+the darkroom; then it fails with a message, the edit kept.
+
+Test: C34 (`engine/tests/dtb_test_p4a.c`): numbers before and after renders and both levels in `p4a_memory.txt`; level 1
+keeps the pipelines and frees buffers, level 2 frees the pipelines and the open image's input; after each, the history
+count and end, the exposure parameter and undo are as before, and the preview and a region render byte for byte as
+before the trim.
