@@ -84,6 +84,18 @@ static gint64 p4b_decodes(void)
   return v;
 }
 
+/* brief P4e: an RGBA8 picture as binary PPM (RGB), for the kernel before/after comparison */
+static void p4b_save_ppm(const char *outdir, const char *name, const uint8_t *p, const int w, const int h)
+{
+  char path[4096];
+  snprintf(path, sizeof(path), "%s/%s", outdir, name);
+  FILE *f = fopen(path, "wb");
+  if(!f) return;
+  fprintf(f, "P6\n%d %d\n255\n", w, h);
+  for(size_t i = 0; i < (size_t)w * h; i++) fwrite(p + 4 * i, 1, 3, f);
+  fclose(f);
+}
+
 /* PSNR of two RGBA8 pictures over RGB, dB; INFINITY when equal */
 static double p4b_psnr(const uint8_t *a, const uint8_t *b, const size_t pixels, int *maxdiff)
 {
@@ -271,10 +283,39 @@ static int cmd_opencl(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   MUST(dtb_cache_drop());
   MUST(dtb_open(raw, xmp));
+  // brief P4e: darktable's per-module log of this render (dtb_render_trace)
+  MUST(dtb_render_trace(1, NULL));
   t0 = p4b_now();
   int w2 = 0, h2 = 0;
   uint8_t *gpu = p4b_preview(&w2, &h2);
   const double gpu_s = p4b_now() - t0;
+  {
+    char *tr = NULL;
+    MUST(dtb_render_trace(0, &tr));
+    JsonNode *tn;
+    JsonObject *to = p4b_obj(tr, &tn);
+    const char *log = json_object_has_member(to, "log") && !json_object_get_null_member(to, "log")
+                          ? json_object_get_string_member(to, "log") : NULL;
+    CHECK(!json_object_get_boolean_member(to, "armed"), "render trace used up by the render");
+    CHECK(log && strstr(log, "[dev_pixelpipe] took ") && strstr(log, "processed `"), "render trace holds darktable's per-module lines");
+    int lines = 0, on_gpu = 0;
+    for(const char *q = log; q && (q = strstr(q, "processed `")); q++)
+    {
+      lines++;
+      const char *e = strchr(q, '\n');
+      const char *g = strstr(q, "' on GPU");
+      if(g && (!e || g < e)) on_gpu++;
+    }
+    fprintf(stdout, "RESULT render_trace modules %d on_gpu %d bytes %zu\n", lines, on_gpu, log ? strlen(log) : (size_t)0);
+    g_string_append_printf(out, "render trace (P4e): %d module lines, %d on the GPU\n", lines, on_gpu);
+    json_node_unref(tn);
+  }
+  // brief P4e (engine/tests/p4e_kernels_before_after.sh): keep both pictures
+  if(getenv("DTB_TEST_SAVE_PPM"))
+  {
+    p4b_save_ppm(outdir, "p4b_cpu.ppm", cpu, w, h);
+    p4b_save_ppm(outdir, "p4b_gpu.ppm", gpu, w2, h2);
+  }
   MUST(dtb_opencl_info(&s));
   o = p4b_obj(s, &n);
   const char *last = json_object_get_string_member(o, "last_render");

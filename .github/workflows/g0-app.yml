@@ -7,7 +7,7 @@ name: g0-app
 
 on:
   push:
-    branches: [g0-test-app, p1a-engine-core, p1c-engine-followups, hotfix-stale-lock, t1-stability, p3l-shared-styles-presets, p3m-retouch-lut]
+    branches: [g0-test-app, p1a-engine-core, p1c-engine-followups, hotfix-stale-lock, t1-stability, p3l-shared-styles-presets, p3m-retouch-lut, p4e-adreno-kernels]
     paths-ignore: ["docs/**", "*.md"]
   workflow_dispatch:
     inputs:
@@ -72,7 +72,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_test_p4a.c', 'engine/tests/dtb_test_p4b.c', 'engine/tests/dtb_test_p4c.c', 'engine/tests/dtb_test_p4d.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'patches/**', 'tools/fetch-darktable.sh', 'tools/apply-patches.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_test_p4a.c', 'engine/tests/dtb_test_p4b.c', 'engine/tests/dtb_test_p4c.c', 'engine/tests/dtb_test_p4d.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Build darktable and the bridge for Linux
         id: build
@@ -94,7 +94,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_test_p4a.c', 'engine/tests/dtb_test_p4b.c', 'engine/tests/dtb_test_p4c.c', 'engine/tests/dtb_test_p4d.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'patches/**', 'tools/fetch-darktable.sh', 'tools/apply-patches.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_test_p4a.c', 'engine/tests/dtb_test_p4b.c', 'engine/tests/dtb_test_p4c.c', 'engine/tests/dtb_test_p4d.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Fetch test images
         run: |
@@ -141,6 +141,20 @@ jobs:
           echo "other_failures=$failures" >> "$GITHUB_OUTPUT"
           echo "passes=$passes" >> "$GITHUB_OUTPUT"
 
+      - name: Kernel patches, before and after (brief P4e)
+        id: p4e
+        if: always() && steps.tests.outcome != 'skipped'
+        run: |
+          set +e
+          # no [] on vectors left in the kernels the engine installs (Adreno refuses them)
+          python3 -I tools/check-vector-subscripts.py /home/runner/dt-linux/share/darktable/kernels clang-18 > /home/runner/p4e-subscripts.txt 2>&1
+          c=$?; cat /home/runner/p4e-subscripts.txt
+          # the same edits through OpenCL (PoCL) with the patched and with upstream's kernels
+          engine/tests/p4e_kernels_before_after.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/p4e
+          r=$?
+          echo "check=$c compare=$r"
+          echo "ok=$([ $c = 0 ] && [ $r = 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+
       - name: Region test diagnosis (P1a; information only, does not fail the job)
         if: always() && steps.tests.outcome != 'skipped'
         run: |
@@ -186,6 +200,9 @@ jobs:
             mkdir -p "$L/$c"; cp /home/runner/bridge-tests/$c/*.log "$L/$c/" 2>/dev/null || true
           done
           cp /home/runner/ref/cli.log "$L/reference-cli.log" 2>/dev/null || true
+          # brief P4e
+          mkdir -p "$L/p4e"; cp /home/runner/p4e-subscripts.txt /home/runner/p4e/summary.md /home/runner/p4e/kernels.diff "$L/p4e/" 2>/dev/null || true
+          for e in /home/runner/p4e/*/; do for k in after before; do [ -f "$e$k/run.log" ] && cp "$e$k/run.log" "$L/p4e/$(basename "$e")-$k.log"; done; done 2>/dev/null || true
 
       - name: Push logs to ci-logs branch
         if: always()
@@ -195,6 +212,10 @@ jobs:
 
       - name: Fail on any bridge test failure
         if: steps.tests.outputs.other_failures != '0' || steps.tests.outputs.rc != '0'
+        run: exit 1
+
+      - name: Fail on the P4e kernel check
+        if: steps.p4e.outputs.ok != '1'
         run: exit 1
 
   apk:

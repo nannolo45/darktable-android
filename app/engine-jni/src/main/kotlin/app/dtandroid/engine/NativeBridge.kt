@@ -99,6 +99,9 @@ object NativeBridge {
     const val JSON_OPENCL_INFO = 7
     /** brief P4d: dtb_opencl_diagnostics */
     const val JSON_OPENCL_DIAGNOSTICS = 8
+    /** brief P4e: dtb_render_trace(0) and dtb_render_trace(1) */
+    const val JSON_RENDER_TRACE = 9
+    const val JSON_RENDER_TRACE_ARM = 10
     /** brief P4d: dtb_opencl_library (names separated by ':'); a DTB_ code */
     @JvmStatic external fun openclLibrary(names: String?): Int
     /** brief P4b: dtb_opencl_set; the opencl_info afterwards */

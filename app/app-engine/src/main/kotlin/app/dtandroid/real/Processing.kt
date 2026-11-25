@@ -62,6 +62,13 @@ object Processing {
     /** brief P4d: the text "copy GPU details" copies; from the last GPU switch on (also the one at the start) */
     @Volatile private var gpuDetails: String? = null
 
+    /** brief P4e: per-module tables (GPU check, then the last "measure speed" with the GPU on), added to the GPU details */
+    @Volatile private var gpuPerf: String = ""
+    @Volatile private var benchPerf: String = ""
+
+    /** brief P4e: the last GPU check found the GPU slower than the CPU; the user may force it on (the check's text) */
+    @Volatile private var gpuSlower: String? = null
+
     /** brief P4d: the app's own OpenCL library loading (System.loadLibrary puts it in the app's linker namespace) */
     private fun libraries() = app.dtandroid.darkroom.speed.OpenClLibraries({ System.loadLibrary(it) })
 
@@ -75,7 +82,9 @@ object Processing {
     private fun refresh() {
         val v = settings.values.value
         _ui.update {
-            it.copy(gpu = v.gpu, gpuNote = v.gpuNote, gpuDetails = gpuDetails, memory = v.memory, memoryNow = plan?.describe(),
+            it.copy(gpu = v.gpu, gpuNote = v.gpuNote,
+                gpuDetails = gpuDetails?.let { d -> d + (if (gpuPerf.isNotEmpty() || benchPerf.isNotEmpty()) "\n" + gpuPerf + benchPerf else "") },
+                gpuSlower = gpuSlower?.takeIf { !v.gpu }, memory = v.memory, memoryNow = plan?.describe(),
                 memoryPending = plan != null && plan?.choice != v.memory)
         }
     }
@@ -154,6 +163,8 @@ object Processing {
                 controller.withEngine { e ->
                     val check = GpuCheck(e, raw, libraries())
                     val r = check.run { s -> _ui.update { it.copy(gpuBusy = s) } }
+                    gpuPerf = check.perf
+                    gpuSlower = (r as? GpuCheck.Result.Slower)?.text
                     val n = if (r is GpuCheck.Result.On) r.text else "GPU off: ${r.text}"
                     // brief P4d: what "copy GPU details" copies
                     gpuDetails = details(e, appVersion, n, check.probe)
@@ -164,7 +175,26 @@ object Processing {
             }
             val note = if (result is GpuCheck.Result.On) result.text else "GPU off: ${result.text}"
             settings.update { it.copy(gpu = result is GpuCheck.Result.On, gpuNote = note) }
-            if (result is GpuCheck.Result.Off) AppHost.crashLog.append(CrashLog.KIND_OPENCL, "switching the GPU on: ${result.text}")
+            if (result !is GpuCheck.Result.On) AppHost.crashLog.append(CrashLog.KIND_OPENCL, "switching the GPU on: ${result.text}")
+            _ui.update { it.copy(gpuBusy = null) }
+            refresh()
+        }
+    }
+
+    /**
+     * Brief P4e: the user's second confirmation after the GPU check found the GPU slower than the CPU: OpenCL on anyway
+     * (the pictures agreed, or the check would have said so instead).
+     */
+    fun forceGpu(controller: DarkroomController) {
+        val why = gpuSlower ?: return
+        if (_ui.value.busy || settings.values.value.gpu) return
+        AppEngine.scope.launch {
+            _ui.update { it.copy(gpuBusy = "starting") }
+            val i = runCatching { controller.withEngine { e -> e.openclSet(true) } }.getOrNull()
+            if (i != null && i.running) {
+                settings.update { it.copy(gpu = true, gpuNote = "GPU on at your request, although $why") }
+                gpuSlower = null
+            } else settings.update { it.copy(gpu = false, gpuNote = "GPU off: it could not be started again") }
             _ui.update { it.copy(gpuBusy = null) }
             refresh()
         }
@@ -187,6 +217,7 @@ object Processing {
                 controller.withEngine { e ->
                     val info = e.engineInfo()
                     val r = SpeedBenchmark(e, raw, gpu, header + "threads: ${info.threads}").run { s -> _ui.update { it.copy(speedRunning = s) } }
+                    if (gpu) benchPerf = "measure speed:\n" + r.perf
                     val res = e.resourcesInfo()
                     r.text + "engine: ${res.describe()}\n" + String.format(Locale.ROOT, "RAW decodes since the app started: %d\n", res.mipmapFullDecodes)
                 }
@@ -196,6 +227,7 @@ object Processing {
                 "measure speed stopped: ${e.message}"
             }
             _ui.update { it.copy(speedRunning = null, speedText = text) }
+            refresh()
         }
     }
 }

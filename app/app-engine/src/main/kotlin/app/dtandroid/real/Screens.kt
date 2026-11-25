@@ -415,5 +415,6 @@ fun ProcessingPage(vm: AppViewModel, appVersion: String, onCopy: (String) -> Uni
         onCopy = { ui.speedText?.let(onCopy) },
         onBack = { vm.show(Screen.LIBRARY) },
         onCopyGpu = { ui.gpuDetails?.let(onCopy) },
+        onGpuForce = { Processing.forceGpu(vm.controller) },
     )
 }

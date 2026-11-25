@@ -3,7 +3,7 @@
 # Print the release tags used by the workflows, as KEY=value lines:
 #   DEPS_TAG    deps-<12 hex of the git tree of deps/>   (sysroot archives)
 #   ENGINE_TAG  engine-<darktable 8>-<12 hex of deps/, the bridge sources and
-#               the engine build scripts (list below)
+#               the engine build scripts and patches/ (list below)
 #   APP_TAG     g0-app-<12 hex of the commit>                (test APKs, brief G0)
 #   DT_COMMIT   the darktable commit pinned by the upstream/darktable submodule
 # The trees are taken from the committed HEAD, so the tag says exactly which
@@ -20,7 +20,8 @@ E=$( {
   echo "$D $DT"
   for p in engine/CMakeLists.txt engine/include engine/src \
            tools/build-engine-android.sh tools/engine-load-order.sh \
-           tools/fetch-darktable.sh tools/darktable-pin.sh tools/android-compat; do
+           tools/fetch-darktable.sh tools/darktable-pin.sh tools/android-compat \
+           patches tools/apply-patches.sh; do
     echo "$p $(git -C "$REPO" rev-parse "HEAD:$p")"
   done
 } | sha256sum | cut -c1-12)
