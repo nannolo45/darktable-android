@@ -84,6 +84,18 @@ static gint64 p4b_decodes(void)
   return v;
 }
 
+/* brief P4e: an RGBA8 picture as binary PPM (RGB), for the kernel before/after comparison */
+static void p4b_save_ppm(const char *outdir, const char *name, const uint8_t *p, const int w, const int h)
+{
+  char path[4096];
+  snprintf(path, sizeof(path), "%s/%s", outdir, name);
+  FILE *f = fopen(path, "wb");
+  if(!f) return;
+  fprintf(f, "P6\n%d %d\n255\n", w, h);
+  for(size_t i = 0; i < (size_t)w * h; i++) fwrite(p + 4 * i, 1, 3, f);
+  fclose(f);
+}
+
 /* PSNR of two RGBA8 pictures over RGB, dB; INFINITY when equal */
 static double p4b_psnr(const uint8_t *a, const uint8_t *b, const size_t pixels, int *maxdiff)
 {
@@ -275,6 +287,12 @@ static int cmd_opencl(const char *raw, const char *xmp, const char *outdir)
   int w2 = 0, h2 = 0;
   uint8_t *gpu = p4b_preview(&w2, &h2);
   const double gpu_s = p4b_now() - t0;
+  // brief P4e (engine/tests/p4e_kernels_before_after.sh): keep both pictures
+  if(getenv("DTB_TEST_SAVE_PPM"))
+  {
+    p4b_save_ppm(outdir, "p4b_cpu.ppm", cpu, w, h);
+    p4b_save_ppm(outdir, "p4b_gpu.ppm", gpu, w2, h2);
+  }
   MUST(dtb_opencl_info(&s));
   o = p4b_obj(s, &n);
   const char *last = json_object_get_string_member(o, "last_render");

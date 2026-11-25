@@ -3,8 +3,9 @@
 # Put the pinned darktable source (with the submodules the build needs) in
 # <dir>. The commit is the one the upstream/darktable submodule is pinned to
 # (read by tools/darktable-pin.sh). Uses the submodule's checkout when it is
-# present and at that commit, otherwise fetches the commit. Never modifies
-# the source.
+# present and at that commit, otherwise fetches the commit. Checks that the
+# pinned source is clean, then applies the patch series in patches/ (PLAN.md
+# 5; brief P4e) to the copy in <dir>. The submodule itself is never modified.
 #   tools/fetch-darktable.sh <dir>
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -34,6 +35,9 @@ else
     git -C "$DEST" remote add origin "$DTA_DARKTABLE_REPO"
     git -C "$DEST" fetch -q --depth 1 origin "$COMMIT"
     git -C "$DEST" -c advice.detachedHead=false checkout -q FETCH_HEAD
+  else
+    # a copy from an earlier run: back to the pinned commit before patching again
+    git -C "$DEST" checkout -q -- .
   fi
   git -C "$DEST" submodule update --init --depth 1 $NEEDED >&2
   CHECK="$DEST"
@@ -44,4 +48,5 @@ if [ -n "$ST" ]; then
   echo "$ST" >&2
   echo "darktable source tree is not clean" >&2; exit 1
 fi
+"$HERE/apply-patches.sh" "$DEST" >&2
 echo "$COMMIT"

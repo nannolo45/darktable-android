@@ -12,8 +12,8 @@ vector into a private float[3] for the loop index. Each component is summed in t
 same order (i = 0, 1, 2) as before, so the result is the same; .w stays 0.
 
 Upstream: worth sending to darktable as is (see docs/experiments/P4e-adreno-kernels-REPORT.md).
-Applied by: .github/workflows/apk-only.yml onto share/darktable/kernels of the engine archive
-(patch -p3 from the kernel folder; from the darktable root use patch -p1 / git apply).
+Applied by: tools/apply-patches.sh (patch -p1 from the darktable root), called by
+tools/fetch-darktable.sh for every engine build and checked by tools/bump-upstream.
 ---
 diff --git a/data/kernels/basic.cl b/data/kernels/basic.cl
 index 5653ec2..24be601 100644
