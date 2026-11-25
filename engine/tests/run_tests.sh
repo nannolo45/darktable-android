@@ -442,6 +442,38 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
   # brief P4c: diffuse's built-in presets by their stored names
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
+  # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
+  # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops
+  # (a crash), the module it was rendering is recorded and the command starts again after it.
+  if want C40 && [ "$C" != arw ]; then
+    R="$OUT/p5a_renders_$C.txt"; : > "$R"; rm -f "$D/p5a_progress.txt" "$D"/C40-run*.log
+    export P5A_CLI="$CLI" P5A_RAW="$RAW" P5A_RES="$R" P5A_CMP="$HERE/compare.py" P5A_LOG="$D/C40-cli.log" \
+      P5A_CONFIG="$OUT/cli-config" P5A_CACHE="$OUT/cli-cache" P5A_LEVEL="$CLI_LEVEL"
+    t40=$(date +%s); run=0; done40=0
+    while [ $run -lt 12 ] && [ $done40 = 0 ]; do
+      run=$((run + 1))
+      DTB_TEST_CLASS="$CLASS" DTB_TEST_P5A_HOOK="sh $HERE/p5a_hook.sh" DTB_TEST_P5A_SKIP="$D/p5a_progress.txt" \
+        timeout 3600 "$DTB" "$W" modaudit "$RAW" "$XMP" "$D" > "$D/C40-run$run.log" 2>&1
+      if grep -q '^RESULT modaudit' "$D/C40-run$run.log"; then done40=1; break; fi
+      last=$(grep '^start ' "$D/p5a_progress.txt" 2>/dev/null | tail -1 | cut -d' ' -f2)
+      [ -n "$last" ] || break
+      if ! grep -q "^end $last " "$D/p5a_progress.txt"; then
+        echo "end $last crashed" >> "$D/p5a_progress.txt"
+        echo "$last 3 the bridge stopped while switching it on or rendering it: $(grep '^FAIL' "$D/C40-run$run.log" | head -1) (C40-run$run.log)" >> "$R"
+      fi
+    done
+    cat "$D"/C40-run*.log > "$D/C40.log"
+    cp -f "$D/p5a_modules.json" "$OUT/p5a_modules_$C.json" 2>/dev/null
+    grep '^RESULT module' "$D/C40.log" > "$OUT/p5a_results_$C.txt"
+    same=$(awk '$2 == 0' "$R" | wc -l); differ=$(awk '$2 == 1' "$R" | wc -l)
+    nocli=$(awk '$2 == 2' "$R" | wc -l); crashed=$(awk '$2 == 3' "$R" | wc -l)
+    info="$(grep '^RESULT modaudit' "$D/C40.log" | tail -1 | cut -d' ' -f3-); renders: $same same, $differ differ, $nocli without a darktable-cli picture, $crashed stopped the bridge; $run run(s), $(( $(date +%s) - t40 )) s"
+    if [ $done40 = 1 ] && ! grep -q '^FAIL' "$D/C40.log" && [ "$differ" = 0 ] && [ "$nocli" = 0 ] && [ "$crashed" = 0 ]; then
+      pass C40 "$C" "every module with its defaults: $info"
+    else
+      fail C40 "$C" "every module with its defaults: $info; $(awk '$2 != 0 {print $1}' "$R" | tr '\n' ' ')$(grep '^FAIL' "$D/C40.log" | head -3 | tr '\n' ';') see $R"
+    fi
+  fi
   # brief P4d: the app's library choice is honoured (the runner's OpenCL library by absolute path); one camera
   if want C4d && [ "$C" = cr2 ]; then
     t37=$(date +%s)
