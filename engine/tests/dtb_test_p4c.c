@@ -174,3 +174,82 @@ static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   return g_fail;
 }
+
+/*
+ *   pickwork <raw> <xmp> <outdir>  C38: a module pick carries the pipe's
+ *                                  working profile and rgb curve's
+ *                                  picker_scale values; checked against the
+ *                                  formulas (linear profiles) for Rec 2020
+ *                                  and linear Rec 709
+ */
+static double p4c_labL(double y)
+{
+  const double eps = 216.0 / 24389.0, kappa = 24389.0 / 27.0;
+  const double f = y > eps ? cbrt(y) : (kappa * y + 16.0) / 116.0;
+  return (116.0 * f - 16.0) / 100.0;
+}
+
+static void p4c_pick_check(const char *what, double *y1)
+{
+  char *s = NULL;
+  MUST(dtb_color_pick("rgbcurve", 0, "{\"area\":[0.4,0.4,0.6,0.6]}", &s));
+  JsonNode *n = jparse_owned(s);
+  JsonObject *o = json_node_get_object(n);
+  JsonNode *wn = json_object_get_member(o, "work");
+  CHECK(wn && JSON_NODE_HOLDS_OBJECT(wn), "%s: the pick has the working profile", what);
+  if(!wn || !JSON_NODE_HOLDS_OBJECT(wn))
+  {
+    json_node_unref(n);
+    return;
+  }
+  JsonObject *w = json_node_get_object(wn);
+  JsonArray *co = json_object_get_array_member(w, "luminance_coeffs");
+  const double c0 = json_array_get_double_element(co, 0), c1 = json_array_get_double_element(co, 1),
+               c2 = json_array_get_double_element(co, 2);
+  const gboolean nonlinear = json_object_get_boolean_member(w, "nonlinear");
+  JsonArray *mean = json_object_get_array_member(json_object_get_object_member(o, "input"), "mean");
+  const double r = json_array_get_double_element(mean, 0), g = json_array_get_double_element(mean, 1),
+               b = json_array_get_double_element(mean, 2);
+  JsonObject *wi = json_object_get_object_member(w, "input");
+  const double lum = json_array_get_double_element(json_object_get_array_member(wi, "luminance"), 0);
+  const double glum = json_array_get_double_element(json_object_get_array_member(wi, "grey_luminance"), 0);
+  const double grey_g = json_array_get_double_element(
+      json_array_get_array_element(json_object_get_array_member(wi, "grey"), 0), 1);
+  const double y = c0 * r + c1 * g + c2 * b;
+  fprintf(stdout, "RESULT %s: coeffs %.7f %.7f %.7f (sum %.6f) nonlinear %d, mean %.5f %.5f %.5f, luminance %.6f "
+                  "(formula %.6f), grey luminance %.6f (formula %.6f), grey g %.6f (formula %.6f)\n",
+          what, c0, c1, c2, c0 + c1 + c2, nonlinear, r, g, b, lum, y, glum, p4c_labL(lum * (c0 + c1 + c2)), grey_g,
+          p4c_labL(g * (c0 + c1 + c2)));
+  CHECK(!nonlinear, "%s: a linear working profile", what);
+  CHECK(fabs(lum - y) < 1e-5, "%s: luminance = matrix row . rgb", what);
+  CHECK(fabs(glum - p4c_labL(lum * (c0 + c1 + c2))) < 1e-4, "%s: middle grey = Lab L / 100", what);
+  CHECK(fabs(grey_g - p4c_labL(g * (c0 + c1 + c2))) < 1e-4, "%s: each channel's middle grey", what);
+  *y1 = c1;
+  json_node_unref(n);
+}
+
+static int cmd_pickwork(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  MUST(dtb_set_enabled("rgbcurve", 0, 1));
+  double y2020 = 0.0, y709 = 0.0;
+  p4c_pick_check("rec2020", &y2020);
+  // the global picker has no module, so no working profile values
+  char *s = NULL;
+  MUST(dtb_color_pick(NULL, 0, "{\"area\":[0.4,0.4,0.6,0.6]}", &s));
+  JsonNode *n = jparse_owned(s);
+  CHECK(JSON_NODE_HOLDS_NULL(json_object_get_member(json_node_get_object(n), "work")), "global picker: work null");
+  json_node_unref(n);
+  // another working profile: input color profile's "working profile" = linear Rec 709
+  const int r = dtb_param_set("colorin", 0, "type_work", "\"DT_COLORSPACE_LIN_REC709\"");
+  CHECK(r == DTB_OK, "colorin working profile set to linear Rec 709 (%d: %s)", r, dtb_last_error());
+  if(r == DTB_OK)
+  {
+    MUST(dtb_history_seal());
+    p4c_pick_check("rec709", &y709);
+    CHECK(fabs(y709 - y2020) > 0.01, "the luminance row follows the working profile (%.4f vs %.4f)", y709, y2020);
+  }
+  MUST(dtb_close());
+  return g_fail;
+}

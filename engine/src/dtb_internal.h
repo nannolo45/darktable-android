@@ -220,6 +220,17 @@ typedef struct dtb_pick_result_t
   int cst[2];  // dt_iop_colorspace_type_t of the numbers
   float mean[2][4], min[2][4], max[2][4];
   int box[2][4];
+  /* P4c: the pipe's working profile (dt_ioppr_get_pipe_work_profile_info) and,
+   * for each side in RGB, what rgb curve's picker_scale makes of the numbers:
+   * luminance (dt_ioppr_get_rgb_matrix_luminance), each channel and the
+   * luminance through dt_ioppr_compensate_middle_grey; [s][0..2] = mean, min, max */
+  gboolean work;
+  int work_type;
+  char work_file[256];
+  gboolean work_nonlinear;
+  float work_y[3];
+  gboolean work_have[2];
+  float work_lum[2][3], work_grey[2][3][3], work_grey_lum[2][3];
 } dtb_pick_result_t;
 /* pick on module m: area normalised in the picture (x0, y0, x1, y1) */
 int dtb__pick(dt_iop_module_t *m, const float area[4], gboolean denoise, gboolean full,

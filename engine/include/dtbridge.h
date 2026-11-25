@@ -610,7 +610,14 @@ int dtb_render_times(char **json);
  * coordinates of the picture, plus "denoise": bool, "pipe": "preview"
  * (default) | "full", "bypass": [...] (as the render options) ->
  * { "pipe", "input": { "colorspace", "mean": [4], "min": [4], "max": [4],
- *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null }.
+ *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null,
+ *   "work": null (global picker) | { "type", "filename", "nonlinear",
+ *   "luminance_coeffs": [3] (the pipe's working profile,
+ *   dt_ioppr_get_pipe_work_profile_info: matrix_in's Y row), "input" | "output":
+ *   null (not RGB) | { "luminance": [mean, min, max]
+ *   (dt_ioppr_get_rgb_matrix_luminance), "grey_luminance": [3] (that through
+ *   dt_ioppr_compensate_middle_grey), "grey": [[r, g, b] x 3] (each channel
+ *   through it) } } } (P4c: what rgb curve's picker_scale uses).
  * DTB_E_ARG: bad area, or the instance is switched off. */
 int dtb_color_pick(const char *op, int priority, const char *request_json, char **json);
 

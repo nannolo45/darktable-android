@@ -438,6 +438,8 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C37 rtfocus "retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip"
     parity C37 p4c_focus
   fi
+  # brief P4c: module picks carry the working profile and rgb curve's picker_scale values
+  if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

@@ -248,45 +248,91 @@ data class CurvePickMark(val min: Double, val mean: Double, val max: Double, val
  * line at the mean, and "mean in → mean out". The numbers are the module's own input and output in its picker space
  * (tone curve: Lab; rgb curve: the working RGB).
  */
+/**
+ * Brief P4c: how a curve's graph is shown, as desktop's: rgb curve's zoom and offset (rgbcurve.c `_curve_to_mouse`,
+ * set with ctrl+scroll on desktop) and tone curve's "scale for graph" (tonecurve.c `to_log`, `loglogscale` and
+ * `semilog`). The app's graphs have neither control, so they are shown with [IDENTITY]; the mark follows whatever view
+ * the graph is drawn with.
+ */
+data class CurveView(val zoom: Double = 1.0, val offsetX: Double = 0.0, val logBase: Double = 0.0, val semilog: Int = 0) {
+    companion object { val IDENTITY = CurveView() }
+}
+
 object CurvePick {
-    fun mark(op: String, ch: Int, params: kotlinx.serialization.json.JsonObject, input: app.dtandroid.engine.api.PickStats?, output: app.dtandroid.engine.api.PickStats?): CurvePickMark? {
+    fun mark(op: String, ch: Int, params: kotlinx.serialization.json.JsonObject, input: app.dtandroid.engine.api.PickStats?,
+             output: app.dtandroid.engine.api.PickStats?, view: CurveView = CurveView.IDENTITY): CurvePickMark? {
         input ?: return null
         val c = ch.coerceIn(0, 2)
         return when (op) {
             "tonecurve" -> {
                 fun sc(v: Double) = if (c == 0) (v / 100.0).coerceIn(0.0, 1.0) else ((v + 128.0) / 256.0).coerceIn(0.0, 1.0)
+                fun x(v: Double) = toLog(sc(v), view.logBase, c, view.semilog)
                 val mean = input.mean.getOrNull(c) ?: return null
                 val lo = input.min.getOrNull(c) ?: mean
                 val hi = input.max.getOrNull(c) ?: mean
                 val out = output?.mean?.getOrNull(c)
-                CurvePickMark(sc(lo), sc(mean), sc(hi), if (out != null) "%.1f → %.1f".format(mean, out) else "%.1f".format(mean))
+                CurvePickMark(x(lo), x(mean), x(hi), if (out != null) "%.1f → %.1f".format(mean, out) else "%.1f".format(mean))
             }
             "rgbcurve" -> {
                 val manual = paramString(params, "curve_autoscale").let { it == "DT_S_SCALE_MANUAL_RGB" || it == "1" }
                 val grey = paramString(params, "compensate_middle_grey").let { it == "true" || it == "1" }
-                fun scale(v: List<Double?>): Double? {
-                    val x = if (manual) v.getOrNull(c) ?: return null
-                    else {
-                        val r = v.getOrNull(0) ?: return null; val g = v.getOrNull(1) ?: return null; val b = v.getOrNull(2) ?: return null
-                        // the luminance in the working profile; darktable's default working space is linear Rec 2020
-                        REC2020_Y[0] * r + REC2020_Y[1] * g + REC2020_Y[2] * b
+                // k: 0 mean, 1 min, 2 max (the order of PickWork's values)
+                fun scale(st: app.dtandroid.engine.api.PickStats, k: Int): Double? {
+                    val v = when (k) { 0 -> st.mean; 1 -> st.min; else -> st.max }
+                    val w = st.work
+                    val x = if (w != null) {
+                        // darktable's own picker_scale values in the pipe's working profile (any tone curve)
+                        if (manual) (if (grey) w.grey.getOrNull(k)?.getOrNull(c) else v.getOrNull(c)) ?: return null
+                        else (if (grey) w.greyLuminance.getOrNull(k) else w.luminance.getOrNull(k)) ?: return null
+                    } else {
+                        val rgb = (0..2).map { v.getOrNull(it) ?: return null }
+                        pickerScale(rgb, REC2020_Y, manual, grey)[if (manual) c else 0]
                     }
-                    return (if (grey) middleGrey(x) else x).coerceIn(0.0, 1.0)
+                    return x.coerceIn(0.0, 1.0)
                 }
-                val mean = scale(input.mean) ?: return null
-                val lo = scale(input.min) ?: mean
-                val hi = scale(input.max) ?: mean
-                val out = output?.let { scale(it.mean) }
-                CurvePickMark(lo, mean, hi, if (out != null) "%.1f → %.1f".format(mean * 255, out * 255) else "%.1f".format(mean * 255))
+                val mean = scale(input, 0) ?: return null
+                val lo = scale(input, 1) ?: mean
+                val hi = scale(input, 2) ?: mean
+                val out = output?.let { scale(it, 0) }
+                fun x(v: Double) = curveToMouse(v, view.zoom, view.offsetX)
+                CurvePickMark(x(lo), x(mean), x(hi), if (out != null) "%.1f → %.1f".format(mean * 255, out * 255) else "%.1f".format(mean * 255))
             }
             else -> null
         }
     }
 
-    /** dt_ioppr_compensate_middle_grey for a linear profile: a grey of linear value [x] as Lab lightness / 100. */
-    fun middleGrey(x: Double): Double = if (x > 216.0 / 24389.0) 1.16 * Math.cbrt(x) - 0.16 else x * 24389.0 / 27.0 / 100.0
+    /**
+     * rgbcurve.c `picker_scale` for a linear working profile whose matrix_in luminance row is [coeffs]: independent
+     * channels (manual) each channel, linked (automatic) the luminance in channel 0; "compensate middle grey" through
+     * `dt_ioppr_compensate_middle_grey`; clipped to 0..1. The engine's own values (PickStats.work) are used when given.
+     */
+    fun pickerScale(rgb: List<Double>, coeffs: List<Double>, manual: Boolean, grey: Boolean): List<Double> {
+        val white = coeffs.sum()
+        val out = if (manual) rgb.map { if (grey) middleGrey(it, white) else it }
+        else {
+            val y = coeffs[0] * rgb[0] + coeffs[1] * rgb[1] + coeffs[2] * rgb[2]
+            listOf(if (grey) middleGrey(y, white) else y, 0.0, 0.0)
+        }
+        return out.map { it.coerceIn(0.0, 1.0) }
+    }
 
-    private val REC2020_Y = doubleArrayOf(0.2627, 0.6780, 0.0593)
+    /**
+     * dt_ioppr_compensate_middle_grey for a linear profile: the grey (x, x, x) to XYZ through matrix_in (Y = x times the
+     * luminance row's sum, [white], 1 for a profile whose white is D50's), then Lab lightness / 100 (dt_XYZ_to_Lab).
+     */
+    fun middleGrey(x: Double, white: Double = 1.0): Double {
+        val y = x * white
+        return if (y > 216.0 / 24389.0) 1.16 * Math.cbrt(y) - 0.16 else y * 24389.0 / 27.0 / 100.0
+    }
+
+    /** rgbcurve.c `_curve_to_mouse`. */
+    fun curveToMouse(x: Double, zoom: Double, offset: Double): Double = (x - offset) * zoom
+
+    /** tonecurve.c `to_log` for the abscissa (L only; semilog -1 keeps the abscissa linear). */
+    fun toLog(x: Double, base: Double, ch: Int, semilog: Int): Double =
+        if (base > 0.0 && ch == 0 && semilog != -1) Math.log(x * base + 1.0) / Math.log(base + 1.0) else x
+
+    private val REC2020_Y = listOf(0.2627, 0.6780, 0.0593)
 
     private fun paramString(params: kotlinx.serialization.json.JsonObject, name: String): String? =
         (params.paramAt(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
