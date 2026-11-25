@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: t
-        run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
+        run: set -o pipefail; tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
 
   android:
     needs: tag
@@ -86,6 +86,7 @@ jobs:
       - name: Fetch darktable source
         if: steps.exists.outputs.skip != 'true'
         run: |
+          set -o pipefail
           tools/fetch-darktable.sh /home/runner/darktable | tail -1 | tee /tmp/dt-commit
 
       - name: Build engine

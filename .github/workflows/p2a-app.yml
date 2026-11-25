@@ -124,6 +124,7 @@ jobs:
       - name: Rule check (literal colours, sizes, icon drawings in screen code)
         id: rules
         run: |
+          set -o pipefail
           cd app
           "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 :checkScreenRulesSelfTest :checkScreenRules 2>&1 | tee /tmp/rules.log
 
@@ -153,6 +154,7 @@ jobs:
       - name: Build the interface preview APK
         id: build
         run: |
+          set -o pipefail
           cd app
           "$GRADLE" --no-daemon -Dorg.gradle.workers.max=4 -Pdta.versionName="$PREVIEW_TAG" $DTA_KEYSTORE_ARG :app:assembleDebug 2>&1 | tee /tmp/gradle.log
           mkdir -p /home/runner/out
@@ -160,6 +162,7 @@ jobs:
 
       - name: Check the APK
         run: |
+          set -o pipefail
           A=/home/runner/out/dt-android-preview-arm64-v8a.apk
           R=/home/runner/out/apk-report.txt
           {
@@ -167,18 +170,18 @@ jobs:
             echo "apk_bytes $(stat -c %s "$A")"
             "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$A" | grep -E "^package:|^application-label:|^sdkVersion|^targetSdkVersion|native-code" || true
             # brief P2e: the preview has its own id; app.dtandroid is the real-engine app
-            "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$A" | grep -q "^package: name='app.dtandroid.preview' " || { echo "application id is not app.dtandroid.preview"; exit 1; }
+            "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$A" | grep "^package: name='app.dtandroid.preview' " >/dev/null || { echo "application id is not app.dtandroid.preview"; exit 1; }
             echo "permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | sed 's/^/  /'
             echo "packed data:"; unzip -l "$A" | grep -E "dtandroid/(schema|theme)" | sed 's/^/  /'
             echo "signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$A" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/  /'
           } | tee "$R"
-          if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$A" | grep 'android.permission.INTERNET' >/dev/null; then echo "INTERNET permission in APK"; exit 1; fi
           # native code: only what androidx brings (no engine yet); no keystores, no photos
           echo "native libraries:" | tee -a "$R"; unzip -l "$A" | grep -E '\.so$' | sed 's/^/  /' | tee -a "$R"
           if unzip -l "$A" | grep -E '\.so$' | grep -v 'libandroidx\.'; then echo "native library not from androidx in APK"; exit 1; fi
           if unzip -l "$A" | grep -iE '\.(jks|keystore|raf|cr2|nef|arw|dng|jpg|jpeg)$'; then echo "unexpected file in APK"; exit 1; fi
-          unzip -l "$A" | grep -q "dtandroid/schema/ui-schema.json" || { echo "schema not packed"; exit 1; }
-          unzip -l "$A" | grep -q "dtandroid/schema/builtin-layouts.json" || { echo "built-in layouts not packed"; exit 1; }
+          unzip -l "$A" | grep "dtandroid/schema/ui-schema.json" >/dev/null || { echo "schema not packed"; exit 1; }
+          unzip -l "$A" | grep "dtandroid/schema/builtin-layouts.json" >/dev/null || { echo "built-in layouts not packed"; exit 1; }
 
       - name: Screenshots
         if: always()
