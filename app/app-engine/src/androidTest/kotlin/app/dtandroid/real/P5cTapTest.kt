@@ -9,12 +9,16 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.click
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -94,14 +98,20 @@ class P5cTapTest {
     private fun hasTextNode(text: String, substring: Boolean = false) =
         compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty()
 
+    /** The node is brought into view first where a scrolling list holds it (the phone's panel is small), then tapped. */
+    private fun tapNode(node: androidx.compose.ui.test.SemanticsNodeInteraction) {
+        runCatching { node.performScrollTo() }
+        node.performClick()
+    }
+
     private fun tapDesc(tag: String, desc: String) {
         until(tag, "a node described \"$desc\"") { has(desc) }
-        compose.onAllNodesWithContentDescription(desc)[0].performClick()
+        tapNode(compose.onAllNodesWithContentDescription(desc)[0])
     }
 
     private fun tapText(tag: String, text: String, substring: Boolean = false) {
         until(tag, "a node with the text \"$text\"") { hasTextNode(text, substring) }
-        compose.onAllNodes(hasText(text, substring = substring))[0].performClick()
+        tapNode(compose.onAllNodes(hasText(text, substring = substring))[0])
     }
 
     private fun items(c: DarkroomController) = c.state.value.history.items.size
@@ -125,9 +135,17 @@ class P5cTapTest {
         c to item
     }
 
-    /** The module list's search field, then a tap on the module's header; where the layout has no search field, the controller's own jump. */
+    /**
+     * The "modules" tab (the darkroom keeps the tab the last photo left, here and in the other scenarios), the module
+     * list's search field and a tap on the module's header; where the layout has no search field, the controller's own jump.
+     */
     private fun openModule(tag: String, c: DarkroomController, name: String, key: InstanceKey) {
-        until(tag, "the darkroom's module list") { has("photo") }
+        until(tag, "the darkroom") { has("photo") }
+        val modulesTab = hasText("modules") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+        until(tag, "the modules tab") { compose.onAllNodes(modulesTab).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodes(modulesTab)[0].performClick()
+        val end = System.currentTimeMillis() + 10_000
+        while (!has("search modules") && System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(50) }
         if (has("search modules")) {
             compose.onAllNodesWithContentDescription("search modules")[0].performTextInput(name)
             TestFiles.record(res, "${tag}_module", "found by search")
@@ -227,7 +245,9 @@ class P5cTapTest {
         fun n() = LutPatches.of(c.state.value.modules.first { it.key == key }.params)!!.n
         assertEquals(24, n())
         val n0 = items(c)
-        compose.onAllNodesWithContentDescription("patches")[0].performTouchInput { longClick(center) }
+        val grid = compose.onAllNodesWithContentDescription("patches")[0]
+        runCatching { grid.performScrollTo() }
+        grid.performTouchInput { longClick(center) }
         tapText("t3", "delete")
         until("t3", "23 patches") { n() == 23 }
         until("t3", "one history item") { items(c) == n0 + 1 }
