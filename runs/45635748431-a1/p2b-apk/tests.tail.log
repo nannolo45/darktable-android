@@ -1,0 +1,250 @@
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :checkScreenRulesSelfTest
+self-test: 12 violations found in bad/ (expected 12), 0 in good/ (expected 0)
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:6: literal size: val a = Modifier.padding(16.dp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:7: literal size: val b = TextStyle(fontSize = 13.sp) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:8: literal colour: val c = Color(0xFF262626) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:9: literal colour: val d = Color.Red // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:10: literal colour: val e = background("#3b3b3b") // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:11: icon drawn outside ui-icons: val f = Icons.Default.Close // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:12: icon drawn outside ui-icons: val g = painterResource(R.drawable.power) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:13: icon drawn outside ui-icons: val h = drawPath(path, brush) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:14: literal size: val i = Dp(4f) // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:15: literal size: val j = x.toFloat().dp // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:16: literal colour: val k = 0xff262626 // VIOLATION
+  /home/runner/work/darktable-android/darktable-android/tools/app/check-screen-rules-fixtures/bad/Bad.kt:18: Material component (brings its own colours and sizes): import androidx.compose.material3.Text // VIOLATION
+
+> Task :checkScreenRules
+check-screen-rules: 95 files, 0 violations
+
+> Task :engine-api:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :engine-api:processResources NO-SOURCE
+> Task :engine-api:processTestFixturesResources NO-SOURCE
+> Task :engine-api:processTestResources NO-SOURCE
+> Task :schema:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :schema:packSchema
+> Task :schema:processResources
+> Task :schema:processTestResources
+> Task :ui-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:preBuild UP-TO-DATE
+> Task :ui-theme:preDebugBuild UP-TO-DATE
+> Task :ui-theme:generateDebugResValues
+> Task :ui-theme:generateDebugResources
+> Task :ui-theme:packageDebugResources
+> Task :ui-theme:processDebugNavigationResources
+> Task :ui-theme:preDebugUnitTestBuild UP-TO-DATE
+> Task :ui-theme:javaPreCompileDebug
+> Task :ui-theme:javaPreCompileDebugUnitTest
+> Task :ui-theme:packTokens
+> Task :lpl:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-theme:parseDebugLocalResources
+> Task :lpl:packShared
+> Task :lpl:processResources
+> Task :darkroom:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :darkroom:preBuild
+> Task :darkroom:preDebugBuild
+> Task :darkroom:generateDebugResValues
+> Task :darkroom:generateDebugResources
+> Task :ui-theme:generateDebugRFile
+> Task :darkroom:packageDebugResources
+> Task :ui-theme:generateDebugUnitTestStubRFile
+> Task :darkroom:processDebugNavigationResources
+> Task :darkroom:parseDebugLocalResources
+> Task :darkroom:generateDebugRFile
+> Task :ui-icons:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui-icons:convertIcons
+> Task :ui-icons:preBuild UP-TO-DATE
+> Task :ui-icons:preDebugBuild UP-TO-DATE
+> Task :ui-icons:generateDebugResValues
+> Task :ui-icons:generateDebugResources
+> Task :ui-icons:packageDebugResources
+> Task :ui-icons:processDebugNavigationResources
+> Task :ui-icons:parseDebugLocalResources
+> Task :ui-icons:generateDebugRFile
+> Task :ui-icons:compileDebugKotlin
+> Task :ui-icons:javaPreCompileDebug
+> Task :ui-icons:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui-icons:bundleLibCompileToJarDebug
+> Task :darkroom:javaPreCompileDebug
+> Task :darkroom:preDebugUnitTestBuild
+> Task :darkroom:writeDebugAarMetadata
+> Task :ui-icons:writeDebugAarMetadata
+> Task :ui-theme:writeDebugAarMetadata
+> Task :darkroom:checkDebugUnitTestAarMetadata
+
+> Task :ui-theme:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:285:70 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+w: file:///home/runner/work/darktable-android/darktable-android/app/ui-theme/src/main/kotlin/app/dtandroid/ui/theme/Tokens.kt:292:82 Java type mismatch: inferred type is 'ClassLoader?', but 'ClassLoader' was expected.
+
+> Task :ui-theme:compileDebugJavaWithJavac NO-SOURCE
+> Task :darkroom:compileDebugLibraryResources
+> Task :ui-theme:bundleLibRuntimeToJarDebug
+> Task :ui-theme:bundleLibCompileToJarDebug
+> Task :ui-theme:processDebugJavaRes
+> Task :ui-theme:compileDebugUnitTestKotlin
+> Task :ui-theme:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-theme:processDebugUnitTestJavaRes
+> Task :engine-api:compileKotlin
+> Task :ui-theme:testDebugUnitTest
+> Task :darkroom:generateDebugUnitTestResValues
+> Task :darkroom:mapDebugUnitTestSourceSetPaths
+> Task :darkroom:generateDebugUnitTestResources
+> Task :darkroom:extractDeepLinksDebug
+> Task :darkroom:processDebugManifest
+> Task :ui-icons:extractDeepLinksDebug
+> Task :ui-icons:processDebugManifest
+> Task :ui-theme:extractDeepLinksDebug
+> Task :darkroom:mergeDebugUnitTestResources
+> Task :ui-theme:processDebugManifest
+> Task :ui-icons:compileDebugLibraryResources
+> Task :darkroom:processDebugUnitTestManifest
+> Task :ui-theme:compileDebugLibraryResources
+> Task :darkroom:javaPreCompileDebugUnitTest
+> Task :lpl:compileKotlin
+> Task :darkroom:generateDebugUnitTestAssets UP-TO-DATE
+> Task :darkroom:mergeDebugShaders
+> Task :darkroom:compileDebugShaders NO-SOURCE
+> Task :darkroom:generateDebugAssets UP-TO-DATE
+> Task :darkroom:mergeDebugAssets
+> Task :ui-icons:mergeDebugShaders
+> Task :ui-icons:compileDebugShaders NO-SOURCE
+> Task :ui-icons:generateDebugAssets UP-TO-DATE
+> Task :ui-icons:mergeDebugAssets
+> Task :ui-theme:mergeDebugShaders
+> Task :ui-theme:compileDebugShaders NO-SOURCE
+> Task :ui-theme:generateDebugAssets UP-TO-DATE
+> Task :ui-theme:mergeDebugAssets
+> Task :darkroom:mergeDebugUnitTestAssets
+> Task :ui-icons:bundleLibRuntimeToJarDebug
+> Task :ui-icons:processDebugJavaRes
+> Task :lpl:processTestFixturesResources NO-SOURCE
+> Task :lpl:processTestResources NO-SOURCE
+> Task :app:preBuild
+> Task :app:preDebugBuild
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :darkroom:processDebugUnitTestResources
+> Task :app:checkDebugAarMetadata
+> Task :darkroom:packageDebugUnitTestForUnitTest
+> Task :darkroom:generateDebugUnitTestConfig
+> Task :app:processDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :app:compileDebugNavigationResources
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:parseDebugLocalResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:processDebugManifestForPackage
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugResources
+> Task :ui-theme:bundleLibRuntimeToDirDebug
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeExtDexDebug
+> Task :engine-api:compileJava NO-SOURCE
+> Task :engine-api:classes UP-TO-DATE
+> Task :engine-api:jar
+> Task :lpl:compileJava NO-SOURCE
+> Task :lpl:classes
+> Task :lpl:jar
+> Task :engine-api:compileTestFixturesKotlin
+> Task :engine-api:compileTestFixturesJava NO-SOURCE
+> Task :engine-api:testFixturesClasses UP-TO-DATE
+> Task :engine-api:testFixturesJar
+> Task :ui-icons:bundleLibRuntimeToDirDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :darkroom:mergeDebugJniLibFolders
+> Task :darkroom:mergeDebugNativeLibs NO-SOURCE
+> Task :darkroom:copyDebugJniLibsProjectOnly
+> Task :ui-icons:mergeDebugJniLibFolders
+> Task :ui-icons:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-icons:copyDebugJniLibsProjectOnly
+> Task :ui-theme:mergeDebugJniLibFolders
+> Task :ui-theme:mergeDebugNativeLibs NO-SOURCE
+> Task :ui-theme:copyDebugJniLibsProjectOnly
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :engine-api:compileTestKotlin
+> Task :lpl:compileTestFixturesKotlin
+> Task :engine-api:compileTestJava NO-SOURCE
+> Task :engine-api:testClasses UP-TO-DATE
+> Task :schema:compileKotlin
+> Task :engine-api:test
+> Task :schema:compileJava NO-SOURCE
+> Task :schema:classes
+> Task :schema:jar
+> Task :lpl:compileTestFixturesJava NO-SOURCE
+> Task :lpl:testFixturesClasses UP-TO-DATE
+> Task :lpl:testFixturesJar
+> Task :app:mergeDebugNativeLibs
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so. Run with --info option to learn more.
+
+> Task :schema:compileTestKotlin
+> Task :schema:compileTestJava NO-SOURCE
+> Task :schema:testClasses
+> Task :schema:test
+> Task :lpl:compileTestKotlin
+> Task :lpl:compileTestJava NO-SOURCE
+> Task :lpl:testClasses UP-TO-DATE
+> Task :darkroom:compileDebugKotlin
+> Task :lpl:test
+
+> Task :darkroom:compileDebugKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/DarkroomController.kt:302:22 Condition is always 'true'.
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/main/kotlin/app/dtandroid/darkroom/ui/Photo.kt:924:33 Condition is always 'true'.
+
+> Task :darkroom:compileDebugJavaWithJavac NO-SOURCE
+> Task :darkroom:processDebugJavaRes
+> Task :darkroom:bundleLibRuntimeToJarDebug
+> Task :darkroom:bundleLibCompileToJarDebug
+> Task :darkroom:bundleLibRuntimeToDirDebug
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:processDebugJavaRes
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :darkroom:compileDebugUnitTestKotlin
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+> Task :darkroom:compileDebugUnitTestKotlin
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/test/kotlin/app/dtandroid/darkroom/PhotoSourceTest.kt:40:13 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+w: file:///home/runner/work/darktable-android/darktable-android/app/darkroom/src/test/kotlin/app/dtandroid/darkroom/PhotoSourceTest.kt:56:55 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'File?'.
+
+> Task :darkroom:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :darkroom:processDebugUnitTestJavaRes
+> Task :darkroom:testDebugUnitTest
+
+BUILD SUCCESSFUL in 10m 10s
+143 actionable tasks: 143 executed
