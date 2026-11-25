@@ -45,4 +45,7 @@ New `P5cTapTest` (app-engine androidTest, added to `tools/app/emulator-p2b.sh`),
 | 45682471445 | p2b | failure: compile error in the new test file (missing import) |
 | 45685848830 | p2b | t1 passed, t2 to t4 failed (modules tab state) |
 | 45692809310 | p2b | t1, t2 passed, t3, t4 failed (search text); all 127 other tests passed |
-FINAL_RUNS
+| 45698727039 | g0 (full, without C40) on the merge with main (P5a) | success |
+| 45698733053 | p2a on the same | success |
+
+No p2b run was made on the final state (the reviewer closed the emulator rounds); t1 and t2 are unchanged since run 45692809310, t3 and t4 only removed.
