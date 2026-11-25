@@ -623,6 +623,39 @@ int dtb_retouch_select(const char *op, int priority, int id);
   clone forms; `dtb_mask_update` and `dtb_mask_delete` refuse retouch shapes (`ARG`, as `dtb_mask_attach` did).
 - Wavelet settings are never written by these calls. JNI: codes 7..11 of the `p3d` entry point.
 
+### 6.11 Rotate and perspective: structure, guides, fit (P3n, 25 Nov 2026)
+
+At the pinned commit `iop/ashift.c` keeps line detection (LSD with edge and detail enhancement), outlier removal
+(RANSAC), the fit (`nmsfit`), the automatic crop (`do_crop`, `crop_adjust`), the rectangle and drawn lines and desktop's
+mouse handlers in static functions working on the module's interface data. `engine/src/perspective.c` compiles
+`iop/ashift.c` itself, unmodified (as darktable's own generated `introspection_ashift.c` does), with every symbol hidden,
+and calls desktop's functions: the structure and fit button handlers with desktop's ctrl/shift, `mouse_moved`,
+`button_pressed`, `button_released`, `gui_focus`, `gui_changed`, `_event_process_after_preview_callback` and
+`_get_points`. What the interface supplies is supplied by macros visible only to that file (widget states, the click's
+button and modifiers, history items, log messages, the touch radius for `near_delta` and `DT_PIXEL_APPLY_DPI`, the
+preview pipe). `g->buf` is filled by the same code as `process()`, run by a hook after ashift's process on the bridge's
+preview pipe. Between "begin" and "end" the bridge's pipes give the piece the data `commit_params` gives a focused
+module (no crop) and a changed hash: renders show the whole picture.
+
+```c
+int dtb_ashift(const char *op, int priority, const char *request_json, char **json);
+```
+- request `{ "action", "radius"? }`; actions `begin`, `end`, `state`, `structure` `{ "method": "lines_found" |
+  "rectangle" | "drawn", "enhance"?: "none" | "edges" | "detail" | "both" }`, `fit` `{ "axis": "vertical" |
+  "horizontal" | "both", "variant"?: "plain" | "rotation" | "shift" | "no_shear" }`, `pointer` `{ "event": "move" |
+  "press" | "release", "x", "y", "button"?: 1 | 3, "shift"?: bool }`, `changed` `{ "what"?: "cropmode" }` (after a
+  `dtb_param_set` on the module: `gui_changed`, merged into that item).
+- result: `{ "focused", "enabled", "method", "structure": { "lines_found", "rectangle", "drawn" }, "fit_enabled",
+  "vertical", "horizontal", "flipped", "handled", "size", "lines": [ { "p": [x1, y1, x2, y2], "kind", "color", "near" }
+  ], "handles": [ { "p", "near" } ], "area": { "from", "select" } | null, "clip": [[x, y] x 4] | null, "crop": [cl, cr,
+  ct, cb], "params": { "rotation", "lensshift_v", "lensshift_h", "shear", "cropmode", "saved_lines" }, "message" }`;
+  positions are fractions of the rendered picture.
+- One history item (undo step) per request that changes the edit, opened at the first item. `STATE` without "begin",
+  `ARG` for another module or a bad request, `READ_ONLY` for anything but "state" on a read-only session.
+- Desktop writes the shadow crop to the parameters when the focus leaves; the bridge writes it at the end of every
+  request, so the module's parameters always equal the history.
+- Kotlin: `ashift(op, priority, request: JsonObject): PerspectiveState`; JNI code 12 of the `p3d` entry point.
+
 ## 7. P3g: export progress and cancel (23 Nov 2026)
 
 `export` (2.8) reports nothing while it runs and cannot be stopped. Two calls add both; `export` itself is
