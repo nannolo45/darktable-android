@@ -147,10 +147,23 @@ static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
   uint8_t *pf2 = p4c_preview(NULL, &pw2, &ph2);
   md = -1;
   if(pw2 == pw && ph2 == ph) md = max_diff(pf, pf2, (size_t)4 * pw * ph, &mean);
+  // heal keeps the target's border and takes the source's detail: where both are flat at preview size (arw at this
+  // place, runs 45606251102 and 45610250484) nothing visible changes, so that is reported, not checked
   fprintf(stdout, "RESULT heal outside the crop, focused picture: max %d mean %.4f\n", md, mean);
-  CHECK(md > 0, "the heal spot changes the whole picture");
+  // a clone spot outside the crop copies the source's pixels: the uncropped picture must change there
+  MUST(dtb_retouch_add("retouch", 0, "{\"type\":\"circle\",\"geometry\":{\"center\":[0.1,0.3],\"radius\":0.04,\"border\":0.01},"
+                                     "\"source\":[0.5,0.5],\"algorithm\":\"clone\"}", &s));
+  dtb_free(s);
+  s = NULL;
+  CHECK(history_count(&end) == hA + 2, "the clone spot is one history item");
+  uint8_t *pf3 = p4c_preview(NULL, &pw2, &ph2);
+  md = -1;
+  if(pw2 == pw && ph2 == ph) md = max_diff(pf2, pf3, (size_t)4 * pw * ph, &mean);
+  fprintf(stdout, "RESULT clone outside the crop, focused picture: max %d mean %.4f\n", md, mean);
+  CHECK(md > 0, "a clone spot outside the crop changes the whole picture");
   free(pf);
   free(pf2);
+  free(pf3);
 
   // 4. end: the cropped picture again, no history item; the XMP for darktable-cli
   const int hE = history_count(&end);
