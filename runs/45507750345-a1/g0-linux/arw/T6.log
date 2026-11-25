@@ -1,0 +1,23 @@
+RESULT engine 04477d3
+RESULT check newer.xmp problems 1 {"problems":[{"num":8,"operation":"exposure","modversion":8,"engine_version":7,"reason":"newer_module_version"}],"ok":false,"parsed":true,"xmp_version":5,"entries":14}
+RESULT read-only history /home/runner/bridge-tests/arw/newer.xmp: 14 XMP entries, 14 items, end 14, unknown items 0 (at -1)
+RESULT read-only history_goto: 15 of 15 positions; step over the unknown item max -1; back at end 14 max 0
+RESULT write_over_newer.xmp -7
+RESULT write_elsewhere_from_newer.xmp -7
+RESULT healthy_session_write_over_newer.xmp -7
+RESULT check unknown.xmp problems 1 {"problems":[{"num":8,"operation":"s3notamodule","modversion":7,"engine_version":null,"reason":"unknown_operation"}],"ok":false,"parsed":true,"xmp_version":5,"entries":14}
+     2.0154 cannot get iop-order for s3notamodule instance 0
+RESULT read-only history /home/runner/bridge-tests/arw/unknown.xmp: 14 XMP entries, 14 items, end 14, unknown items 1 (at 8)
+RESULT read-only history_goto: 15 of 15 positions; step over the unknown item max 0; back at end 14 max 0
+RESULT write_over_unknown.xmp -7
+RESULT write_elsewhere_from_unknown.xmp -7
+RESULT healthy_session_write_over_unknown.xmp -7
+RESULT check unknown_first.xmp problems 1 {"problems":[{"num":0,"operation":"s3notamodule","modversion":2,"engine_version":null,"reason":"unknown_operation"}],"ok":false,"parsed":true,"xmp_version":5,"entries":14}
+     3.6984 cannot get iop-order for s3notamodule instance 0
+RESULT read-only history /home/runner/bridge-tests/arw/unknown_first.xmp: 14 XMP entries, 15 items, end 15, unknown items 1 (at 0)
+RESULT read-only history_goto: 16 of 16 positions; step over the unknown item max 0; back at end 15 max 0
+RESULT write_over_unknown_first.xmp -7
+RESULT write_elsewhere_from_unknown_first.xmp -7
+RESULT healthy_session_write_over_unknown_first.xmp -7
+RESULT check original problems 0
+RESULT exit 0
