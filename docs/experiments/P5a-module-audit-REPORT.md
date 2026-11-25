@@ -82,3 +82,9 @@ accounts for it (`APP_PANEL_CONTROLS`); the notes were not changed (no fixes in 
 3. The stale override notes (section 4): fix them in P5c with the test hygiene, or leave them?
 4. LUT 3D: where should LUT files come from on the phone (a folder on the phone, or synced from the PC through
    LightPhotoLibrary)? This decides the size of that item.
+
+## Reviewer's decisions (25 Nov 2026)
+
+- C40 runs only when it is named (`tests=C40`), not in the full suite (about 35 minutes); P5b names it after the engine bump.
+- A picture hash per module for P5b, and the stale override notes: taken into P5b and P5c.
+- Where LUT 3D files come from is a question for the owner.

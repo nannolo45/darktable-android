@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Move the upstream/darktable submodule to a new darktable tag or commit and check that the patch series in
+# patches/ still applies to it (PLAN.md 5, docs/UPDATE.md). The submodule itself stays unpatched: the build
+# applies patches/ to its copy (tools/fetch-darktable.sh). Commit the new pin yourself after the check.
+#   tools/bump-upstream <tag or commit>
+set -euo pipefail
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+REF="${1:?usage: tools/bump-upstream <tag or commit>}"
+SM="$REPO/upstream/darktable"
+git -C "$REPO" submodule update --init upstream/darktable
+git -C "$SM" fetch -q --depth 1 origin "$REF" 2>/dev/null || git -C "$SM" fetch -q origin "$REF"
+git -C "$SM" -c advice.detachedHead=false checkout -q FETCH_HEAD
+echo "upstream/darktable now at $(git -C "$SM" rev-parse HEAD) ($REF)"
+# every patch must apply exactly; a patch upstream has taken in shows up as "Reversed (or previously
+# applied)": drop it from patches/ then
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+git -C "$SM" archive HEAD | tar -x -C "$T"
+"$REPO/tools/apply-patches.sh" "$T"
+# brief P4e: no [] on OpenCL vectors (the Adreno compiler refuses them) in the patched kernels
+if command -v clang >/dev/null; then
+  python3 -I "$REPO/tools/check-vector-subscripts.py" "$T/data/kernels" || { echo "vector subscripts found: add a patch (brief P4e)"; exit 1; }
+fi
+echo "patches/ applies; now: git add upstream/darktable && git commit"

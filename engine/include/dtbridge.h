@@ -461,6 +461,13 @@ int dtb_opencl_library(const char *names);
  *     darktable decided; empty when no library was loaded) } */
 int dtb_opencl_diagnostics(char **json);
 
+/* Brief P4e. darktable's per-module log of one render: dtb_render_trace(1, ...) arms it, and the next render
+ * (or export) runs with darktable's -d perf -d tiling -d opencl -d memory output caught, as for darktable's
+ * own command line; later renders are not caught until it is armed again. json (may be NULL), written before
+ * arming: { "armed": bool, "log": s|null (the output of the last caught render, at most 256 KiB; also
+ * written to stdout), "cut": bool }. dtb_render_trace(0, &json) only reads. */
+int dtb_render_trace(int arm, char **json);
+
 /* ---------------------------------------------------------------------- */
 /* 2.8 output                                                              */
 

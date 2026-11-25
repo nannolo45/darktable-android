@@ -198,14 +198,78 @@ void dtb__speed_pipe_made(dtb_pipe_t *p, const gboolean full)
   if(f > 0) p->pipe.cache.mem_fraction = f;
 }
 
+/* brief P4e: darktable's -d perf -d tiling -d opencl -d memory output of one render (dtb_render_trace) */
+#define DTB_TRACE_MAX (256 * 1024)
+static struct
+{
+  gboolean armed, active, cut;
+  int muted, saved, fd;
+  gchar *tmp, *log;
+} g_trace = { .saved = -1, .fd = -1 };
+
+static void _trace_begin(void)
+{
+  if(!g_trace.armed) return;
+  g_trace.armed = FALSE;
+  g_trace.fd = g_file_open_tmp("dtb-trace-XXXXXX.log", &g_trace.tmp, NULL);
+  if(g_trace.fd < 0) return;
+  fflush(stdout);
+  g_trace.saved = dup(STDOUT_FILENO);
+  if(g_trace.saved < 0 || dup2(g_trace.fd, STDOUT_FILENO) < 0)
+  {
+    if(g_trace.saved >= 0) close(g_trace.saved);
+    close(g_trace.fd);
+    g_trace.saved = g_trace.fd = -1;
+    g_unlink(g_trace.tmp);
+    g_clear_pointer(&g_trace.tmp, g_free);
+    return;
+  }
+  g_trace.muted = darktable.unmuted;
+  darktable.unmuted |= DT_DEBUG_PERF | DT_DEBUG_TILING | DT_DEBUG_OPENCL | DT_DEBUG_MEMORY;
+  g_trace.active = TRUE;
+}
+
+static void _trace_end(void)
+{
+  if(!g_trace.active) return;
+  g_trace.active = FALSE;
+  fflush(stdout);
+  darktable.unmuted = g_trace.muted;
+  dup2(g_trace.saved, STDOUT_FILENO);
+  close(g_trace.saved);
+  close(g_trace.fd);
+  g_trace.saved = g_trace.fd = -1;
+  gchar *text = NULL;
+  gsize len = 0;
+  g_clear_pointer(&g_trace.log, g_free);
+  g_trace.cut = FALSE;
+  if(g_file_get_contents(g_trace.tmp, &text, &len, NULL))
+  {
+    // back to the real stdout too (the app's log ring and logcat)
+    if(len) fwrite(text, 1, len, stdout);
+    fflush(stdout);
+    if(len > DTB_TRACE_MAX)
+    {
+      text[DTB_TRACE_MAX] = '\0';
+      g_trace.cut = TRUE;
+    }
+    g_trace.log = g_utf8_make_valid(text, -1);
+    g_free(text);
+  }
+  g_unlink(g_trace.tmp);
+  g_clear_pointer(&g_trace.tmp, g_free);
+}
+
 void dtb__speed_render_begin(void)
 {
+  _trace_begin();
   g_speed.cl_at_start = dt_opencl_running();
   g_speed.errors_at_start = darktable.opencl ? darktable.opencl->error_count : 0;
 }
 
 void dtb__speed_render_end(void)
 {
+  _trace_end();
   const int errors = darktable.opencl ? darktable.opencl->error_count : 0;
   g_speed.renders++;
   if(errors != g_speed.errors_at_start)
@@ -712,4 +776,24 @@ int dtb_opencl_set(const int enabled, char **json)
   if(json) *json = _cl_info();
   return DTB_OK;
 #endif
+}
+
+/* brief P4e */
+int dtb_render_trace(int arm, char **json)
+{
+  if(json) *json = NULL;
+  NEED_INIT();
+  if(json)
+  {
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    _bool(b, "armed", g_trace.armed);
+    _str(b, "log", g_trace.log);
+    _bool(b, "cut", g_trace.cut);
+    json_builder_end_object(b);
+    *json = dtb__json_finish(b);
+    if(!*json) return dtb__err(DTB_E_ENGINE, "could not write the render trace");
+  }
+  if(arm) g_trace.armed = TRUE;
+  return DTB_OK;
 }

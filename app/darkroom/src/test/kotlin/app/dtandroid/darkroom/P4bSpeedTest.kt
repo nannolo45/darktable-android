@@ -6,6 +6,7 @@ import app.dtandroid.darkroom.speed.ProcessingResources
 import app.dtandroid.darkroom.speed.ProcessingResources.Choice
 import app.dtandroid.darkroom.speed.ProcessingResources.RamClass
 import app.dtandroid.darkroom.speed.ProcessingSettings
+import app.dtandroid.darkroom.speed.PerfLog
 import app.dtandroid.darkroom.speed.SpeedBenchmark
 import app.dtandroid.darkroom.speed.TestRaw
 import app.dtandroid.engine.api.DarktableEngine
@@ -113,8 +114,16 @@ class P4bSpeedTest {
         val gpuPicture: (RenderedImage) -> RenderedImage = { it },
         val failOnGpu: Boolean = false,
         val fallback: Boolean = false,
+        /** brief P4e: how long a render takes on each device, ms (the check compares them) */
+        val cpuDelayMs: Long = 0,
+        val gpuDelayMs: Long = 0,
     ) : DarktableEngine by base {
         var cl = false
+        /** brief P4e: renderTrace as the bridge does it: armed, the next render's log */
+        private var armed = false
+        private var traceLog: String? = null
+
+        override suspend fun renderTrace(arm: Boolean): String? = traceLog.also { if (arm) armed = true }
         var started = false
         var last = "none"
         val calls = ArrayList<String>()
@@ -147,6 +156,14 @@ class P4bSpeedTest {
             onDevice(base.renderRegion(x, y, w, h, scale, options))
 
         private fun onDevice(img: RenderedImage): RenderedImage {
+            val on = if (cl) "GPU" else "CPU"
+            if (armed) {
+                armed = false
+                traceLog = "     2.1000 [dev_pixelpipe] took 0.004 secs (0.004 CPU) [preview] processed `exposure' on $on, blended on $on\n" +
+                    "     2.2000 [dev_pixelpipe] took 0.250 secs (0.900 CPU) [preview] processed `diffuse' on $on with tiling\n" +
+                    "     2.2001 [default_process_tiling_cl_ptp] [preview] use tiling on module 'diffuse' for image with full size 1024 x 683\n"
+            }
+            Thread.sleep(if (cl) gpuDelayMs else cpuDelayMs)
             if (!cl) { last = "cpu"; return img }
             if (failOnGpu) throw EngineException(EngineError.ENGINE, "pixelpipe stopped early (OpenCL error -5)")
             if (fallback) { last = "fallback"; return img }
@@ -179,17 +196,21 @@ class P4bSpeedTest {
     @Test
     fun gpuStaysOnWhenThePicturesAgree() = runBlocking<Unit> {
         val (base, raw) = engine(tmp.root)
-        val g = FakeGpu(base, gpuPicture = rounding)
+        // the GPU faster than the CPU (brief P4e)
+        val g = FakeGpu(base, gpuPicture = rounding, cpuDelayMs = 60)
         val steps = ArrayList<String>()
-        val r = GpuCheck(g, raw).run { steps += it }
+        val check = GpuCheck(g, raw)
+        val r = check.run { steps += it }
         assertTrue(r.text, r is GpuCheck.Result.On)
         r as GpuCheck.Result.On
         assertTrue(r.psnr >= GpuCheck.PSNR_MIN_DB)
         assertEquals(1, r.maxDiff)
         assertTrue(r.text.contains("Adreno"))
         assertTrue("OpenCL left on", g.cl)
-        assertEquals(listOf("opencl true", "opencl false", "opencl true"), g.calls)
-        assertEquals(3, steps.size)
+        // the two timed test renders, then the two traced ones (GPU, CPU) and the GPU on again
+        assertEquals(listOf("opencl true", "opencl false", "opencl true", "opencl false", "opencl true"), g.calls)
+        assertEquals(4, steps.size)
+        assertTrue(check.perf, check.perf.contains("GPU check, test render on the GPU") && check.perf.contains("diffuse") && check.perf.contains("tiled"))
         // nothing left open
         try { base.imageInfo(); fail("a photo is still open") } catch (e: EngineException) { assertEquals(EngineError.STATE, e.error) }
     }
@@ -203,6 +224,36 @@ class P4bSpeedTest {
         assertTrue(r.text, r.text.contains("differs from the CPU's") && r.text.contains("40.0 dB"))
         assertFalse("OpenCL switched off again", g.cl)
         assertEquals("opencl false", g.calls.last())
+    }
+
+    @Test
+    fun gpuSlowerThanTheCpuGoesOffAndSaysSo() = runBlocking<Unit> {
+        val (base, raw) = engine(tmp.root)
+        val g = FakeGpu(base, gpuPicture = rounding, gpuDelayMs = 60)
+        val r = GpuCheck(g, raw).run()
+        assertTrue(r.text, r is GpuCheck.Result.Slower)
+        r as GpuCheck.Result.Slower
+        assertTrue(r.text, r.text.startsWith("slower than the processor on this phone (CPU ${r.cpuMs} ms, GPU ${r.gpuMs} ms)"))
+        assertTrue(r.gpuMs > r.cpuMs)
+        assertFalse("OpenCL switched off again", g.cl)
+        assertEquals("opencl false", g.calls.last())
+    }
+
+    @Test
+    fun perfLogTable() {
+        val log = "     1.0000 [dev_pixelpipe] took 0.012 secs (0.034 CPU) [full] processed `exposure' on GPU, blended on GPU\n" +
+            "     1.1000 [dev_pixelpipe] took 1.500 secs (5.000 CPU) [full] processed `diffuse' on CPU with tiling\n" +
+            "     1.1001 [opencl_pixelpipe] couldn't copy image to opencl device for module diffuse\n" +
+            "     1.2000 [dev_pixelpipe] took 0.020 secs (0.020 CPU) [full] processed `colorin' on GPU\n"
+        val s = PerfLog.steps(log)
+        assertEquals(listOf("exposure", "diffuse", "colorin"), s.map { it.module })
+        assertEquals(listOf("GPU", "CPU", "GPU"), s.map { it.device })
+        assertEquals(listOf(false, true, false), s.map { it.tiled })
+        assertEquals(1500.0, s[1].ms, 1e-6)
+        val t = PerfLog.table("test", log)
+        assertTrue(t, t.contains("sum 1532.0 ms; on GPU 32.0 ms, on CPU 1500.0 ms; tiled: diffuse"))
+        assertTrue(t, t.contains("OpenCL trouble (1 lines)"))
+        assertTrue(PerfLog.table("none", null).contains("no per-module log caught"))
     }
 
     @Test
@@ -260,6 +311,9 @@ class P4bSpeedTest {
         assertEquals(listOf("fit", "100%"), r.rows.map { it.view }.distinct())
         assertTrue(r.rows.all { it.runsMs.size == SpeedBenchmark.RUNS })
         assertTrue("each device ran on itself", r.rows.all { it.ranOn == it.device })
+        // brief P4e: one traced render per case, its table in the text
+        assertTrue(r.rows.all { it.perf != null && it.perf!!.contains("exposure") })
+        assertEquals(8, r.text.lines().count { it.startsWith("per module, ") })
         val lines = r.text.lines()
         assertTrue(lines[0].startsWith("dt-android speed"))
         assertEquals("app: test", lines[1])

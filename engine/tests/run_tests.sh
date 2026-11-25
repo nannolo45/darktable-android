@@ -445,7 +445,8 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops
   # (a crash), the module it was rendering is recorded and the command starts again after it.
-  if want C40 && [ "$C" != arw ]; then
+  # About 35 minutes on the CI runner: runs only when C40 is named (engine bumps, module work), not in the full suite.
+  if [ -n "$ONLY" ] && want C40 && [ "$C" != arw ]; then
     R="$OUT/p5a_renders_$C.txt"; : > "$R"; rm -f "$D/p5a_progress.txt" "$D"/C40-run*.log
     export P5A_CLI="$CLI" P5A_RAW="$RAW" P5A_RES="$R" P5A_CMP="$HERE/compare.py" P5A_LOG="$D/C40-cli.log" \
       P5A_CONFIG="$OUT/cli-config" P5A_CACHE="$OUT/cli-cache" P5A_LEVEL="$CLI_LEVEL"

@@ -833,3 +833,12 @@ Tests: C35 (`engine/tests/dtb_test_p4b.c` `resources`, `resources1`): wrong opti
 OpenCL not allowed: no library, `dtb_opencl_set` refused; two copies of the RAW opened in turn: with 3 inputs kept going
 back decodes nothing and renders the same, with 1 it decodes again. C36 (`opencl`): OpenCL allowed and switched on;
 without a device the picture is the CPU's byte for byte; with one (PoCL on the runner) the PSNR against the CPU.
+
+## 12. P4e: one render's per-module log (25 Nov 2026)
+
+`int dtb_render_trace(int arm, char **json)`: json (may be NULL) = `{ "armed": bool, "log": s|null, "cut": bool }`, the
+output of the last caught render; then, if `arm`, the next render or export runs with darktable's `-d perf -d tiling
+-d opencl -d memory` output caught (stdout to a file for that render, then also written to the normal stdout), at most
+256 KiB. Later renders are not caught until it is armed again. Kotlin: `DarktableEngine.renderTrace(arm)` gives the log
+(null on engines without it); `PerfLog` turns darktable's `[dev_pixelpipe] took … processed `op' on GPU|CPU [with
+tiling]` lines into a per-module table. Tested by C36 (`RESULT render_trace`).

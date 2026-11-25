@@ -1,0 +1,10 @@
+# python3 -I tools/check-vector-subscripts.py <darktable 04477d32>/data/kernels clang-18   (clang 18, x86_64 build workspace)
+## before patches/
+# 3 vector subscripts
+data/kernels/basic.cl:1643:32	__private float4	for(int i = 0; i < 3; i++) linear[j] += cmat[3*j+i] * cam[i];
+data/kernels/basic.cl:1649:34	__private float4	for(int i = 0; i < 3; i++) linear[j] += lmat[3*j+i] * clipped[i];
+data/kernels/basic.cl:1649:61	__private float4	for(int i = 0; i < 3; i++) linear[j] += lmat[3*j+i] * clipped[i];
+exit 1
+## after patches/0001
+# 0 vector subscripts
+exit 0
