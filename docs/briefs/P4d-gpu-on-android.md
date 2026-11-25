@@ -1,0 +1,14 @@
+# Brief P4d: make darktable find the phone's GPU (OpenCL on Android)
+
+Branch `p4d-gpu-android` from `main`. Read CLAUDE.md, the P4b report and code (engine/src/speed.c, app/darkroom/.../speed/GpuCheck.kt, app/app-engine/.../Processing.kt, the manifest's `uses-native-library` lines), and upstream `src/common/dlopencl.c`, `src/common/dynload.c`, `src/common/opencl.c` (device checks, platform filter `clplatform_other`, blacklists, required extensions/versions) at the pinned commit.
+
+## What the owner saw (25 Nov 2026, target phone: Snapdragon 865 / Adreno 650, Android 13 API 33)
+Switching "use the GPU" on in build dt-android-b080de8089c1 gave: "GPU off: darktable found no GPU it can use (OpenCL library libOpenCL)". CPU benchmark worked (default edit fit median 190–227 ms; heavy edit with diffuse 5.4–6.5 s fit, 11.5 s at 100 %). We do not know whether the library failed to load (namespace, name) or loaded and darktable rejected the platform/device.
+
+## Deliverables
+1. **Diagnostics the owner can paste in one tap** ("GPU details" → copy, under the switch): for each library candidate tried, the `dlopen` result and `dlerror()`; whether the classloader namespace exposes the library (try `System.loadLibrary("OpenCL")` from Kotlin and report the exception); `/vendor/etc/public.libraries*.txt` lines mentioning OpenCL if readable; the platforms and devices OpenCL reports (name, vendor, version, driver, extensions, image support, memory) when the library loads; darktable's own OpenCL start-up log (darktable `-d opencl` output captured into the text); the decision darktable took for each device and why (platform filtered, blacklisted, missing feature). No personal data.
+2. **Fixes for the likely causes**, each guarded and logged: try the candidates darktable uses plus the absolute vendor paths (`/vendor/lib64/libOpenCL.so`, `/vendor/lib64/libOpenCL_adreno.so`, `/system/vendor/lib64/libOpenCL.so`) by setting darktable's `opencl_library` option from the app (no upstream change), preferring a library already loaded by Kotlin's `System.loadLibrary` so it sits in the app's namespace; check the merged manifest really carries `uses-native-library` inside `<application>` and the targetSdk rules; make sure `clplatform_other` (or the Qualcomm platform key darktable uses) is on when the GPU is switched on. If darktable rejects the Adreno device for a reason in upstream code (e.g. a feature check), stop at a clear diagnostic and propose the smallest option-based change; do not patch upstream.
+3. **Tests:** JVM tests for the diagnostics text and candidate order with a fake loader; bridge test that the `opencl_library` option is honoured (PoCL on the runner via its path); existing tests green. The real proof is the owner's phone: make the result unambiguous from one paste.
+
+## Report
+`docs/experiments/P4d-gpu-on-android-REPORT.md` as CLAUDE.md says, with CI ids and the exact steps for the owner.

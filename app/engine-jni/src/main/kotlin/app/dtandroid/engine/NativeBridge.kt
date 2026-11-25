@@ -97,6 +97,10 @@ object NativeBridge {
     /** brief P4b: dtb_resources_info, dtb_opencl_info */
     const val JSON_RESOURCES_INFO = 6
     const val JSON_OPENCL_INFO = 7
+    /** brief P4d: dtb_opencl_diagnostics */
+    const val JSON_OPENCL_DIAGNOSTICS = 8
+    /** brief P4d: dtb_opencl_library (names separated by ':'); a DTB_ code */
+    @JvmStatic external fun openclLibrary(names: String?): Int
     /** brief P4b: dtb_opencl_set; the opencl_info afterwards */
     @JvmStatic external fun openclSet(enabled: Boolean, status: IntArray): String?
     @JvmStatic external fun jsonGet(what: Int, status: IntArray): String?

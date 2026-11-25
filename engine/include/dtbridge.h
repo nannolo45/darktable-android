@@ -431,6 +431,36 @@ int dtb_opencl_info(char **json);
  * render in flight. */
 int dtb_opencl_set(int enabled, char **json);
 
+/* Brief P4d. OpenCL libraries to try first at the first switch on, before
+ * the built-in list, separated by ':' (names the app already loaded with
+ * System.loadLibrary, so they sit in the app's linker namespace, or paths).
+ * Built-in list after them: darktablerc's opencl_library, libOpenCL.so,
+ * libOpenCL.so.1, libOpenCL_adreno.so, /vendor/lib64/libOpenCL.so,
+ * /vendor/lib64/libOpenCL_adreno.so, /system/vendor/lib64/libOpenCL.so,
+ * /vendor/lib/libOpenCL.so. Each is opened (dlopen) and asked for its
+ * platforms; the first with a platform, else the first with
+ * clGetPlatformIDs, becomes darktable's "opencl_library" for
+ * dt_opencl_init. DTB_E_STATE once OpenCL was started or when built
+ * without OpenCL. NULL or "" = only the built-in list. */
+int dtb_opencl_library(const char *names);
+
+/* Brief P4d. Why darktable did or did not find a GPU:
+ * { "built", "started", "preferred": s|null, "chosen": s|null (the library
+ *   handed to darktable), "loaded": s|null (what darktable opened),
+ *   "library_tries": [ { "name", "from" ("app", "darktablerc", "darktable",
+ *     "qualcomm", "vendor path"), "loaded": bool, "symbol": bool
+ *     (clGetPlatformIDs), "error": s|null (dlerror), "status": n and
+ *     "platforms": n when clGetPlatformIDs was called } ],
+ *   "init_log": s|null (darktable's -d opencl -d verbose output of
+ *     dt_opencl_init, at most 256 KiB), "init_log_cut": bool,
+ *   "platforms": [ { "name", "vendor", "version", "profile",
+ *     "devices_status": n (clGetDeviceIDs), "devices": [ { "name",
+ *     "vendor", "version", "driver", "c_version", "extensions", "type",
+ *     "available", "image_support", "little_endian", "global_memory",
+ *     "max_alloc" } ] } ] (what the loaded library reports, whatever
+ *     darktable decided; empty when no library was loaded) } */
+int dtb_opencl_diagnostics(char **json);
+
 /* ---------------------------------------------------------------------- */
 /* 2.8 output                                                              */
 

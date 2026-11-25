@@ -37,7 +37,10 @@
 #include "develop/pixelpipe_cache.h"
 
 #include <dlfcn.h>
+#include <glib/gstdio.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct dtb_speed_t
 {
@@ -56,8 +59,16 @@ typedef struct dtb_speed_t
 
 static dtb_speed_t g_speed = { .last_render = "none" };
 
+#ifdef HAVE_OPENCL
+// brief P4d: the library tries, darktable's OpenCL log, the platforms (below)
+static void _cl_diag_reset(void);
+#endif
+
 void dtb__speed_reset(void)
 {
+#ifdef HAVE_OPENCL
+  _cl_diag_reset();
+#endif
   g_free(g_speed.opencl_library);
   g_free(g_speed.kernel_dir);
   memset(&g_speed, 0, sizeof(g_speed));
@@ -341,31 +352,321 @@ int dtb_opencl_info(char **json)
 }
 
 #ifdef HAVE_OPENCL
-/* darktable's own search (common/dlopencl.c: libOpenCL, libOpenCL.so,
- * libOpenCL.so.1) first; then where Android vendors put the library. A path
- * found here becomes darktable's "opencl_library" for this session. */
+/* Brief P4d: which OpenCL library the first switch on uses, and why.
+ * Candidates in order: what the app asked for (dtb_opencl_library: a name
+ * it already loaded with System.loadLibrary, so the library is in the app's
+ * linker namespace), a value already in darktablerc, darktable's own names
+ * (common/dlopencl.c ocllib), Qualcomm's own name, then the absolute vendor
+ * paths. Each is opened with dlopen and asked for its platforms
+ * (clGetPlatformIDs); the first with a platform wins, else the first that
+ * has the symbol. It becomes darktable's "opencl_library", so
+ * dt_opencl_init (dt_dlopencl_init) opens exactly that one. Every try is
+ * kept for dtb_opencl_info "library_tries". */
+typedef struct dtb_cl_try_t
+{
+  gchar *name, *from, *error;
+  gboolean loaded, symbol, called;
+  int status, platforms;
+} dtb_cl_try_t;
+
+static GPtrArray *g_cl_tries = NULL;  // dtb_cl_try_t
+static gchar *g_cl_prefer = NULL;     // dtb_opencl_library
+static gchar *g_cl_log = NULL;        // darktable's -d opencl output of dt_opencl_init
+static gboolean g_cl_log_cut = FALSE;
+#define DTB_CL_LOG_MAX (256 * 1024)
+
+static void _try_free(gpointer p)
+{
+  dtb_cl_try_t *t = p;
+  g_free(t->name);
+  g_free(t->from);
+  g_free(t->error);
+  g_free(t);
+}
+
+static void _cl_diag_reset(void)
+{
+  if(g_cl_tries) g_ptr_array_free(g_cl_tries, TRUE);
+  g_cl_tries = NULL;
+  g_free(g_cl_prefer);
+  g_cl_prefer = NULL;
+  g_free(g_cl_log);
+  g_cl_log = NULL;
+  g_cl_log_cut = FALSE;
+}
+
+static dtb_cl_try_t *_try_one(const char *name, const char *from)
+{
+  dtb_cl_try_t *t = g_new0(dtb_cl_try_t, 1);
+  t->name = g_strdup(name);
+  t->from = g_strdup(from);
+  t->status = 1;  // not called
+  dlerror();
+  // not closed when it loaded: darktable opens the same one, and a vendor
+  // driver need not survive being unloaded
+  void *h = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+  if(!h)
+  {
+    const char *e = dlerror();
+    t->error = g_strdup(e ? e : "dlopen failed, no dlerror");
+    return t;
+  }
+  t->loaded = TRUE;
+  dt_clGetPlatformIDs_t ids = (dt_clGetPlatformIDs_t)dlsym(h, "clGetPlatformIDs");
+  t->symbol = ids != NULL;
+  if(!ids)
+  {
+    const char *e = dlerror();
+    t->error = g_strdup(e ? e : "no clGetPlatformIDs");
+    return t;
+  }
+  cl_uint n = 0;
+  t->called = TRUE;
+  t->status = ids(0, NULL, &n);
+  t->platforms = t->status == CL_SUCCESS ? (int)n : 0;
+  return t;
+}
+
+static gboolean _tried(const char *name)
+{
+  for(guint i = 0; g_cl_tries && i < g_cl_tries->len; i++)
+    if(!strcmp(((dtb_cl_try_t *)g_ptr_array_index(g_cl_tries, i))->name, name)) return TRUE;
+  return FALSE;
+}
+
 static void _choose_library(void)
 {
-  const char *set = dt_conf_get_string_const("opencl_library");
-  if(set && set[0]) return;
-  static const char *names[] = { "libOpenCL.so", "libOpenCL.so.1",
-                                 "/vendor/lib64/libOpenCL.so", "/system/vendor/lib64/libOpenCL.so",
-                                 "/vendor/lib64/libOpenCL_adreno.so", "/vendor/lib/libOpenCL.so", NULL };
-  for(int i = 0; names[i]; i++)
+  if(g_cl_tries) g_ptr_array_free(g_cl_tries, TRUE);
+  g_cl_tries = g_ptr_array_new_with_free_func(_try_free);
+  GPtrArray *names = g_ptr_array_new_with_free_func(g_free);
+  GPtrArray *froms = g_ptr_array_new();
+#define ADD(n, f) do { g_ptr_array_add(names, g_strdup(n)); g_ptr_array_add(froms, (gpointer)(f)); } while(0)
+  if(g_cl_prefer)
   {
-    void *h = dlopen(names[i], RTLD_LAZY | RTLD_LOCAL);
-    if(!h) continue;
-    const gboolean ok = dlsym(h, "clGetPlatformIDs") != NULL;
-    dlclose(h);
-    if(ok)
+    gchar **p = g_strsplit(g_cl_prefer, ":", 16);
+    for(int i = 0; p[i]; i++)
+      if(p[i][0]) ADD(p[i], "app");
+    g_strfreev(p);
+  }
+  const char *set = dt_conf_get_string_const("opencl_library");
+  if(set && set[0]) ADD(set, "darktablerc");
+  static const char *fixed[][2] = {
+    { "libOpenCL.so", "darktable" }, { "libOpenCL.so.1", "darktable" },
+    { "libOpenCL_adreno.so", "qualcomm" },
+    { "/vendor/lib64/libOpenCL.so", "vendor path" }, { "/vendor/lib64/libOpenCL_adreno.so", "vendor path" },
+    { "/system/vendor/lib64/libOpenCL.so", "vendor path" }, { "/vendor/lib/libOpenCL.so", "vendor path" },
+  };
+  for(size_t i = 0; i < G_N_ELEMENTS(fixed); i++) ADD(fixed[i][0], fixed[i][1]);
+#undef ADD
+  int best = -1, with_symbol = -1;
+  for(guint i = 0; i < names->len && best < 0; i++)
+  {
+    const char *n = g_ptr_array_index(names, i);
+    if(_tried(n)) continue;
+    dtb_cl_try_t *t = _try_one(n, g_ptr_array_index(froms, i));
+    g_ptr_array_add(g_cl_tries, t);
+    if(t->platforms > 0) best = (int)g_cl_tries->len - 1;
+    else if(t->symbol && with_symbol < 0) with_symbol = (int)g_cl_tries->len - 1;
+  }
+  g_ptr_array_free(names, TRUE);
+  g_ptr_array_free(froms, TRUE);
+  if(best < 0) best = with_symbol;
+  g_free(g_speed.opencl_library);
+  g_speed.opencl_library = NULL;
+  if(best >= 0)
+  {
+    g_speed.opencl_library = g_strdup(((dtb_cl_try_t *)g_ptr_array_index(g_cl_tries, best))->name);
+    dt_conf_set_string("opencl_library", g_speed.opencl_library);
+  }
+  // nothing usable: darktable's own search still runs and says so in its log
+  else if(set && set[0])
+    dt_conf_set_string("opencl_library", "");
+}
+
+/* run dt_opencl_init with darktable's OpenCL debug output (-d opencl -d
+ * verbose) on and caught: darktable prints with printf (dt_print_nts_ext),
+ * so stdout goes to a temporary file for this call and is then written back
+ * to the real stdout (the app's log ring and logcat). */
+static void _init_logged(void)
+{
+  const int muted = darktable.unmuted;
+  darktable.unmuted |= DT_DEBUG_OPENCL | DT_DEBUG_VERBOSE;
+  gchar *tmp = NULL;
+  const int fd = g_file_open_tmp("dtb-opencl-XXXXXX.log", &tmp, NULL);
+  fflush(stdout);
+  const int saved = fd >= 0 ? dup(STDOUT_FILENO) : -1;
+  const gboolean caught = saved >= 0 && dup2(fd, STDOUT_FILENO) >= 0;
+  dt_opencl_init(darktable.opencl, DT_OPENCL_OPTION_NONE, FALSE);
+  fflush(stdout);
+  if(caught) dup2(saved, STDOUT_FILENO);
+  if(saved >= 0) close(saved);
+  if(fd >= 0) close(fd);
+  darktable.unmuted = muted;
+  gchar *text = NULL;
+  gsize len = 0;
+  g_free(g_cl_log);
+  g_cl_log = NULL;
+  if(caught && tmp && g_file_get_contents(tmp, &text, &len, NULL))
+  {
+    if(len) fwrite(text, 1, len, stdout);
+    fflush(stdout);
+    if(len > DTB_CL_LOG_MAX)
     {
-      g_speed.opencl_library = g_strdup(names[i]);
-      if(i > 0) dt_conf_set_string("opencl_library", names[i]);
-      return;
+      text[DTB_CL_LOG_MAX] = '\0';
+      g_cl_log_cut = TRUE;
+    }
+    // JSON wants valid UTF-8
+    g_cl_log = g_utf8_make_valid(text, -1);
+    g_free(text);
+  }
+  else
+    g_cl_log = g_strdup("(darktable's OpenCL log could not be caught)");
+  if(tmp) g_unlink(tmp);
+  g_free(tmp);
+}
+
+static gchar *_cl_string(dt_opencl_t *cl, const gboolean device, void *id, const cl_uint what)
+{
+  char buf[8192] = { 0 };
+  const cl_int e = device
+    ? (cl->dlocl->symbols->dt_clGetDeviceInfo)((cl_device_id)id, what, sizeof(buf) - 1, buf, NULL)
+    : (cl->dlocl->symbols->dt_clGetPlatformInfo)((cl_platform_id)id, what, sizeof(buf) - 1, buf, NULL);
+  if(e != CL_SUCCESS) return g_strdup_printf("(error %d)", e);
+  return g_utf8_make_valid(g_strstrip(buf), -1);
+}
+
+/* the platforms and devices the loaded library reports, whatever darktable
+ * decided about them (dt_opencl_init keeps the library open even when it
+ * found no usable device) */
+static void _platforms(JsonBuilder *b, dt_opencl_t *cl)
+{
+  json_builder_set_member_name(b, "platforms");
+  json_builder_begin_array(b);
+  if(cl && cl->dlocl && cl->dlocl->symbols)
+  {
+    cl_platform_id p[8];
+    cl_uint np = 0;
+    if((cl->dlocl->symbols->dt_clGetPlatformIDs)(8, p, &np) != CL_SUCCESS) np = 0;
+    for(cl_uint i = 0; i < MIN(np, 8); i++)
+    {
+      json_builder_begin_object(b);
+      static const struct { const char *k; cl_uint w; } pk[] = {
+        { "name", CL_PLATFORM_NAME }, { "vendor", CL_PLATFORM_VENDOR },
+        { "version", CL_PLATFORM_VERSION }, { "profile", CL_PLATFORM_PROFILE } };
+      for(size_t k = 0; k < G_N_ELEMENTS(pk); k++)
+      {
+        gchar *v = _cl_string(cl, FALSE, p[i], pk[k].w);
+        _str(b, pk[k].k, v);
+        g_free(v);
+      }
+      json_builder_set_member_name(b, "devices");
+      json_builder_begin_array(b);
+      cl_device_id d[8];
+      cl_uint nd = 0;
+      const cl_int de = (cl->dlocl->symbols->dt_clGetDeviceIDs)(p[i], CL_DEVICE_TYPE_ALL, 8, d, &nd);
+      for(cl_uint j = 0; de == CL_SUCCESS && j < MIN(nd, 8); j++)
+      {
+        json_builder_begin_object(b);
+        static const struct { const char *k; cl_uint w; } dk[] = {
+          { "name", CL_DEVICE_NAME }, { "vendor", CL_DEVICE_VENDOR }, { "version", CL_DEVICE_VERSION },
+          { "driver", CL_DRIVER_VERSION }, { "c_version", CL_DEVICE_OPENCL_C_VERSION },
+          { "extensions", CL_DEVICE_EXTENSIONS } };
+        for(size_t k = 0; k < G_N_ELEMENTS(dk); k++)
+        {
+          gchar *v = _cl_string(cl, TRUE, d[j], dk[k].w);
+          _str(b, dk[k].k, v);
+          g_free(v);
+        }
+        cl_device_type type = 0;
+        cl_bool image = 0, avail = 0, little = 0;
+        cl_ulong mem = 0, alloc = 0;
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_TYPE, sizeof(type), &type, NULL);
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_IMAGE_SUPPORT, sizeof(image), &image, NULL);
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_AVAILABLE, sizeof(avail), &avail, NULL);
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_ENDIAN_LITTLE, sizeof(little), &little, NULL);
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(mem), &mem, NULL);
+        (cl->dlocl->symbols->dt_clGetDeviceInfo)(d[j], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(alloc), &alloc, NULL);
+        _str(b, "type", (type & CL_DEVICE_TYPE_GPU) ? "GPU" : (type & CL_DEVICE_TYPE_CPU) ? "CPU"
+                        : (type & CL_DEVICE_TYPE_ACCELERATOR) ? "accelerator" : (type & CL_DEVICE_TYPE_CUSTOM) ? "custom" : "other");
+        _bool(b, "available", avail);
+        _bool(b, "image_support", image);
+        _bool(b, "little_endian", little);
+        _int(b, "global_memory", (gint64)mem);
+        _int(b, "max_alloc", (gint64)alloc);
+        json_builder_end_object(b);
+      }
+      json_builder_end_array(b);
+      _int(b, "devices_status", de);
+      json_builder_end_object(b);
     }
   }
+  json_builder_end_array(b);
 }
+
+static void _tries(JsonBuilder *b)
+{
+  json_builder_set_member_name(b, "library_tries");
+  json_builder_begin_array(b);
+  for(guint i = 0; g_cl_tries && i < g_cl_tries->len; i++)
+  {
+    const dtb_cl_try_t *t = g_ptr_array_index(g_cl_tries, i);
+    json_builder_begin_object(b);
+    _str(b, "name", t->name);
+    _str(b, "from", t->from);
+    _bool(b, "loaded", t->loaded);
+    _bool(b, "symbol", t->symbol);
+    _str(b, "error", t->error);
+    if(t->called)
+    {
+      _int(b, "status", t->status);
+      _int(b, "platforms", t->platforms);
+    }
+    json_builder_end_object(b);
+  }
+  json_builder_end_array(b);
+}
+
 #endif
+
+int dtb_opencl_diagnostics(char **json)
+{
+  if(json) *json = NULL;
+  NEED_INIT();
+  if(!json) return dtb__err(DTB_E_ARG, "no result pointer");
+  JsonBuilder *b = json_builder_new();
+  json_builder_begin_object(b);
+#ifdef HAVE_OPENCL
+  _bool(b, "built", TRUE);
+  _bool(b, "started", g_speed.opencl_started);
+  _str(b, "preferred", g_cl_prefer);
+  _str(b, "chosen", g_speed.opencl_library);
+  dt_opencl_t *cl = darktable.opencl;
+  _str(b, "loaded", cl && cl->dlocl ? cl->dlocl->library : NULL);
+  _tries(b);
+  _str(b, "init_log", g_cl_log);
+  _bool(b, "init_log_cut", g_cl_log_cut);
+  _platforms(b, cl);
+#else
+  _bool(b, "built", FALSE);
+#endif
+  json_builder_end_object(b);
+  *json = dtb__json_finish(b);
+  return *json ? DTB_OK : dtb__err(DTB_E_ENGINE, "could not write the OpenCL diagnostics");
+}
+
+int dtb_opencl_library(const char *names)
+{
+  NEED_INIT();
+#ifndef HAVE_OPENCL
+  (void)names;
+  return dtb__err(DTB_E_STATE, "this engine was built without OpenCL");
+#else
+  if(g_speed.opencl_started) return dtb__err(DTB_E_STATE, "OpenCL was already started; the library is chosen at the first switch on");
+  g_free(g_cl_prefer);
+  g_cl_prefer = names && names[0] ? g_strdup(names) : NULL;
+  return DTB_OK;
+#endif
+}
 
 int dtb_opencl_set(const int enabled, char **json)
 {
@@ -396,7 +697,7 @@ int dtb_opencl_set(const int enabled, char **json)
       saved = darktable.cachedir;
       darktable.cachedir = g_strdup(g_speed.kernel_dir);
     }
-    dt_opencl_init(darktable.opencl, DT_OPENCL_OPTION_NONE, FALSE);
+    _init_logged();
     if(saved)
     {
       g_free(darktable.cachedir);

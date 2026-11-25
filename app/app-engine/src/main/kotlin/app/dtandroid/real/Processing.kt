@@ -59,10 +59,23 @@ object Processing {
 
     @Volatile private var totalMem: Long = 0
 
+    /** brief P4d: the text "copy GPU details" copies; from the last GPU switch on (also the one at the start) */
+    @Volatile private var gpuDetails: String? = null
+
+    /** brief P4d: the app's own OpenCL library loading (System.loadLibrary puts it in the app's linker namespace) */
+    private fun libraries() = app.dtandroid.darkroom.speed.OpenClLibraries({ System.loadLibrary(it) })
+
+    private suspend fun details(e: app.dtandroid.engine.api.DarktableEngine, appVersion: String?, note: String?, probe: app.dtandroid.darkroom.speed.OpenClLibraries.Probe?): String? =
+        runCatching {
+            val header = listOf("app: ${appVersion ?: "?"}, engine package ${AppEngine.engineId}",
+                "android api ${Build.VERSION.SDK_INT}, abi ${Build.SUPPORTED_ABIS.firstOrNull() ?: "?"}")
+            app.dtandroid.darkroom.speed.GpuDetails.text(header, note, probe, e.openclDiagnostics(), e.openclInfo())
+        }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; "GPU details could not be read: ${it.message}" }
+
     private fun refresh() {
         val v = settings.values.value
         _ui.update {
-            it.copy(gpu = v.gpu, gpuNote = v.gpuNote, memory = v.memory, memoryNow = plan?.describe(),
+            it.copy(gpu = v.gpu, gpuNote = v.gpuNote, gpuDetails = gpuDetails, memory = v.memory, memoryNow = plan?.describe(),
                 memoryPending = plan != null && plan?.choice != v.memory)
         }
     }
@@ -88,12 +101,19 @@ object Processing {
     suspend fun afterStart(engine: JniEngine) {
         engine.onOpenClTrouble = { i -> trouble(i) }
         if (!settings.values.value.gpu) return
+        val probe = runCatching { libraries().probe() }.getOrNull()
+        probe?.let { p -> runCatching { engine.openclLibraries(p.preferred) } }
         val i = try { engine.openclSet(true) } catch (e: EngineException) { null }
+        var note: String? = settings.values.value.gpuNote
         if (i == null || !i.running) {
-            val why = "the GPU was switched off at the start: " + (if (i == null) "this engine cannot use it" else "darktable found no GPU it can use")
+            val d = runCatching { engine.openclDiagnostics() }.getOrNull()
+            val why = "the GPU was switched off at the start: " + (if (i == null) "this engine cannot use it"
+                else d?.let { app.dtandroid.darkroom.speed.GpuDetails.reason(it, i) } ?: "darktable found no GPU it can use")
+            note = why
             settings.update { it.copy(gpu = false, gpuNote = why) }
             AppHost.crashLog.append(CrashLog.KIND_OPENCL, why)
         }
+        gpuDetails = details(engine, null, note, probe)
         refresh()
     }
 
@@ -118,7 +138,7 @@ object Processing {
         return t.ensure().path
     }
 
-    fun setGpu(on: Boolean, controller: DarkroomController) {
+    fun setGpu(on: Boolean, controller: DarkroomController, appVersion: String? = null) {
         if (_ui.value.busy || on == settings.values.value.gpu) return
         AppEngine.scope.launch {
             if (!on) {
@@ -131,7 +151,14 @@ object Processing {
             val result = try {
                 val raw = withContext(Dispatchers.IO) { testRaw { s -> _ui.update { it.copy(gpuBusy = s) } } }
                 if (controller.state.value.info != null) controller.closePhoto()
-                controller.withEngine { e -> GpuCheck(e, raw).run { s -> _ui.update { it.copy(gpuBusy = s) } } }
+                controller.withEngine { e ->
+                    val check = GpuCheck(e, raw, libraries())
+                    val r = check.run { s -> _ui.update { it.copy(gpuBusy = s) } }
+                    val n = if (r is GpuCheck.Result.On) r.text else "GPU off: ${r.text}"
+                    // brief P4d: what "copy GPU details" copies
+                    gpuDetails = details(e, appVersion, n, check.probe)
+                    r
+                }
             } catch (e: IOException) {
                 GpuCheck.Result.Off(e.message ?: "the test photo could not be fetched")
             }
