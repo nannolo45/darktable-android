@@ -408,6 +408,13 @@ class JniEngine private constructor() : DarktableEngine {
         check(NativeBridge.openclLibrary(names.joinToString(":").ifEmpty { null }))
     }
 
+    // brief P4e
+    override suspend fun renderTrace(arm: Boolean): String? = onEngine {
+        requireInit()
+        val o = get(if (arm) NativeBridge.JSON_RENDER_TRACE_ARM else NativeBridge.JSON_RENDER_TRACE)
+        ((o as? JsonObject)?.get("log") as? JsonPrimitive)?.takeIf { it.isString }?.content
+    }
+
     override suspend fun openclDiagnostics(): OpenClDiagnostics = onEngine { OpenClDiagnostics.fromJson(get(NativeBridge.JSON_OPENCL_DIAGNOSTICS)) }
 
     override suspend fun openclSet(enabled: Boolean): OpenClInfo = onEngine {

@@ -524,6 +524,8 @@ static jstring _json_status(JNIEnv *env, int code, char *s, jintArray status)
 #define DTJ_RESOURCES_INFO 6
 #define DTJ_OPENCL_INFO 7
 #define DTJ_OPENCL_DIAGNOSTICS 8
+#define DTJ_RENDER_TRACE 9         /* P4e: read the last caught render log */
+#define DTJ_RENDER_TRACE_ARM 10    /* P4e: the same, then catch the next render */
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint what, jintArray status)
@@ -541,6 +543,8 @@ Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint wha
     case DTJ_RESOURCES_INFO: r = dtb_resources_info(&s); break;
     case DTJ_OPENCL_INFO: r = dtb_opencl_info(&s); break;
     case DTJ_OPENCL_DIAGNOSTICS: r = dtb_opencl_diagnostics(&s); break;
+    case DTJ_RENDER_TRACE: r = dtb_render_trace(0, &s); break;
+    case DTJ_RENDER_TRACE_ARM: r = dtb_render_trace(1, &s); break;
     default: r = DTB_E_ARG; break;
   }
   return _json_status(env, r, s, status);

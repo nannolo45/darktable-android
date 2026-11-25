@@ -15,12 +15,18 @@ import kotlin.math.log10
  * switches "use the GPU (OpenCL)" on. OpenCL is started; if no device was found it goes back off with the reason. Then
  * one test render of a fixed photo (the public test RAW, darktable's default edit, [SIZE] px) runs on the CPU and on the
  * GPU; the GPU stays on only if the render ran on the GPU without an OpenCL error and the two pictures agree
- * ([PSNR_MIN_DB]). Any other outcome switches OpenCL off again and says why. Runs on an engine with no photo open; leaves
- * none open.
+ * ([PSNR_MIN_DB]). Any other outcome switches OpenCL off again and says why. Brief P4e: a GPU whose test render is slower
+ * than the CPU's is switched off too ([Result.Slower]); the user may still force it on (a second confirmation, the app's
+ * side). Both test renders are traced: [perf] holds their per-module tables ([PerfLog]). Runs on an engine with no photo
+ * open; leaves none open.
  */
 class GpuCheck(private val engine: DarktableEngine, private val testRaw: String, private val libraries: OpenClLibraries? = null) {
     /** Brief P4d: what the app's own library loading found (null: not run, OpenCL was already started) */
     var probe: OpenClLibraries.Probe? = null
+        private set
+
+    /** Brief P4e: the per-module tables of the two test renders (empty when they did not run) */
+    var perf: String = ""
         private set
 
     sealed interface Result {
@@ -29,6 +35,8 @@ class GpuCheck(private val engine: DarktableEngine, private val testRaw: String,
         data class On(override val text: String, val device: String, val psnr: Double, val maxDiff: Int, val cpuMs: Long, val gpuMs: Long) : Result
         /** OpenCL was switched off again; [text] says why. */
         data class Off(override val text: String) : Result
+        /** Brief P4e: the GPU works and agrees with the CPU but its test render was slower; OpenCL is off, the user may force it on. */
+        data class Slower(override val text: String, val device: String, val psnr: Double, val maxDiff: Int, val cpuMs: Long, val gpuMs: Long) : Result
     }
 
     suspend fun run(progress: (String) -> Unit = {}): Result {
@@ -52,10 +60,10 @@ class GpuCheck(private val engine: DarktableEngine, private val testRaw: String,
 
             progress("test render on the CPU")
             engine.openclSet(false)
-            val (cpu, cpuMs) = render()
+            val (cpu, cpuMs) = render(false)
             progress("test render on the GPU")
             engine.openclSet(true)
-            val (gpu, gpuMs) = try { render() } catch (e: EngineException) {
+            val (gpu, gpuMs) = try { render(false) } catch (e: EngineException) {
                 return Result.Off("the GPU's test render failed: ${e.detail}")
             }
             val after = engine.openclInfo()
@@ -67,9 +75,22 @@ class GpuCheck(private val engine: DarktableEngine, private val testRaw: String,
             if (cpu.width != gpu.width || cpu.height != gpu.height)
                 return Result.Off("the GPU's test picture has another size (${gpu.width} x ${gpu.height}, the CPU's ${cpu.width} x ${cpu.height})")
             val (psnr, maxDiff) = compare(cpu, gpu)
+            // brief P4e: the same two renders again, not timed, with darktable's per-module log caught
+            progress("per-module times on the GPU and the CPU")
+            runCatching {
+                val g = render(true)
+                engine.openclSet(false)
+                val c = render(true)
+                engine.openclSet(true)
+                perf = PerfLog.table("GPU check, test render on the GPU (timed $gpuMs ms; ${g.second} ms with the log on)", g.third) +
+                    PerfLog.table("GPU check, test render on the CPU (timed $cpuMs ms; ${c.second} ms with the log on)", c.third)
+            }.exceptionOrNull()?.let { if (it is CancellationException) throw it; perf = "per-module log failed: ${it.message}\n" }
             if (psnr < PSNR_MIN_DB)
                 return Result.Off("the GPU's test picture differs from the CPU's: PSNR ${db(psnr)} dB, below the ${db(PSNR_MIN_DB)} dB needed " +
                     "(largest difference $maxDiff of 255); the GPU driver may compute wrongly")
+            if (gpuMs > cpuMs)
+                return Result.Slower("slower than the processor on this phone (CPU $cpuMs ms, GPU $gpuMs ms); the pictures agree " +
+                    "(PSNR ${db(psnr)} dB, largest difference $maxDiff of 255)", device.name, psnr, maxDiff, cpuMs, gpuMs)
             keep = true
             return Result.On("GPU on: ${device.name} (${device.platform}); the test picture agrees with the CPU's: PSNR ${db(psnr)} dB, " +
                 "largest difference $maxDiff of 255; test render CPU $cpuMs ms, GPU $gpuMs ms", device.name, psnr, maxDiff, cpuMs, gpuMs)
@@ -89,16 +110,21 @@ class GpuCheck(private val engine: DarktableEngine, private val testRaw: String,
         else -> "darktable stopped OpenCL after errors (${i.errorCount})"
     }
 
-    /** One test render from the RAW, with the caches dropped first, so the device computes every module. */
-    private suspend fun render(): Pair<RenderedImage, Long> {
+    /**
+     * One test render from the RAW, with the caches dropped first, so the device computes every module; with darktable's
+     * per-module log caught when [trace] (brief P4e; such renders are not the timed ones).
+     */
+    private suspend fun render(trace: Boolean): Triple<RenderedImage, Long, String?> {
         runCatching { engine.close() }.exceptionOrNull()?.let { if (it is CancellationException) throw it }
         engine.cacheDrop()
         engine.open(testRaw, null)
+        if (trace) engine.renderTrace(arm = true)
         val t0 = System.nanoTime()
         val img = engine.renderPreview(SIZE)
         val ms = (System.nanoTime() - t0) / 1_000_000
+        val log = if (trace) engine.renderTrace(arm = false) else null
         engine.close()
-        return img to ms
+        return Triple(img, ms, log)
     }
 
     companion object {

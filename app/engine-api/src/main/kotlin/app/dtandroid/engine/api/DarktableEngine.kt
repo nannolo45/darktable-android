@@ -159,6 +159,12 @@ interface DarktableEngine {
     /** Brief P4d (`dtb_opencl_diagnostics`): which library was tried and loaded, darktable's OpenCL log, the platforms. */
     suspend fun openclDiagnostics(): OpenClDiagnostics = OpenClDiagnostics.NONE
 
+    /**
+     * Brief P4e (`dtb_render_trace`): darktable's -d perf -d tiling -d opencl -d memory output of the last caught render,
+     * or null; [arm] = catch the next render (or export) too. Engines without it: null, nothing caught.
+     */
+    suspend fun renderTrace(arm: Boolean): String? = null
+
     // 2.8 output
 
     /** Refused for a read-only session and when an existing file at [path] fails the guard. Atomic. */

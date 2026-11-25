@@ -26,12 +26,19 @@ class SpeedBenchmark(
     private val gpu: Boolean,
     /** lines that describe the device and app, put first (no phone model unless the caller adds it) */
     private val header: List<String> = emptyList(),
+    /** brief P4e: one more (untimed) render per case with darktable's per-module log caught ([PerfLog]) */
+    private val trace: Boolean = gpu,
 ) {
-    data class Row(val device: String, val edit: String, val view: String, val firstMs: Long, val runsMs: List<Long>, val ranOn: String) {
+    data class Row(val device: String, val edit: String, val view: String, val firstMs: Long, val runsMs: List<Long>, val ranOn: String,
+                   /** brief P4e: the per-module table of one render after an exposure change; null = not traced */
+                   val perf: String? = null) {
         val medianMs: Long get() = runsMs.sorted()[runsMs.size / 2]
     }
 
-    class Result(val rows: List<Row>, val text: String, val notes: List<String>)
+    class Result(val rows: List<Row>, val text: String, val notes: List<String>) {
+        /** brief P4e: the per-module tables, for "copy GPU details" too */
+        val perf: String get() = rows.mapNotNull { it.perf }.joinToString("")
+    }
 
     suspend fun run(progress: (String) -> Unit = {}): Result {
         val rows = ArrayList<Row>()
@@ -84,8 +91,16 @@ class SpeedBenchmark(
         }
         val ranOn = engine.openclInfo().lastRender.takeIf { it != "none" } ?: "cpu"
         if (device == "gpu" && ranOn != "gpu") notes += "$edit, $view: asked for the GPU, ran as \"$ranOn\""
+        // brief P4e: one more render after an exposure change, not timed, with darktable's per-module log caught
+        val perf = if (!trace) null else {
+            engine.paramSet("exposure", 0, "exposure", ParamValue.of(exp0 + (RUNS + 1) * EXPOSURE_STEP))
+            engine.historySeal()
+            engine.renderTrace(arm = true)
+            val ms = timed { render() }
+            PerfLog.table("$device $edit $view (one render after an exposure change, $ms ms with the log on)", engine.renderTrace(arm = false))
+        }
         engine.close()
-        return Row(device, edit, view, first, runs, ranOn)
+        return Row(device, edit, view, first, runs, ranOn, perf)
     }
 
     /**
@@ -118,6 +133,7 @@ class SpeedBenchmark(
             append('\n')
         }
         for (n in notes.distinct()) append("note: ").append(n).append('\n')
+        for (r in rows) r.perf?.let { append(it) }
     }
 
     companion object {

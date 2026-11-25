@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -29,6 +33,8 @@ data class ProcessingUi(
     val gpuNote: String? = null,
     /** brief P4d: what "copy GPU details" copies (library tries, platforms, darktable's OpenCL log); null = none yet */
     val gpuDetails: String? = null,
+    /** brief P4e: the GPU check found the GPU slower than the CPU (its text); the GPU may be forced on after a second confirmation */
+    val gpuSlower: String? = null,
     val memory: ProcessingResources.Choice = ProcessingResources.Choice.NORMAL,
     /** the memory plan in force (from the engine's start) */
     val memoryNow: String? = null,
@@ -49,8 +55,10 @@ fun ProcessingScreen(
     onCopy: () -> Unit,
     onBack: () -> Unit,
     onCopyGpu: () -> Unit = {},
+    onGpuForce: () -> Unit = {},
 ) {
     val c = DtTheme.colors
+    var confirmForce by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(c.bg)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.l, vertical = DtTheme.space.s),
@@ -69,10 +77,23 @@ fun ProcessingScreen(
                 DtTextButton("on", { onGpu(true) }, selected = ui.gpu, enabled = !ui.busy)
             }
             Note("Off by default. Switching it on starts darktable's OpenCL and compares one test render on the GPU with " +
-                "the CPU's; the GPU stays on only if the two pictures agree. If the GPU fails during an edit, that render " +
+                "the CPU's; the GPU stays on only if the two pictures agree and the GPU is not slower (you can still force a slower one on). If the GPU fails during an edit, that render " +
                 "is done on the CPU and the crash log says so.")
             ui.gpuBusy?.let { Line("$it…", Modifier.semantics { contentDescription = "gpu busy" }) }
             ui.gpuNote?.let { Line(it, Modifier.semantics { contentDescription = "gpu note" }) }
+            // brief P4e: a GPU slower than the CPU stays off unless the user confirms twice
+            if (ui.gpuSlower != null && !ui.gpu) {
+                if (!confirmForce) Row(Modifier.padding(horizontal = DtTheme.space.panel)) {
+                    DtTextButton("use the GPU anyway", { confirmForce = true }, enabled = !ui.busy)
+                } else {
+                    Line("The GPU was slower than the processor in the test, so editing will likely be slower with it. Use it anyway?",
+                        Modifier.semantics { contentDescription = "gpu force confirm" })
+                    Row(Modifier.padding(horizontal = DtTheme.space.panel), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {
+                        DtTextButton("yes, use the GPU", { confirmForce = false; onGpuForce() }, enabled = !ui.busy)
+                        DtTextButton("cancel", { confirmForce = false }, enabled = !ui.busy)
+                    }
+                }
+            }
             Row(Modifier.padding(horizontal = DtTheme.space.panel)) {
                 DtTextButton("copy GPU details", onCopyGpu, enabled = ui.gpuDetails != null && !ui.busy)
             }
@@ -100,7 +121,7 @@ fun ProcessingScreen(
             ui.speedText?.let { t ->
                 DtText(t.trimEnd(), DtTheme.type.small, c.text,
                     Modifier.fillMaxWidth().padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.s)
-                        .semantics { contentDescription = "speed result" }, maxLines = 60)
+                        .semantics { contentDescription = "speed result" }, maxLines = 400)
             }
         }
     }
