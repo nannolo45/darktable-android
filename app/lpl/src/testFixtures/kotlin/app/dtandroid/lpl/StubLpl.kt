@@ -114,6 +114,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     /** only for this photo (-1 = any) */
     @Volatile var stallPhoto: Long = -1
     @Volatile var stallGate: java.util.concurrent.CountDownLatch? = null
+    /** brief P4a: when the stall's gate opens, the connection closes without the rest of the file */
+    @Volatile var stallThenCut: Boolean = false
     /** brief P2k: every heartbeat body in order, with the time it came (ms) */
     val heartbeatLog: MutableList<String> = Collections.synchronizedList(ArrayList())
     /** brief P2k: what the server saw in order: `hb`, or `done <job> <status>` */
@@ -421,6 +423,8 @@ class StubLpl(port: Int = 0) : AutoCloseable {
             out.write(slice, 0, n)
             out.flush()
             stallGate?.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            // brief P4a: the transfer is cut there (the connection closes without the rest)
+            if (stallThenCut) return
             out.write(slice, n, slice.size - n)
             out.flush()
             return
