@@ -1,0 +1,46 @@
+== cr2: mire1.cr2 with exposure.xmp
+PASS C17 cr2: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 193099 bytes);exposure exposure 0 (on 1): size 2735x2211 bypass 2735x2211, preview 512x414 max 0, region 683x552 max 0; with it in: 2735x2211;crop session unchanged by bypass renders: yes (XMP 193099 bytes);crop crop 0 (on 1): size 3908x2602 bypass 3908x2602, preview 512x340 max 0, region 977x650 max 0; with it in: 2735x2211;
+PASS C20 cr2: coordinates between the original and the picture: coords as opened: original 3944x2622, picture 3908x2602, centre -> 0.4969,0.4969, round trip max 0.000 px;coords crop: picture 1954x1301 (without crop 3908x2602), relation off by 0.000 px;coords crop: original 3944x2622, picture 1954x1301, centre -> -0.0061,-0.0061, round trip max 0.000 px;coords orientation: picture 2602x3908 (without 3908x2602), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 3944x2622, picture 2536x3852, centre -> 0.5313,0.5234, round trip max 0.002 px;
+FAIL C37 cr2: retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip: FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p4c.c:97: image_info follows the focus [action: begin, end, pause, resume or state, not 'spin']; see /home/runner/bridge-tests/cr2/C37.log
+PASS C37 cr2: size 1954x1301 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table: empty: group null 1, count 0, algorithm heal, scales 0;five shapes: render max diff 255 mean 2.020 against no retouch;heal source moved: render max diff 118 mean 0.0685;settings: history 16 -> 19;reopened: shapes equal, render max diff 0;wavelet after edits: num_scales 4 curr_scale 2 merge_from 3 preview_levels[0] -2.5;lut: source_L[3] 43.14, patches 25;lut reset: render max diff 79 mean 4.2249;lut delete: render max diff 7 mean 0.1653, patches 24;
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== raf: xtransIV.raf with lens-metadata-xtransIV-modversion-7.xmp
+PASS C17 raf: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 195174 bytes);exposure exposure 0 (on 1): size 4375x3542 bypass 4375x3542, preview 511x415 max 0, region 1093x885 max 0; with it in: 4375x3542;crop session unchanged by bypass renders: yes (XMP 195174 bytes);crop crop 0 (on 1): size 6250x4168 bypass 6250x4168, preview 512x341 max 0, region 1562x1042 max 0; with it in: 4375x3542;
+PASS C20 raf: coordinates between the original and the picture: coords as opened: original 6384x4182, picture 6250x4168, centre -> 0.5104,0.4998, round trip max 0.512 px;coords crop: picture 3125x2084 (without crop 6250x4168), relation off by 0.000 px;coords crop: original 6384x4182, picture 3125x2084, centre -> 0.0207,-0.0005, round trip max 0.512 px;coords orientation: picture 4168x6250 (without 6250x4168), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 6384x4182, picture 4060x6162, centre -> 0.5297,0.5371, round trip max 0.512 px;
+FAIL C37 raf: retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip: FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p4c.c:97: image_info follows the focus [action: begin, end, pause, resume or state, not 'spin']; see /home/runner/bridge-tests/raf/C37.log
+PASS C37 raf: size 3125x2084 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table: empty: group null 1, count 0, algorithm heal, scales 0;five shapes: render max diff 136 mean 1.654 against no retouch;heal source moved: render max diff 130 mean 0.0763;settings: history 19 -> 22;reopened: shapes equal, render max diff 0;wavelet after edits: num_scales 4 curr_scale 2 merge_from 3 preview_levels[0] -2.5;lut: source_L[3] 43.14, patches 25;lut reset: render max diff 63 mean 1.8234;lut delete: render max diff 3 mean 0.0401, patches 24;
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== arw: hlrecovery.arw with spektrafilm.xmp
+PASS C17 arw: a render that leaves one instance out: redo after bypass renders: exposure 0.80;exposure session unchanged by bypass renders: yes (XMP 198877 bytes);exposure exposure 0 (on 1): size 3844x3121 bypass 3844x3121, preview 512x415 max 0, region 961x780 max 0; with it in: 3844x3121;crop session unchanged by bypass renders: yes (XMP 198877 bytes);crop crop 0 (on 1): size 5492x3672 bypass 5492x3672, preview 512x342 max 0, region 1373x918 max 0; with it in: 3844x3121;
+PASS C20 arw: coordinates between the original and the picture: coords as opened: original 5504x3672, picture 5492x3672, centre -> 0.5011,0.5000, round trip max 0.000 px;coords crop: picture 2746x1836 (without crop 5492x3672), relation off by 0.000 px;coords crop: original 5504x3672, picture 2746x1836, centre -> 0.0022,0.0000, round trip max 0.000 px;coords orientation: picture 3672x5492 (without 5492x3672), relation off by 0.000 px;coords lens, rotation, crop, orientation, framing: original 5504x3672, picture 3575x5414, centre -> 0.5285,0.5277, round trip max 0.052 px;
+FAIL C37 arw: retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip: FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p4c.c:97: image_info follows the focus [action: begin, end, pause, resume or state, not 'spin'];FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p4c.c:140: the heal spot changes the whole picture [action: begin, end, pause, resume or state, not 'spin']; see /home/runner/bridge-tests/arw/C37.log
+PASS C37 arw: size 2746x1836 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table: empty: group null 1, count 0, algorithm heal, scales 0;five shapes: render max diff 240 mean 2.755 against no retouch;heal source moved: render max diff 255 mean 0.4138;settings: history 21 -> 24;reopened: shapes equal, render max diff 0;wavelet after edits: num_scales 4 curr_scale 2 merge_from 3 preview_levels[0] -2.5;lut: source_L[3] 43.14, patches 25;lut reset: render max diff 91 mean 1.9669;lut delete: render max diff 6 mean 0.1027, patches 24;
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C32 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS safety: RAW files unchanged
