@@ -135,9 +135,9 @@ static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
   json_node_unref(st);
   CHECK(history_count(&end) == h0, "pause/resume add no history item");
 
-  // 3. a heal spot outside the crop, placed while focused: one item; the whole picture changes there
+  // 3. a heal spot outside the crop (left of it), placed while focused: one item; the whole picture changes there
   const int hA = history_count(&end);
-  MUST(dtb_retouch_add("retouch", 0, "{\"type\":\"circle\",\"geometry\":{\"center\":[0.1,0.1],\"radius\":0.03,\"border\":0.01},"
+  MUST(dtb_retouch_add("retouch", 0, "{\"type\":\"circle\",\"geometry\":{\"center\":[0.1,0.5],\"radius\":0.03,\"border\":0.01},"
                                      "\"source\":[0.45,0.45]}", &s));
   JsonNode *idn = jparse_owned(s);
   const int id = (int)json_object_get_int_member(json_node_get_object(idn), "id");

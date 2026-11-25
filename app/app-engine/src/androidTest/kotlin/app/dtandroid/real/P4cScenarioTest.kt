@@ -10,6 +10,7 @@ import app.dtandroid.darkroom.RETOUCH_OP
 import app.dtandroid.darkroom.RetouchTool
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import app.dtandroid.engine.api.CoordsDirection
 import app.dtandroid.engine.api.ExportOptions
 import app.dtandroid.engine.api.ExportProfile
@@ -158,16 +159,16 @@ class P4cScenarioTest {
         val n0 = items(c)
         assertTrue("applied by the sheet: ${c.stylesPresets.state.value.note}", runBlocking { c.stylesPresets.applyPreset(key, stored!!) })
         val m = c.state.value.modules.first { it.key == key }
-        val it = (m.params["iterations"] as JsonPrimitive).content.toDouble()
+        val iters = (m.params["iterations"] as JsonPrimitive).content.toDouble()
         val rad = (m.params["radius"] as JsonPrimitive).content.toDouble()
         val after = runBlocking { c.withEngine { e -> e.renderPreview(800) } }
         var sum = 0L
         for (i in plain.rgba.indices) if (i % 4 != 3) sum += kotlin.math.abs((plain.rgba[i].toInt() and 255) - (after.rgba[i].toInt() and 255))
         val d = sum.toDouble() / (plain.width * plain.height * 3)
-        TestFiles.record(res, "r2_applied", "items $n0 -> ${items(c)}, enabled ${m.enabled}, iterations $it, radius $rad, preview diff %.4f".format(d))
+        TestFiles.record(res, "r2_applied", "items $n0 -> ${items(c)}, enabled ${m.enabled}, iterations $iters, radius $rad, preview diff %.4f".format(d))
         assertEquals("one history item", n0 + 1, items(c))
         assertTrue(m.enabled)
-        assertEquals(16.0, it, 0.0)
+        assertEquals(16.0, iters, 0.0)
         assertEquals(10.0, rad, 0.0)
         assertTrue("the picture changes ($d)", d > 0.0)
     }
