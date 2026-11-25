@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <glib.h>
 
 static size_t _pipe_bytes(const dtb_pipe_t *p)
 {
@@ -40,11 +41,11 @@ static size_t _pipe_peak(const dtb_pipe_t *p)
 /* resident set size of the process from /proc/self/statm, in bytes; 0 if unreadable */
 static size_t _rss(void)
 {
-  FILE *f = fopen("/proc/self/statm", "r");
-  if(!f) return 0;
+  gchar *text = NULL;
+  if(!g_file_get_contents("/proc/self/statm", &text, NULL, NULL)) return 0;
   unsigned long size = 0, resident = 0;
-  const int n = fscanf(f, "%lu %lu", &size, &resident);
-  fclose(f);
+  const int n = sscanf(text, "%lu %lu", &size, &resident);
+  g_free(text);
   if(n != 2) return 0;
   const long page = sysconf(_SC_PAGESIZE);
   return (size_t)resident * (size_t)(page > 0 ? page : 4096);
