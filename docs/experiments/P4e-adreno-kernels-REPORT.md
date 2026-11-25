@@ -13,7 +13,7 @@ times slower than the CPU; the second half of this round (section 6) adds what i
 | 1. Find every vector subscript (tool + output) | done: `tools/check-vector-subscripts.py`, `docs/experiments/P4e-vector-subscripts.txt` |
 | 2. Patch them, `patches/`, upstream text | done: `patches/0001-basic-cl-no-vector-subscripts.patch`; upstream text in section 4 |
 | 2b. Applied by the build and by `tools/bump-upstream` | done: `tools/apply-patches.sh` from `tools/fetch-darktable.sh` (every engine build, Android and Linux); new `tools/bump-upstream`; `patches/` is part of ENGINE_TAG and of the Linux build cache keys |
-| 3. Nothing changed: PoCL compile, C36, before/after render, strict compile | see section 3 (CI ids) |
+| 3. Nothing changed: PoCL compile, C36, before/after render, strict compile | done (section 3); strict compile through the AST check |
 | 4. Other Adreno pitfalls | listed in section 5; nothing else patched |
 | 5. GPU details keep showing a failing kernel's build log | unchanged from P4d (darktable's init log is in "copy GPU details") |
 | Supervisor, round 2: per-module timing, GPU speed check | done in code, see section 6; unit tests and C36 cover it, phone numbers pending |
@@ -43,7 +43,31 @@ The check (clang 18, all 54 `.cl` files compile): before the patch 3 places, aft
 The fix: `.x/.y/.z` for the constant row index, a private `float[3]` for the loop index; every component is summed in
 the same order (i = 0, 1, 2), `.w` stays 0.
 
-CI (commit 0187cc6, 25 Nov 2026, all green): g0-app 45653810325 (bridge suite incl. C36 and the before/after kernel check), p2b-real-engine 45653810928 (emulator), p2a-app 45653810866 (unit tests).
+CI on commit 0187cc6 (main with P4c merged in), all green:
+
+- g0-app run 45653810325: bridge tests 499 passed, 0 failed. Engine archive `engine-04477d32-93c5d2ec653f` is built from the
+  patched source (the first one with patches/ in ENGINE_TAG).
+  - C36 (PoCL on the runner, the kernels compiled from the patched source): OpenCL running, 1 device, render on the GPU,
+    PSNR 95.77 dB against the CPU, largest difference 1/255. `render_trace`: 7 module lines, all on the GPU.
+  - Vector-subscript check on the installed kernels: 0.
+  - Before/after (`engine/tests/p4e_kernels_before_after.sh`, OpenCL renders with patched and with upstream kernels,
+    1024 px preview, 8-bit):
+
+    | edit | after vs before: PSNR | largest diff | after vs CPU | before vs CPU |
+    |---|---|---|---|---|
+    | spektrafilm (hlrecovery.arw) | identical | 0 | 92.90 dB, 1 | 92.90 dB, 1 |
+    | mask-groups (mire1.cr2) | identical | 0 | 93.14 dB, 1 | 93.14 dB, 1 |
+    | exposure (mire1.cr2) | identical | 0 | 95.77 dB, 1 | 95.77 dB, 1 |
+
+    The gamut-clipping branch of colorin_rgb (the second loop) is only reached when colorin's gamut clipping is on.
+    None of the three edits switches it on, so that branch is covered by the AST check and the unchanged sum order,
+    not by a render.
+- p2a-app run 45653810866: unit and screenshot tests pass (including the new P4e tests).
+- p2b-real-engine run 45653810928: the real-engine APK and the emulator scenario tests pass.
+- Strict compile: clang has no flag that rejects vector subscripts in OpenCL C, so the AST check (0 places) stands in
+  for it, as the brief allows.
+- Untested phone APKs (apk-only): dt-android-8b50144f37fa (kernel fix only), dt-android-0187cc6713e2 (with the
+  per-module timing and the GPU speed check).
 
 ## 4. Upstream issue / pull request text (not opened)
 
