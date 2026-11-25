@@ -149,10 +149,22 @@ class P5cTapTest {
         if (has("search modules")) {
             compose.onAllNodesWithContentDescription("search modules")[0].performTextReplacement(name)
             TestFiles.record(res, "${tag}_module", "found by search")
+            // The search field takes the focus and the keyboard comes up; on the emulator's 320 x 640 screen the panel
+            // then has no height and the list composes no row (run 45713442504: search text right, no module row).
+            // The keyboard is closed, as a user does before tapping the result.
+            val shown = System.currentTimeMillis() + 90_000
+            while (!has(name) && System.currentTimeMillis() < shown) { hideKeyboard(); compose.waitForIdle(); Thread.sleep(200) }
             tapDesc(tag, name)
         } else {
             TestFiles.record(res, "${tag}_module", "no search field in this layout: controller.goToModule")
             c.goToModule(key)
+        }
+    }
+
+    private fun hideKeyboard() {
+        scenario?.onActivity {
+            it.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
         }
     }
 
