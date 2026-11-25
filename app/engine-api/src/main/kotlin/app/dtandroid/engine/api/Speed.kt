@@ -108,3 +108,50 @@ data class EngineResources(
         }
     }
 }
+
+/**
+ * Brief P4d (`dtb_opencl_diagnostics`): why darktable did or did not find a GPU. [tries]: each library opened before
+ * darktable's start, in order; [chosen]: the one handed to darktable; [loaded]: what darktable opened; [initLog]:
+ * darktable's own `-d opencl -d verbose` output of its OpenCL start; [platforms]: what the loaded library reports,
+ * whatever darktable decided.
+ */
+data class OpenClDiagnostics(
+    val built: Boolean = false, val started: Boolean = false, val preferred: String? = null, val chosen: String? = null,
+    val loaded: String? = null, val tries: List<Try> = emptyList(), val initLog: String? = null, val initLogCut: Boolean = false,
+    val platforms: List<Platform> = emptyList(),
+) {
+    /** [status]/[platforms]: clGetPlatformIDs' result, null when it was not called. */
+    data class Try(val name: String, val from: String, val loaded: Boolean, val symbol: Boolean, val error: String?,
+                   val status: Long?, val platforms: Long?)
+    data class Platform(val name: String, val vendor: String, val version: String, val profile: String,
+                        val devicesStatus: Long, val devices: List<Device>)
+    data class Device(val name: String, val vendor: String, val version: String, val driver: String, val cVersion: String,
+                      val extensions: String, val type: String, val available: Boolean, val imageSupport: Boolean,
+                      val littleEndian: Boolean, val globalMemory: Long, val maxAlloc: Long)
+
+    companion object {
+        val NONE = OpenClDiagnostics()
+
+        fun fromJson(e: JsonElement): OpenClDiagnostics {
+            val o = e as? JsonObject ?: return NONE
+            fun s(x: JsonObject, k: String) = (x[k] as? JsonPrimitive)?.contentOrNull
+            fun b(x: JsonObject, k: String) = (x[k] as? JsonPrimitive)?.booleanOrNull ?: false
+            fun n(x: JsonObject, k: String) = (x[k] as? JsonPrimitive)?.longOrNull
+            fun objs(x: JsonObject, k: String) = (x[k] as? JsonArray)?.mapNotNull { it as? JsonObject } ?: emptyList()
+            return OpenClDiagnostics(
+                b(o, "built"), b(o, "started"), s(o, "preferred"), s(o, "chosen"), s(o, "loaded"),
+                objs(o, "library_tries").map { t ->
+                    Try(s(t, "name") ?: "?", s(t, "from") ?: "?", b(t, "loaded"), b(t, "symbol"), s(t, "error"), n(t, "status"), n(t, "platforms"))
+                },
+                s(o, "init_log"), b(o, "init_log_cut"),
+                objs(o, "platforms").map { p ->
+                    Platform(s(p, "name") ?: "?", s(p, "vendor") ?: "?", s(p, "version") ?: "?", s(p, "profile") ?: "?",
+                        n(p, "devices_status") ?: 0, objs(p, "devices").map { d ->
+                            Device(s(d, "name") ?: "?", s(d, "vendor") ?: "?", s(d, "version") ?: "?", s(d, "driver") ?: "?",
+                                s(d, "c_version") ?: "?", s(d, "extensions") ?: "", s(d, "type") ?: "?", b(d, "available"),
+                                b(d, "image_support"), b(d, "little_endian"), n(d, "global_memory") ?: 0, n(d, "max_alloc") ?: 0)
+                        })
+                })
+        }
+    }
+}

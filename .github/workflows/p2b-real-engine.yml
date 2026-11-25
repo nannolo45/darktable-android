@@ -274,6 +274,16 @@ jobs:
                 | grep -vxE 'android\.permission\.(INTERNET|ACCESS_NETWORK_STATE|RECEIVE_BOOT_COMPLETED)|app\.dtandroid\.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION' || true)
               if [ -n "$extra" ]; then echo "unexpected permissions: $extra"; exit 1; fi
               if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
+              # brief P4d: Android 12+ lets the app open the vendor's OpenCL library only when the merged manifest declares it
+              # inside <application>; targetSdk is printed with it
+              echo "  native libraries (merged manifest):"
+              "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump xmltree --file AndroidManifest.xml "$a" > /tmp/manifest-tree.txt
+              grep -E "targetSdkVersion|minSdkVersion" /tmp/manifest-tree.txt | sed 's/^ */    /'
+              awk '/E: application /{app=1; ind=index($0,"E:")} app && /E: uses-native-library /{print; getline; print; getline; print}' /tmp/manifest-tree.txt | sed 's/^ */    /'
+              for n in libOpenCL.so libOpenCL_adreno.so; do
+                awk -v n="$n" '/E: application /{app=1} app && /E: uses-native-library /{u=1; next} u && index($0, "\"" n "\""){f=1} /E: /{u=0} END{exit !f}' /tmp/manifest-tree.txt \
+                  || { echo "uses-native-library $n missing inside <application>"; exit 1; }
+              done
               echo "  signature:"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$a" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/    /'
             done
             t=/home/runner/apk/app-engine-x86_64-androidTest.apk

@@ -409,10 +409,11 @@ fun ProcessingPage(vm: AppViewModel, appVersion: String, onCopy: (String) -> Uni
     val ui by Processing.ui.collectAsState()
     app.dtandroid.darkroom.ui.ProcessingScreen(
         ui,
-        onGpu = { Processing.setGpu(it, vm.controller) },
+        onGpu = { Processing.setGpu(it, vm.controller, appVersion) },
         onMemory = { Processing.setMemory(it) },
         onMeasure = { Processing.measure(vm.controller, appVersion) },
         onCopy = { ui.speedText?.let(onCopy) },
         onBack = { vm.show(Screen.LIBRARY) },
+        onCopyGpu = { ui.gpuDetails?.let(onCopy) },
     )
 }

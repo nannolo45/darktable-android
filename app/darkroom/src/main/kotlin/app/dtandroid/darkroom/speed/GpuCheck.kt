@@ -18,7 +18,11 @@ import kotlin.math.log10
  * ([PSNR_MIN_DB]). Any other outcome switches OpenCL off again and says why. Runs on an engine with no photo open; leaves
  * none open.
  */
-class GpuCheck(private val engine: DarktableEngine, private val testRaw: String) {
+class GpuCheck(private val engine: DarktableEngine, private val testRaw: String, private val libraries: OpenClLibraries? = null) {
+    /** Brief P4d: what the app's own library loading found (null: not run, OpenCL was already started) */
+    var probe: OpenClLibraries.Probe? = null
+        private set
+
     sealed interface Result {
         val text: String
         /** OpenCL stays on. */
@@ -31,9 +35,20 @@ class GpuCheck(private val engine: DarktableEngine, private val testRaw: String)
         var keep = false
         try {
             progress("starting the GPU (the first time darktable prepares its GPU programs, which can take a few minutes)")
+            // brief P4d: libraries the app itself can load go first, before darktable's start
+            if (libraries != null && !engine.openclInfo().started) {
+                val p = libraries.probe()
+                probe = p
+                runCatching { engine.openclLibraries(p.preferred) }.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            }
             val started = try { engine.openclSet(true) } catch (e: EngineException) { return Result.Off("the GPU cannot be used: ${e.detail}") }
             val device = started.usableDevices.firstOrNull()
-            if (!started.running || device == null) return Result.Off(noDevice(started))
+            if (!started.running || device == null) {
+                // brief P4d: the engine's diagnostics say why, when it has them
+                val d = runCatching { engine.openclDiagnostics() }.getOrNull()
+                val why = if (d != null && d.started && started.library != null && started.devices.isEmpty()) GpuDetails.reason(d, started) else null
+                return Result.Off(why ?: noDevice(started))
+            }
 
             progress("test render on the CPU")
             engine.openclSet(false)

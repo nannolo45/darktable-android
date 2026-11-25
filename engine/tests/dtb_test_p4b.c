@@ -41,7 +41,7 @@ static const char *p4b_options(const char *cmd, const char *workdir)
   if(!strcmp(cmd, "resources1"))
     return "{\"resource_level\": \"default\", \"resource_values\": \"384 8 32 700\","
            " \"pipe_cache_fraction\": [8, 32], \"inputs_kept\": 1}";
-  if(!strcmp(cmd, "opencl")) return g_strdup_printf("{\"opencl\": true, \"opencl_kernel_dir\": \"%s/kernels\"}", workdir);
+  if(!strcmp(cmd, "opencl") || !strcmp(cmd, "opencl_lib")) return g_strdup_printf("{\"opencl\": true, \"opencl_kernel_dir\": \"%s/kernels\"}", workdir);
   return NULL;
 }
 

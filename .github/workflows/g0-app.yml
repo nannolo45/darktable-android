@@ -181,7 +181,7 @@ jobs:
           cp /home/runner/bridge-tests/summary.txt "$L/bridge-tests-summary.txt" 2>/dev/null || true
           cp /home/runner/bridge-tests/comparisons.txt "$L/bridge-tests-comparisons.txt" 2>/dev/null || true
           # brief P4b: C35 and C36 numbers, the OpenCL set-up of the runner
-          cp /home/runner/bridge-tests/p4b_*.txt /tmp/clinfo.txt /tmp/pocl-install.log "$L/" 2>/dev/null || true
+          cp /home/runner/bridge-tests/p4b_*.txt /home/runner/bridge-tests/p4d_*.txt /home/runner/bridge-tests/C37.log /tmp/clinfo.txt /tmp/pocl-install.log "$L/" 2>/dev/null || true
           for c in cr2 raf arw; do
             mkdir -p "$L/$c"; cp /home/runner/bridge-tests/$c/*.log "$L/$c/" 2>/dev/null || true
           done
