@@ -1,0 +1,82 @@
+cache hit: 
+
+Running kernel seems to be up-to-date.
+
+Restarting services...
+ systemctl restart packagekit.service php8.3-fpm.service
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+[28/38] copying darktable's picker callbacks for test C25
+[29/38] Linking C executable tests/dtb_p3jref
+[30/38] Building C object tests/CMakeFiles/dtb_pickref.dir/pickref_temperature.c.o
+[31/38] Building C object tests/CMakeFiles/dtb_pickref.dir/dtb_pickref.c.o
+[32/38] Building C object tests/CMakeFiles/dtb_pickref.dir/pickref_exposure.c.o
+[33/38] Building C object tests/CMakeFiles/dtb_pickref.dir/pickref_rgblevels.c.o
+[34/38] Building C object tests/CMakeFiles/dtb_pickref.dir/pickref_rgbcurve.c.o
+[35/38] Building C object tests/CMakeFiles/dtb_pickref.dir/pickref_channelmixerrgb.c.o
+[36/38] Linking C executable tests/dtb_pickref
+[37/38] Building C object tests/CMakeFiles/dtb_test.dir/dtb_test.c.o
+In file included from /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test.c:3220:
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c: In function ‘p3n_recover’:
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:138:69: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  138 |           what, r, v, h, p3n_num(st, "shear"), rot, sv, sh, h0, h1, JSON_NODE_HOLDS_NULL(msg) ? "" : ", message: ",
+      |                                                                     ^~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/json-glib-1.0/json-glib/json-glib.h:29,
+                 from /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test.c:65:
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:139:11: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  139 |           JSON_NODE_HOLDS_NULL(msg) ? "" : json_object_get_string_member(p3n_o(st), "message"));
+      |           ^~~~~~~~~~~~~~~~~~~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c: In function ‘cmd_perspective’:
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:369:53: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  369 |   fprintf(stdout, "RESULT fit without lines: %s\n", JSON_NODE_HOLDS_NULL(msg) ? "(no message)" : json_node_get_string(msg));
+      |                                                     ^~~~~~~~~~~~~~~~~~~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:369:119: warning: passing argument 1 of ‘json_node_get_string’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  369 |   fprintf(stdout, "RESULT fit without lines: %s\n", JSON_NODE_HOLDS_NULL(msg) ? "(no message)" : json_node_get_string(msg));
+      |                                                                                                                       ^~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:248:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  248 | const gchar *         json_node_get_string      (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:370:3: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  370 |   CHECK(!JSON_NODE_HOLDS_NULL(msg) && p3n_num(st, "rotation") == 0.0, "no lines: desktop's message, no change");
+      |   ^~~~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:388:11: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  388 |           JSON_NODE_HOLDS_NULL(msg) ? "" : " (message)");
+      |           ^~~~~~~~~~~~~~~~~~~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+/home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p3n.c:389:3: warning: passing argument 1 of ‘json_node_get_node_type’ discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+  389 |   CHECK(JSON_NODE_HOLDS_NULL(msg), "the fit on the lines found succeeds");
+      |   ^~~~~
+/usr/include/json-glib-1.0/json-glib/json-types.h:207:64: note: expected ‘JsonNode *’ but argument is of type ‘const JsonNode *’
+  207 | JsonNodeType          json_node_get_node_type   (JsonNode     *node);
+      |                                                  ~~~~~~~~~~~~~~^~~~
+[38/38] Linking C executable tests/dtb_test
+-rwxr-xr-x 1 runner runner 577104 Nov 25 18:51 /home/runner/dt-linux/bridge-build/libdtbridge.so
+-rwxr-xr-x 1 runner runner 467976 Nov 25 18:51 /home/runner/dt-linux/bridge-build/tests/dtb_test
