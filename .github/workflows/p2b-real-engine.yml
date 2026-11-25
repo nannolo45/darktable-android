@@ -267,6 +267,16 @@ jobs:
               "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$a" | grep -E "^package:|^application-label:|native-code" || true
               unzip -l "$a" | awk '$4 ~ /^(lib\/|assets\/engine\/)/ {print "  " $1 "\t" $4}'
               if unzip -l "$a" | grep -iE '\.(cr2|cr3|nef|arw|raf|dng|orf|rw2|pef|srw|jks|keystore)$'; then echo "FORBIDDEN FILE IN APK"; exit 1; fi
+              # brief P4d: Android 12+ lets the app open the vendor's OpenCL library only when the merged manifest declares it
+              # inside <application>; targetSdk is printed with it
+              echo "  native libraries (merged manifest):"
+              "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump xmltree --file AndroidManifest.xml "$a" > /tmp/manifest-tree.txt
+              grep -E "targetSdkVersion|minSdkVersion" /tmp/manifest-tree.txt | sed 's/^ */    /'
+              awk '/E: application /{app=1; ind=index($0,"E:")} app && /E: uses-native-library /{print; getline; print; getline; print}' /tmp/manifest-tree.txt | sed 's/^ */    /'
+              for n in libOpenCL.so libOpenCL_adreno.so; do
+                awk -v n="$n" '/E: application /{app=1} app && /E: uses-native-library /{u=1; next} u && index($0, "\"" n "\""){f=1} /E: /{u=0} END{exit !f}' /tmp/manifest-tree.txt \
+                  || { echo "uses-native-library $n missing inside <application>"; exit 1; }
+              done
               echo "  permissions:"; "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/    /'
               # brief P2e: the product, with network access for LightPhotoLibrary and nothing else
               "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$a" | grep -q "^package: name='app.dtandroid' " || { echo "application id is not app.dtandroid"; exit 1; }
@@ -280,6 +290,8 @@ jobs:
             echo; echo "== instrumented test APK"; "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$t" | grep -E "Signer #1 certificate (DN|SHA-256)" | sed 's/^/    /'
             cat /tmp/signing.txt 2>/dev/null
           } | tee "$R"
+          # brief P4d: the block above runs in a pipe, so its "exit 1" does not stop the step; this check does
+          if grep -q "missing inside <application>" "$R"; then exit 1; fi
 
       - name: Publish the phone APK as a release file
         if: steps.tests.outputs.rc == '0'

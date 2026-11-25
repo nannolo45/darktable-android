@@ -439,9 +439,21 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     parity C37 p4c_focus
   fi
   # brief P4c: module picks carry the working profile and rgb curve's picker_scale values
+  if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
   # brief P4c: diffuse's built-in presets by their stored names
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
-  if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
+  # brief P4d: the app's library choice is honoured (the runner's OpenCL library by absolute path); one camera
+  if want C4d && [ "$C" = cr2 ]; then
+    t37=$(date +%s)
+    ocl=$(ldconfig -p 2>/dev/null | awk '/libOpenCL\.so\.1 .*x86-64/ {print $NF; exit}')
+    if DTB_TEST_OCL_LIB="$ocl" DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl_lib "$RAW" "$XMP" "$D" > "$D/C4d.log" 2>&1 \
+       && grep -q "^\[opencl_init\] FINALLY" "$D/C4d.log"; then
+      pass C4d "$C" "OpenCL library from the app ($ocl after a missing path): tried in order, handed to darktable, opened, device found, log caught and still on stdout: $(grep '^RESULT' "$D/C4d.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t37 )) s)"
+    else
+      fail C4d "$C" "OpenCL library from the app ($ocl): $(grep '^FAIL' "$D/C4d.log" | head -5 | tr '\n' ';')$(grep -q '^\[opencl_init\] FINALLY' "$D/C4d.log" || echo ' darktable log not on stdout;') see $D/C4d.log"
+    fi
+    cp -f "$D/p4d_opencl.txt" "$D/C4d.log" "$OUT/" 2>/dev/null || true
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

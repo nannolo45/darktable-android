@@ -27,6 +27,8 @@ data class ProcessingUi(
     val gpu: Boolean = false,
     val gpuBusy: String? = null,
     val gpuNote: String? = null,
+    /** brief P4d: what "copy GPU details" copies (library tries, platforms, darktable's OpenCL log); null = none yet */
+    val gpuDetails: String? = null,
     val memory: ProcessingResources.Choice = ProcessingResources.Choice.NORMAL,
     /** the memory plan in force (from the engine's start) */
     val memoryNow: String? = null,
@@ -46,6 +48,7 @@ fun ProcessingScreen(
     onMeasure: () -> Unit,
     onCopy: () -> Unit,
     onBack: () -> Unit,
+    onCopyGpu: () -> Unit = {},
 ) {
     val c = DtTheme.colors
     Column(Modifier.fillMaxSize().background(c.bg)) {
@@ -70,6 +73,9 @@ fun ProcessingScreen(
                 "is done on the CPU and the crash log says so.")
             ui.gpuBusy?.let { Line("$it…", Modifier.semantics { contentDescription = "gpu busy" }) }
             ui.gpuNote?.let { Line(it, Modifier.semantics { contentDescription = "gpu note" }) }
+            Row(Modifier.padding(horizontal = DtTheme.space.panel)) {
+                DtTextButton("copy GPU details", onCopyGpu, enabled = ui.gpuDetails != null && !ui.busy)
+            }
 
             Heading("processing memory")
             Row(Modifier.padding(horizontal = DtTheme.space.panel), horizontalArrangement = Arrangement.spacedBy(DtTheme.space.s)) {

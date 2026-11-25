@@ -523,6 +523,7 @@ static jstring _json_status(JNIEnv *env, int code, char *s, jintArray status)
 #define DTJ_MEMORY_INFO 5
 #define DTJ_RESOURCES_INFO 6
 #define DTJ_OPENCL_INFO 7
+#define DTJ_OPENCL_DIAGNOSTICS 8
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint what, jintArray status)
@@ -539,6 +540,7 @@ Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint wha
     case DTJ_MEMORY_INFO: r = dtb_memory_info(&s); break;
     case DTJ_RESOURCES_INFO: r = dtb_resources_info(&s); break;
     case DTJ_OPENCL_INFO: r = dtb_opencl_info(&s); break;
+    case DTJ_OPENCL_DIAGNOSTICS: r = dtb_opencl_diagnostics(&s); break;
     default: r = DTB_E_ARG; break;
   }
   return _json_status(env, r, s, status);
@@ -551,6 +553,16 @@ Java_app_dtandroid_engine_NativeBridge_openclSet(JNIEnv *env, jclass cls, jboole
   char *s = NULL;
   const int r = dtb_opencl_set(enabled ? 1 : 0, &s);
   return _json_status(env, r, s, status);
+}
+
+/* brief P4d: OpenCL libraries to try first (dtb_opencl_library) */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_openclLibrary(JNIEnv *env, jclass cls, jstring names)
+{
+  jstr_t n = _str(env, names);
+  const int r = dtb_opencl_library(n.s);
+  _str_free(&n);
+  return r;
 }
 
 /* brief P4a: give memory back (engine-api.md 10); the memory_info afterwards */

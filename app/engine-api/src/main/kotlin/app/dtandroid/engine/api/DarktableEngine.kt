@@ -150,6 +150,15 @@ interface DarktableEngine {
      */
     suspend fun openclSet(enabled: Boolean): OpenClInfo = throw EngineException(EngineError.STATE, "this engine has no OpenCL")
 
+    /**
+     * Brief P4d (`dtb_opencl_library`): OpenCL libraries to try first at the first [openclSet] (true), before the
+     * engine's own list. Throws [EngineException] (STATE) once OpenCL was started. Engines without OpenCL ignore it.
+     */
+    suspend fun openclLibraries(names: List<String>) {}
+
+    /** Brief P4d (`dtb_opencl_diagnostics`): which library was tried and loaded, darktable's OpenCL log, the platforms. */
+    suspend fun openclDiagnostics(): OpenClDiagnostics = OpenClDiagnostics.NONE
+
     // 2.8 output
 
     /** Refused for a read-only session and when an existing file at [path] fails the guard. Atomic. */

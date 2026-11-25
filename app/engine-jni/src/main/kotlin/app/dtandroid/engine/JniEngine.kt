@@ -7,6 +7,7 @@ import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineMemory
 import app.dtandroid.engine.api.EngineResources
 import app.dtandroid.engine.api.EngineStartOptions
+import app.dtandroid.engine.api.OpenClDiagnostics
 import app.dtandroid.engine.api.OpenClInfo
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
@@ -400,6 +401,14 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun resourcesInfo(): EngineResources = onEngine { EngineResources.fromJson(get(NativeBridge.JSON_RESOURCES_INFO)) }
 
     override suspend fun openclInfo(): OpenClInfo = onEngine { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }
+
+    // brief P4d
+    override suspend fun openclLibraries(names: List<String>) = onEngine {
+        requireInit()
+        check(NativeBridge.openclLibrary(names.joinToString(":").ifEmpty { null }))
+    }
+
+    override suspend fun openclDiagnostics(): OpenClDiagnostics = onEngine { OpenClDiagnostics.fromJson(get(NativeBridge.JSON_OPENCL_DIAGNOSTICS)) }
 
     override suspend fun openclSet(enabled: Boolean): OpenClInfo = onEngine {
         requireInit()
