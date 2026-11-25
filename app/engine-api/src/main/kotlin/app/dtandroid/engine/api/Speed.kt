@@ -25,6 +25,8 @@ data class EngineStartOptions(
     val resourceValues: String? = null,
     val pipeCacheFraction: Pair<Int, Int> = 0 to 0,
     val inputsKept: Int = 0,
+    /** where darktable keeps its compiled OpenCL kernels; null = under its cache folder */
+    val openclKernelDir: String? = null,
 ) {
     fun toJson(): String = buildJsonObject {
         put("opencl", opencl)
@@ -32,6 +34,7 @@ data class EngineStartOptions(
         resourceValues?.let { put("resource_values", it) }
         if (pipeCacheFraction != (0 to 0)) putJsonArray("pipe_cache_fraction") { add(JsonPrimitive(pipeCacheFraction.first)); add(JsonPrimitive(pipeCacheFraction.second)) }
         if (inputsKept > 0) put("inputs_kept", inputsKept)
+        openclKernelDir?.let { put("opencl_kernel_dir", it) }
     }.toString()
 
     companion object { val DEFAULT = EngineStartOptions() }

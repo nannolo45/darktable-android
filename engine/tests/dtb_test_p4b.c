@@ -33,7 +33,7 @@ static const char *p4b_bad_options[] = {
 };
 
 /* the options main() gives dtb_init_ex for a P4b command, NULL for others */
-static const char *p4b_options(const char *cmd)
+static const char *p4b_options(const char *cmd, const char *workdir)
 {
   if(!strcmp(cmd, "resources"))
     return "{\"opencl\": false, \"resource_level\": \"default\", \"resource_values\": \"384 8 32 700\","
@@ -41,7 +41,7 @@ static const char *p4b_options(const char *cmd)
   if(!strcmp(cmd, "resources1"))
     return "{\"resource_level\": \"default\", \"resource_values\": \"384 8 32 700\","
            " \"pipe_cache_fraction\": [8, 32], \"inputs_kept\": 1}";
-  if(!strcmp(cmd, "opencl")) return "{\"opencl\": true}";
+  if(!strcmp(cmd, "opencl")) return g_strdup_printf("{\"opencl\": true, \"opencl_kernel_dir\": \"%s/kernels\"}", workdir);
   return NULL;
 }
 
@@ -295,6 +295,25 @@ static int cmd_opencl(const char *raw, const char *xmp, const char *outdir)
     fprintf(stdout, "RESULT opencl last %s psnr %.2f maxdiff %d cpu_s %.3f gpu_s %.3f\n", last, psnr, maxdiff, cpu_s, gpu_s);
     // the app's threshold (GpuCheck.PSNR_MIN_DB)
     CHECK(strcmp(last, "gpu") != 0 || psnr >= 40.0, "OpenCL picture agrees with the CPU's (PSNR %.2f >= 40)", psnr);
+    // the compiled kernels are in the folder the options named, not under the cache folder
+    const char *kd = json_object_get_string_member(o, "kernel_dir");
+    GDir *dir = kd ? g_dir_open(kd, 0, NULL) : NULL;
+    const char *entry = dir ? g_dir_read_name(dir) : NULL;
+    CHECK(entry && g_str_has_prefix(entry, "cached_v"), "compiled kernels in %s (found %s)", kd ? kd : "null", entry ? entry : "nothing");
+    fprintf(stdout, "RESULT kernels %s/%s\n", kd ? kd : "null", entry ? entry : "-");
+    if(dir) g_dir_close(dir);
+    // an export counts as a render too (GPU or fallback)
+    const gint64 renders0 = json_object_get_int_member(o, "renders");
+    char ex[4096];
+    snprintf(ex, sizeof(ex), "%s/p4b_export.jpg", outdir);
+    MUST(dtb_export(ex, "{\"max_width\": 512, \"max_height\": 512}"));
+    char *s2 = NULL;
+    MUST(dtb_opencl_info(&s2));
+    JsonNode *n2;
+    JsonObject *o2 = p4b_obj(s2, &n2);
+    CHECK(json_object_get_int_member(o2, "renders") == renders0 + 1, "the export is counted");
+    fprintf(stdout, "RESULT export_ran %s\n", json_object_get_string_member(o2, "last_render"));
+    json_node_unref(n2);
   }
   json_node_unref(n);
   // and off again: the CPU, the same picture as the first

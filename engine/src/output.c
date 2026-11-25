@@ -356,10 +356,12 @@ int dtb_export_ex(const char *path, const char *options_json, dtb_export_progres
   wrapped.write_image = (void *)_ex_write;
   g_atomic_int_set(&g_ex_cancel, 0);  // a cancel concerns an export in flight only
   _ex_emit(DTB_EXPORT_PREPARING, 0.0);
+  dtb__speed_render_begin();  // brief P4b: exports count as renders (GPU, fallback)
   const gboolean failed = dt_imageio_export(dtb_S.imgid, tmp, &wrapped, fdata,
                                             hq, upscale, FALSE, 1.0, TRUE, FALSE,
                                             icc, NULL, DT_INTENT_LAST,
                                             NULL, NULL, 1, 1, &metadata);
+  dtb__speed_render_end();
   format->free_params(format, fdata);
   const gboolean cancelled = g_atomic_int_get(&g_ex_cancel) != 0;
   g_ex.active = FALSE;

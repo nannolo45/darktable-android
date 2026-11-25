@@ -138,7 +138,7 @@ class JniEngine private constructor() : DarktableEngine {
     }
 
     /**
-     * Brief P4b: called on the engine thread after a render during which darktable reported an OpenCL error (it then
+     * Brief P4b: called on the engine thread after a render or an export during which darktable reported an OpenCL error (it then
      * finished that render on the CPU), or once when darktable stopped OpenCL for the session after repeated errors.
      */
     @Volatile var onOpenClTrouble: ((OpenClInfo) -> Unit)? = null
@@ -419,7 +419,7 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun export(path: String, options: ExportOptions) = onEngine {
         requireInit()
-        check(NativeBridge.exportWith(path, options.toJson().toString()))
+        try { check(NativeBridge.exportWith(path, options.toJson().toString())) } finally { watchGpu() }
     }
 
     /** P3g (engine-api.md section 7): the listener runs on the engine thread, inside the export. */
@@ -429,7 +429,7 @@ class JniEngine private constructor() : DarktableEngine {
         val listener = ExportListener { step, module, modules, fraction ->
             onProgress(ExportProgress(steps[step.coerceIn(0, steps.size - 1)], module, modules, fraction))
         }
-        check(NativeBridge.exportProgress(path, options.toJson().toString(), listener))
+        try { check(NativeBridge.exportProgress(path, options.toJson().toString(), listener)) } finally { watchGpu() }
     }
 
     /** P3g: dtb_export_cancel is an atomic flag in the bridge, safe from any thread at any time once the engine is up. */

@@ -79,7 +79,9 @@ object Processing {
         plan = p
         android.util.Log.i("dt-android", "processing: ${p.describe()} (total memory ${totalMem / 1048576} MB)")
         refresh()
-        return p.options
+        // darktable's compiled OpenCL kernels outside the cache folder: Android may clear that, and building them
+        // again takes minutes (reviewer, P4b); not backed up (they belong to this phone's driver)
+        return p.options.copy(openclKernelDir = File(app.noBackupFilesDir, "opencl-kernels").path)
     }
 
     /** After dtb_init_ex: watch OpenCL errors; start the GPU when the setting is on (its check passed earlier). */
@@ -98,7 +100,7 @@ object Processing {
     private fun trouble(i: OpenClInfo) {
         val text = if (i.stopped) "darktable stopped using the GPU for this session after repeated OpenCL errors (${i.errorCount}); " +
             "renders run on the CPU. The GPU setting was switched off."
-        else "an OpenCL error during a render: darktable finished that render on the CPU (GPU errors so far ${i.errorCount})"
+        else "an OpenCL error during a render or an export: darktable finished it on the CPU (GPU errors so far ${i.errorCount})"
         AppHost.crashLog.append(CrashLog.KIND_OPENCL, text)
         if (i.stopped) { settings.update { it.copy(gpu = false, gpuNote = text) }; refresh() }
     }

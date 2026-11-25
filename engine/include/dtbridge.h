@@ -385,6 +385,8 @@ int dtb_memory_trim(int level, char **json);
  *   "pipe_cache_fraction": [full, preview]  the bridge's two pipelines may
  *                          cache (available memory / n) bytes of
  *                          intermediate buffers; 0 = darktable's 8 for both
+ *   "opencl_kernel_dir": s where darktable keeps its compiled OpenCL kernels
+ *                          (default: under the cache folder)
  *   "inputs_kept": n       decoded inputs (DT_MIPMAP_FULL and DT_MIPMAP_F) the
  *                          image cache keeps, the open image's included;
  *                          0 = darktable's (worker threads + 1)
@@ -412,7 +414,7 @@ int dtb_resources_info(char **json);
  * "platform", "version", "memory": bytes, "unified": bool, "disabled": bool } ],
  * "renders": n, "renders_gpu": n, "renders_fallback": n,
  * "last_render": "none" | "cpu" | "gpu" | "fallback" }
- * A render counts as "gpu" when OpenCL was running when it started and
+ * Exports count as renders too. A render counts as "gpu" when OpenCL was running when it started and
  * darktable reported no OpenCL error during it; "fallback" when darktable
  * reported one (it then ran the pipe again on the CPU, develop/pixelpipe_hb.c
  * dt_dev_pixelpipe_process). */

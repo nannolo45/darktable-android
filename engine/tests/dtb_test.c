@@ -3245,7 +3245,7 @@ int main(int argc, char **argv)
   else
   {
     // brief P4b: the start-up options of its commands
-    g_init_options = p4b_options(cmd);
+    g_init_options = p4b_options(cmd, argv[1]);
     if(!strcmp(cmd, "resources")) g_init_bad_options = p4b_bad_options;
     engine_start(argv[1]);
   }

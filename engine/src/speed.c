@@ -44,6 +44,7 @@ typedef struct dtb_speed_t
   gboolean opencl_allowed;
   gboolean opencl_started;
   gchar *opencl_library;
+  gchar *kernel_dir;      // where darktable keeps compiled kernels; NULL = its cache folder
   int pipe_fraction[2];   // full, preview; 0 = darktable's
   int inputs_kept;        // 0 = darktable's
   gint64 renders, renders_gpu, renders_fallback;
@@ -58,6 +59,7 @@ static dtb_speed_t g_speed = { .last_render = "none" };
 void dtb__speed_reset(void)
 {
   g_free(g_speed.opencl_library);
+  g_free(g_speed.kernel_dir);
   memset(&g_speed, 0, sizeof(g_speed));
   g_speed.last_render = "none";
 }
@@ -103,6 +105,11 @@ static int _parse(const char *json, gchar **argv, int *argc, const int max_argc)
           if(f < 0 || f > 1024) r = dtb__err(DTB_E_RANGE, "pipe_cache_fraction must be 0 to 1024");
           else g_speed.pipe_fraction[i] = (int)f;
         }
+    }
+    else if(!strcmp(k, "opencl_kernel_dir"))
+    {
+      if(json_node_get_value_type(v) != G_TYPE_STRING) r = dtb__err(DTB_E_TYPE, "opencl_kernel_dir is a string");
+      else g_speed.kernel_dir = g_strdup(json_node_get_string(v));
     }
     else if(!strcmp(k, "inputs_kept"))
     {
@@ -319,6 +326,7 @@ static char *_cl_info(void)
   _int(b, "renders_gpu", g_speed.renders_gpu);
   _int(b, "renders_fallback", g_speed.renders_fallback);
   _str(b, "last_render", g_speed.last_render);
+  _str(b, "kernel_dir", g_speed.kernel_dir);
   json_builder_end_object(b);
   return dtb__json_finish(b);
 }
@@ -377,7 +385,23 @@ int dtb_opencl_set(const int enabled, char **json)
     dt_conf_set_bool("clplatform_other", TRUE);
     _choose_library();
     const double t0 = dtb__t();
+    // darktable puts its compiled kernels under its cache folder
+    // (common/opencl.c _opencl_init_device: dt_loc_get_user_cache_dir), only
+    // while dt_opencl_init runs; the app wants them where Android does not
+    // clear them, so the cache folder points there for that call only
+    gchar *saved = NULL;
+    if(g_speed.kernel_dir)
+    {
+      g_mkdir_with_parents(g_speed.kernel_dir, 0700);
+      saved = darktable.cachedir;
+      darktable.cachedir = g_strdup(g_speed.kernel_dir);
+    }
     dt_opencl_init(darktable.opencl, DT_OPENCL_OPTION_NONE, FALSE);
+    if(saved)
+    {
+      g_free(darktable.cachedir);
+      darktable.cachedir = saved;
+    }
     dtb__tlog("opencl.init", t0);
     // dt_opencl_init leaves "opencl" off when nothing usable was found
   }
