@@ -59,6 +59,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import app.dtandroid.darkroom.robust.CrashLog
 import java.util.Locale
 
 /**
@@ -76,6 +77,12 @@ object AppHost {
         app = a
         // installed over the old interface preview (same id until P2e): its sample series is of no use here
         runCatching { File(a.filesDir, "preview-series").takeIf { it.isDirectory }?.deleteRecursively() }
+    }
+
+    /** brief P4a: the local crash log (Settings › About › crash log); nothing in it is sent anywhere */
+    val crashLog: CrashLog by lazy {
+        val v = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
+        CrashLog(File(app.filesDir, "logs/crash-log.jsonl"), v)
     }
 
     /** brief P3i: set by the activity: asks for the notification permission once */
@@ -143,6 +150,12 @@ object AppHost {
             c.exports.delivery = AppExportDelivery(app)
             // brief P3j: the paste mode (append / overwrite) is remembered between starts
             c.copyPaste.modeFile = File(app.filesDir, "settings/paste-mode.txt")
+            // brief P4a: engine (bridge) errors the darkroom shows go into the crash log as well
+            AppEngine.scope.launch {
+                c.state.map { it.message }.distinctUntilChanged().collect { m ->
+                    if (CrashLog.isBridgeMessage(m)) crashLog.append(CrashLog.KIND_BRIDGE, m!!)
+                }
+            }
             // brief P3i: while an export runs the process is kept alive by a foreground service (notification, cancel);
             // an export to LightPhotoLibrary also heartbeats while the app is in the background (step "exporting")
             AppEngine.scope.launch {

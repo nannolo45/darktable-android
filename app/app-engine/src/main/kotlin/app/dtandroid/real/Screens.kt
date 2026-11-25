@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import app.dtandroid.darkroom.SeriesItem
 import app.dtandroid.engine.api.PasteMode
 import androidx.compose.ui.Alignment
@@ -88,7 +90,7 @@ internal fun Paragraph(text: String, muted: Boolean = false) {
 
 /** First start: unpacking darktable's data (once), then starting the engine. */
 @Composable
-fun StartScreen(status: AppEngine.Status, onRetry: () -> Unit = {}) = Page {
+fun StartScreen(status: AppEngine.Status, onRetry: () -> Unit = {}, onCrashLog: () -> Unit = {}) = Page {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
         when (status) {
             is AppEngine.Status.Unpacking -> {
@@ -106,6 +108,8 @@ fun StartScreen(status: AppEngine.Status, onRetry: () -> Unit = {}) = Page {
                 // brief P2g: a failed start does not need the app to be killed
                 Row(Modifier.padding(horizontal = DtTheme.space.panel, vertical = DtTheme.space.s)) {
                     DtTextButton("try again", onRetry)
+                    // brief P4a: the crash log is reachable without a working engine
+                    DtTextButton("crash log", onCrashLog, Modifier.padding(start = DtTheme.space.s))
                 }
                 Paragraph("if it fails again, please send a screenshot of this page", muted = true)
             }
@@ -319,8 +323,10 @@ internal fun statusLine(vm: AppViewModel, r: PhotoRecord, p: Progress?, step: St
 fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: String) = Page {
     Column(Modifier.fillMaxSize()) {
         TopBar("about") {
-            DtTextButton("timings", { vm.openTimings() })
-            DtTextButton("back", { vm.show(Screen.LIBRARY) })
+            // brief P4a: the local crash log
+            DtTextButton("crash log", { vm.show(Screen.CRASH_LOG) }, compact = true)
+            DtTextButton("timings", { vm.openTimings() }, compact = true)
+            DtTextButton("back", { vm.show(Screen.LIBRARY) }, compact = true)
         }
         Divider()
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -379,3 +385,17 @@ fun TimingsScreen(vm: AppViewModel, appVersion: String, onShare: (String) -> Uni
 private fun PhotoList.Row.chooseRow(choosing: Set<String>?, key: String?, set: (Set<String>) -> Unit): PhotoList.Row =
     if (choosing == null || key == null) this
     else copy(selected = key in choosing, onSelect = { set(if (key in choosing) choosing - key else choosing + key) }, actions = emptyList())
+
+/** Brief P4a: Settings › About › crash log, read from [AppHost.crashLog] each time the page opens or is cleared. */
+@Composable
+fun CrashLogPage(onCopy: (String) -> Unit, onBack: () -> Unit) = Page {
+    var tick by remember { mutableStateOf(0) }
+    var entries by remember { mutableStateOf(emptyList<app.dtandroid.darkroom.robust.CrashEntry>()) }
+    LaunchedEffect(tick) { entries = withContext(Dispatchers.IO) { AppHost.crashLog.entries() } }
+    app.dtandroid.darkroom.ui.CrashLogScreen(
+        entries,
+        onCopy = { onCopy(app.dtandroid.darkroom.robust.CrashLog.format(entries.asReversed())) },
+        onClear = { AppHost.crashLog.clear(); tick++ },
+        onBack = onBack,
+    )
+}
