@@ -80,7 +80,8 @@ data class EngineResources(
     val singlebufferMemory: Long = -1, val mipmapMemory: Long = -1, val pipeCacheFraction: List<Long> = emptyList(),
     val pipeCacheLimit: List<Long> = emptyList(), val inputsKept: Long = -1, val workerThreads: Long = -1,
     val pipeFullHits: Long = -1, val pipeFullTests: Long = -1, val pipePreviewHits: Long = -1, val pipePreviewTests: Long = -1,
-    val mipmapFullRequests: Long = -1, val mipmapFullMisses: Long = -1,
+    /** how many times the image cache decoded a RAW (full input) / made a downscaled input, since the start */
+    val mipmapFullDecodes: Long = -1, val mipmapFDecodes: Long = -1,
 ) {
     fun describe(): String {
         fun mb(v: Long) = if (v < 0) "?" else (v / 1048576).toString()
@@ -100,7 +101,7 @@ data class EngineResources(
             return EngineResources(s("level"), s("values"), n("total_memory"), n("available_memory"), n("singlebuffer_memory"),
                 n("mipmap_memory"), l("pipe_cache_fraction"), l("pipe_cache_limit"), n("inputs_kept"), n("worker_threads"),
                 n("pipe_full_hits"), n("pipe_full_tests"), n("pipe_preview_hits"), n("pipe_preview_tests"),
-                n("mipmap_full_requests"), n("mipmap_full_misses"))
+                n("mipmap_full_decodes"), n("mipmap_f_decodes"))
         }
     }
 }

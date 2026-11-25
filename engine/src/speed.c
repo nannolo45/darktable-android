@@ -261,8 +261,11 @@ int dtb_resources_info(char **json)
   _int(b, "pipe_full_tests", dtb_S.full.ready ? (gint64)dtb_S.full.pipe.cache.tests : 0);
   _int(b, "pipe_preview_hits", dtb_S.preview.ready ? (gint64)dtb_S.preview.pipe.cache.hits : 0);
   _int(b, "pipe_preview_tests", dtb_S.preview.ready ? (gint64)dtb_S.preview.pipe.cache.tests : 0);
-  _int(b, "mipmap_full_requests", m ? (gint64)m->mip_full.stats_requests : -1);
-  _int(b, "mipmap_full_misses", m ? (gint64)m->mip_full.stats_misses : -1);
+  // buffers generated (a RAW decoded, a downscaled input made) on blocking
+  // gets, the way the bridge's pipelines ask (dt_mipmap_cache_get_with_caller:
+  // stats_fetches; requests and misses are only counted for best-effort gets)
+  _int(b, "mipmap_full_decodes", m ? (gint64)m->mip_full.stats_fetches : -1);
+  _int(b, "mipmap_f_decodes", m ? (gint64)m->mip_f.stats_fetches : -1);
   json_builder_end_object(b);
   *json = dtb__json_finish(b);
   return *json ? DTB_OK : dtb__err(DTB_E_ENGINE, "could not write the resources");

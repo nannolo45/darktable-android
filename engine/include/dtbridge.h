@@ -400,7 +400,8 @@ int dtb_init_ex(const dtb_paths_t *paths, int threads, const char *options_json)
  *   "pipe_full_hits", "pipe_full_tests", "pipe_preview_hits",
  *   "pipe_preview_tests": darktable's pipeline cache counters since the pipe
  *   was made (dt_dev_pixelpipe_cache_t hits and tests),
- *   "mipmap_full_requests", "mipmap_full_misses": image cache counters } */
+ *   "mipmap_full_decodes", "mipmap_f_decodes": how many times the image
+ *   cache made a full or downscaled input (a RAW decoded) since the start } */
 int dtb_resources_info(char **json);
 
 /* OpenCL (opt-in, PLAN.md F8). { "built": bool (HAVE_OPENCL), "allowed":

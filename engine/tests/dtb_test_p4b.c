@@ -74,12 +74,12 @@ static uint8_t *p4b_preview(int *w, int *h)
   return p;
 }
 
-static gint64 p4b_misses(void)
+static gint64 p4b_decodes(void)
 {
   char *s = NULL;
   MUST(dtb_resources_info(&s));
   JsonNode *n;
-  const gint64 v = json_object_get_int_member(p4b_obj(s, &n), "mipmap_full_misses");
+  const gint64 v = json_object_get_int_member(p4b_obj(s, &n), "mipmap_full_decodes");
   json_node_unref(n);
   return v;
 }
@@ -186,27 +186,27 @@ static int cmd_resources_kept(const char *raw, const char *xmp, const char *outd
   MUST(dtb_close());
 
   // back to A
-  const gint64 misses0 = p4b_misses();
+  const gint64 misses0 = p4b_decodes();
   t0 = p4b_now();
   MUST(dtb_open(a, xmp));
   uint8_t *pa2 = p4b_preview(&w2, &h2);
   MUST(dtb_render_region(0, 0, rw, rh, 0.5f, region2));
   const double back_a = p4b_now() - t0;
-  const gint64 misses1 = p4b_misses();
+  const gint64 misses1 = p4b_decodes();
   MUST(dtb_resources_info(&s));
   g_string_append_printf(out, "back on photo A: %s\n", s);
   CHECK(w == w2 && h == h2 && !memcmp(pa, pa2, (size_t)w * h * 4), "preview of A equal after going back");
   CHECK(!memcmp(region, region2, (size_t)rw * rh * 4), "region of A equal after going back");
   if(kept >= 2)
-    CHECK(misses1 == misses0, "going back to A decodes nothing again with %d inputs kept (misses %" G_GINT64_FORMAT " -> %" G_GINT64_FORMAT ")", kept, misses0, misses1);
+    CHECK(misses1 == misses0, "going back to A decodes nothing again with %d inputs kept (decodes %" G_GINT64_FORMAT " -> %" G_GINT64_FORMAT ")", kept, misses0, misses1);
   else
-    CHECK(misses1 > misses0, "with 1 input kept, A is decoded again (misses %" G_GINT64_FORMAT " -> %" G_GINT64_FORMAT ")", misses0, misses1);
+    CHECK(misses1 > misses0, "with 1 input kept, A is decoded again (decodes %" G_GINT64_FORMAT " -> %" G_GINT64_FORMAT ")", misses0, misses1);
   MUST(dtb_close());
 
   g_string_append_printf(out, "inputs kept %d: photo A open + preview + region %.3f s; same preview again %.3f s; "
-                         "photo B open + preview %.3f s; back to A open + preview + region %.3f s; image cache misses on going back %" G_GINT64_FORMAT "\n",
+                         "photo B open + preview %.3f s; back to A open + preview + region %.3f s; RAW decodes on going back %" G_GINT64_FORMAT "\n",
                          kept, first_a, again_a, first_b, back_a, misses1 - misses0);
-  fprintf(stdout, "RESULT kept %d back_to_a_s %.3f first_a_s %.3f misses %" G_GINT64_FORMAT "\n", kept, back_a, first_a, misses1 - misses0);
+  fprintf(stdout, "RESULT kept %d back_to_a_s %.3f first_a_s %.3f decodes %" G_GINT64_FORMAT "\n", kept, back_a, first_a, misses1 - misses0);
   free(pa);
   free(pa2);
   free(region);

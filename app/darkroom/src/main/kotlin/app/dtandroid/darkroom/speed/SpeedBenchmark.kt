@@ -66,7 +66,7 @@ class SpeedBenchmark(
         runCatching { engine.close() }.exceptionOrNull()?.let { if (it is CancellationException) throw it }
         engine.cacheDrop()
         engine.open(testRaw, null)
-        if (edit == "heavy") heavy(notes)
+        if (edit == "heavy") heavy()
         val info = engine.imageInfo()
         val fit = min(FIT_W.toDouble() / info.width, FIT_H.toDouble() / info.height)
         val fs = engine.renderSize(fit)
@@ -88,12 +88,14 @@ class SpeedBenchmark(
         return Row(device, edit, view, first, runs, ranOn)
     }
 
-    /** The heavier edit: diffuse or sharpen's "lens deblur | medium" preset, local contrast, color calibration, sigmoid. */
-    private suspend fun heavy(notes: MutableList<String>) {
-        try { engine.presetApply("diffuse", 0, HEAVY_DIFFUSE_PRESET) } catch (e: EngineException) {
-            notes += "diffuse or sharpen: preset \"$HEAVY_DIFFUSE_PRESET\" not applied (${e.detail}); switched on with its defaults"
-            engine.setEnabled("diffuse", 0, true)
-        }
+    /**
+     * The heavier edit: diffuse or sharpen with the parameters of darktable's preset "lens deblur | medium" (iop/diffuse.c
+     * init_presets; set as parameters, so the edit is the same whatever presets the phone's database holds), local
+     * contrast, color calibration and sigmoid with their defaults.
+     */
+    private suspend fun heavy() {
+        engine.paramsSet("diffuse", 0, HEAVY_DIFFUSE)
+        engine.setEnabled("diffuse", 0, true)
         for (op in HEAVY.drop(1)) engine.setEnabled(op, 0, true)
         engine.historySeal()
     }
@@ -107,7 +109,7 @@ class SpeedBenchmark(
     private fun format(rows: List<Row>, notes: List<String>): String = buildString {
         append("dt-android speed (brief P4b): public test RAW mire1.cr2 (darktable-tests), measured on this device\n")
         for (h in header) append(h).append('\n')
-        append("fit = whole photo in $FIT_W x $FIT_H; 100% = $REGION x $REGION at 100 %; heavy = default + ${HEAVY.joinToString(" + ")}\n")
+        append("fit = whole photo in $FIT_W x $FIT_H; 100% = $REGION x $REGION at 100 %; heavy = default + ${HEAVY.joinToString(" + ")} (diffuse as its preset \"lens deblur | medium\")\n")
         append("times in ms: first render after opening (RAW decode included) | $RUNS renders after an exposure change | median\n")
         for (r in rows) {
             append(String.format(Locale.ROOT, "%-3s %-7s %-4s first %6d | %s | median %d", r.device, r.edit, r.view, r.firstMs,
@@ -115,7 +117,7 @@ class SpeedBenchmark(
             if (r.ranOn != r.device) append(" (ran: ${r.ranOn})")
             append('\n')
         }
-        for (n in notes) append("note: ").append(n).append('\n')
+        for (n in notes.distinct()) append("note: ").append(n).append('\n')
     }
 
     companion object {
@@ -126,7 +128,14 @@ class SpeedBenchmark(
         /** the 100 % region's side: the target phone's screen width */
         const val REGION = 1080
         const val EXPOSURE_STEP = 0.02
-        const val HEAVY_DIFFUSE_PRESET = "lens deblur | medium"
+        /** darktable's "lens deblur | medium" (iop/diffuse.c, init_presets) */
+        val HEAVY_DIFFUSE: Map<String, JsonPrimitive> = mapOf(
+            "iterations" to ParamValue.of(16), "radius_center" to ParamValue.of(0), "radius" to ParamValue.of(10),
+            "first" to ParamValue.of(-0.25), "second" to ParamValue.of(0.125), "third" to ParamValue.of(-0.5), "fourth" to ParamValue.of(0.25),
+            "anisotropy_first" to ParamValue.of(1.0), "anisotropy_second" to ParamValue.of(0.0), "anisotropy_third" to ParamValue.of(1.0),
+            "anisotropy_fourth" to ParamValue.of(0.0), "sharpness" to ParamValue.of(0.0), "regularization" to ParamValue.of(3.0),
+            "variance_threshold" to ParamValue.of(1.0), "threshold" to ParamValue.of(0.0),
+        )
         /** the heavier edit's modules, after the default edit (darktable's names: diffuse or sharpen, local contrast, color calibration, sigmoid) */
         val HEAVY = listOf("diffuse", "bilat", "channelmixerrgb", "sigmoid")
     }

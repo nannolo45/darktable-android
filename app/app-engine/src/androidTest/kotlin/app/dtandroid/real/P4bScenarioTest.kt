@@ -103,7 +103,7 @@ class P4bScenarioTest {
             e.renderPreview(1024)
             val firstB = ms(t0)
             e.close()
-            val m0 = e.resourcesInfo().mipmapFullMisses
+            val m0 = e.resourcesInfo().mipmapFullDecodes
             t0 = System.nanoTime()
             e.open(a.path, null)
             val pa2 = e.renderPreview(1024)
@@ -115,10 +115,10 @@ class P4bScenarioTest {
             TestFiles.record(res, "b_series", String.format(Locale.ROOT,
                 "decoded photos kept %d: photo A open + preview + region %d ms, same preview again %d ms, photo B open + preview %d ms, " +
                     "back to A open + preview + region %d ms, decodes on going back %d; %s; app PSS %.0f MB (x86_64 emulator)",
-                kept, firstA, againA, firstB, backA, r.mipmapFullMisses - m0, mem.describe(), pssMb()))
+                kept, firstA, againA, firstB, backA, r.mipmapFullDecodes - m0, mem.describe(), pssMb()))
             assertArrayEquals("the same preview after going back", pa.rgba, pa2.rgba)
             assertArrayEquals("the same region after going back", ra.rgba, ra2.rgba)
-            if (kept >= 2) assertEquals("going back to A decodes nothing again", m0, r.mipmapFullMisses)
+            if (kept >= 2) assertEquals("going back to A decodes nothing again", m0, r.mipmapFullDecodes)
         }
         a.delete(); b.delete()
     }

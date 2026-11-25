@@ -159,8 +159,7 @@ object Processing {
                     val info = e.engineInfo()
                     val r = SpeedBenchmark(e, raw, gpu, header + "threads: ${info.threads}").run { s -> _ui.update { it.copy(speedRunning = s) } }
                     val res = e.resourcesInfo()
-                    r.text + "engine: ${res.describe()}\n" + String.format(Locale.ROOT, "image cache: %d decodes for %d requests\n",
-                        res.mipmapFullMisses, res.mipmapFullRequests)
+                    r.text + "engine: ${res.describe()}\n" + String.format(Locale.ROOT, "RAW decodes since the app started: %d\n", res.mipmapFullDecodes)
                 }
             } catch (e: IOException) {
                 e.message ?: "the test photo could not be fetched"
