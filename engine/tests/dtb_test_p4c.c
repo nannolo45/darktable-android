@@ -31,6 +31,17 @@ static void p4c_point(const char *dir, double x, double y, double *ox, double *o
   json_node_unref(n);
 }
 
+/* image_info's width (the picture's processed size) */
+static long p4c_info_width(void)
+{
+  char *s = NULL;
+  MUST(dtb_image_info(&s));
+  JsonNode *n = jparse_owned(s);
+  const long w = (long)json_object_get_int_member(json_node_get_object(n), "width");
+  json_node_unref(n);
+  return w;
+}
+
 static uint8_t *p4c_preview(const char *opts, int *w, int *h)
 {
   uint8_t *px = NULL;
@@ -91,7 +102,7 @@ static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
   CHECK(history_count(&end) == h0, "begin adds no history item");
   int wf, hf;
   MUST(dtb_render_size(1.0f, &wf, &hf));
-  long info_w = info_int("width");
+  const long info_w = p4c_info_width();
   fprintf(stdout, "RESULT focused: %dx%d (image_info width %ld), cropped %dx%d\n", wf, hf, info_w, wc, hc);
   CHECK(wf > wc && hf > hc, "focused: the uncropped picture is larger");
   CHECK(info_w == wf, "image_info follows the focus");
@@ -127,7 +138,7 @@ static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
   // 3. a heal spot outside the crop, placed while focused: one item; the whole picture changes there
   const int hA = history_count(&end);
   MUST(dtb_retouch_add("retouch", 0, "{\"type\":\"circle\",\"geometry\":{\"center\":[0.1,0.1],\"radius\":0.03,\"border\":0.01},"
-                                     "\"source\":[0.16,0.12]}", &s));
+                                     "\"source\":[0.45,0.45]}", &s));
   JsonNode *idn = jparse_owned(s);
   const int id = (int)json_object_get_int_member(json_node_get_object(idn), "id");
   json_node_unref(idn);
