@@ -64,7 +64,12 @@ static int cmd_memory(const char *raw, const char *xmp, const char *outdir)
   EXPECT(dtb_memory_trim(3, NULL), DTB_E_ARG);
 
   MUST(dtb_open(raw, xmp));
-  MUST(dtb_param_set("exposure", 0, "exposure", "0.7"));
+  // a value the photo does not have yet (the default edit already has +0.7 EV on some cameras: undo must change something)
+  const double ev0 = param_num("exposure", 0, "exposure");
+  const double ev1 = ev0 + 0.5;
+  char evs[64];
+  snprintf(evs, sizeof(evs), "%.6f", ev1);
+  MUST(dtb_param_set("exposure", 0, "exposure", evs));
   int end0 = 0;
   const int h0 = history_count(&end0);
   int pw, ph;
@@ -104,7 +109,7 @@ static int cmd_memory(const char *raw, const char *xmp, const char *outdir)
   dtb_free(s);
   int end2 = 0;
   CHECK(history_count(&end2) == h0 && end2 == end0, "level 2 keeps the history");
-  CHECK(fabs(param_num("exposure", 0, "exposure") - 0.7) < 1e-6, "level 2 keeps the parameter");
+  CHECK(fabs(param_num("exposure", 0, "exposure") - ev1) < 1e-5, "level 2 keeps the parameter");
   int w2, h2;
   uint8_t *pv2 = p4a_preview(&w2, &h2);
   CHECK(w2 == pw && h2 == ph && !memcmp(pv0, pv2, (size_t)pw * ph * 4), "preview after level 2 equals the one before");
@@ -118,7 +123,8 @@ static int cmd_memory(const char *raw, const char *xmp, const char *outdir)
   // the undo step of the change is still there
   MUST(dtb_history_seal());
   MUST(dtb_undo());
-  CHECK(fabs(param_num("exposure", 0, "exposure") - 0.7) > 1e-3, "undo after the trims undoes the change");
+  CHECK(fabs(param_num("exposure", 0, "exposure") - ev0) < 1e-5, "undo after the trims undoes the change (%.4f, before the change %.4f)",
+        param_num("exposure", 0, "exposure"), ev0);
 
   dtb_free(pv0);
   free(rg0);
@@ -129,5 +135,5 @@ static int cmd_memory(const char *raw, const char *xmp, const char *outdir)
   dtb_free(s);
   fclose(f);
   fprintf(stdout, "RESULT memory numbers in %s\n", path);
-  return 0;
+  return g_fail;
 }
