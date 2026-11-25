@@ -1,0 +1,52 @@
+Subject: [PATCH] basic.cl: no [] subscripts on float4 in colorin_rgb
+
+Reason (brief P4e): `v[i]` on an OpenCL vector is a Clang extension, not OpenCL C.
+The Adreno OpenCL compiler (Adreno 650, compiler E031.37.12.07) refuses it with
+"Attempt to use subscript to obtain element of 'float4'", basic.cl fails to build
+and darktable drops the GPU at the first kernel file that fails.
+
+tools/check-vector-subscripts.py finds exactly three such places in all of
+data/kernels/*.cl at darktable 04477d32, all in colorin_rgb (basic.cl:1643, 1649).
+Fix: write the matrix product with .x/.y/.z (constant index) and copy the clamped
+vector into a private float[3] for the loop index. Each component is summed in the
+same order (i = 0, 1, 2) as before, so the result is the same; .w stays 0.
+
+Upstream: worth sending to darktable as is (see docs/experiments/P4e-adreno-kernels-REPORT.md).
+Applied by: .github/workflows/apk-only.yml onto share/darktable/kernels of the engine archive
+(patch -p3 from the kernel folder; from the darktable root use patch -p1 / git apply).
+---
+diff --git a/data/kernels/basic.cl b/data/kernels/basic.cl
+index 5653ec2..24be601 100644
+--- a/data/kernels/basic.cl
++++ b/data/kernels/basic.cl
+@@ -1638,15 +1638,25 @@ colorin_rgb (read_only image2d_t in, write_only image2d_t out, const int width,
+   }
+ 
+   // the first matrix maps directly to working RGB, or to the clipping gamut
++  // OpenCL C has no [] on vectors (a Clang extension some drivers refuse): use components
+   float4 linear = (float4)(0.0f);
+-  for(int j = 0; j < 3; j++)
+-    for(int i = 0; i < 3; i++) linear[j] += cmat[3*j+i] * cam[i];
++  for(int i = 0; i < 3; i++)
++  {
++    linear.x += cmat[i] * cam[i];
++    linear.y += cmat[3+i] * cam[i];
++    linear.z += cmat[6+i] * cam[i];
++  }
+   if(clipping)
+   {
+-    float4 clipped = clamp(linear, 0.0f, 1.0f);
++    const float4 c4 = clamp(linear, 0.0f, 1.0f);
++    const float clipped[3] = { c4.x, c4.y, c4.z };
+     linear = (float4)(0.0f);
+-    for(int j = 0; j < 3; j++)
+-      for(int i = 0; i < 3; i++) linear[j] += lmat[3*j+i] * clipped[i];
++    for(int i = 0; i < 3; i++)
++    {
++      linear.x += lmat[i] * clipped[i];
++      linear.y += lmat[3+i] * clipped[i];
++      linear.z += lmat[6+i] * clipped[i];
++    }
+   }
+   pixel = linear;
+   if(use_hsm)

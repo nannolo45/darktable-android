@@ -6,7 +6,7 @@ name: apk-only
 
 on:
   push:
-    branches: [strip-versions-picker]
+    branches: [strip-versions-picker, p4e-adreno-kernels]
   workflow_dispatch:
 
 permissions: {}
@@ -39,6 +39,18 @@ jobs:
           mkdir -p /home/runner/engines
           gh release download -R "$GITHUB_REPOSITORY" "$ENGINE_TAG" --pattern "engine-arm64-v8a.tar.gz" --dir /home/runner/engines
           tar -xzf /home/runner/engines/engine-arm64-v8a.tar.gz -C /home/runner/engines
+
+      - name: Apply patches/ to the OpenCL kernels of the engine archive
+        # brief P4e: the kernels ship as source (share/darktable/kernels) and are built on the phone,
+        # so kernel-only patches can go onto the unpacked archive without rebuilding the engine.
+        run: |
+          K=/home/runner/engines/engine-arm64-v8a/share/darktable/kernels
+          test -f "$K/basic.cl"
+          for p in patches/*.patch; do
+            [ -e "$p" ] || continue
+            echo "applying $p"
+            patch -p3 -d "$K" --forward --no-backup-if-mismatch < "$p"
+          done
 
       - name: Android SDK packages, Gradle and the signing key
         env:
