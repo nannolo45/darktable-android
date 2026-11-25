@@ -343,6 +343,31 @@ int dtb__pick(dt_iop_module_t *m, const float area[4], const gboolean denoise, c
       res->box[s][k] = pick.side[s].box[k];
     }
   }
+  // P4c: rgb curve's picker_scale on these numbers, with the pipe's working profile, by darktable's own functions
+  const dt_iop_order_iccprofile_info_t *wp = dt_ioppr_get_pipe_work_profile_info(&p->pipe);
+  if(wp)
+  {
+    res->work = TRUE;
+    res->work_type = (int)wp->type;
+    g_strlcpy(res->work_file, wp->filename, sizeof(res->work_file));
+    res->work_nonlinear = wp->nonlinearlut != 0;
+    for(int c = 0; c < 3; c++) res->work_y[c] = wp->matrix_in[1][c];
+    for(int s = 0; s < 2; s++)
+    {
+      res->work_have[s] = res->have[s] && res->cst[s] == IOP_CS_RGB;
+      if(!res->work_have[s]) continue;
+      const float *v[3] = { res->mean[s], res->min[s], res->max[s] };
+      for(int k = 0; k < 3; k++)
+      {
+        dt_aligned_pixel_t rgb = { v[k][0], v[k][1], v[k][2], 1.0f };
+        const float y = dt_ioppr_get_rgb_matrix_luminance(rgb, wp->matrix_in, (float **)wp->lut_in,
+                                                          wp->unbounded_coeffs_in, wp->lutsize, wp->nonlinearlut);
+        res->work_lum[s][k] = y;
+        res->work_grey_lum[s][k] = dt_ioppr_compensate_middle_grey(y, wp);
+        for(int c = 0; c < 3; c++) res->work_grey[s][k][c] = dt_ioppr_compensate_middle_grey(v[k][c], wp);
+      }
+    }
+  }
   return DTB_OK;
 }
 
@@ -364,6 +389,53 @@ static void _result_json(JsonBuilder *b, const dtb_pick_result_t *res)
     }
     _side_json(b, names[s], &side);
   }
+  // P4c: the working profile and picker_scale's values (engine-api.md 6.3)
+  json_builder_set_member_name(b, "work");
+  if(!res->work)
+  {
+    json_builder_add_null_value(b);
+    return;
+  }
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "type");
+  json_builder_add_int_value(b, res->work_type);
+  json_builder_set_member_name(b, "filename");
+  json_builder_add_string_value(b, res->work_file);
+  json_builder_set_member_name(b, "nonlinear");
+  json_builder_add_boolean_value(b, res->work_nonlinear);
+  json_builder_set_member_name(b, "luminance_coeffs");
+  json_builder_begin_array(b);
+  for(int c = 0; c < 3; c++) json_builder_add_double_value(b, res->work_y[c]);
+  json_builder_end_array(b);
+  for(int s = 0; s < 2; s++)
+  {
+    json_builder_set_member_name(b, names[s]);
+    if(!res->work_have[s])
+    {
+      json_builder_add_null_value(b);
+      continue;
+    }
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "luminance");
+    json_builder_begin_array(b);
+    for(int k = 0; k < 3; k++) json_builder_add_double_value(b, res->work_lum[s][k]);
+    json_builder_end_array(b);
+    json_builder_set_member_name(b, "grey_luminance");
+    json_builder_begin_array(b);
+    for(int k = 0; k < 3; k++) json_builder_add_double_value(b, res->work_grey_lum[s][k]);
+    json_builder_end_array(b);
+    json_builder_set_member_name(b, "grey");
+    json_builder_begin_array(b);
+    for(int k = 0; k < 3; k++)
+    {
+      json_builder_begin_array(b);
+      for(int c = 0; c < 3; c++) json_builder_add_double_value(b, res->work_grey[s][k][c]);
+      json_builder_end_array(b);
+    }
+    json_builder_end_array(b);
+    json_builder_end_object(b);
+  }
+  json_builder_end_object(b);
 }
 
 void dtb__pick_json(JsonBuilder *b, const dtb_pick_result_t *res)

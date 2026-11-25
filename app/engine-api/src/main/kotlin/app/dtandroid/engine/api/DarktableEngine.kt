@@ -355,6 +355,13 @@ interface DarktableEngine {
     /** Desktop's selection: the module's algorithm and blur or fill settings take the shape's. */
     suspend fun retouchSelect(op: String, priority: Int, id: Int)
 
+    /**
+     * P4c: retouch's focus ([action] begin, end, pause, resume, state), desktop's view while retouch is the focused
+     * module: renders show the whole, uncropped picture until "end" (or between "pause" and "resume"). Nothing in the
+     * edit changes. ARG for another module.
+     */
+    suspend fun retouchFocus(op: String, priority: Int, action: String): RetouchFocus
+
     // ---- 6.11 (P3n): rotate and perspective's structure, guides and fit
 
     /**

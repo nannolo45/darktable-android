@@ -185,7 +185,8 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
     // the picker armed on this module: what it took, on the graph (desktop: band, line at the mean, "in → out")
     val pickState = ctx.state.picker?.takeIf { it.key == ctx.key }
     val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, params, ch) {
-        pickState?.let { CurvePick.mark(layout.op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput) }
+        // brief P4c: the graph is drawn unzoomed and linear (no zoom/offset, no "scale for graph"), so is the mark
+        pickState?.let { CurvePick.mark(layout.op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput, CurveView.IDENTITY) }
     }
     val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
     val pickTextStyle = DtTheme.type.small.copy(color = look.line)

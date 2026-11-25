@@ -433,6 +433,15 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     fi
     cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
   fi
+  # brief P4c: retouch's focus shows the uncropped picture; a heal spot outside the crop survives the XMP
+  if want C37; then
+    drv C37 rtfocus "retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip"
+    parity C37 p4c_focus
+  fi
+  # brief P4c: module picks carry the working profile and rgb curve's picker_scale values
+  if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
+  # brief P4c: diffuse's built-in presets by their stored names
+  if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P4d: the app's library choice is honoured (the runner's OpenCL library by absolute path); one camera
   if want C4d && [ "$C" = cr2 ]; then
     t37=$(date +%s)

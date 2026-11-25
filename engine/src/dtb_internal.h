@@ -220,6 +220,17 @@ typedef struct dtb_pick_result_t
   int cst[2];  // dt_iop_colorspace_type_t of the numbers
   float mean[2][4], min[2][4], max[2][4];
   int box[2][4];
+  /* P4c: the pipe's working profile (dt_ioppr_get_pipe_work_profile_info) and,
+   * for each side in RGB, what rgb curve's picker_scale makes of the numbers:
+   * luminance (dt_ioppr_get_rgb_matrix_luminance), each channel and the
+   * luminance through dt_ioppr_compensate_middle_grey; [s][0..2] = mean, min, max */
+  gboolean work;
+  int work_type;
+  char work_file[256];
+  gboolean work_nonlinear;
+  float work_y[3];
+  gboolean work_have[2];
+  float work_lum[2][3], work_grey[2][3][3], work_grey_lum[2][3];
 } dtb_pick_result_t;
 /* pick on module m: area normalised in the picture (x0, y0, x1, y1) */
 int dtb__pick(dt_iop_module_t *m, const float area[4], gboolean denoise, gboolean full,
@@ -328,5 +339,15 @@ void dtb__ashift_after_sync(dtb_pipe_t *p);
 void dtb__ashift_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const i,
                       const dt_iop_roi_t *const roi_in);
 void dtb__ashift_drop(void);
+
+/* retouch.c (P4c): retouch's focus. While a retouch instance has the focus
+ * (dtb_retouch_focus "begin", not paused) every bridge render, size,
+ * coordinate transform and picker leaves out the modules desktop skips then
+ * (imageop.c dt_iop_module_is_skipped: after the focused module in the pipe,
+ * operation_tags() & its operation_tags_filter(), here decoration and
+ * cropping), as dtb__bypass_begin does for "bypass". At close: dropped. */
+gboolean dtb__focus_active(void);
+gboolean dtb__focus_skips(const dt_iop_module_t *m);
+void dtb__focus_drop(void);
 
 #endif

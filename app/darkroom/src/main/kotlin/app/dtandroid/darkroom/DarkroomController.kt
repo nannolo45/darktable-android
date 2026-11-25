@@ -2166,6 +2166,7 @@ class DarkroomController(
         _state.update { it.copy(preview = PhotoLayer(img, 0, 0, img.width.toDouble() / info.width), region = null, placeholder = null, working = null, workingProgress = null) }
         Timeline.mark("darkroom: preview shown")
         if (_state.value.showMask != null) return // brief P3d: the mask display is no picture for the filmstrip
+        if (uncroppedView()) return // brief P4c: nor is the uncropped picture of a focused module
         // the filmstrip keeps a small copy, not the preview itself (a 1024 px preview is about 3 MB)
         val thumb = Thumbnails.downscale(img, thumbnailSize)
         val i = _state.value.index
@@ -2529,7 +2530,8 @@ class DarkroomController(
                 s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> {
                     usedOpen = true
                     // brief P3n: rotate and perspective's focus (the uncropped picture) paused for this render
-                    Result.success(perspectiveOrNull?.pausedLocked(e) { block(e) } ?: block(e))
+                    // brief P4c: retouch's focus too
+                    Result.success(pausedFocusLocked(e) { block(e) })
                 }
                 s.info == null && !fetching -> {
                     // brief P2h: a file without a picture is not opened again until it changes, and a session
@@ -2649,6 +2651,22 @@ class DarkroomController(
         retouchFocus()
         launch { syncCropTool() } // brief P3a: opening crop's panel opens the tool; closing it or opening another leaves it
     }
+
+    /**
+     * Brief P3n, P4c: [block] with rotate and perspective's and retouch's focus paused (renders for someone else, such
+     * as LightPhotoLibrary, get the edit's own, cropped picture). Under the engine lock.
+     */
+    private suspend fun <T> pausedFocusLocked(e: DarktableEngine, block: suspend () -> T): T {
+        // no elvis: a block may return null (it would run twice)
+        val p = perspectiveOrNull
+        val r = retouchOrNull
+        val inner: suspend () -> T = if (r != null) ({ r.pausedLocked(e, block) }) else block
+        return if (p != null) p.pausedLocked(e, inner) else inner()
+    }
+
+    /** Brief P4c: the photo shows a whole, uncropped picture for a focused module: no picture for the filmstrip. */
+    private fun uncroppedView(): Boolean =
+        retouchOrNull?.uncropped() == true || perspectiveOrNull?.state?.value?.st?.focused == true
 
     /** Brief P3m: retouch's tools and "switch off shapes", the look up table's picker, only while their module is expanded. */
     private fun retouchFocus() {

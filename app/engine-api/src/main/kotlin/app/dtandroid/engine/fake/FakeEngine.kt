@@ -6,6 +6,8 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineMemory
 import app.dtandroid.engine.api.RetouchShape
 import app.dtandroid.engine.api.RetouchState
+import app.dtandroid.engine.api.InstanceRef
+import app.dtandroid.engine.api.RetouchFocus
 import app.dtandroid.engine.api.PerspectiveState
 import app.dtandroid.engine.api.GuideLine
 import app.dtandroid.engine.api.GuideHandle
@@ -435,6 +437,7 @@ class FakeEngine(
         requireInit()
         session = null
         fp = null
+        rtFocus = null
     }
 
     override suspend fun imageInfo(): ImageInfo = onEngine {
@@ -822,7 +825,7 @@ class FakeEngine(
             inst(b.op, b.priority)
             if (!def(b.op).canSwitch) fail(EngineError.ARG, "${b.op} cannot be left out: it has no on/off switch")
             b.op to b.priority
-        }.toSet()
+        }.toSet() + focusLeftOut()
     }
 
     /**
@@ -1075,7 +1078,16 @@ class FakeEngine(
     private fun builtinPresets(): List<FPreset> {
         val d = catalog["exposure"] ?: return emptyList()
         val p = runCatching { setPath(d, d.defaultParams, "exposure", JsonPrimitive(0.7)) }.getOrDefault(d.defaultParams)
-        return listOf(FPreset("exposure", "_builtin_scene-referred default", "", true, d.version, true, p))
+        val exposure = listOf(FPreset("exposure", "_builtin_scene-referred default", "", true, d.version, true, p))
+        // brief P4c: two of diffuse or sharpen's built-in presets, stored as darktable stores them (`_builtin_` prefix)
+        val df = catalog["diffuse"] ?: return exposure
+        fun deblur(iterations: Int, radius: Int) = runCatching {
+            setPath(df, setPath(df, df.defaultParams, "iterations", JsonPrimitive(iterations)), "radius", JsonPrimitive(radius))
+        }.getOrDefault(df.defaultParams)
+        return exposure + listOf(
+            FPreset("diffuse", "_builtin_lens deblur | soft", "", true, df.version, true, deblur(8, 8)),
+            FPreset("diffuse", "_builtin_lens deblur | medium", "", true, df.version, true, deblur(16, 10)),
+        )
     }
 
     private fun problemOf(op: String, moduleVersion: Int, blendVersion: Int): ItemProblem? {
@@ -2261,6 +2273,49 @@ class FakeEngine(
             s.setParams(op, priority, emptyMap(), merge = true)
             s.items = s.items.dropLast(1) + s.items.last().copy(params = p)
         }
+    }
+
+    // ------------------------------------------------------------ P4c: retouch's focus (a stand-in)
+
+    /** The focused retouch instance and whether it is paused; null when none has the focus. */
+    private var rtFocus: Triple<String, Int, Boolean>? = null
+
+    /** Calls to [retouchFocus] by action, for tests. */
+    val retouchFocusCalls = java.util.concurrent.CopyOnWriteArrayList<String>()
+
+    /**
+     * The modules left out while retouch has the focus: crop instances that are on (the stand-in renders no crop, so
+     * the picture keeps its size; the frame is crop's box).
+     */
+    private fun Session.focusLeftOut(): List<Pair<String, Int>> {
+        val f = rtFocus?.takeIf { !it.third } ?: return emptyList()
+        if (live()[f.first to f.second] == null) return emptyList()
+        return live().filter { (k, l) -> k.first == "crop" && l.enabled }.keys.toList()
+    }
+
+    override suspend fun retouchFocus(op: String, priority: Int, action: String): RetouchFocus = onEngine {
+        val s = requireSession()
+        s.inst(op, priority)
+        if (op != "retouch") fail(EngineError.ARG, "$op is not retouch")
+        retouchFocusCalls.add(action)
+        val ours = rtFocus?.let { it.first == op && it.second == priority } == true
+        when (action) {
+            "begin" -> rtFocus = Triple(op, priority, false)
+            "end" -> if (ours) rtFocus = null
+            "pause" -> if (ours) rtFocus = Triple(op, priority, true)
+            "resume" -> if (ours) rtFocus = Triple(op, priority, false)
+            "state" -> {}
+            else -> fail(EngineError.ARG, "action: begin, end, pause, resume or state")
+        }
+        val f = rtFocus?.takeIf { it.first == op && it.second == priority }
+        val out = s.focusLeftOut()
+        val frame = out.firstOrNull()?.let { k ->
+            val p = s.live()[k]!!.params
+            fun v(n: String, d: Double) = (p[n] as? JsonPrimitive)?.doubleOrNull ?: d
+            val l = v("cx", 0.0); val t = v("cy", 0.0); val r = v("cw", 1.0); val b = v("ch", 1.0)
+            listOf(l to t, r to t, r to b, l to b)
+        }
+        RetouchFocus(f != null, f?.third == true, out.map { InstanceRef(it.first, it.second) }, frame)
     }
 
     // ------------------------------------------------------------ 6.11 (P3n): rotate and perspective (a stand-in)

@@ -356,3 +356,15 @@ private fun DrawScope.drawOutline(o: RetouchOutline, tdx: Double, tdy: Double, s
     }
     if (selected) handle(ta, look)
 }
+
+/**
+ * Brief P4c: while retouch has the focus the photo is the whole picture; the edit's picture (crop's box) is outlined
+ * over it, read-only, as desktop's crop draws it for another focused module (crop.c gui_post_expose, "dimmed": the
+ * outline only, thinner, no shading). [frame]: corners top-left, top-right, bottom-right, bottom-left, fractions.
+ */
+fun DrawScope.drawFocusFrame(frame: List<Pair<Double, Double>>, left: Float, top: Float, w: Float, h: Float, look: GuideLook) {
+    if (frame.size != 4) return
+    val pts = frame.map { Offset(left + it.first.toFloat() * w, top + it.second.toFloat() * h) }
+    val lw = look.gridLine.toPx()
+    for (i in pts.indices) { val q = pts[(i + 1) % pts.size]; segment(pts[i].x, pts[i].y, q.x, q.y, lw, look.frame) }
+}

@@ -338,6 +338,16 @@ result:  { "pipe": s,
            "input":  { "colorspace": s, "mean": [4 numbers], "min": [4], "max": [4], "box": [x0, y0, x1, y1] } | null,
            "output": { ... } | null }   // null: the area is outside that buffer (desktop: no sample)
 ```
+P4c (25 Nov 2026): a module pick also has `"work"`: the pipe's working profile (`dt_ioppr_get_pipe_work_profile_info`)
+and what rgb curve's `picker_scale` makes of each RGB side, by darktable's own functions:
+```
+"work": null (global picker) | { "type": n, "filename": s, "nonlinear": bool,
+          "luminance_coeffs": [3],                       // matrix_in's luminance row
+          "input" | "output": null (not RGB) | {
+            "luminance": [mean, min, max],               // dt_ioppr_get_rgb_matrix_luminance
+            "grey_luminance": [mean, min, max],          // that through dt_ioppr_compensate_middle_grey
+            "grey": [[r, g, b] (mean), [..] (min), [..] (max)] } }   // each channel through it
+```
 `colorspace` is the space of the numbers: the module's picker space as desktop sets it (`dt_color_picker_new` /
 `_with_cst` in the module's `gui_init`: `"none"` = the buffer's own space, else `"raw"`, `"rgb"`, `"lab"`, `"lch"`,
 `"hsl"`, `"jzczhz"`); the bridge keeps that table per module. `box` is the sampled rectangle in pixels of that buffer
@@ -622,6 +632,17 @@ int dtb_retouch_select(const char *op, int priority, int id);
 - 6.7 changes: `dtb_masks` flags retouch shapes and the shape group `"retouch": true` and gives `geometry.source` for
   clone forms; `dtb_mask_update` and `dtb_mask_delete` refuse retouch shapes (`ARG`, as `dtb_mask_attach` did).
 - Wavelet settings are never written by these calls. JNI: codes 7..11 of the `p3d` entry point.
+- `dtb_retouch_focus(op, priority, action, json)` (P4c, 25 Nov 2026): desktop's view while retouch is the focused
+  module. `"begin"`: from then on every bridge render, render size, `dtb_image_info` size, coordinate transform and
+  picker leaves out the modules desktop skips for the focused module (`imageop.c` `dt_iop_module_is_skipped`: after
+  retouch in the pipe, `operation_tags()` meeting retouch's `operation_tags_filter()`, decoration and cropping: crop,
+  borders, ...), as `"bypass"` does (6.1); the bridge's pipes are export pipes, for which darktable itself never
+  skips. `"end"` gives the focus back; `"pause"` / `"resume"` show the edit as it is in between (renders for someone
+  else, as 6.11); `"state"` changes nothing. No history item, allowed read-only; exports never see it; the focus ends
+  with the session or when the instance is deleted. Result `{ "focused", "paused", "left_out": [ {op, priority} ],
+  "frame": [[x, y] x 4] | null }`: the edit's picture's corners (top-left, top-right, bottom-right, bottom-left) in the
+  whole picture, fractions (taken back to the original and forward with the left-out modules), null when nothing is
+  left out. JNI: code 13 of the `p3d` entry point.
 
 ### 6.11 Rotate and perspective: structure, guides, fit (P3n, 25 Nov 2026)
 
