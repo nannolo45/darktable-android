@@ -39,7 +39,7 @@ dtb_session_t dtb_S;
 gboolean dtb_inited = FALSE;
 
 static char g_err[2048];
-static gchar *g_argv_store[32];
+static gchar *g_argv_store[48];
 static int g_init_threads = 0;      // darktable.num_openmp_threads after dt_init
 static cpu_set_t g_init_cpus;       // the engine thread's CPUs at dtb_init
 static gboolean g_have_init_cpus = FALSE;
@@ -151,6 +151,11 @@ static void dtb__clear_stale_lock(const char *configdir)
 
 int dtb_init(const dtb_paths_t *p, int threads)
 {
+  return dtb_init_ex(p, threads, NULL);
+}
+
+int dtb_init_ex(const dtb_paths_t *p, int threads, const char *options_json)
+{
   if(dtb_inited) return dtb__err(DTB_E_STATE, "already initialised");
   if(!p || !p->datadir || !p->moduledir || !p->configdir || !p->cachedir || !p->library)
     return dtb__err(DTB_E_ARG, "configdir, cachedir, datadir, moduledir and library are required");
@@ -185,13 +190,22 @@ int dtb_init(const dtb_paths_t *p, int threads)
   // only dtb_xmp_write() does, after the version guard
   a[argc++] = g_strdup("--conf");
   a[argc++] = g_strdup("write_sidecar_files=never");
+  // brief P4b (speed.c): resource level, and --disable-opencl unless OpenCL is allowed
+  {
+    const int r = dtb__speed_options(options_json, a, &argc, 32);
+    if(r != DTB_OK)
+    {
+      for(int i = 0; i < argc; i++) { g_free(a[i]); a[i] = NULL; }
+      return r;
+    }
+  }
   // DTB_DT_DEBUG="perf,params": darktable's own debug output (-d perf ...),
   // for measurements only (P1c item 5)
   const char *dbg = g_getenv("DTB_DT_DEBUG");
   if(dbg)
   {
     gchar **parts = g_strsplit(dbg, ",", 6);
-    for(int i = 0; parts[i] && argc < 30; i++)
+    for(int i = 0; parts[i] && argc < 44; i++)
     {
       a[argc++] = g_strdup("-d");
       a[argc++] = g_strdup(parts[i]);
@@ -218,6 +232,7 @@ int dtb_init(const dtb_paths_t *p, int threads)
   }
 
   memset(&dtb_S, 0, sizeof(dtb_S));
+  dtb__speed_after_init();
   g_init_threads = darktable.num_openmp_threads;
   g_have_init_cpus = sched_getaffinity(0, sizeof(g_init_cpus), &g_init_cpus) == 0;
   if(!g_thread_cpus) g_thread_cpus = g_array_new(FALSE, FALSE, sizeof(int));

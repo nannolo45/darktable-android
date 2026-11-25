@@ -412,6 +412,17 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C34 memory "memory: info, trim levels 1 and 2 keep history, parameters and undo; renders after a trim equal the ones before"
     cp -f "$D/p4a_memory.txt" "$OUT/" 2>/dev/null || true
   fi
+  # brief P4b (engine-api.md 11): start-up options, resources, switching photos with 3 and 1 inputs kept
+  if want C35; then
+    drv C35 resources "resources: options refused when wrong, resource values and cache sizes reach darktable, OpenCL not allowed; back to a photo with 3 inputs kept: no new decode, same renders"
+    drv C35 resources1 "resources: back to a photo with 1 input kept decodes it again, same renders"
+    for k in 3 1; do cp -f "$D/p4b_resources_$k.txt" "$OUT/p4b_resources_${k}_$C.txt" 2>/dev/null || true; done
+  fi
+  # brief P4b: OpenCL allowed and switched on (a device only where the runner has one, e.g. PoCL); one camera
+  if want C36 && [ "$C" = cr2 ]; then
+    drv C36 opencl "OpenCL opt-in: started on request; no device = the CPU's picture byte for byte; a device = PSNR against the CPU; off again = the CPU's picture"
+    cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

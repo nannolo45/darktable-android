@@ -44,7 +44,9 @@ OPTS=(
   -DCMAKE_CXX_FLAGS="$CPPFLAGS $CXXFLAGS -include $COMPAT $WARN"
   -DBINARY_PACKAGE_BUILD=ON          # no -march=native
   -DUSE_OPENMP=ON                    # brief S2
-  -DUSE_OPENCL=OFF                   # PLAN 3.1: later, opt-in
+  -DUSE_OPENCL=ON                    # brief P4b: built in, opt-in at run time (the bridge starts
+                                     # darktable with --disable-opencl unless the app allows it);
+                                     # the vendor library is opened at run time, nothing is linked
   -DUSE_LUA=OFF -DUSE_AI=OFF -DUSE_GMIC=OFF -DUSE_CAMERA_SUPPORT=OFF -DUSE_MAP=OFF
   -DBUILD_PRINT=OFF -DUSE_COLORD=OFF -DUSE_LIBSECRET=OFF -DUSE_KWALLET=OFF
   -DUSE_PORTMIDI=OFF -DUSE_SDL2=OFF -DUSE_WAYLAND=OFF -DUSE_UNITY=OFF
@@ -89,8 +91,7 @@ cp -a "$STAGE$ENGINE_PREFIX/bin/darktable-cli" "$E/bin/"
 cp "$BRIDGE_BUILD/libdtbridge.so" "$E/lib/"
 cp -a "$STAGE$ENGINE_PREFIX/lib/darktable" "$E/lib/"
 cp -a "$STAGE$ENGINE_PREFIX/share/darktable" "$E/share/"
-# OpenCL kernels are unused (OpenCL off); translations are not needed by the engine
-rm -rf "$E/share/darktable/kernels"
+# brief P4b: the OpenCL kernels (share/darktable/kernels) stay: darktable builds them on the device
 # runtime libraries from the sysroot (shared objects only)
 ( cd "$DTA_PREFIX/lib" && find . -maxdepth 1 \( -name '*.so' -o -name '*.so.*' \) -print0 | xargs -0 cp -L --preserve=mode,timestamps -t "$E/lib/" )   # symlinks resolved: one real file per name
 cp -a "$DTA_PREFIX/share/lensfun" "$E/share/" 2>/dev/null || dta_log "warning: no lensfun database in sysroot"

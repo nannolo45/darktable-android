@@ -367,6 +367,68 @@ int dtb_memory_info(char **json);
 int dtb_memory_trim(int level, char **json);
 
 /* ---------------------------------------------------------------------- */
+/* 2.7b speed (brief P4b, engine-api.md 11)                                */
+
+/* dtb_init with start-up options, as JSON (NULL or "{}" = dtb_init):
+ *   "opencl": bool         true: dtb_opencl_set(1) may start OpenCL later.
+ *                          Either way darktable starts with --disable-opencl:
+ *                          no OpenCL library is opened at start, and until
+ *                          dtb_opencl_set(1) nothing differs from an engine
+ *                          built without OpenCL. Default false.
+ *   "resource_level": s    darktable's resourcelevel ("small", "default",
+ *                          "large", "unrestricted"); absent = darktable's own
+ *                          choice
+ *   "resource_values": s   that level's four numbers, "a b c d" as in
+ *                          darktablerc's resource_<level> (fractions of 1024:
+ *                          memory for processing and tiling, single buffer,
+ *                          thumbnail cache, OpenCL device memory)
+ *   "pipe_cache_fraction": [full, preview]  the bridge's two pipelines may
+ *                          cache (available memory / n) bytes of
+ *                          intermediate buffers; 0 = darktable's 8 for both
+ *   "inputs_kept": n       decoded inputs (DT_MIPMAP_FULL and DT_MIPMAP_F) the
+ *                          image cache keeps, the open image's included;
+ *                          0 = darktable's (worker threads + 1)
+ * Unknown members are refused (DTB_E_ARG). dtb_resources_info tells what
+ * darktable made of them. */
+int dtb_init_ex(const dtb_paths_t *paths, int threads, const char *options_json);
+
+/* { "level": s, "values": s, "total_memory": bytes (darktable's, after its
+ *   own adjustment), "available_memory": dt_get_available_mem(),
+ *   "singlebuffer_memory": dt_get_singlebuffer_mem(), "mipmap_memory": bytes,
+ *   "pipe_cache_fraction": [full, preview], "pipe_cache_limit": [bytes, bytes],
+ *   "inputs_kept": n, "worker_threads": n,
+ *   "pipe_full_hits", "pipe_full_tests", "pipe_preview_hits",
+ *   "pipe_preview_tests": darktable's pipeline cache counters since the pipe
+ *   was made (dt_dev_pixelpipe_cache_t hits and tests),
+ *   "mipmap_full_requests", "mipmap_full_misses": image cache counters } */
+int dtb_resources_info(char **json);
+
+/* OpenCL (opt-in, PLAN.md F8). { "built": bool (HAVE_OPENCL), "allowed":
+ * bool (dtb_init_ex "opencl"), "started": bool (dt_opencl_init ran),
+ * "library": s | null, "inited": bool (a usable device was found),
+ * "enabled": bool, "running": bool (enabled and not stopped after
+ * errors), "stopped": bool, "error_count": n, "devices": [ { "name",
+ * "platform", "version", "memory": bytes, "unified": bool, "disabled": bool } ],
+ * "renders": n, "renders_gpu": n, "renders_fallback": n,
+ * "last_render": "none" | "cpu" | "gpu" | "fallback" }
+ * A render counts as "gpu" when OpenCL was running when it started and
+ * darktable reported no OpenCL error during it; "fallback" when darktable
+ * reported one (it then ran the pipe again on the CPU, develop/pixelpipe_hb.c
+ * dt_dev_pixelpipe_process). */
+int dtb_opencl_info(char **json);
+
+/* Switch OpenCL on or off for the following renders. The first switch on
+ * starts darktable's OpenCL (dt_opencl_init: opens the vendor library,
+ * finds devices and builds or loads its kernels, which can take minutes
+ * the first time); later switches only change darktable's "opencl"
+ * setting. Platforms darktable does not name (Qualcomm, ARM) need its
+ * "clplatform_other" setting, which a switch on sets. DTB_E_STATE when
+ * dtb_init_ex did not allow OpenCL or the engine was built without it (the
+ * message says which). json (may be NULL): dtb_opencl_info afterwards. No
+ * render in flight. */
+int dtb_opencl_set(int enabled, char **json);
+
+/* ---------------------------------------------------------------------- */
 /* 2.8 output                                                              */
 
 /* Write the session's history as a darktable XMP sidecar. Refused

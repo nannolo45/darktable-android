@@ -194,6 +194,8 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
     // the darkroom pipe type would select display output and the screen
     // code paths; the export type is what darktable-cli runs
     p->pipe.type = DT_DEV_PIXELPIPE_EXPORT;
+    // brief P4b: the cache size chosen for this pipeline (speed.c)
+    dtb__speed_pipe_made(p, p == &dtb_S.full);
     dt_dev_pixelpipe_set_icc(&p->pipe, DT_COLORSPACE_NONE, NULL, DT_INTENT_LAST);
     dt_dev_pixelpipe_set_input(&p->pipe, &dtb_S.dev, (float *)p->buf.buf,
                                p->buf.width, p->buf.height, p->buf.iscale);
@@ -436,11 +438,13 @@ static int _pipe_run(dtb_pipe_t *p, int x, int y, int w, int h, float scale, uin
 
   if(finalscale) finalscale->enabled = FALSE;
   const double t0 = dtb__t();
+  dtb__speed_render_begin();  // brief P4b: GPU or CPU, and OpenCL errors (speed.c)
   // desktop's mask overlay is drawn by gamma (maskdisplay.c)
   const gboolean early = dtb__mask_display_active
                            ? dt_dev_pixelpipe_process(&p->pipe, &dtb_S.dev, x, y, w, h, scale, DT_DEVICE_NONE)
                            : dt_dev_pixelpipe_process_no_gamma(&p->pipe, &dtb_S.dev, x, y, w, h, scale);
   dtb__tlog("render.process", t0);
+  dtb__speed_render_end();
   if(finalscale) finalscale->enabled = TRUE;
 
   g_atomic_pointer_set(&g_active_pipe, NULL);
