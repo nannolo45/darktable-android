@@ -610,6 +610,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             if (drawing != null) drawDrawTool(drawing, left, top, imgW, imgH, maskLook)
             else if (!s.before && tool == null && s.view == app.dtandroid.darkroom.BottomView.MASKS) ms.outline?.let { drawMaskOutline(it, left, top, imgW, imgH, maskLook) }
             // brief P3m: retouch's shapes, sources and what is being placed
+            // brief P4c: the edit's frame (crop's box) over the whole picture as a guide, as desktop's "expose cropper"
+            if (retouchOn) rtu.focus?.frame?.let { drawFocusFrame(it, left, top, imgW, imgH, guideLook) }
             if (retouchOn) drawRetouch(rtu, left, top, imgW, imgH, maskLook, retouchSourceColor)
             // brief P3n: rotate and perspective's crop outline, lines and corners
             if (perspOn) drawPerspective(psu, left, top, imgW, imgH, guideLook)

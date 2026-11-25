@@ -102,3 +102,40 @@ data class RetouchState(
         }
     }
 }
+
+/**
+ * P4c (engine-api.md 6.10, dtb_retouch_focus): retouch's focus. While [focused] and not [paused], the engine's renders,
+ * sizes, coordinates and pickers leave out [leftOut] (desktop's skipped modules: crop, borders, ...), so they show the
+ * whole picture. [frame]: the edit's picture in it, corners top-left, top-right, bottom-right, bottom-left as
+ * fractions of the whole picture; null when nothing that moves pixels is left out.
+ */
+data class RetouchFocus(
+    val focused: Boolean,
+    val paused: Boolean,
+    val leftOut: List<InstanceRef>,
+    val frame: List<Pair<Double, Double>>?,
+) {
+    fun toJson(): JsonObject = buildJsonObject {
+        put("focused", focused); put("paused", paused)
+        put("left_out", JsonArray(leftOut.map { it.toJson() }))
+        put("frame", frame?.let { f -> JsonArray(f.map { JsonArray(listOf(JsonPrimitive(it.first), JsonPrimitive(it.second))) }) } ?: JsonNull)
+    }
+
+    companion object {
+        val NONE = RetouchFocus(false, false, emptyList(), null)
+
+        fun fromJson(e: JsonElement): RetouchFocus {
+            val o = e as? JsonObject ?: bad("retouch focus is not an object")
+            val f = (o["frame"] as? JsonArray)?.map { p ->
+                val a = p as? JsonArray ?: bad("\"frame\"")
+                ((a.getOrNull(0) as? JsonPrimitive)?.doubleOrNull ?: bad("\"frame\"")) to ((a.getOrNull(1) as? JsonPrimitive)?.doubleOrNull ?: bad("\"frame\""))
+            }?.takeIf { it.size == 4 }
+            return RetouchFocus(
+                (o["focused"] as? JsonPrimitive)?.booleanOrNull ?: bad("\"focused\""),
+                (o["paused"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                (o["left_out"] as? JsonArray)?.map { (it as? JsonObject ?: bad("left_out")).let { r -> InstanceRef(r.s("op"), r.i("priority")) } } ?: emptyList(),
+                f,
+            )
+        }
+    }
+}

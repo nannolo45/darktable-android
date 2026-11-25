@@ -109,7 +109,11 @@ class SpeedBenchmark(
      * contrast, color calibration and sigmoid with their defaults.
      */
     private suspend fun heavy() {
-        engine.paramsSet("diffuse", 0, HEAVY_DIFFUSE)
+        // brief P4c: darktable's built-in preset by the name desktop shows (stored as "_builtin_lens deblur | medium");
+        // its parameters directly only if this engine has no such preset
+        val stored = app.dtandroid.darkroom.DtNames.storedName(engine.presets("diffuse", 0).filter { it.builtin && it.usable }.map { it.name }, HEAVY_DIFFUSE_PRESET)
+        if (stored != null) engine.presetApply("diffuse", 0, stored)
+        else engine.paramsSet("diffuse", 0, HEAVY_DIFFUSE)
         engine.setEnabled("diffuse", 0, true)
         for (op in HEAVY.drop(1)) engine.setEnabled(op, 0, true)
         engine.historySeal()
@@ -144,6 +148,8 @@ class SpeedBenchmark(
         /** the 100 % region's side: the target phone's screen width */
         const val REGION = 1080
         const val EXPOSURE_STEP = 0.02
+        /** the built-in preset of diffuse or sharpen the heavy edit applies, as desktop shows its name */
+        const val HEAVY_DIFFUSE_PRESET = "lens deblur | medium"
         /** darktable's "lens deblur | medium" (iop/diffuse.c, init_presets) */
         val HEAVY_DIFFUSE: Map<String, JsonPrimitive> = mapOf(
             "iterations" to ParamValue.of(16), "radius_center" to ParamValue.of(0), "radius" to ParamValue.of(10),

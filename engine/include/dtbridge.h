@@ -647,7 +647,14 @@ int dtb_render_times(char **json);
  * coordinates of the picture, plus "denoise": bool, "pipe": "preview"
  * (default) | "full", "bypass": [...] (as the render options) ->
  * { "pipe", "input": { "colorspace", "mean": [4], "min": [4], "max": [4],
- *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null }.
+ *   "box": [x0, y0, x1, y1] } | null, "output": { ... } | null,
+ *   "work": null (global picker) | { "type", "filename", "nonlinear",
+ *   "luminance_coeffs": [3] (the pipe's working profile,
+ *   dt_ioppr_get_pipe_work_profile_info: matrix_in's Y row), "input" | "output":
+ *   null (not RGB) | { "luminance": [mean, min, max]
+ *   (dt_ioppr_get_rgb_matrix_luminance), "grey_luminance": [3] (that through
+ *   dt_ioppr_compensate_middle_grey), "grey": [[r, g, b] x 3] (each channel
+ *   through it) } } } (P4c: what rgb curve's picker_scale uses).
  * DTB_E_ARG: bad area, or the instance is switched off. */
 int dtb_color_pick(const char *op, int priority, const char *request_json, char **json);
 
@@ -798,6 +805,20 @@ int dtb_retouch_shape_remove(const char *op, int priority, int id);
  * fill settings take the shape's (no history item when nothing changes;
  * merges as dtb_param_set). */
 int dtb_retouch_select(const char *op, int priority, int id);
+/* P4c: retouch's focus, desktop's view while retouch is the focused module.
+ * action "begin": from now on every bridge render, render size, image_info
+ * size, coordinate transform and picker leaves out the modules desktop skips
+ * while retouch has the focus (after retouch in the pipe, tagged decoration
+ * or cropping: crop, borders, ...), so they show the whole, uncropped
+ * picture; the edit, the history and the XMP are untouched (exports never
+ * see it). "end" gives the focus back; "pause" / "resume": the edit as it
+ * is until "resume", for renders made for someone else while focused;
+ * "state": nothing changes. Not a change: allowed on a read-only session.
+ * -> { "focused", "paused", "left_out": [ { "op", "priority" } ], "frame":
+ * [[x, y] x 4] | null } (frame: the corners of the edit's picture, top-left,
+ * top-right, bottom-right, bottom-left, as fractions of the whole picture;
+ * null when nothing is left out or no picture moves). json may be NULL. */
+int dtb_retouch_focus(const char *op, int priority, const char *action, char **json);
 
 /* ---------------------------------------------------------------------- */
 /* 6.11 rotate and perspective: structure, guides, fit (P3n; engine-api.md */

@@ -687,3 +687,159 @@ int dtb_retouch_select(const char *op, int priority, int id)
   g_free(np);
   return DTB_OK;
 }
+
+/* ------------------------------------------------------------------ */
+/* P4c: retouch's focus, the uncropped picture                         */
+/*
+ * Desktop: while retouch is the focused module (dev->gui_module), the pipe
+ * skips every module after it whose operation_tags() meet retouch's
+ * operation_tags_filter() (IOP_TAG_DECORATION | IOP_TAG_CROPPING): crop,
+ * borders, ... (imageop.c dt_iop_module_is_skipped, pixelpipe_hb.c
+ * _skip_piece_on_tags, also in the distort transforms and the cache hash),
+ * so the whole picture is shown, and crop draws its frame over it as a guide
+ * (darkroom.c, "expose cropper"). The bridge's pipes are export pipes, for
+ * which darktable never skips, and the bridge keeps no gui_module; so the
+ * focus is kept here and dtb__bypass_begin leaves those modules out of every
+ * render, size, coordinate transform and picker, as "bypass" does. Nothing
+ * in the edit, the history or the XMP changes; exports run darktable's own
+ * pipe and never see it. "pause" / "resume" give the edit as it is for a
+ * render made for someone else (LightPhotoLibrary), as rotate and
+ * perspective's (perspective.c).
+ */
+static char rf_op[20];
+static int rf_prio = -1;
+static gboolean rf_focus = FALSE, rf_paused = FALSE, rf_suspend = FALSE;
+
+static dt_iop_module_t *_focused(void)
+{
+  if(!rf_focus || !dtb_S.open) return NULL;
+  dt_iop_module_t *m = dtb__find(rf_op, rf_prio);
+  if(m && !strcmp(m->op, "retouch")) return m;
+  // the instance went (deleted): the focus goes with it, as desktop's
+  dtb__focus_drop();
+  return NULL;
+}
+
+gboolean dtb__focus_active(void)
+{
+  return !rf_paused && !rf_suspend && _focused() != NULL;
+}
+
+gboolean dtb__focus_skips(const dt_iop_module_t *m)
+{
+  const dt_iop_module_t *g = dtb__focus_active() ? _focused() : NULL;
+  // imageop.c dt_iop_module_is_skipped with dev->gui_module = g
+  return g && m && g != m && (g->operation_tags_filter() & m->operation_tags()) && g->iop_order < m->iop_order;
+}
+
+void dtb__focus_drop(void)
+{
+  rf_focus = rf_paused = rf_suspend = FALSE;
+  rf_prio = -1;
+  rf_op[0] = '\0';
+}
+
+/* the edit's picture (focus left aside) in the whole picture: its corners
+ * taken back to the original and forward with the focus' modules left out,
+ * fractions of the whole picture. Desktop's crop draws its own box mapped
+ * forward from its input (crop.c gui_post_expose); with crop the only left-out
+ * module that moves pixels both give the same frame. FALSE when no module is
+ * left out or nothing moves. */
+static gboolean _frame(float xy[8])
+{
+  dtb_pipe_t *p = NULL;
+  if(dtb__pipe_ready(TRUE, &p)) return FALSE;
+  rf_suspend = TRUE;
+  dtb_bypass_t plain;
+  dtb__bypass_begin(p, NULL, &plain);
+  const float pw = p->pipe.processed_width, ph = p->pipe.processed_height;
+  const float c[8] = { 0.0f, 0.0f, pw, 0.0f, pw, ph, 0.0f, ph };
+  memcpy(xy, c, sizeof(c));
+  gboolean ok = dt_dev_distort_backtransform_plus(&dtb_S.dev, &p->pipe, 0, DT_DEV_TRANSFORM_DIR_ALL, xy, 4);
+  dtb__bypass_end(&plain);
+  rf_suspend = FALSE;
+  dtb_bypass_t saved;
+  dtb__bypass_begin(p, NULL, &saved);
+  const float fw = p->pipe.processed_width, fh = p->pipe.processed_height;
+  const int n = saved.n;
+  if(ok && n) ok = dt_dev_distort_transform_plus(&dtb_S.dev, &p->pipe, 0, DT_DEV_TRANSFORM_DIR_ALL, xy, 4);
+  dtb__bypass_end(&saved);
+  if(!ok || !n || fw <= 0 || fh <= 0) return FALSE;
+  for(int k = 0; k < 4; k++)
+  {
+    xy[2 * k] /= fw;
+    xy[2 * k + 1] /= fh;
+    if(!isfinite(xy[2 * k]) || !isfinite(xy[2 * k + 1])) return FALSE;
+  }
+  return TRUE;
+}
+
+int dtb_retouch_focus(const char *op, int priority, const char *action, char **json)
+{
+  if(json) *json = NULL;
+  NEED_SESSION();
+  if(!action) return dtb__err(DTB_E_ARG, "action: begin, end, pause, resume or state");
+  dt_iop_module_t *m = NULL;
+  rt_layout_t l;
+  int r = _module(op, priority, &m, &l);
+  if(r) return r;
+  const gboolean ours = _focused() == m;
+  if(!strcmp(action, "begin"))
+  {
+    g_strlcpy(rf_op, m->op, sizeof(rf_op));
+    rf_prio = m->multi_priority;
+    rf_focus = TRUE;
+    rf_paused = FALSE;
+  }
+  else if(!strcmp(action, "end"))
+  {
+    if(ours) dtb__focus_drop();
+  }
+  else if(!strcmp(action, "pause") || !strcmp(action, "resume"))
+  {
+    if(ours) rf_paused = !strcmp(action, "pause");
+  }
+  else if(strcmp(action, "state"))
+    return dtb__err(DTB_E_ARG, "action: begin, end, pause, resume or state, not '%s'", action);
+  if(!json) return DTB_OK;
+
+  const gboolean focused = _focused() == m;
+  JsonBuilder *b = json_builder_new();
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "focused");
+  json_builder_add_boolean_value(b, focused);
+  json_builder_set_member_name(b, "paused");
+  json_builder_add_boolean_value(b, focused && rf_paused);
+  json_builder_set_member_name(b, "left_out");
+  json_builder_begin_array(b);
+  if(focused && !rf_paused)
+    for(GList *n = dtb_S.dev.iop; n; n = g_list_next(n))
+    {
+      const dt_iop_module_t *x = n->data;
+      if(!x->enabled || !dtb__focus_skips(x)) continue;
+      json_builder_begin_object(b);
+      _s(b, "op", x->op);
+      _i(b, "priority", x->multi_priority);
+      json_builder_end_object(b);
+    }
+  json_builder_end_array(b);
+  float xy[8];
+  json_builder_set_member_name(b, "frame");
+  if(focused && !rf_paused && _frame(xy))
+  {
+    json_builder_begin_array(b);
+    for(int k = 0; k < 4; k++)
+    {
+      json_builder_begin_array(b);
+      json_builder_add_double_value(b, xy[2 * k]);
+      json_builder_add_double_value(b, xy[2 * k + 1]);
+      json_builder_end_array(b);
+    }
+    json_builder_end_array(b);
+  }
+  else
+    json_builder_add_null_value(b);
+  json_builder_end_object(b);
+  *json = dtb__json_finish(b);
+  return DTB_OK;
+}

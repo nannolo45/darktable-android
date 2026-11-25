@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
@@ -96,6 +97,8 @@ data class PickStats(
     val max: List<Double?>,
     /** the sampled rectangle in pixels of that buffer */
     val box: List<Int>,
+    /** P4c: rgb curve's picker_scale values in the pipe's working profile (RGB sides of a module pick), else null */
+    val work: PickWork? = null,
 ) {
     fun toJson(): JsonObject = buildJsonObject {
         put("colorspace", colorspace)
@@ -116,18 +119,62 @@ data class PickStats(
     }
 }
 
+/**
+ * P4c (engine-api.md 6.3, "work"): the pipe's working profile ([coeffs]: its matrix_in's luminance row, [nonlinear]: a
+ * tone curve before it) and, for one RGB side of a pick, what rgb curve's picker_scale computes with it by darktable's
+ * own functions: [luminance] (dt_ioppr_get_rgb_matrix_luminance), [greyLuminance] (that through
+ * dt_ioppr_compensate_middle_grey), [grey] (each channel through it); each as mean, min, max.
+ */
+data class PickWork(
+    val type: Int,
+    val filename: String,
+    val nonlinear: Boolean,
+    val coeffs: List<Double>,
+    val luminance: List<Double>,
+    val greyLuminance: List<Double>,
+    val grey: List<List<Double>>,
+)
+
 /** A pick: the module's [input] and [output] (null where the area gives no sample); the global picker fills [output]. */
 data class PickResult(val pipe: String, val input: PickStats?, val output: PickStats?) {
     fun toJson(): JsonObject = buildJsonObject {
         put("pipe", pipe)
         put("input", input?.toJson() ?: JsonNull)
         put("output", output?.toJson() ?: JsonNull)
+        val w = input?.work ?: output?.work
+        if (w == null) put("work", JsonNull)
+        else put("work", buildJsonObject {
+            put("type", w.type); put("filename", w.filename); put("nonlinear", w.nonlinear)
+            put("luminance_coeffs", JsonArray(w.coeffs.map { JsonPrimitive(it) }))
+            for ((k, side) in listOf("input" to input, "output" to output)) {
+                val sw = side?.work
+                if (sw == null) put(k, JsonNull)
+                else put(k, buildJsonObject {
+                    put("luminance", JsonArray(sw.luminance.map { JsonPrimitive(it) }))
+                    put("grey_luminance", JsonArray(sw.greyLuminance.map { JsonPrimitive(it) }))
+                    put("grey", JsonArray(sw.grey.map { r -> JsonArray(r.map { JsonPrimitive(it) }) }))
+                })
+            }
+        })
     }
 
     companion object {
+        private fun dbls(e: JsonElement?, k: String) = (e ?: bad("no \"$k\"")).a(k).map { (it as? JsonPrimitive)?.doubleOrNull ?: bad(k) }
+
+        private fun work(w: JsonObject?, side: String): PickWork? {
+            w ?: return null
+            val o = w[side] as? JsonObject ?: return null
+            return PickWork((w["type"] as? JsonPrimitive)?.intOrNull ?: 0, (w["filename"] as? JsonPrimitive)?.content ?: "",
+                (w["nonlinear"] as? JsonPrimitive)?.booleanOrNull ?: false, dbls(w["luminance_coeffs"], "luminance_coeffs"),
+                dbls(o["luminance"], "luminance"), dbls(o["grey_luminance"], "grey_luminance"),
+                (o["grey"] ?: bad("no \"grey\"")).a("grey").map { dbls(it, "grey") })
+        }
+
         fun fromJson(e: JsonElement): PickResult {
             val o = e.o("pick result")
-            return PickResult(o.s("pipe"), PickStats.fromJson(o["input"]), PickStats.fromJson(o["output"]))
+            val w = o["work"] as? JsonObject
+            return PickResult(o.s("pipe"), PickStats.fromJson(o["input"])?.copy(work = work(w, "input")),
+                PickStats.fromJson(o["output"])?.copy(work = work(w, "output")))
         }
     }
 }

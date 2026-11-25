@@ -999,6 +999,8 @@ Java_app_dtandroid_engine_NativeBridge_p1b2(JNIEnv *env, jclass cls, jint what, 
 #define DTJ3_RETOUCH_SELECT 11
 /* P3n (engine-api.md 6.11) */
 #define DTJ3_ASHIFT 12
+/* P4c */
+#define DTJ3_RETOUCH_FOCUS 13
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_p3d(JNIEnv *env, jclass cls, jint what, jstring js1, jstring js2,
@@ -1022,6 +1024,7 @@ Java_app_dtandroid_engine_NativeBridge_p3d(JNIEnv *env, jclass cls, jint what, j
     case DTJ3_RETOUCH_REMOVE: r = dtb_retouch_shape_remove(a.s, n1, n2); break;
     case DTJ3_RETOUCH_SELECT: r = dtb_retouch_select(a.s, n1, n2); break;
     case DTJ3_ASHIFT: r = dtb_ashift(a.s, n1, b.s, &s); break;
+    case DTJ3_RETOUCH_FOCUS: r = dtb_retouch_focus(a.s, n1, b.s, &s); break;
     default: break;
   }
   _str_free(&a); _str_free(&b);
