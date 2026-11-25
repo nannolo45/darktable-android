@@ -1,0 +1,39 @@
+[1/25] Building C object CMakeFiles/dtbridge.dir/src/guard.c.o
+[2/25] Building C object CMakeFiles/dtbridge.dir/src/session.c.o
+[3/25] Building C object CMakeFiles/dtbridge.dir/src/params.c.o
+[4/25] Building C object CMakeFiles/dtbridge.dir/src/core.c.o
+[5/25] Building C object CMakeFiles/dtbridge.dir/src/actions2.c.o
+[6/25] Building C object CMakeFiles/dtbridge.dir/src/instances.c.o
+[7/25] Building C object CMakeFiles/dtbridge.dir/src/history.c.o
+[8/25] Building C object CMakeFiles/dtbridge.dir/src/actions.c.o
+[9/25] Building C object CMakeFiles/dtbridge.dir/src/output.c.o
+[10/25] Building C object CMakeFiles/dtbridge.dir/src/render.c.o
+[11/25] Building C object CMakeFiles/dtbridge.dir/src/presets.c.o
+[12/25] Building C object CMakeFiles/dtbridge.dir/src/styles.c.o
+[13/25] Building C object CMakeFiles/dtbridge.dir/src/times.c.o
+[14/25] Building C object CMakeFiles/dtbridge.dir/src/copypaste.c.o
+[15/25] Building C object CMakeFiles/dtbridge.dir/src/shared.c.o
+[16/25] Building C object CMakeFiles/dtbridge.dir/src/maskdisplay.c.o
+[17/25] Building C object CMakeFiles/dtbridge.dir/src/coords.c.o
+[18/25] Building C object CMakeFiles/dtbridge.dir/src/pickers.c.o
+[19/25] Building C object CMakeFiles/dtbridge.dir/src/blend.c.o
+[20/25] Building C object CMakeFiles/dtbridge.dir/src/actions3.c.o
+[21/25] Building C object CMakeFiles/dtbridge.dir/src/memory.c.o
+FAILED: [code=1] CMakeFiles/dtbridge.dir/src/memory.c.o 
+/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=x86_64-none-linux-android29 --sysroot=/home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DANDROID -DGDK_DISABLE_DEPRECATED -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_24 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_MIN_REQUIRED -DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56 -DGTK_DISABLE_DEPRECATED -DGTK_DISABLE_SINGLE_INCLUDES -DHAVE_BUILTIN_CPU_SUPPORTS -DHAVE_CONFIG_H -DHAVE_LIBRAW=1 -DNDEBUG -D_DARKTABLE_RELEASE -D_FORTIFY_SOURCE=2 -D_XOPEN_SOURCE=700 -Ddtbridge_EXPORTS -I/home/runner/work/darktable-android/darktable-android/engine/include -I/home/runner/work/darktable-android/darktable-android/engine/src -I/home/runner/dta-work/engine-build-x86_64/bin -I/home/runner/darktable/src -I/home/runner/darktable/data/kernels -I/home/runner/darktable/src/external/whereami/src -I/home/runner/darktable/src/external/LibRaw -isystem /home/runner/darktable/src/external -isystem /home/runner/darktable/src/external/OpenCL -isystem /opt/dta/sysroot-x86_64/include/glib-2.0 -isystem /opt/dta/sysroot-x86_64/include/../lib/glib-2.0/include -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/gtk-3.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/pango-1.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/glib-2.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../lib/glib-2.0/include -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/harfbuzz -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/freetype2 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/libpng16 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/fribidi -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/cairo -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/pixman-1 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/gdk-pixbuf-2.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/gio-unix-2.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/atk-1.0 -isystem /opt/dta/sysroot-x86_64/include/libxml2 -isystem /opt/dta/sysroot-x86_64/include/lensfun -isystem /opt/dta/sysroot-x86_64/include/pango-1.0 -isystem /opt/dta/sysroot-x86_64/include/librsvg-2.0 -isystem /opt/dta/sysroot-x86_64/include/json-glib-1.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/json-glib-1.0 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/libxml2 -isystem /opt/dta/sysroot-x86_64/lib/pkgconfig/../../include/lensfun -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -I/opt/dta/sysroot-x86_64/include -O2 -fPIC -g0 -O3 -DNDEBUG  -fPIC -fopenmp-version=51 -fopenmp=libomp -ffast-math -fno-finite-math-only -std=c99 -Wall -Wno-unknown-pragmas -pthread -fopenmp=libomp -MD -MT CMakeFiles/dtbridge.dir/src/memory.c.o -MF CMakeFiles/dtbridge.dir/src/memory.c.o.d -o CMakeFiles/dtbridge.dir/src/memory.c.o -c /home/runner/work/darktable-android/darktable-android/engine/src/memory.c
+/home/runner/work/darktable-android/darktable-android/engine/src/memory.c:43:13: error: attempt to use a poisoned identifier
+   43 |   FILE *f = fopen("/proc/self/statm", "r");
+      |             ^
+1 error generated.
+[22/25] Building C object CMakeFiles/dtbridge.dir/src/retouch.c.o
+[23/25] Building C object CMakeFiles/dtbridge.dir/src/masks.c.o
+[24/25] Building C object CMakeFiles/dtbridge.dir/src/perspective.c.o
+In file included from /home/runner/work/darktable-android/darktable-android/engine/src/perspective.c:74:
+/home/runner/darktable/src/gui/accelerators.h:200:3: warning: redefinition of typedef 'dt_action_def_t' is a C11 feature [-Wtypedef-redefinition]
+  200 | } dt_action_def_t;
+      |   ^
+/home/runner/darktable/src/dtgtk/button.h:26:32: note: previous definition is here
+   26 | typedef struct dt_action_def_t dt_action_def_t;
+      |                                ^
+1 warning generated.
+ninja: build stopped: subcommand failed.
