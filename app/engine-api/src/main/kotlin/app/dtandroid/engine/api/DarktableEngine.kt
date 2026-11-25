@@ -319,4 +319,13 @@ interface DarktableEngine {
 
     /** Desktop's selection: the module's algorithm and blur or fill settings take the shape's. */
     suspend fun retouchSelect(op: String, priority: Int, id: Int)
+
+    // ---- 6.11 (P3n): rotate and perspective's structure, guides and fit
+
+    /**
+     * Desktop's structure and fit buttons and its mouse on the photo for a rotate and perspective instance, run by
+     * darktable's own code; [request] holds "action" (begin, end, state, structure, fit, pointer, changed) and its
+     * fields (engine-api.md 6.11). Changes are one history item per request. ARG for another module.
+     */
+    suspend fun ashift(op: String, priority: Int, request: JsonObject): PerspectiveState
 }

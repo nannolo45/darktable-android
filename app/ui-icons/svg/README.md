@@ -27,3 +27,6 @@ before/after comparison), and two of its tools: `modules.svg` (sliders) and `sty
 
 Brief P3f added `versions.svg` (the versions chip and sheet), `duplicate.svg` and `duplicateVirgin.svg`
 (the two buttons of the versions sheet), drawn after the approved mockup (docs/design/mockups/P3f-Versions.html).
+
+Brief P3n added the three structure buttons of rotate and perspective: `perspectiveRectangle.svg`,
+`perspectiveFindLines.svg` and `perspectiveDrawLines.svg`, drawn after the approved mockup (owner, 25 Nov 2026).

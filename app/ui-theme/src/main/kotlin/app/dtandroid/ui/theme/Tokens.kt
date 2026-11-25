@@ -69,6 +69,15 @@ class DtColors(t: TokenSource) {
     val patchAlteredInner = t.color("color.patchAlteredInner")
     val patchMarkLight = t.color("color.patchMarkLight")
     val patchMarkDark = t.color("color.patchMarkDark")
+    /** brief P3n, rotate and perspective's structure lines, desktop's colours (ashift.c gui_post_expose, alpha 0.8 applied
+     *  when drawn): vertical used green, vertical left out red, horizontal used blue, horizontal left out yellow, other
+     *  grey; the shift+drag area's dashed frame */
+    val guideVerticalUsed = t.color("color.guideVerticalUsed")
+    val guideVerticalOutlier = t.color("color.guideVerticalOutlier")
+    val guideHorizontalUsed = t.color("color.guideHorizontalUsed")
+    val guideHorizontalOutlier = t.color("color.guideHorizontalOutlier")
+    val guideOther = t.color("color.guideOther")
+    val guideArea = t.color("color.guideArea")
     /** brief P3h, snapshot split view: the divider line and its round handle (light over a dark edge) */
     val splitLine = t.color("color.splitLine")
     val splitShadow = t.color("color.splitShadow")
@@ -157,6 +166,11 @@ class DtSizes(t: TokenSource) {
     val maskLine = t.dp("size.maskLine")
     val maskHandle = t.dp("size.maskHandle")
     val maskIndicator = t.dp("size.maskIndicator")
+    /** brief P3n: a structure line, one near the finger (desktop draws it thicker), a corner's ring and a grabbed one */
+    val guideLine = t.dp("size.guideLine")
+    val guideLineNear = t.dp("size.guideLineNear")
+    val guideHandle = t.dp("size.guideHandle")
+    val guideHandleNear = t.dp("size.guideHandleNear")
     /** brief P3m: the gap between look up table patches, an altered patch's outline, the selected patch's mark inset, retouch's fill colour swatch */
     val patchGap = t.dp("size.patchGap")
     val patchOutline = t.dp("size.patchOutline")

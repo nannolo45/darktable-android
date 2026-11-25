@@ -596,4 +596,9 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun retouchSelect(op: String, priority: Int, id: Int) = onEngine {
         p3d(NativeBridge.P3M_RETOUCH_SELECT, op, n1 = priority, n2 = id); Unit
     }
+
+    // 6.11 (P3n): rotate and perspective
+    override suspend fun ashift(op: String, priority: Int, request: JsonObject): app.dtandroid.engine.api.PerspectiveState = onEngine {
+        app.dtandroid.engine.api.PerspectiveState.fromJson(p3d(NativeBridge.P3N_ASHIFT, op, request.toString(), n1 = priority))
+    }
 }

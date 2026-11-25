@@ -5,6 +5,9 @@ import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.RetouchShape
 import app.dtandroid.engine.api.RetouchState
+import app.dtandroid.engine.api.PerspectiveState
+import app.dtandroid.engine.api.GuideLine
+import app.dtandroid.engine.api.GuideHandle
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
@@ -430,6 +433,7 @@ class FakeEngine(
     override suspend fun close() = onEngine {
         requireInit()
         session = null
+        fp = null
     }
 
     override suspend fun imageInfo(): ImageInfo = onEngine {
@@ -2233,6 +2237,211 @@ class FakeEngine(
             s.setParams(op, priority, emptyMap(), merge = true)
             s.items = s.items.dropLast(1) + s.items.last().copy(params = p)
         }
+    }
+
+    // ------------------------------------------------------------ 6.11 (P3n): rotate and perspective (a stand-in)
+
+    /** The stand-in's structure: lines as fractions of the picture; no geometry (the real engine runs ashift.c). */
+    private class FakePersp(val op: String, val priority: Int) {
+        var focused = false
+        var method = "none"
+        var lines = mutableListOf<MutableList<Double>>()  // x1, y1, x2, y2
+        var kinds = mutableListOf<String>()
+        var drawnSaved = mutableListOf<List<Double>>()
+        var press: Pair<Double, Double>? = null
+        var dragLine = -1
+        var dragEnd = -1     // 0: p1, 1: p2
+        var area = false
+        var areaSelect = true
+        var cropDrag = false
+        var crop = listOf(0.0, 1.0, 0.0, 1.0)
+        var message: String? = null
+    }
+
+    private var fp: FakePersp? = null
+
+    private fun FakePersp.vertical() = kinds.count { it == "vertical_used" }
+    private fun FakePersp.horizontal() = kinds.count { it == "horizontal_used" }
+
+    private fun FakePersp.state(p: JsonObject, enabled: Boolean, handled: Boolean, near: Pair<Double, Double>?, r: Double): PerspectiveState {
+        fun num(k: String) = (p[k] as? JsonPrimitive)?.doubleOrNull ?: 0.0
+        val drawn = method == "rectangle" || method == "drawn"
+        val ls = lines.indices.filter { !drawn || kinds[it].endsWith("_used") }.map { i ->
+            val l = lines[i]
+            val k = kinds[i]
+            val color = when (k) { "vertical_used" -> "green"; "vertical_outlier" -> "red"; "horizontal_used" -> "blue"; "horizontal_outlier" -> "yellow"; else -> "grey" }
+            GuideLine(l[0], l[1], l[2], l[3], k, color, near != null && distTo(l, near) <= r)
+        }
+        val hs = if (!drawn) emptyList() else lines.take(if (method == "rectangle") 2 else lines.size).flatMap { l ->
+            listOf(GuideHandle(l[0], l[1], false), GuideHandle(l[2], l[3], false))
+        }
+        val cm = when ((p["cropmode"] as? JsonPrimitive)?.content) { "ASHIFT_CROP_OFF" -> 0; "ASHIFT_CROP_ASPECT" -> 2; else -> 1 }
+        val clip = if (focused && enabled && cm != 0) listOf(crop[0] to crop[2], crop[0] to crop[3], crop[1] to crop[3], crop[1] to crop[2]) else null
+        return PerspectiveState(focused, enabled, method, method == "lines_found", method == "rectangle", method == "drawn", method != "none",
+            vertical(), horizontal(), false, handled, ls, hs, if (area) press else null, areaSelect, clip, crop,
+            num("rotation"), num("lensshift_v"), num("lensshift_h"), num("shear"), cm, drawnSaved.size, message)
+    }
+
+    private fun distTo(l: List<Double>, q: Pair<Double, Double>): Double {
+        val dx = l[2] - l[0]; val dy = l[3] - l[1]
+        val t = (((q.first - l[0]) * dx + (q.second - l[1]) * dy) / (dx * dx + dy * dy).coerceAtLeast(1e-12)).coerceIn(0.0, 1.0)
+        return kotlin.math.hypot(l[0] + t * dx - q.first, l[1] + t * dy - q.second)
+    }
+
+    private fun drawnKind(l: List<Double>) = if (kotlin.math.abs(l[2] - l[0]) > kotlin.math.abs(l[3] - l[1])) "horizontal_used" else "vertical_used"
+
+    override suspend fun ashift(op: String, priority: Int, request: JsonObject): PerspectiveState = onEngine {
+        val s = requireSession()
+        if (op != "ashift") fail(EngineError.ARG, "$op is not rotate and perspective")
+        val d = def(op)
+        s.inst(op, priority)
+        fun str(k: String) = (request[k] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        fun dbl(k: String) = (request[k] as? JsonPrimitive)?.doubleOrNull
+        val action = str("action") ?: fail(EngineError.ARG, "expected { \"action\": ... }")
+        if (action != "state" && s.readOnly) fail(EngineError.READ_ONLY, "read-only")
+        var f = fp?.takeIf { it.op == op && it.priority == priority }
+        if (f == null) {
+            if (action != "begin") fail(EngineError.STATE, "call \"begin\" first")
+            f = FakePersp(op, priority).also { fp = it }
+        }
+        f.message = null
+        var p = s.live()[op to priority]!!.params
+        var enabled = s.live()[op to priority]!!.enabled
+        var handled = false
+        val r = (dbl("radius") ?: 0.02).coerceAtLeast(1e-6)
+        fun item() { s.beginChange(); s.addItem(op, priority, true, p); enabled = true }
+        fun clean() { f.method = "none"; f.lines.clear(); f.kinds.clear() }
+        fun needFocus() { if (!f.focused) fail(EngineError.STATE, "call \"begin\" first") }
+        var near: Pair<Double, Double>? = null
+        when (action) {
+            "begin" -> f.focused = true
+            "end" -> { if (f.method == "drawn") f.drawnSaved = f.lines.map { it.toList() }.toMutableList(); clean(); f.focused = false }
+            "state" -> {}
+            "structure" -> {
+                needFocus()
+                val m = str("method")
+                val enhance = str("enhance") ?: "none"
+                if (enhance !in listOf("none", "edges", "detail", "both")) fail(EngineError.ARG, "enhance: none, edges, detail or both")
+                if (m !in listOf("lines_found", "rectangle", "drawn")) fail(EngineError.ARG, "method: lines_found, rectangle or drawn")
+                val was = f.method
+                if (was == "drawn") f.drawnSaved = f.lines.map { it.toList() }.toMutableList()
+                clean()
+                if (!(was == m && (m != "lines_found" || enhance == "none"))) {
+                    f.method = m!!
+                    when (m) {
+                        "lines_found" -> {
+                            val extra = if (enhance == "none") 0 else 1
+                            val v = listOf(0.18, 0.35, 0.62, 0.81 + 0.02 * extra)
+                            v.forEach { x -> f.lines += mutableListOf(x, 0.15, x + 0.03, 0.85); f.kinds += "vertical_used" }
+                            f.lines += mutableListOf(0.5, 0.3, 0.6, 0.6); f.kinds += "vertical_outlier"
+                            listOf(0.22, 0.5, 0.78).forEach { y -> f.lines += mutableListOf(0.1, y, 0.9, y - 0.02); f.kinds += "horizontal_used" }
+                            f.lines += mutableListOf(0.2, 0.4, 0.5, 0.48); f.kinds += "horizontal_outlier"
+                            f.lines += mutableListOf(0.3, 0.9, 0.36, 0.95); f.kinds += "other"
+                        }
+                        "rectangle" -> {
+                            val q = listOf(listOf(0.2, 0.2, 0.2, 0.8), listOf(0.8, 0.2, 0.8, 0.8), listOf(0.2, 0.2, 0.8, 0.2), listOf(0.2, 0.8, 0.8, 0.8))
+                            q.forEachIndexed { i, l -> f.lines += l.toMutableList(); f.kinds += if (i < 2) "vertical_used" else "horizontal_used" }
+                        }
+                        else -> f.drawnSaved.forEach { l -> f.lines += l.toMutableList(); f.kinds += drawnKind(l) }
+                    }
+                }
+                item()
+            }
+            "fit" -> {
+                needFocus()
+                val axis = str("axis")
+                val variant = str("variant") ?: "plain"
+                if (axis !in listOf("vertical", "horizontal", "both")) fail(EngineError.ARG, "axis: vertical, horizontal or both")
+                if (variant !in listOf("plain", "rotation", "shift", "no_shear")) fail(EngineError.ARG, "variant: plain, rotation, shift or no_shear")
+                if (variant == "no_shear" && axis != "both") fail(EngineError.ARG, "no_shear is a variant of both")
+                val enough = (axis == "horizontal" || f.vertical() >= 2) && (axis == "vertical" || f.horizontal() >= 2)
+                if (f.lines.isEmpty() || !enough) f.message = "not enough structure for automatic correction\nminimum 2 lines in each relevant direction"
+                else {
+                    val rot = variant != "shift"
+                    val shift = variant != "rotation"
+                    if (rot) p = setPath(d, p, "rotation", JsonPrimitive(if (axis == "horizontal") -0.8 else 1.2))
+                    if (shift && axis != "horizontal") p = setPath(d, p, "lensshift_v", JsonPrimitive(-0.21))
+                    if (shift && axis != "vertical") p = setPath(d, p, "lensshift_h", JsonPrimitive(0.05))
+                    if (axis == "both" && variant == "plain") p = setPath(d, p, "shear", JsonPrimitive(0.004))
+                    f.crop = if (((p["cropmode"] as? JsonPrimitive)?.content ?: "") == "ASHIFT_CROP_OFF") listOf(0.0, 1.0, 0.0, 1.0) else listOf(0.04, 0.96, 0.05, 0.95)
+                }
+                item()
+            }
+            "pointer" -> {
+                needFocus()
+                val x = dbl("x") ?: fail(EngineError.ARG, "x")
+                val y = dbl("y") ?: fail(EngineError.ARG, "y")
+                val button = dbl("button")?.toInt() ?: 1
+                val shift = (request["shift"] as? JsonPrimitive)?.booleanOrNull ?: false
+                near = x to y
+                when (str("event")) {
+                    "press" -> {
+                        f.press = x to y
+                        val drawn = f.method == "rectangle" || f.method == "drawn"
+                        if (shift && f.lines.isNotEmpty()) { f.area = true; f.areaSelect = button == 1; handled = true }
+                        else if (f.lines.isEmpty() && f.method != "drawn") {
+                            val cm = (p["cropmode"] as? JsonPrimitive)?.content
+                            if (cm == "ASHIFT_CROP_ASPECT") { f.cropDrag = true; handled = true }
+                        } else if (drawn && button == 1) {
+                            for (i in f.lines.indices) for (e in 0..1) if (f.dragLine < 0 && kotlin.math.hypot(f.lines[i][2 * e] - x, f.lines[i][2 * e + 1] - y) <= r) { f.dragLine = i; f.dragEnd = e }
+                            if (f.dragLine < 0 && f.method == "drawn") {
+                                f.lines += mutableListOf(x, y, x, y); f.kinds += "vertical_used"; f.dragLine = f.lines.size - 1; f.dragEnd = 1
+                            }
+                            handled = f.dragLine >= 0
+                        } else if (f.method == "drawn" && button == 3) {
+                            val i = f.lines.indices.firstOrNull { distTo(f.lines[it], x to y) <= r }
+                            if (i != null) { f.lines.removeAt(i); f.kinds.removeAt(i); handled = true }
+                        } else if (f.method == "lines_found") {
+                            for (i in f.lines.indices) if (f.kinds[i] != "other" && distTo(f.lines[i], x to y) <= r) {
+                                val dir = f.kinds[i].substringBefore('_')
+                                f.kinds[i] = dir + if (button == 1) "_used" else "_outlier"; handled = true
+                            }
+                        }
+                    }
+                    "move" -> {
+                        val i = f.dragLine
+                        if (i >= 0) { f.lines[i][2 * f.dragEnd] = x; f.lines[i][2 * f.dragEnd + 1] = y
+                            if (f.method == "rectangle") { // the horizontal sides follow the corners
+                                f.lines[2] = mutableListOf(f.lines[0][0], f.lines[0][1], f.lines[1][0], f.lines[1][1])
+                                f.lines[3] = mutableListOf(f.lines[0][2], f.lines[0][3], f.lines[1][2], f.lines[1][3])
+                            }
+                            handled = true }
+                        else if (f.cropDrag && f.press != null) {
+                            val dx = x - f.press!!.first; val dy = y - f.press!!.second
+                            val w = f.crop[1] - f.crop[0]; val h = f.crop[3] - f.crop[2]
+                            val l = (f.crop[0] + dx).coerceIn(0.0, 1.0 - w); val t = (f.crop[2] + dy).coerceIn(0.0, 1.0 - h)
+                            f.crop = listOf(l, l + w, t, t + h); f.press = x to y; handled = true
+                        }
+                    }
+                    "release" -> {
+                        if (f.area && f.press != null) {
+                            val (ax, ay) = f.press!!
+                            val (x0, x1) = minOf(ax, x) to maxOf(ax, x); val (y0, y1) = minOf(ay, y) to maxOf(ay, y)
+                            for (i in f.lines.indices) {
+                                val l = f.lines[i]
+                                if (f.kinds[i] != "other" && minOf(l[0], l[2]) >= x0 && maxOf(l[0], l[2]) <= x1 && minOf(l[1], l[3]) >= y0 && maxOf(l[1], l[3]) <= y1)
+                                    f.kinds[i] = f.kinds[i].substringBefore('_') + if (f.areaSelect) "_used" else "_outlier"
+                            }
+                            handled = true
+                        } else if (f.dragLine >= 0) {
+                            if (f.method == "drawn") f.kinds[f.dragLine] = drawnKind(f.lines[f.dragLine])
+                            if (f.method == "drawn") f.drawnSaved = f.lines.map { it.toList() }.toMutableList()
+                            item(); handled = true
+                        } else if (f.cropDrag) { item(); handled = true }
+                        else if (f.method == "drawn" && button == 3) { f.drawnSaved = f.lines.map { it.toList() }.toMutableList(); item() }
+                        f.area = false; f.cropDrag = false; f.dragLine = -1; f.press = null
+                    }
+                    else -> fail(EngineError.ARG, "event: move, press or release")
+                }
+            }
+            "changed" -> {
+                needFocus()
+                val cm = (p["cropmode"] as? JsonPrimitive)?.content
+                f.crop = when (cm) { "ASHIFT_CROP_OFF" -> listOf(0.0, 1.0, 0.0, 1.0); "ASHIFT_CROP_ASPECT" -> listOf(0.1, 0.9, 0.1, 0.9); else -> listOf(0.04, 0.96, 0.05, 0.95) }
+            }
+            else -> fail(EngineError.ARG, "unknown action '$action'")
+        }
+        f.state(p, enabled, handled, near, r)
     }
 }
 

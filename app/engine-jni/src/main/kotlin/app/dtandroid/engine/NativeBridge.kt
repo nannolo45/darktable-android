@@ -194,6 +194,8 @@ object NativeBridge {
     const val P3M_RETOUCH_SET = 9
     const val P3M_RETOUCH_REMOVE = 10
     const val P3M_RETOUCH_SELECT = 11
+    // P3n (engine-api.md 6.11)
+    const val P3N_ASHIFT = 12
     @JvmStatic external fun p3d(what: Int, s1: String?, s2: String?, n1: Int, n2: Int, n3: Int, n4: Int, status: IntArray): String?
 }
 
