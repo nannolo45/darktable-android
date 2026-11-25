@@ -4,10 +4,9 @@ Branch `p4c-leftovers`. Brief: `docs/briefs/P4c-leftovers.md`. No file under `up
 engine only through `dtbridge.h` (one new call, `dtb_retouch_focus`, and a new `"work"` member in `dtb_color_pick`'s
 answer; engine-api.md 6.10 and 6.3).
 
-**Said first:** all three items are done. Two limits: the app's curve graphs have no zoom/offset and no "scale for
-graph" control, so the mark's transforms for them are built and tested but run as the identity (item 2); and on the
-arw test RAW a heal spot gives no visible change at the place the bridge test uses, so the bridge test checks the
-picture change with a clone spot and only reports the heal's (item 1, section 3).
+**Said first:** all three items are done; one limit: the app's curve graphs have no zoom/offset and no "scale for
+graph" control, so the mark's transforms for them are built and tested but run as the identity (item 2). The branch
+has origin/main (P4d) merged in; bridge test ids C37-C39 (P4d's is C4d).
 
 ## 1. What was asked and what is delivered
 
@@ -61,21 +60,29 @@ gh workflow run p2b-real-engine.yml  --repo nannolo45/darktable-android --ref p4
 
 | Workflow | Run id | Result |
 |---|---|---|
-| p2a-app | 45606255850 | success (all JVM and screenshot tests) |
-| p2b-real-engine | 45610254507 | success: emulator 125/125 tests, compare `p4c heal` ok |
-| g0-app (all bridge tests) | 45610250484 | linux: 497 passes, 1 failure (C37 arw, heal gives no change; changed in the next commit); apk success; emulator: see below |
-| g0-app (C37 C38 C39) | 45620907355 | see below |
+Final runs, after the merge of main (commit of the merge and later):
+
+| Workflow | Run id | Result |
+|---|---|---|
+| g0-app (all bridge tests) | 45635735810 | success: linux 499 passes, 0 failures; apk; emulator |
+| p2a-app | 45635741640 | success (all JVM and screenshot tests) |
+| p2b-real-engine | 45635748431 | success: emulator 125/125 tests, compare `p4c heal` ok |
+
+Earlier failures on this branch: g0 45602616194 and 45606251102: C37 read engine_info's width instead of
+image_info's (test bug), and on arw a heal at 0.1,0.1 gave max 0 at preview size (both places flat); the spot moved to
+0.1,0.5 and a clone spot was added for the change check. g0 45620907355 still ran the old test binary: the bridge
+build's cache key did not list `dtb_test_p4c.c` (fixed in `g0-app.yml`); its apk job failed on a Maven 429. p2b
+45606294558: androidTest `Unresolved reference 'key'` (import added).
 
 C37 (bridge, crop 0.25..0.75 freehand): cr2 cropped 1954x1301, focused 3908x2602 (image_info follows), frame
 0.2500,0.2498 .. 0.7500,0.7498; raf 3125x2084 -> 6250x4168, frame 0.2499..0.7500; arw 2746x1836 -> 5492x3672, frame
 0.2500..0.7500. Original 0.1,0.1: cropped -0.31,-0.31 (outside), focused 0.09..0.10 (inside, left of and above the
 frame). Focused preview vs a render with crop bypassed: max 0 on all three. Pause 1954x1301 / resume 3908x2602, no
-history item from begin/pause/resume/end. Heal outside the crop (focused preview): cr2 max 54, raf max 117, arw max 0
-(both places flat at preview size: heal keeps the target's border and takes the source's detail); the change is now
-checked with a clone spot. Round trip: the heal's centre and source read back from the XMP; darktable-cli of
+history item from begin/pause/resume/end. Heal outside the crop at 0.1,0.5 (focused preview): cr2 max 130, raf 101,
+arw 147; clone at 0.1,0.3: 185, 111, 214 (run 45635735810). Round trip: the heal's centre and source read back from the XMP; darktable-cli of
 `p4c_focus.xmp` vs the bridge: max 0.
 
-Emulator (p2b 45610254507): r1 crop 0.3..0.8: 1954x1301 -> 3908x2602, frame 0.2999,0.2998 .. 0.7999,0.7998; tap at
+Emulator (p2b 45610254507 and 45635748431, same numbers): r1 crop 0.3..0.8: 1954x1301 -> 3908x2602, frame 0.2999,0.2998 .. 0.7999,0.7998; tap at
 0.1499,0.1499 of the whole picture, outline at the same place, original 0.1562,0.1556; after the panel closed the spot
 is at -0.30,-0.30 of the edit's picture (outside); read back from the XMP: centre 0.1562,0.1556. App export vs
 darktable-cli of the app's XMP: 1954x1301, PSNR 43.53, max 18 (threshold as the other editors). r2: 21 built-in
