@@ -1,0 +1,338 @@
+RESULT engine 04477d3
+[dt_dlopencl_init] found specified opencl runtime library '/lib/x86_64-linux-gnu/libOpenCL.so.1'
+[opencl_init] opencl library '/lib/x86_64-linux-gnu/libOpenCL.so.1' found on your system and loaded, preference '/lib/x86_64-linux-gnu/libOpenCL.so.1'
+[opencl_init] found 1 platform
+[opencl_init] found 1 device
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor_id0'
+
+   DEVICE:                   0: 'cpu-skylake-avx512-AMD EPYC 9V45 96-Core Processor'
+   CONF KEY:                 cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor
+   PLATFORM, VENDOR & ID:    Portable Computing Language, The pocl project, ID=1818455920
+   CANONICAL NAME:           portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor
+   DRIVER VERSION:           5.0+debian
+   DEVICE VERSION:           OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-skylake-avx512 API=300
+   DEVICE_TYPE:              CPU, unified mem
+   GLOBAL MEM SIZE:          13935 MB
+   MAX IMAGE ALLOC:          4096 MB
+   MAX IMAGE SIZE:           16384 x 16384
+   MAX CONSTANT BUFFER:      1024 KB
+   LOCAL MEM SIZE:           1024 KB
+   COMPUTE UNITS:            4
+   MAX WORK GROUP SIZE:      4096 (8)
+   MAX WORK ITEM DIMENSIONS: 3 [ 4096 4096 4096 ]
+   ASYNC PIXELPIPE:          NO
+   SUPPORTED ATOMICS:        INT32 INT64 FLOAT32 
+   SUPPORTED DOUBLE:         YES
+   FLOAT32 FMA:              YES
+   EXACT FLOAT32 DIV&SQRT:   YES
+   ROUNDUP WIDTH & HEIGHT    32x32
+   EVENTS HANDLED:           YES
+   OPENCL FAST MODE:         NO
+   DEFAULT DEVICE:           NO
+   AVOIDED MODULES:          none
+   KERNEL BUILD DIRECTORY:   /home/runner/dt-linux/share/darktable/kernels
+   KERNEL DIRECTORY:         /home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian
+   CL COMPILER COMMAND:      -w  -DUNKNOWN=1 -I"/home/runner/dt-linux/share/darktable/kernels"
+[dt_opencl_device_init] testing program `demosaic_ppg.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_ppg.cl.bin' MD5: 'b13e563eba75ac0289a675023feb7d78'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_ppg.cl' MD5: 'b13e563eba75ac0289a675023feb7d78'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `atrous.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/atrous.cl.bin' MD5: '7309ff6bfcfeecccfd6df13c44b22f99'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/atrous.cl' MD5: '7309ff6bfcfeecccfd6df13c44b22f99'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `basic.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/basic.cl.bin' MD5: '2dfe783080f593af7c7d6c6efc9551da'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basic.cl' MD5: '2dfe783080f593af7c7d6c6efc9551da'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `blendop.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/blendop.cl.bin' MD5: '32bf0f106a277454ca822a766c8263b1'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/blendop.cl' MD5: '32bf0f106a277454ca822a766c8263b1'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `highpass.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/highpass.cl.bin' MD5: '9cf163d6da50e7e13669ba85246b5256'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/highpass.cl' MD5: '9cf163d6da50e7e13669ba85246b5256'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `nlmeans.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/nlmeans.cl.bin' MD5: 'c5c6b79290b90183f300c3da7709e3ee'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/nlmeans.cl' MD5: 'c5c6b79290b90183f300c3da7709e3ee'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `gaussian.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/gaussian.cl.bin' MD5: '23d83e1dd5a3aae6b393747efe3bd6fd'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/gaussian.cl' MD5: '23d83e1dd5a3aae6b393747efe3bd6fd'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `sharpen.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/sharpen.cl.bin' MD5: '1855e82d4626af14f308f98801776ebf'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/sharpen.cl' MD5: '1855e82d4626af14f308f98801776ebf'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `extended.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/extended.cl.bin' MD5: '83f82a46f16a634ee77c21580a0621c9'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/extended.cl' MD5: '83f82a46f16a634ee77c21580a0621c9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `soften.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/soften.cl.bin' MD5: 'bb0b5acb829a7f7a12ce5618b2e3e959'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/soften.cl' MD5: 'bb0b5acb829a7f7a12ce5618b2e3e959'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `bilateral.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/bilateral.cl.bin' MD5: '7d251398b3dafe13d3d146bf0d4a7b02'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bilateral.cl' MD5: '7d251398b3dafe13d3d146bf0d4a7b02'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `denoiseprofile.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/denoiseprofile.cl.bin' MD5: '9c87935408c54a477d37ac90d3f05b0a'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/denoiseprofile.cl' MD5: '9c87935408c54a477d37ac90d3f05b0a'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `bloom.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/bloom.cl.bin' MD5: 'e83a8a8571b37e2504ed28414252e199'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bloom.cl' MD5: 'e83a8a8571b37e2504ed28414252e199'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `colorreconstruction.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/colorreconstruction.cl.bin' MD5: '9040bee1a51e01e1bd439423b7e5147c'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorreconstruction.cl' MD5: '9040bee1a51e01e1bd439423b7e5147c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_other.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_other.cl.bin' MD5: '64b5ce8176d738ca2af1e3c6410ab05e'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_other.cl' MD5: '64b5ce8176d738ca2af1e3c6410ab05e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_vng.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_vng.cl.bin' MD5: '6229c3335d706648028bf945573baa53'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_vng.cl' MD5: '6229c3335d706648028bf945573baa53'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_markesteijn.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_markesteijn.cl.bin' MD5: 'b5c3b85233c950a62038fc98e5cc9126'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_markesteijn.cl' MD5: 'b5c3b85233c950a62038fc98e5cc9126'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `liquify.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/liquify.cl.bin' MD5: 'fe6cdbada329dda2d2af612712229f5e'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/liquify.cl' MD5: 'fe6cdbada329dda2d2af612712229f5e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `basecurve.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/basecurve.cl.bin' MD5: 'fe695f426e5c111df79230d96bbc205f'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basecurve.cl' MD5: 'fe695f426e5c111df79230d96bbc205f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `locallaplacian.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/locallaplacian.cl.bin' MD5: 'b7e035d08d5980ed07cff7f146e7a03d'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/locallaplacian.cl' MD5: 'b7e035d08d5980ed07cff7f146e7a03d'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `dwt.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/dwt.cl.bin' MD5: '241e4aaadcb4aa69f229af4c09db19e3'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/dwt.cl' MD5: '241e4aaadcb4aa69f229af4c09db19e3'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `retouch.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/retouch.cl.bin' MD5: 'c9327e58fbce060954e0e857eb7636ca'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/retouch.cl' MD5: 'c9327e58fbce060954e0e857eb7636ca'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `filmic.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/filmic.cl.bin' MD5: '0b07db343fd4e3802451460aecd00cfc'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/filmic.cl' MD5: '0b07db343fd4e3802451460aecd00cfc'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `colorspaces.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/colorspaces.cl.bin' MD5: '33ce02a4a76f5e622993cab1729bad7f'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorspaces.cl' MD5: '33ce02a4a76f5e622993cab1729bad7f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `basicadj.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/basicadj.cl.bin' MD5: 'dc09961f065ac20923024039ae7a3ce5'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basicadj.cl' MD5: 'dc09961f065ac20923024039ae7a3ce5'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `rgbcurve.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/rgbcurve.cl.bin' MD5: '824bec48257c0578762891868d5322eb'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/rgbcurve.cl' MD5: '824bec48257c0578762891868d5322eb'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `guided_filter.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/guided_filter.cl.bin' MD5: '4c00644eb398b2ff4d69773a90ac0bc8'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/guided_filter.cl' MD5: '4c00644eb398b2ff4d69773a90ac0bc8'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `hazeremoval.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/hazeremoval.cl.bin' MD5: '87ee8381f1a02da229906151b940080b'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/hazeremoval.cl' MD5: '87ee8381f1a02da229906151b940080b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `lut3d.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/lut3d.cl.bin' MD5: '81121355f376ec831c49234054f38d7f'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/lut3d.cl' MD5: '81121355f376ec831c49234054f38d7f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `rgblevels.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/rgblevels.cl.bin' MD5: 'd99d2e5f7b980cb946840dab5332ed12'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/rgblevels.cl' MD5: 'd99d2e5f7b980cb946840dab5332ed12'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `negadoctor.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/negadoctor.cl.bin' MD5: 'ca799dcda7a988d3511e8341d3133b69'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/negadoctor.cl' MD5: 'ca799dcda7a988d3511e8341d3133b69'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_rcd.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_rcd.cl.bin' MD5: '515d0267d8844773d861548ff8c4535a'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_rcd.cl' MD5: '515d0267d8844773d861548ff8c4535a'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `channelmixer.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/channelmixer.cl.bin' MD5: '1c7fc24c372e818c6c1b0fa1077a8b18'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/channelmixer.cl' MD5: '1c7fc24c372e818c6c1b0fa1077a8b18'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `diffuse.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/diffuse.cl.bin' MD5: '0d262fef1926b92d389679bc1763273e'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/diffuse.cl' MD5: '0d262fef1926b92d389679bc1763273e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `blurs.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/blurs.cl.bin' MD5: '52e13b4aadb007a03f46c81188276637'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/blurs.cl' MD5: '52e13b4aadb007a03f46c81188276637'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `bspline.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/bspline.cl.bin' MD5: '9eff7d04e24858b71e86e80765ce7f4c'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bspline.cl' MD5: '9eff7d04e24858b71e86e80765ce7f4c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `sigmoid.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/sigmoid.cl.bin' MD5: '66fa2875d114520df4da8c902fd1f640'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/sigmoid.cl' MD5: '66fa2875d114520df4da8c902fd1f640'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `colorequal.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/colorequal.cl.bin' MD5: 'f2dada70bf2e60e0721fc634d40455b9'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorequal.cl' MD5: 'f2dada70bf2e60e0721fc634d40455b9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `capture.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/capture.cl.bin' MD5: 'd984cbc8413c927bedf20c4a78d1523b'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/capture.cl' MD5: 'd984cbc8413c927bedf20c4a78d1523b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `agx.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/agx.cl.bin' MD5: '75a1786bf3ee0ce93cb99386a8aaa936'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/agx.cl' MD5: '75a1786bf3ee0ce93cb99386a8aaa936'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `colorharmonizer.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/colorharmonizer.cl.bin' MD5: '1052c2764d2fd54ec1c83aad0843ebe9'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorharmonizer.cl' MD5: '1052c2764d2fd54ec1c83aad0843ebe9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `overlay.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/overlay.cl.bin' MD5: 'da1182b7d350d1fd48389c55b559c866'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/overlay.cl' MD5: 'da1182b7d350d1fd48389c55b559c866'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `bilinear.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/bilinear.cl.bin' MD5: 'c10241eaec23f5241f85766969fe5ff2'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bilinear.cl' MD5: 'c10241eaec23f5241f85766969fe5ff2'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `spektrafilm.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/spektrafilm.cl.bin' MD5: '34d43b3c1980478e7a20b546f3116ce3'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/spektrafilm.cl' MD5: '34d43b3c1980478e7a20b546f3116ce3'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `satcurve.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/satcurve.cl.bin' MD5: '0998f31e2e84c95824fc3a486c99000b'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/satcurve.cl' MD5: '0998f31e2e84c95824fc3a486c99000b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `toneequal.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/toneequal.cl.bin' MD5: 'db87694dc96e4bb19bc6e02d131e91bd'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/toneequal.cl' MD5: 'db87694dc96e4bb19bc6e02d131e91bd'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `contrastntexture.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/contrastntexture.cl.bin' MD5: 'a7329ae73213ddd440a5352fa419ac6c'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/contrastntexture.cl' MD5: 'a7329ae73213ddd440a5352fa419ac6c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `cacorrectrgb.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/cacorrectrgb.cl.bin' MD5: '64aaa72ba408f617c1d3c865330c7b6f'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/cacorrectrgb.cl' MD5: '64aaa72ba408f617c1d3c865330c7b6f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `grain.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/grain.cl.bin' MD5: 'bd1c78296ffebdc846134499ea923042'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/grain.cl' MD5: 'bd1c78296ffebdc846134499ea923042'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `cacorrect.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/cacorrect.cl.bin' MD5: '09bd56e4ebcfe3e9c252266ef8da0c13'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/cacorrect.cl' MD5: '09bd56e4ebcfe3e9c252266ef8da0c13'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `permutohedral.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/permutohedral.cl.bin' MD5: 'de6d854c45e9c867210546d4fe4f390e'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/permutohedral.cl' MD5: 'de6d854c45e9c867210546d4fe4f390e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_amaze.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_amaze.cl.bin' MD5: '438f144719664e573149394a7dbc5cf2'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_amaze.cl' MD5: '438f144719664e573149394a7dbc5cf2'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `demosaic_lmmse.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/demosaic_lmmse.cl.bin' MD5: '1c9d6553b1bead7526f182eb1c557923'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_lmmse.cl' MD5: '1c9d6553b1bead7526f182eb1c557923'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[dt_opencl_device_init] testing program `dng_opcode.cl'
+[opencl_load_program] loaded cached binary program from file '/home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V4596CoreProcessor_50debian/dng_opcode.cl.bin' MD5: '0300642665b63ccc089197d80b8cc654'
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/dng_opcode.cl' MD5: '0300642665b63ccc089197d80b8cc654'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+   KERNEL LOADING TIME:      0.1365 sec
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v4596coreprocessor_id0'
+[opencl_init] OpenCL successfully initialized. internal numbers and names of available devices:
+[opencl_init]		0	'Portable Computing Language cpu-skylake-avx512-AMD EPYC 9V45 96-Core Processor'
+[opencl_init] FINALLY: opencl PREFERENCE=YES is AVAILABLE and ENABLED
+[opencl_init] opencl_scheduling_profile: 'default'
+[opencl_init] opencl_device_priority: '*/!0,*/*/*/!0,*'
+[opencl_init] opencl_mandatory_timeout: 1000
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+     0.4515 [opencl_update_settings] scheduling profile set to default
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+RESULT try0_error /nonexistent/libOpenCL.so: cannot open shared object file: No such file or directory
+RESULT platform Portable Computing Language device cpu-skylake-avx512-AMD EPYC 9V45 96-Core Processor type CPU image 1 memory_mb 13935
+RESULT log_bytes 34842 running 1
+RESULT exit 0
