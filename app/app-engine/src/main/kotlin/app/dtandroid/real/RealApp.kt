@@ -4,10 +4,23 @@ package app.dtandroid.real
 import android.app.Application
 import app.dtandroid.darkroom.robust.CrashLog
 import app.dtandroid.darkroom.robust.ExitReasons
+import app.dtandroid.darkroom.robust.MemoryTrim
 import kotlinx.coroutines.launch
 
 /** Starts the engine as soon as the process starts, so unpacking overlaps with the first screen (also when the background sync job starts the process). */
 class RealApp : Application() {
+    /** brief P4a: Android asks for memory back; the darkroom's edit stays (AppHost.trimMemory) */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        AppHost.trimMemory(level)
+    }
+
+    @Deprecated("Android still calls it on older versions")
+    override fun onLowMemory() {
+        @Suppress("DEPRECATION") super.onLowMemory()
+        AppHost.trimMemory(MemoryTrim.LOW_MEMORY)
+    }
+
     override fun onCreate() {
         super.onCreate()
         AppHost.init(this)

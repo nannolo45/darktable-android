@@ -28,6 +28,9 @@ class EngineException(val error: EngineError, val detail: String) : Exception("$
      */
     val isUndecodableFile: Boolean get() = error == EngineError.IO && detail.startsWith(UNDECODABLE_PREFIX)
 
+    /** Brief P4a: the engine (or the app, for the picture's buffer) ran out of memory during the call. */
+    val isOutOfMemory: Boolean get() = error == EngineError.ENGINE && detail.contains("out of memory", ignoreCase = true)
+
     companion object {
         /** the start of the bridge's message for an undecodable file (engine-api.md 5.1) */
         const val UNDECODABLE_PREFIX = "cannot decode "
