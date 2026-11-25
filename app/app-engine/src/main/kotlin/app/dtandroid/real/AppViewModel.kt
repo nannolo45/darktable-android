@@ -40,7 +40,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Which screen the app shows. */
-enum class Screen { LIBRARY, DARKROOM, ABOUT, TIMINGS, SERVER, HANDOFF, CRASH_LOG }
+enum class Screen { LIBRARY, DARKROOM, ABOUT, TIMINGS, SERVER, HANDOFF, CRASH_LOG, PROCESSING }
 
 /** What the hand-off screen shows (brief P2e item 4). */
 sealed interface HandOffUi {
@@ -653,6 +653,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ------------------------------------------------------------------ timings
 
     fun openTimings() { _screen.value = Screen.TIMINGS }
+
+    /** brief P4b: Settings › processing */
+    fun openProcessing() { Processing.show(); _screen.value = Screen.PROCESSING }
 
     /**
      * Run the fixed sequence on the open photo, whatever its source; with none open, on the last photo the

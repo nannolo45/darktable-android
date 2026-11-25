@@ -125,6 +125,7 @@ object AppEngine {
         if (started) return
         started = true
         val app = ctx.applicationContext
+        Processing.init(app)
         scope.launch(Dispatchers.IO) {
             try {
                 engineId = runCatching { EngineInstaller(app).packedId() }.getOrDefault("?")
@@ -139,8 +140,10 @@ object AppEngine {
                 _status.value = Status.Starting
                 val t0 = System.nanoTime()
                 // a retry after a failure later in the start finds darktable already started (once per process)
+                // brief P4b: darktable's memory budget for this phone and the "processing memory" setting; OpenCL allowed
                 if (!engine.initialised)
-                    engine.init(EnginePaths(p.paths.configDir, p.paths.cacheDir, p.paths.dataDir, p.paths.moduleDir, p.paths.tmpDir, ":memory:"), 0)
+                    engine.init(EnginePaths(p.paths.configDir, p.paths.cacheDir, p.paths.dataDir, p.paths.moduleDir, p.paths.tmpDir, ":memory:"), 0,
+                        Processing.startOptions(app))
                 val initMs = (System.nanoTime() - t0) / 1_000_000
                 val cores = runCatching { FastCores.detect() }.getOrElse { FastCores(emptyList(), emptyMap(), emptyList()) }
                 // brief P2g: never an error from here; the result says what happened
@@ -156,6 +159,8 @@ object AppEngine {
                     _status.value = Status.Failed("darktable did not load these plugins: ${info.pluginsMissing.joinToString()}")
                     return@launch
                 }
+                // brief P4b: the GPU, when switched on (and checked) earlier
+                Processing.afterStart(engine)
                 _status.value = Status.Ready(info, cores, r.unpackMs, initMs, r.freshUnpack, pin)
             } catch (e: EngineException) {
                 _status.value = Status.Failed("the engine did not start: ${e.message}\n${runCatching { NativeBridge.lastError() }.getOrDefault("")}")

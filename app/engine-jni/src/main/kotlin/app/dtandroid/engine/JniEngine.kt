@@ -131,7 +131,28 @@ class JniEngine private constructor() : DarktableEngine {
         } catch (e: OutOfMemoryError) {
             // brief P4a: the picture's Java buffer could not be made: an engine error the darkroom handles, not a crash
             throw EngineException(EngineError.ENGINE, "out of memory for the rendered picture")
-        } finally { synchronized(cancelGuard) { rendering = false } }
+        } finally {
+            synchronized(cancelGuard) { rendering = false }
+            watchGpu()
+        }
+    }
+
+    /**
+     * Brief P4b: called on the engine thread after a render during which darktable reported an OpenCL error (it then
+     * finished that render on the CPU), or once when darktable stopped OpenCL for the session after repeated errors.
+     */
+    @Volatile var onOpenClTrouble: ((OpenClInfo) -> Unit)? = null
+    @Volatile private var gpuWatched = false
+    private var fallbacksSeen = 0L
+    private var stoppedSeen = false
+
+    private fun watchGpu() {
+        if (!gpuWatched) return
+        val i = runCatching { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }.getOrNull() ?: return
+        val trouble = i.rendersFallback > fallbacksSeen || (i.stopped && !stoppedSeen)
+        fallbacksSeen = i.rendersFallback
+        stoppedSeen = i.stopped
+        if (trouble) runCatching { onOpenClTrouble?.invoke(i) }
     }
 
     /** Run [block] on the engine thread; skip it if the caller is cancelled before it starts. */
@@ -383,7 +404,11 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun openclSet(enabled: Boolean): OpenClInfo = onEngine {
         requireInit()
         val st = IntArray(1)
-        OpenClInfo.fromJson(json(NativeBridge.openclSet(enabled, st), st))
+        OpenClInfo.fromJson(json(NativeBridge.openclSet(enabled, st), st)).also {
+            gpuWatched = it.running
+            fallbacksSeen = it.rendersFallback
+            stoppedSeen = it.stopped
+        }
     }
 
     override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }

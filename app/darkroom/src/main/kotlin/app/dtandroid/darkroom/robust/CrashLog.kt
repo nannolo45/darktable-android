@@ -144,6 +144,8 @@ class CrashLog(
         const val KIND_START = "start failed"
         const val KIND_BRIDGE = "engine error shown"
         const val KIND_RENDER_OOM = "render out of memory"
+        /** brief P4b: an OpenCL error (darktable finished the render on the CPU), or the GPU switched off */
+        const val KIND_OPENCL = "GPU (OpenCL)"
 
         fun stackOf(e: Throwable): String = StringWriter().also { e.printStackTrace(PrintWriter(it)) }.toString()
 
