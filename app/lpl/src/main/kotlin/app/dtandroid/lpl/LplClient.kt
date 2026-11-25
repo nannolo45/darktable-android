@@ -163,14 +163,37 @@ class LplClient(
         if (e.failure == LplFailure.NOT_FOUND) emptyList() else throw e
     }
 
+    /** R18: `GET /api/photos/{id}/exports`, newest first. Repeated after a transient failure (it changes nothing). */
+    fun listExports(id: Long): List<ServerExport> = call("GET", "/api/photos/$id/exports", retries = settings.retries) { r ->
+        val o = parseObject("GET /api/photos/$id/exports", r.body.readBytes())
+        o["exports"].arr().orEmpty().mapNotNull { e ->
+            val x = e as? JsonObject ?: return@mapNotNull null
+            ServerExport(x["id"].long() ?: return@mapNotNull null, x["version"].long()?.toInt() ?: 0, x["name"].str() ?: "",
+                x["path"].str() ?: "", x["size"].long() ?: -1L, x["agent"].str())
+        }
+    }
+
     /**
      * R18: `POST /api/photos/{id}/exports?agent=&version=&name=&size=` with the file as the body, streamed; [onBytes]
      * gets the bytes sent so far. LPL has no resumable upload: a failure that can pass (no answer, 502/503/504) repeats
      * the whole file, up to [ClientSettings.retries] more times; `size` makes the server refuse a cut-off body.
+     *
+     * Brief P4a: never two copies on the server. [known] is what the photo's export list held before the first attempt
+     * (null: do not check). When an attempt fails without an answer, the server may have stored the file all the same:
+     * the list is read, and an export that [ServerExport.isUpload] says is this one is taken as the answer instead of
+     * sending the file again. [checkFirst]: look before the first attempt too (an upload of an earlier run that may have
+     * arrived). [claimed]: exports other uploads of this device already took as theirs.
      */
-    fun postExport(id: Long, agentId: String, version: Int, name: String, file: File, onBytes: (Long) -> Unit = {}): ExportAnswer {
+    fun postExport(
+        id: Long, agentId: String, version: Int, name: String, file: File, onBytes: (Long) -> Unit = {},
+        known: Set<Long>? = null, claimed: Set<Long> = emptySet(), checkFirst: Boolean = false,
+    ): ExportAnswer {
         val enc = { t: String -> java.net.URLEncoder.encode(t, "UTF-8") }
         val path = "/api/photos/$id/exports?agent=${enc(agentId)}&version=$version&name=${enc(name)}&size=${file.length()}"
+        fun arrived(): ExportAnswer? = known?.let { k ->
+            listExports(id).firstOrNull { it.isUpload(agentId, version, name, file.length(), k, claimed) }?.let { ExportAnswer(it.id, it.path) }
+        }
+        if (checkFirst) arrived()?.let { log?.invoke("POST /api/photos/$id/exports: already stored by an earlier attempt (export ${it.exportId})"); return it }
         var attempt = 0
         while (true) {
             try {
@@ -179,7 +202,10 @@ class LplClient(
                     ExportAnswer(o["export_id"].long() ?: throw LplException(LplFailure.BAD_ANSWER, "POST /api/photos/$id/exports: no export_id in the answer"), o["path"].str() ?: "")
                 }
             } catch (e: LplException) {
-                if (!e.transient || attempt >= settings.retries) throw e
+                if (!e.transient) throw e
+                // the answer may be what was lost: look before sending the file again
+                arrived()?.let { log?.invoke("POST /api/photos/$id/exports: the answer was lost, the server has it (export ${it.exportId})"); return it }
+                if (attempt >= settings.retries) throw e
                 sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
                 attempt++
             }

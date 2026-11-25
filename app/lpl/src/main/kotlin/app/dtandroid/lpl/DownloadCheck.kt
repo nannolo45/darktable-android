@@ -34,3 +34,10 @@ object DownloadCheck {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 }
+
+/** Brief P4a: the darktable history block of an XMP (`<darktable:history>…</darktable:history>`), for comparing edits. */
+object XmpHistory {
+    private val block = Regex("<darktable:history>.*?</darktable:history>", RegexOption.DOT_MATCHES_ALL)
+
+    fun of(xmp: ByteArray): String? = block.find(xmp.decodeToString())?.value?.replace(Regex("\\s+"), " ")
+}

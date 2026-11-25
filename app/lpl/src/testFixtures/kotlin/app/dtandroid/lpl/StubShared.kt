@@ -107,6 +107,9 @@ class StubShared(private val deviceName: (String) -> String) {
     fun delete(agent: String, id: Long, baseRev: Int, at: Double = System.currentTimeMillis() / 1000.0): Pair<Int, JsonObject> {
         val i = item(id) ?: return 404 to buildJsonObject { put("detail", "no such item") }
         log += "DELETE ${i.name}"
+        // as LPL (server/lpl/shared.py, delete): deleted here and elsewhere, nothing to decide (a repeated DELETE whose
+        // first answer was lost lands here)
+        if (i.deleted) { candidates.remove(agent to i.id); return stored(i, null) }
         if (baseRev == i.rev) {
             i.deleted = true; i.changedAt = at; i.deviceId = agent; bump(i)
             candidates.remove(agent to i.id)

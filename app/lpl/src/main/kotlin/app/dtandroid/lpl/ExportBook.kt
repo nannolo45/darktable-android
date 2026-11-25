@@ -18,6 +18,8 @@ data class QueuedExport(
     val version: Int,
     val name: String,
     val file: File,
+    /** brief P4a: the photo's export ids on the server before the first attempt to send it; null = not read yet (never sent) */
+    val known: Set<Long>? = null,
 )
 
 /**
@@ -55,16 +57,43 @@ class ExportBook(private val dir: File) {
 
     /** Keep a copy of [source] for [origin]'s photo until it is sent. Throws [java.io.IOException] when it cannot be kept. */
     @Synchronized
-    fun queue(origin: ServerOrigin, photo: Long, version: Int, name: String, source: File): QueuedExport {
+    fun queue(origin: ServerOrigin, photo: Long, version: Int, name: String, source: File, known: Set<Long>? = null): QueuedExport {
         queueDir.mkdirs()
         val n = (list().maxOfOrNull { it.n } ?: 0L) + 1
         val bin = File(queueDir, "$n.bin")
         source.copyTo(bin, overwrite = true)
+        val q = QueuedExport(n, origin, photo, version, name, bin, known)
+        writeEntry(q)
+        return q
+    }
+
+    /** Brief P4a: note what the photo's export list held before the first attempt (written before the attempt). */
+    @Synchronized
+    fun setKnown(q: QueuedExport, known: Set<Long>): QueuedExport = q.copy(known = known).also { writeEntry(it) }
+
+    private fun writeEntry(q: QueuedExport) {
         val entry = buildJsonObject {
-            put("server", origin.url); put("photo", photo); put("version", version); put("name", name)
+            put("server", q.server.url); put("photo", q.photo); put("version", q.version); put("name", q.name)
+            q.known?.let { k -> put("known", buildJsonArray { k.sorted().forEach { add(JsonPrimitive(it)) } }) }
         }
-        atomicWrite(File(queueDir, "$n.json"), entry.toString().toByteArray())
-        return QueuedExport(n, origin, photo, version, name, bin)
+        atomicWrite(File(queueDir, "${q.n}.json"), entry.toString().toByteArray())
+    }
+
+    private val claimedFile get() = File(dir, "claimed.txt")
+
+    /** Brief P4a: export ids on servers that an upload of this device took as its own (the last 500), so no other takes them. */
+    @Synchronized
+    fun claimed(origin: ServerOrigin): Set<Long> = runCatching {
+        readWhole(claimedFile)!!.decodeToString().lines().mapNotNull { l ->
+            val (k, id) = l.split(' ').takeIf { it.size == 2 } ?: return@mapNotNull null
+            id.toLongOrNull()?.takeIf { k == origin.key }
+        }.toSet()
+    }.getOrDefault(emptySet())
+
+    @Synchronized
+    fun claim(origin: ServerOrigin, id: Long) {
+        val lines = runCatching { readWhole(claimedFile)!!.decodeToString().lines().filter { it.isNotBlank() } }.getOrDefault(emptyList())
+        runCatching { atomicWrite(claimedFile, (lines + "${origin.key} $id").takeLast(500).joinToString("\n", postfix = "\n").toByteArray()) }
     }
 
     /** In the order they were queued; leftovers of a half-queued export are deleted. */
@@ -77,7 +106,8 @@ class ExportBook(private val dir: File) {
             val origin = o["server"].str()?.let { ServerOrigin.parseExact(it) } ?: return@mapNotNull null
             val bin = File(queueDir, "$n.bin")
             if (!bin.isFile) return@mapNotNull null
-            QueuedExport(n, origin, o["photo"].long() ?: return@mapNotNull null, o["version"].long()?.toInt() ?: 0, o["name"].str() ?: return@mapNotNull null, bin)
+            QueuedExport(n, origin, o["photo"].long() ?: return@mapNotNull null, o["version"].long()?.toInt() ?: 0, o["name"].str() ?: return@mapNotNull null, bin,
+                (o["known"] as? JsonArray)?.mapNotNull { it.long() }?.toSet())
         }.sortedBy { it.n }
         val kept = entries.map { it.n }.toSet()
         for (f in files) {
