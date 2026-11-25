@@ -22,6 +22,8 @@ shift 4
 ONLY="$*"
 HERE=$(cd "$(dirname "$0")" && pwd)
 export DT_PREFIX
+# brief P5c: every test id must be in TEST-IDS.md and used once; new ids are taken from there
+sh "$HERE/check_test_ids.sh" || exit 1
 
 DTB="$BRIDGE_BUILD/tests/dtb_test"
 # DTB_TEST_RESOURCELEVEL (for example "small"): darktable's memory budget, for

@@ -11,7 +11,7 @@ schema/overrides/ makes usable. Those are drawn disabled by the app (no paramete
 per control: module, control label, kind, section.
 
 Brief P2j: only what is still open is listed, with its class from the override's `note` (b a list not built yet,
-c needs a bridge call, d waits for a later tool); a control the overrides hide (`hide`, class e) or make usable
+c needs a bridge call, d waits for a later tool, f is built in a hand-made panel of the app and not listed); a control the overrides hide (`hide`, class e) or make usable
 (`computed`, `value_list`, `stock_list`, `toggle_writes`, `bind_param`, `bind_action`, `aspect_list`,
 `replace_with_buttons`; brief P3c: `picker_setting`, a colour picker's setting, `picker`, a control whose
 picker is built, and `action_list`, a list the engine gives per photo) is not listed. A control no override mentions is listed with class "?": a schema update
@@ -47,6 +47,7 @@ for g in groups:
 
 # what the override files make usable: (op, node)
 fixed = set()
+built = set()
 waiting = {}
 for f in sorted((REPO / "schema/overrides").glob("*.json")):
     o = json.loads(f.read_text(encoding="utf-8"))
@@ -60,6 +61,8 @@ for f in sorted((REPO / "schema/overrides").glob("*.json")):
             fixed.add((o["op"], sl[k]))
     for e in o.get("note", []):
         waiting[(o["op"], e["node"])] = (e.get("class", "?"), e["text"])
+        if e.get("class") == "f":  # brief P5c: drawn by a hand-made panel of the app, not a control that is still open
+            built.add((o["op"], e["node"]))
 
 
 def walk(cs, section, out):
@@ -74,6 +77,7 @@ def walk(cs, section, out):
 
 out = [f"# {layout} ({workflow}): {len(mods)} modules"]
 n = 0
+n_built = 0
 classes = {}
 for op in mods:
     m = schema["modules"].get(op)
@@ -85,12 +89,17 @@ for op in mods:
     for node, kind, label, section in found:
         if (op, node) in fixed:
             continue
+        if (op, node) in built:
+            n_built += 1
+            continue
         n += 1
         cls, text = waiting.get((op, node), ("?", "no override says what it waits for"))
         classes[cls] = classes.get(cls, 0) + 1
         out.append(f"{m['name']} ({op}) | {label} | {kind}" + (f" | section {section}" if section else "") + f" | class {cls}: {text}")
 out.append(f"# {n} controls still disabled for want of a parameter binding: "
            + ", ".join(f"{k} {v}" for k, v in sorted(classes.items())))
+if n_built:
+    out.append(f"# {n_built} more are built in hand-made panels of the app (class f) and not listed")
 text = "\n".join(out) + "\n"
 if check:
     want = Path(check).read_text(encoding="utf-8")

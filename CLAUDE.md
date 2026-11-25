@@ -21,6 +21,7 @@ An unofficial Android port of darktable: upstream darktable's engine, unmodified
 - Commit in small steps with messages that say what changed and why.
 - Every claim in a pull request must be backed by something a reviewer can run: a test, a script, or a log committed under `docs/experiments/`.
 - **Report failures plainly.** Do not weaken, skip or delete a test to make it pass, and do not describe a partial result as done. If an acceptance test cannot be met, say so first in the pull request description, with numbers.
+- New bridge test ids (C41, ...) are taken from `engine/tests/TEST-IDS.md`: add the row in the same commit; `run_tests.sh` fails on an unregistered or doubled id.
 - Do not add dependencies, services or tools the brief does not call for without explaining why in the pull request.
 - Keep build products out of git (`build/`, `out/`, `.gradle/`, `*.apk`, `*.so`, downloaded sources).
 - Measurements taken on the build workspace are x86_64 numbers on 2 cores. Label them so; they are not phone numbers.

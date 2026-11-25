@@ -1,0 +1,15 @@
+# Brief P5c: test and CI hygiene
+
+Branch `p5c-test-ci-hygiene`, started from `p5a-module-audit` (33efa11, which the reviewer merges into `main` first; merge `origin/main` once that has happened). Read CLAUDE.md, PLAN.md 6.1 item 3 and the reports named below. No new features, no change of behaviour the owner would see. Independent items; each complete and tested before the next, cheapest first.
+
+1. **p2b workflow** (P4d report follow-up): the manifest permission check gets an explicit allow-list (the app's existing permissions incl. `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC`, `POST_NOTIFICATIONS`; anything else fails the step), and the shell steps that pipe into `tee`/`sed`/`grep` run with `set -o pipefail` so that a failing command fails the step. Check the other workflows for the same pipe pattern and fix those too.
+2. **A registry for bridge test ids.** One file (`engine/tests/TEST-IDS.md` or a table at the top of `run_tests.sh`) listing every id (C1 … C40, C4d, T1 …), its command, its test source file and brief; a small check run by the suite that fails when an id is used twice or is not in the registry. Say in CLAUDE.md in one line that new ids are taken from the registry. Reason: two parallel branches both took C37.
+3. **Stale override notes** (P5a report, surprises): `schema/overrides/*.json` notes saying "a later package" for controls that P3e-b, P3m and later packages built (colour look up table, colour zones, retouch at least; check every note against the app). Correct them so `tools/schema-unbound-controls.py` and `tools/module-audit.py` report the truth; re-run `tools/module-audit.py` and commit the changed `modules.json` and audit table if they change (say what changed).
+4. **CurvePick fallback** (P4c report): when the working profile is unknown, the luminance row is darktable's Rec 2020 row (0.2790405, 0.6753473, 0.0456121; check it against upstream's `dt_ioppr` Rec 2020 matrix and cite the file and function), not the rounded coefficients used now. JVM test.
+5. **Emulator tap tests** for dialogs that today have Robolectric tests only: R11 shared styles/presets/layouts (P3l), retouch and colour look up table (P3m), perspective guides (P3n). One instrumented test each in the existing emulator job (p2b), following the existing androidTest classes: open the dialog or tool on a test photo by taps, do one real action (apply an update; place a heal spot; move a patch; draw a line and fit), check the result through the engine (history / XMP), not through pixels. Keep the emulator job's run time increase under 5 minutes; say the number.
+
+## Economy
+One agent, no sub-agents. CI rounds are slow (g0 about an hour, p2b about 40 minutes): do items 1–4 locally as far as they can be checked without a build, push them together for one round, and do item 5 in at most two further rounds. The all-modules test C40 runs only when named; do not name it. If item 5 cannot be made green in two rounds for one of the dialogs, leave that test out, and say so plainly in the report, rather than weakening it.
+
+## Report
+`docs/experiments/P5c-test-ci-hygiene-REPORT.md` as CLAUDE.md says, with CI run ids.

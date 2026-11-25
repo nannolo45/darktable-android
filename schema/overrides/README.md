@@ -53,7 +53,7 @@ desktop's callback on the parameters (`app/schema`: `Computed.kt`, `Formulas.kt`
 | `toggle_writes` | a switch that writes `set` when switched on, shown on when `on_when` holds |
 | `action` (in a `value_list` entry or a `toggle_writes`) | brief P3b: written through the engine's module action `{"name", "args"}` (engine-api.md 5.4) instead of `set`, for the values desktop's callback writes outside a field's limits; a list entry's `set` still says when it is the one shown |
 | `bind_param` | a control the extractor saw without a parameter but whose callback writes one parameter directly |
-| `note` | one plain line under a control that waits for something (`class` b, c or d of the P2j report) |
+| `note` | one plain line under a control that waits for something (`class` b, c or d of the P2j report; brief P5c: f = the control is built in a hand-made panel of the app, or left out there on purpose, and the text says which) |
 | `hide` | a control that changes nothing on a phone (desktop's configuration only); `reason` says why |
 | `visibility` | replaces the schema's visibility rule by desktop's own condition (`when_all` or `table`) |
 

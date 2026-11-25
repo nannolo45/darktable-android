@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: t
-        run: tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
+        run: set -o pipefail; tools/ci/tags.sh | tee -a "$GITHUB_OUTPUT"
 
   deps:
     permissions:
@@ -250,6 +250,7 @@ jobs:
       - name: Build the APKs (debug, one per ABI) and the instrumented test
         id: build
         run: |
+          set -o pipefail
           start=$(date +%s)
           cd app
           "$GRADLE" --no-daemon -Pdta.engineDir=/home/runner/engines -Pdta.versionName="$APP_TAG" \
@@ -262,6 +263,7 @@ jobs:
 
       - name: Check and measure the APKs
         run: |
+          set -o pipefail
           R=/home/runner/apk/apk-report.txt
           {
             echo "app tag: $APP_TAG"; echo "engine: $ENGINE_TAG"; echo "commit: $GITHUB_SHA"
@@ -274,9 +276,9 @@ jobs:
               if unzip -l "$a" | grep -iE '\.(cr2|cr3|nef|arw|raf|dng|orf|rw2|pef|srw|jks|keystore)$'; then echo "FORBIDDEN FILE IN APK"; exit 1; fi
               # permissions: nothing is sent anywhere, so no network permission
               "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | sed 's/^/  /'
-              if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep -q 'android.permission.INTERNET'; then echo "INTERNET permission in APK"; exit 1; fi
+              if "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump permissions "$a" | grep 'android.permission.INTERNET' >/dev/null; then echo "INTERNET permission in APK"; exit 1; fi
               # the bridge must not be in lib/: it is loaded from the unpacked engine
-              if unzip -l "$a" | grep -q 'lib/.*/libdtbridge.so'; then echo "libdtbridge.so in lib/"; exit 1; fi
+              if unzip -l "$a" | grep 'lib/.*/libdtbridge.so' >/dev/null; then echo "libdtbridge.so in lib/"; exit 1; fi
               echo "  engine archive: $(stat -c %s /home/runner/engines/engine-$abi.tar.gz) bytes (tar.gz)"
               echo "  engine tree: $(du -sb /home/runner/engines/engine-$abi | cut -f1) bytes unpacked (with bin/darktable-cli, not packed)"
             done

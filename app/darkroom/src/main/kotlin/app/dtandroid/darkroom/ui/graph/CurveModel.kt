@@ -332,7 +332,14 @@ object CurvePick {
     fun toLog(x: Double, base: Double, ch: Int, semilog: Int): Double =
         if (base > 0.0 && ch == 0 && semilog != -1) Math.log(x * base + 1.0) / Math.log(base + 1.0) else x
 
-    private val REC2020_Y = listOf(0.2627, 0.6780, 0.0593)
+    /**
+     * The luminance row of darktable's linear Rec 2020 working profile, the profile the pipe uses when the
+     * photo's own is unknown (brief P5c; src/common/iop_profile.c dt_ioppr_set_pipe_work_profile_info falls back to
+     * DT_COLORSPACE_LIN_REC2020). It is the Y row of that profile's matrix_in, which darktable reads from the profile
+     * `_colorspaces_create_linear_rec2020_rgb_profile` (src/common/colorspaces.c: Rec2020_Primaries at D65, adapted to
+     * D50 by lcms), and not the rounded ITU coefficients (0.2627, 0.6780, 0.0593) of Rec 2020 at D65.
+     */
+    internal val REC2020_Y = listOf(0.2790405, 0.6753473, 0.0456121)
 
     private fun paramString(params: kotlinx.serialization.json.JsonObject, name: String): String? =
         (params.paramAt(name) as? kotlinx.serialization.json.JsonPrimitive)?.content
