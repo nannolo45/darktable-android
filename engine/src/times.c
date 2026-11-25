@@ -61,6 +61,8 @@ static void _timed_plain(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_i
   dtb__pick_hook(self, piece, i, o, roi_in, roi_out);
   // P1b part 2: the mask channel while a mask is shown (maskdisplay.c)
   dtb__mask_display_hook(self, piece, i, o, roi_in, roi_out);
+  // P3n: rotate and perspective's copy of its input on the preview pipe (perspective.c)
+  dtb__ashift_hook(self, piece, i, roi_in);
   if(!g_entries) return;
   for(guint k = 0; k < g_entries->len; k++)
   {

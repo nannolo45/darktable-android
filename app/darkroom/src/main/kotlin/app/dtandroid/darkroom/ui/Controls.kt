@@ -101,6 +101,10 @@ fun ModulePanel(ctx: PanelContext, modifier: Modifier = Modifier) {
             RetouchPanel(ctx)
         } else if (ctx.module.op == app.dtandroid.darkroom.LUT_OP) {
             LutPanel(ctx)
+        } else if (ctx.module.op == app.dtandroid.darkroom.ASHIFT_OP && ctx.module.editableCount > 0) {
+            // brief P3n: structure and fit first (approved mockup), then the module's generated controls
+            if (!ctx.readOnly) PerspectivePanel(ctx)
+            Controls(ctx.module.controls, ctx)
         } else if (ctx.module.editableCount == 0) {
             DtText(
                 "The editor for this module is not available yet. It still renders and can be switched.",

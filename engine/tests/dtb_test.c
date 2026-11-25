@@ -41,6 +41,7 @@
  *   bypass, undohash, ...          C17 and later: P1b part 2, see dtb_test_p1b2.c
  *   masktree                       C26: P3d stage 2a, see dtb_test_p3d.c
  *   retouch                        C32: P3m, see dtb_test_p3m.c
+ *   perspective                    C33: P3n, see dtb_test_p3n.c
  *   exportprog                     C27: P3g export progress and cancel, see dtb_test_p3g.c
  *   snaphist                       C28: P3h render of another history position, see dtb_test_p3h.c
  *   undomask                       C28 (T1): masks above the history end across undo, redo and compress
@@ -3203,6 +3204,7 @@ static int cmd_cpus(const char *workdir)
 #include "dtb_test_p3j.c"
 #include "dtb_test_p3l.c"
 #include "dtb_test_p3m.c"
+#include "dtb_test_p3n.c"
 
 int main(int argc, char **argv)
 {
@@ -3250,7 +3252,7 @@ int main(int argc, char **argv)
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
       { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
-      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch },
+      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch }, { "perspective", cmd_perspective },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Build darktable and the bridge for Linux
         id: build
@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/dt-linux
-          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
+          key: dt-linux-bridge-${{ needs.tag.outputs.dt_commit }}-${{ hashFiles('tools/build-engine-linux.sh', 'engine/CMakeLists.txt', 'engine/include/**', 'engine/src/**', 'engine/tests/CMakeLists.txt', 'engine/tests/dtb_test.c', 'engine/tests/dtb_test_p1b2.c', 'engine/tests/dtb_test_p3d.c', 'engine/tests/dtb_test_p3g.c', 'engine/tests/dtb_test_p3h.c', 'engine/tests/dtb_test_p3j.c', 'engine/tests/dtb_test_p3l.c', 'engine/tests/dtb_test_p3m.c', 'engine/tests/dtb_test_p3n.c', 'engine/tests/dtb_p3jref.c', 'engine/tests/dtb_pickref.c', 'engine/tests/pickref*') }}
 
       - name: Fetch test images
         run: |

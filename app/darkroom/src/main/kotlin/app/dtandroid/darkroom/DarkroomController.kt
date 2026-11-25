@@ -438,6 +438,7 @@ class DarkroomController(
         }
         masksOrNull?.reset() // brief P3d: another photo: no drawing, no sheet, no module chosen
         retouchOrNull?.reset() // brief P3m: the same for retouch's tools
+        perspectiveOrNull?.reset() // brief P3n: the same for rotate and perspective's structure
         // told after the state says no photo is open, so the source sees the photo as closed
         if (left != null) source?.left(left)
     }
@@ -497,6 +498,7 @@ class DarkroomController(
             }
             masksOrNull?.reset()
             retouchOrNull?.reset()
+            perspectiveOrNull?.reset()
             if (left != null) source?.left(left)
         }
     }
@@ -838,6 +840,8 @@ class DarkroomController(
             masksOrNull?.afterChangeLocked(engine)
             // brief P3m: retouch's panel reads its shapes again (undo and redo too)
             retouchOrNull?.afterChangeLocked(engine)
+            // brief P3n: rotate and perspective's structure again (undo and redo too)
+            perspectiveOrNull?.afterChangeLocked(engine)
         }
         requestRender()
     }
@@ -851,6 +855,7 @@ class DarkroomController(
     /** A list entry, a switch, or an override button: one history step. */
     suspend fun setParam(key: InstanceKey, path: String, value: JsonPrimitive) = change {
         engine.paramSet(key.op, key.priority, path, value)
+        perspectiveOrNull?.changedLocked(engine, key, listOf(path)) // brief P3n: desktop's gui_changed
         engine.historySeal()
     }
 
@@ -945,6 +950,7 @@ class DarkroomController(
             is Binding.Param -> {
                 engine.paramSet(key.op, key.priority, binding.path, if (integer) JsonPrimitive(Math.round(value)) else JsonPrimitive(value))
                 keepAspect(key, binding.path, value)
+                perspectiveOrNull?.changedLocked(engine, key, listOf(binding.path)) // brief P3n: desktop's gui_changed
             }
             Binding.Aspect -> throw EngineException(EngineError.ARG, "the aspect list is chosen from its entries")
             Binding.Computed -> {
@@ -1100,7 +1106,10 @@ class DarkroomController(
     private suspend fun writeDrag(d: Drag) {
         val w = d.writes
         if (w == null) writeBinding(d.key, d.binding, d.value, d.integer, d.controlId)
-        else for ((path, v) in w) engine.paramSet(d.key.op, d.key.priority, path, v)
+        else {
+            for ((path, v) in w) engine.paramSet(d.key.op, d.key.priority, path, v)
+            perspectiveOrNull?.changedLocked(engine, d.key, w.map { it.first })
+        }
     }
 
     /**
@@ -2464,7 +2473,11 @@ class DarkroomController(
             val s = _state.value
             when {
                 // brief P3f: the open session is the open version's; another version of the open photo waits until it closes
-                s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> { usedOpen = true; Result.success(block(e)) }
+                s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> {
+                    usedOpen = true
+                    // brief P3n: rotate and perspective's focus (the uncropped picture) paused for this render
+                    Result.success(perspectiveOrNull?.pausedLocked(e) { block(e) } ?: block(e))
+                }
                 s.info == null && !fetching -> {
                     // brief P2h: a file without a picture is not opened again until it changes, and a session
                     // that turns out to have none is closed before [block] could render it
@@ -2587,6 +2600,7 @@ class DarkroomController(
     /** Brief P3m: retouch's tools and "switch off shapes", the look up table's picker, only while their module is expanded. */
     private fun retouchFocus() {
         retouchOrNull?.focusChanged()
+        perspectiveOrNull?.focusChanged() // brief P3n: the focus leaves rotate and perspective
         if (lutLazyInit) lut.focusChanged()
     }
 
@@ -2745,6 +2759,14 @@ class DarkroomController(
 
     /** Retouch's shapes and tools (Retouch.kt). */
     val retouch: Retouch get() = retouchLazy.value
+
+    // ------------------------------------------------------------------ brief P3n: rotate and perspective's structure and fit
+
+    private val perspectiveLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Perspective(this) }
+    private val perspectiveOrNull: Perspective? get() = if (perspectiveLazy.isInitialized()) perspectiveLazy.value else null
+
+    /** Rotate and perspective's structure, fit and the finger on the photo (Perspective.kt). */
+    val perspective: Perspective get() = perspectiveLazy.value
 
     private val lutLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Lut(this) }
     private val lutLazyInit: Boolean get() = lutLazy.isInitialized()

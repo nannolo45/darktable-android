@@ -677,6 +677,48 @@ int dtb_retouch_shape_remove(const char *op, int priority, int id);
  * merges as dtb_param_set). */
 int dtb_retouch_select(const char *op, int priority, int id);
 
+/* ---------------------------------------------------------------------- */
+/* 6.11 rotate and perspective: structure, guides, fit (P3n; engine-api.md */
+/* 6.11 has the JSON)                                                      */
+
+/* Rotate and perspective instance (op "ashift", else DTB_E_ARG): desktop's
+ * structure and fit buttons and its mouse handlers on the photo, run by
+ * darktable's own code (iop/ashift.c). request { "action": ...,
+ * "radius"?: touch radius, a fraction of the picture's width }:
+ *   "begin"   the module takes the focus (desktop's gui_focus): from now on
+ *             the bridge's renders show its whole, uncropped picture and the
+ *             calls below work; "end" gives the focus back (drawn lines and
+ *             rectangle saved in the parameters, structure dropped);
+ *   "state"   nothing changes; "pause" / "resume": renders show the edit
+ *             as it is (cropped) until "resume", for renders made for someone
+ *             else while focused; nothing else changes;
+ *   "structure" { "method": "lines_found" | "rectangle" | "drawn",
+ *             "enhance"?: "none" | "edges" | "detail" | "both" } the
+ *             structure buttons (a button that is on goes off);
+ *   "fit"     { "axis": "vertical" | "horizontal" | "both", "variant"?:
+ *             "plain" | "rotation" | "shift" | "no_shear" (both only) };
+ *   "pointer" { "event": "move" | "press" | "release", "x", "y" (fractions
+ *             of the rendered picture), "button"?: 1 | 3, "shift"?: bool }
+ *             desktop's mouse on the photo;
+ *   "changed" { "what"?: "cropmode" } after dtb_param_set on the module:
+ *             desktop's gui_changed (the automatic crop follows), merged into
+ *             that change's history item.
+ * -> the state: { "focused", "enabled", "method": "none" | "lines_found" |
+ * "rectangle" | "drawn", "structure": { "lines_found", "rectangle", "drawn" },
+ * "fit_enabled", "vertical", "horizontal", "flipped", "handled", "size":
+ * [w, h], "lines": [ { "p": [x1, y1, x2, y2], "kind": "vertical_used" |
+ * "vertical_outlier" | "horizontal_used" | "horizontal_outlier" | "other",
+ * "color": "green" | "red" | "blue" | "yellow" | "grey" } ] | null,
+ * "handles": [ { "p": [x, y] } ], "rev", "near_lines": [i], "near_handles": [i], "area": { "from": [x, y], "select" }
+ * | null, "clip": [[x, y] x 4] | null, "crop": [cl, cr, ct, cb], "params": {
+ * "rotation", "lensshift_v", "lensshift_h", "shear", "cropmode",
+ * "saved_lines" }, "message": string | null }; positions are fractions of the
+ * rendered picture. Changes are one history item per request (one undo
+ * step); DTB_E_STATE without "begin". "lines" and "handles" are null when
+ * they did not change since the request's "known_rev" (the last "rev" the
+ * caller got). */
+int dtb_ashift(const char *op, int priority, const char *request_json, char **json);
+
 #ifdef __cplusplus
 }
 #endif

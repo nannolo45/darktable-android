@@ -161,6 +161,13 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val lutPick = lutU.picking && lutU.key != null && controller.lut.wanted(s) == lutU.key && !s.before && tool == null && s.picker == null && !drawOn
     val currentLutPick by rememberUpdatedState(lutPick)
     val retouchSourceColor = c.retouchSource
+    // brief P3n: rotate and perspective's panel is open: its structure over the photo; one finger is desktop's mouse
+    // when there is structure (or a crop to drag), two fingers pan and zoom
+    val psu by controller.perspective.state.collectAsState()
+    val perspOn = controller.perspective.active(s) && tool == null && !drawOn && s.picker == null && !retouchOn
+    val currentPersp by rememberUpdatedState(perspOn)
+    val psTake = perspOn && psu.st != null && controller.perspective.takesFinger()
+    val guideLook = guideLook()
     // brief P3e: the tone equalizer's panel is open: a vertical one-finger drag on the photo edits the band under the finger
     // (not zoomed in, so that a drag there still pans; not with a picker armed, a shape drawn or the crop tool)
     val eqKey = controller.toneEqWanted(s)?.takeIf { !s.before && tool == null && s.picker == null && !drawOn }
@@ -210,8 +217,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                     val b = lc.boundsInWindow()
                     controller.photoArea = PhotoArea(b.left, b.top, b.width, b.height)
                 }
-                .pointerInput(s.index, twoFingerUndo, drawOn, rtTool) {
-                    if (drawOn || rtTool) return@pointerInput // brief P3d, P3m: taps place shapes while drawing
+                .pointerInput(s.index, twoFingerUndo, drawOn, rtTool, psTake) {
+                    if (drawOn || rtTool || psTake) return@pointerInput // brief P3d, P3m, P3n: taps place shapes, select lines
                     detectTapGestures(onDoubleTap = { p ->
                         if (zoom > 1.01f) { zoom = 1f; cx = 0.5f; cy = 0.5f } else {
                             // centre 100 % on the tapped point
@@ -298,6 +305,16 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         } else if (currentLutPick && currentTool == null && !draw && currentPicker == null) {
                             rtTap = rtLast
                         }
+                        // brief P3n: the finger goes to rotate and perspective (desktop's mouse) when it has structure
+                        var ps = false
+                        var psLast = picturePoint(down.position)
+                        if (currentPersp && currentTool == null && !draw && !rt && currentPicker == null) {
+                            val ds = currentFit * zoom
+                            if (controller.perspective.touchDown(psLast.first.toDouble(), psLast.second.toDouble(), down.uptimeMillis, (touch.toPx() / 2 / (iw * ds)).toDouble())) {
+                                down.consume()
+                                ps = true
+                            }
+                        }
                         var pick = false
                         var pickPending = false
                         var pickMoved = 0f
@@ -378,6 +395,22 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                         rtLast = picturePoint(ch.position)
                                         val ds = currentFit * zoom
                                         controller.retouch.touchMove(rtLast.first.toDouble(), rtLast.second.toDouble(), slop / (iw * ds).toDouble(), slop / (ih * ds).toDouble())
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
+                            if (ps) {
+                                if (pressed >= 2) {
+                                    controller.perspective.touchCancel()
+                                    ps = false
+                                    maxPointers = max(maxPointers, pressed)
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed && ch.positionChanged()) {
+                                        psLast = picturePoint(ch.position)
+                                        val ds = currentFit * zoom
+                                        controller.perspective.touchMove(psLast.first.toDouble(), psLast.second.toDouble(), ch.uptimeMillis, (slop / (iw * ds)).toDouble())
                                     }
                                     ev.changes.forEach { it.consume() }
                                     continue
@@ -468,6 +501,7 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         } while (ev.changes.any { it.pressed })
                         if (eq) { controller.toneEqEnd(); return@awaitEachGesture }
                         if (draw) { controller.masks.touchUp(); return@awaitEachGesture }
+                        if (ps) { controller.perspective.touchUp(psLast.first.toDouble(), psLast.second.toDouble(), upTime); return@awaitEachGesture }
                         if (rt) {
                             val ds = currentFit * zoom
                             controller.retouch.touchUp(rtLast.first.toDouble(), rtLast.second.toDouble(), (touch.toPx() / 2 / (iw * ds)).toDouble(), (touch.toPx() / 2 / (ih * ds)).toDouble())
@@ -577,6 +611,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             else if (!s.before && tool == null && s.view == app.dtandroid.darkroom.BottomView.MASKS) ms.outline?.let { drawMaskOutline(it, left, top, imgW, imgH, maskLook) }
             // brief P3m: retouch's shapes, sources and what is being placed
             if (retouchOn) drawRetouch(rtu, left, top, imgW, imgH, maskLook, retouchSourceColor)
+            // brief P3n: rotate and perspective's crop outline, lines and corners
+            if (perspOn) drawPerspective(psu, left, top, imgW, imgH, guideLook)
             tool?.line?.let { l -> drawStraightenLine(left + l[0] * imgW, top + l[1] * imgH, left + l[2] * imgW, top + l[3] * imgH, cropLook) }
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes

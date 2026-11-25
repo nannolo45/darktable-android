@@ -402,6 +402,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     parity C26 masktree_difference; parity C26 masktree_groups; parity C26 masktree_parametric
   fi
   # brief P3g (engine-api.md 6.10): export progress events and cancel; the export equals darktable-cli's
+  # brief P3n (engine-api.md 6.11): rotate and perspective's structure, selection, fit, crop drag, round trip
+  if want C33; then
+    drv C33 perspective "perspective guides: rectangle, lines found (each enhancement), drawn lines, selection, fits, crop drag, focus, undo, XMP"
+    for f in p3n_rect_fit p3n_drawn_fit p3n_found_fit p3n_crop; do parity C33 $f; done
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

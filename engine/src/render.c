@@ -222,6 +222,8 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
   }
   // also when nothing was synchronised: a shape can change with no history step the pipe sees
   _shapes_into_hash(p);
+  // P3n: rotate and perspective while it has the focus (perspective.c)
+  dtb__ashift_after_sync(p);
   return DTB_OK;
 }
 

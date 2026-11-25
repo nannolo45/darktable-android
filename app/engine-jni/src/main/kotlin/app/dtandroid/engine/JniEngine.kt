@@ -596,4 +596,17 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun retouchSelect(op: String, priority: Int, id: Int) = onEngine {
         p3d(NativeBridge.P3M_RETOUCH_SELECT, op, n1 = priority, n2 = id); Unit
     }
+
+    // 6.11 (P3n): rotate and perspective
+    /** the last structure the engine sent, per instance: it sends the lines again only when they changed (6.11) */
+    private val lastPerspective = HashMap<Pair<String, Int>, app.dtandroid.engine.api.PerspectiveState>()
+
+    override suspend fun ashift(op: String, priority: Int, request: JsonObject): app.dtandroid.engine.api.PerspectiveState = onEngine {
+        val k = op to priority
+        val prev = lastPerspective[k]
+        val req = if (prev != null && "known_rev" !in request) JsonObject(request + ("known_rev" to JsonPrimitive(prev.rev))) else request
+        val st = app.dtandroid.engine.api.PerspectiveState.fromJson(p3d(NativeBridge.P3N_ASHIFT, op, req.toString(), n1 = priority), prev)
+        lastPerspective[k] = st
+        st
+    }
 }
