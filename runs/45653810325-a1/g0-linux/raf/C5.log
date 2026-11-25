@@ -1,0 +1,5 @@
+RESULT engine 04477d3-dirty
+RESULT threads max 4; probe render 1 thread 0.192 s, 4 threads 0.003 s (build workspace or CI runner, not a phone); 1 vs all max diff 4
+RESULT threads pinned to CPU 0: 0 before, 4 after (engine thread + 3 OpenMP threads expected)
+RESULT after unpinning: 0 threads still on CPU 0 only
+RESULT exit 0
