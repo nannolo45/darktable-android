@@ -37,6 +37,11 @@ data class Checkout(
     val versions: List<ServerVersion>? = null,
     /** R17: the version LPL shows for the photo (`cover` of the answer); 0 when absent */
     val cover: Int = 0,
+    /**
+     * Brief P4a: the original's SHA-256 (hex), when the server gives one (`sha256` of the answer; LPL does not today).
+     * A download is checked against it before it is used.
+     */
+    val sha256: String? = null,
 )
 
 /** R17: one entry of `/checkout`'s `versions`; [n] 0 is the photo's own edit. */

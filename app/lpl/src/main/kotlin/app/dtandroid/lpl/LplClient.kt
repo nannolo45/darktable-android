@@ -102,6 +102,7 @@ class LplClient(
             serverTime = o["server_time"].num()
                 ?: throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/checkout: no server time"),
             cover = o["cover"].long()?.toInt() ?: 0,
+            sha256 = o["sha256"].str()?.lowercase()?.takeIf { Regex("^[0-9a-f]{64}$").matches(it) },
             versions = o["versions"].arr()?.mapNotNull { e ->
                 val v = e as? JsonObject ?: return@mapNotNull null
                 val n = v["n"].long()?.toInt() ?: return@mapNotNull null
@@ -268,6 +269,8 @@ class LplClient(
                             val start = r.header("content-range")?.let { Regex("bytes (\\d+)-").find(it)?.groupValues?.get(1)?.toLongOrNull() }
                             if (start != have) throw LplException(LplFailure.BAD_ANSWER, "$label: range answer starts at $start, not at $have")
                         } else {
+                            // brief P4a: a server that does not answer Range (or whose file changed, If-Range) sends it all: start again
+                            if (have > 0) log?.invoke("$label: the server sent the whole file instead of the rest (Range not answered or file changed); downloading it again")
                             r.header("etag")?.let { e -> writeSmall(etagFile, e) } ?: etagFile.delete()
                         }
                         val total = when {
@@ -283,6 +286,7 @@ class LplClient(
                                 f.seek(done)
                                 val buf = ByteArray(1 shl 16)
                                 var lastReport = 0L
+                                var lastSync = done
                                 while (true) {
                                     if (cancelled()) throw LplException(LplFailure.CANCELLED, "$label: cancelled")
                                     val n = r.body.read(buf)
@@ -290,6 +294,8 @@ class LplClient(
                                     f.write(buf, 0, n)
                                     done += n
                                     if (done - lastReport >= (1 shl 18)) { progress(done, total); lastReport = done }
+                                    // brief P4a: what is on disk is on disk, so a resume after the phone died starts from real bytes
+                                    if (done - lastSync >= SYNC_EVERY) { f.fd.sync(); lastSync = done }
                                 }
                                 f.fd.sync()
                             }
@@ -305,6 +311,9 @@ class LplClient(
                             expectedSize > 0 && done == expectedSize -> true
                             expectedSize > 0 && done < expectedSize -> throw LplException(LplFailure.UNREACHABLE, "$label: the download broke off at $done of $expectedSize bytes")
                             expectedSize > 0 -> false
+                            // brief P4a: no size from checkout: the answer's own length decides whether the file is whole
+                            total in 1 until done -> false
+                            total > 0 && done < total -> throw LplException(LplFailure.UNREACHABLE, "$label: the download broke off at $done of $total bytes")
                             else -> true
                         }
                     }
@@ -453,6 +462,9 @@ class LplClient(
         /** `checkout_ts` as the PC agent sends it: the server's float time, full precision. */
         /** `caps` of every heartbeat (brief P2k): `batch` = reports transfers, `cancel` = acts on Stop, `open` = honours `payload.open` */
         val CAPS = listOf("batch", "cancel", "open", "versions", "exports")
+
+        /** brief P4a: a download in progress is flushed to storage after this many bytes */
+        const val SYNC_EVERY = 4L shl 20
 
         fun formatTs(ts: Double): String = java.math.BigDecimal.valueOf(ts).toPlainString()
     }

@@ -66,6 +66,14 @@ class StubLpl(port: Int = 0) : AutoCloseable {
     data class Seen(val method: String, val path: String, val status: Int, val token: String?, val range: String?, val ifRange: String?, val bodyBytes: Int)
 
     @Volatile var password: String = ""
+    /** brief P4a: the drops of the next originals, one per request ([dropOriginalAfter] first); empty = no more drops */
+    val dropPlan: java.util.ArrayDeque<Long> = java.util.ArrayDeque()
+    /** brief P4a: answer every original whole (200), ignoring `Range`, as a server without R4 would */
+    @Volatile var ignoreRange: Boolean = false
+    /** brief P4a: `/checkout` gives the original's `sha256` (LPL does not today) */
+    @Volatile var checksums: Boolean = false
+    /** brief P4a: the next [corruptNext] originals sent have one byte changed (a transfer that went wrong unnoticed) */
+    @Volatile var corruptNext: Int = 0
     @Volatile var dropOriginalAfter: Long = -1
     @Volatile var redirect: Boolean = false
     /** every answer waits this long first (a slow network), in ms */
@@ -220,7 +228,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                 when (m.groupValues[2] to req.method) {
                     "checkout" to "GET" -> {
                         record(200)
-                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}${versionsJson(ph, req.query["agent"])}}""")
+                        json(out, 200, """{"id":${ph.id},"relpath":"2024/${ph.filename}","filename":"${ph.filename}","size":${ph.bytes.size},"mtime":${ph.mtime},"meta_mtime":${ph.metaMtime},"server_time":${now()}${versionsJson(ph, req.query["agent"])}${shaJson(ph)}}""")
                     }
                     "original" to "GET" -> original(out, req, ph, ::record)
                     "xmp" to "GET" -> {
@@ -342,11 +350,14 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel$serverCaps}""")
     }
 
+    private fun shaJson(ph: Photo): String = if (!checksums) "" else
+        ",\"sha256\":\"" + java.security.MessageDigest.getInstance("SHA-256").digest(ph.bytes).joinToString("") { "%02x".format(it) } + "\""
+
     private fun original(out: OutputStream, req: Req, ph: Photo, record: (Int) -> Unit) {
-        val all = ph.bytes
+        val all = if (corruptNext > 0) { corruptNext--; ph.bytes.copyOf().also { it[it.size / 2] = (it[it.size / 2] + 1).toByte() } } else ph.bytes
         val size = all.size.toLong()
         val etag = "\"${ph.mtime.toLong()}-$size\""
-        val range = req.headers["range"]
+        val range = req.headers["range"].takeUnless { ignoreRange }
         var start = 0L
         var end = size - 1
         var partial = false
@@ -367,7 +378,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val headers = linkedMapOf("Accept-Ranges" to "bytes", "ETag" to etag)
         if (partial) headers["Content-Range"] = "bytes $start-$end/$size"
         record(if (partial) 206 else 200)
-        val drop = dropOriginalAfter
+        val drop = dropOriginalAfter.takeIf { it >= 0 } ?: synchronized(dropPlan) { dropPlan.pollFirst() } ?: -1L
         if (drop >= 0) {
             dropOriginalAfter = -1
             // announce the whole length, send part of it, close: a connection that breaks off

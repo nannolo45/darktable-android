@@ -344,12 +344,20 @@ class LplAgent(
             val part = work.part(r)
             _progress.update { it + ((origin to id) to Progress(if (part.isFile) part.length() else 0, co.size)) }
             step(origin, id, Step(Step.DOWNLOADING, if (co.size > 0 && part.isFile) part.length().toDouble() / co.size else null))
-            net(origin) { c ->
-                c.downloadOriginal(id, part, co.size, progress = { d, t ->
-                    _progress.update { it + ((origin to id) to Progress(d, t)) }
-                    step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
-                    onBytes(d)
-                }, cancelled = cancelled)
+            var checks = 0
+            while (true) {
+                net(origin) { c ->
+                    c.downloadOriginal(id, part, co.size, progress = { d, t ->
+                        _progress.update { it + ((origin to id) to Progress(d, t)) }
+                        step(origin, id, Step(Step.DOWNLOADING, if (t > 0) d.toDouble() / t else null))
+                        onBytes(d)
+                    }, cancelled = cancelled)
+                }
+                // brief P4a: the engine never sees a partial or wrong file: size, and the checksum where LPL gives one
+                val bad = DownloadCheck.problem(part, co.size, co.sha256) ?: break
+                part.delete(); File(part.path + ".etag").delete()
+                trace("download of $name failed its check ($bad)" + if (checks == 0) "; downloading it again" else "")
+                if (++checks > 1) throw LplException(LplFailure.BAD_ANSWER, "GET /api/photos/$id/original: $bad")
             }
             val raw = work.raw(r)
             if (!part.renameTo(raw)) throw LplException(LplFailure.LOCAL, "cannot move the download into place")
