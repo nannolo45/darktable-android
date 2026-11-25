@@ -1,0 +1,115 @@
+darktable 04477d3 [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> ENABLED
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+[dt_get_sysresource_level] switched to `default'
+  total mem:       15983MB
+  available mem:   7991MB
+  singlebuff:      124MB
+[opencl_init] opencl disabled by --disable-opencl
+[opencl_init] FINALLY: opencl PREFERENCE=YES is NOT AVAILABLE and NOT ENABLED
+RESULT engine 04477d3
+[opencl_init] opencl library 'libOpenCL.so.1' found on your system and loaded, preference 'libOpenCL.so.1'
+[opencl_init] found 1 platform
+[opencl_init] found 1 device
+
+   DEVICE:                   0: 'cpu-skylake-avx512-AMD EPYC 9V74 80-Core Processor', NEW
+   CONF KEY:                 cldevice_v7_portablecomputinglanguagecpuskylakeavx512amdepyc9v7480coreprocessor
+   PLATFORM, VENDOR & ID:    Portable Computing Language, The pocl project, ID=1818455920
+   CANONICAL NAME:           portablecomputinglanguagecpuskylakeavx512amdepyc9v7480coreprocessor
+   DRIVER VERSION:           5.0+debian
+   DEVICE VERSION:           OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-skylake-avx512 API=300
+   DEVICE_TYPE:              CPU, unified mem
+   GLOBAL MEM SIZE:          13935 MB
+   MAX IMAGE ALLOC:          4096 MB
+   MAX IMAGE SIZE:           16384 x 16384
+   MAX CONSTANT BUFFER:      1024 KB
+   LOCAL MEM SIZE:           1024 KB
+   COMPUTE UNITS:            4
+   MAX WORK GROUP SIZE:      4096 (8)
+   MAX WORK ITEM DIMENSIONS: 3 [ 4096 4096 4096 ]
+   ASYNC PIXELPIPE:          NO
+   SUPPORTED ATOMICS:        INT32 INT64 FLOAT32 
+   SUPPORTED DOUBLE:         YES
+   FLOAT32 FMA:              YES
+   EXACT FLOAT32 DIV&SQRT:   YES
+   EVENTS HANDLED:           YES
+   OPENCL FAST MODE:         NO
+   DEFAULT DEVICE:           NO
+   AVOIDED MODULES:          none
+   KERNEL BUILD DIRECTORY:   /home/runner/dt-linux/share/darktable/kernels
+   KERNEL DIRECTORY:         /home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V7480CoreProcessor_50debian
+   CL COMPILER COMMAND:      -w  -DUNKNOWN=1 -I"/home/runner/dt-linux/share/darktable/kernels"
+   KERNEL LOADING TIME:      70.2295 sec
+[opencl_init] OpenCL successfully initialized. internal numbers and names of available devices:
+[opencl_init]		0	'Portable Computing Language cpu-skylake-avx512-AMD EPYC 9V74 80-Core Processor'
+[opencl_init] FINALLY: opencl PREFERENCE=YES is AVAILABLE and ENABLED
+[opencl_init] opencl_scheduling_profile: 'default'
+[opencl_init] opencl_device_priority: '*/!0,*/*/*/!0,*'
+[opencl_init] opencl_mandatory_timeout: 1000
+[opencl_init] set scheduling profile to default, setup has changed
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+P4B opencl after switching on: {"built":true,"allowed":true,"started":true,"library":"libOpenCL.so.1","inited":true,"enabled":true,"stopped":false,"error_count":0,"running":true,"devices":[{"name":"Portable Computing Language cpu-skylake-avx512-AMD EPYC 9V74 80-Core Processor","platform":"Portable Computing Language","version":"OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-skylake-avx512","memory":14612865024,"unified":true,"disabled":false}],"renders":1,"renders_gpu":0,"renders_fallback":0,"last_render":"cpu","kernel_dir":"/home/runner/bridge-tests/cr2/work/kernels"}
+RESULT opencl running 1 devices 1 start_s 70.4
+RESULT opencl last gpu psnr 95.77 maxdiff 1 cpu_s 0.118 gpu_s 2.036
+RESULT kernels /home/runner/bridge-tests/cr2/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512AMDEPYC9V7480CoreProcessor_50debian
+RESULT export_ran gpu
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+RESULT exit 0
