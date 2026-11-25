@@ -1,0 +1,150 @@
+ * Threads
+ * Gettext
+ * GTK3 (required version >= 3.24.15)
+ * LibXml2 (required version >= 2.6)
+ * Potrace
+ * LensFun
+ * SQLite3 (required version >= 3.26)
+ * Glib
+ * GIO
+ * GThread
+ * GModule
+ * PangoCairo
+ * Rsvg2
+ * PNG
+ * TIFF
+ * LCMS2
+ * JsonGlib
+ * CURL (required version >= 7.56)
+ * Exiv2 (required version >= 0.27.2)
+ * Pugixml (required version >= 1.5), Light-weight, simple and fast XML parser, <http://pugixml.org/>
+   Used for loading of data/cameras.xml
+ * ZLIB, software library used for data compression
+   Used for decoding DNG Deflate compression
+ * JPEG, free library for handling the JPEG image data format, implements a JPEG codec
+   Used for decoding DNG Lossy JPEG compression
+ * OpenMP, Open Multi-Processing, <https://www.openmp.org/>
+   Used for parallelization of the library
+
+-- The following OPTIONAL packages have not been found:
+
+ * Imath (required version >= 3.1)
+ * IsoCodes (required version >= 3.66)
+
+-- Configuring done (4.6s)
+-- Generating done (0.4s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_POLICY_VERSION_MINIMUM
+
+
+-- Build files have been written to: /home/runner/dta-work/engine-build-x86_64
+[935/937] Generating org.darktable.darktable.desktop
+Merging translations into /home/runner/dta-work/engine-build-x86_64/share/darktable/org.darktable.darktable.desktop.
+[936/937] Generating ../metainfo/org.darktable.darktable.appdata.xml
+Merging translations into /home/runner/dta-work/engine-build-x86_64/bin/../share/metainfo/org.darktable.darktable.appdata.xml.
+CREATED /home/runner/dta-work/engine-build-x86_64/bin/../share/metainfo/org.darktable.darktable.appdata.xml
+-- The C compiler identification is Clang 21.0.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /home/runner/dta-host/android-ndk-r30/toolchains/llvm/prebuilt/linux-x86_64/bin/clang - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- darktable definitions: GDK_DISABLE_DEPRECATED;GDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_24;GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_MIN_REQUIRED;GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56;GTK_DISABLE_DEPRECATED;GTK_DISABLE_SINGLE_INCLUDES;HAVE_BUILTIN_CPU_SUPPORTS;HAVE_CONFIG_H;HAVE_LIBRAW=1;HAVE_OPENCL;_XOPEN_SOURCE=700;ANDROID;_FORTIFY_SOURCE=2;NDEBUG;_DARKTABLE_RELEASE
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+-- Checking for modules 'glib-2.0;gobject-2.0;json-glib-1.0;libxml-2.0;lcms2;lensfun;sqlite3'
+--   Found glib-2.0, version 2.90.1
+--   Found gobject-2.0, version 2.90.1
+--   Found json-glib-1.0, version 1.10.8
+--   Found libxml-2.0, version 2.15.4
+--   Found lcms2, version 2.20
+--   Found lensfun, version 0.3.4.0
+--   Found sqlite3, version 3.54.1
+-- Found OpenMP_C: -fopenmp=libomp (found version "5.1")
+-- Found OpenMP: TRUE (found version "5.1") found components: C
+-- Checking for module 'gtk+-3.0'
+--   Found gtk+-3.0, version 3.24.52
+-- Configuring done (0.5s)
+-- Generating done (0.0s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_INSTALL_LIBDIR
+    CMAKE_POLICY_VERSION_MINIMUM
+
+
+-- Build files have been written to: /home/runner/dta-work/bridge-build-x86_64
+[1/26] Building C object CMakeFiles/dtbridge.dir/src/guard.c.o
+[2/26] Building C object CMakeFiles/dtbridge.dir/src/session.c.o
+[3/26] Building C object CMakeFiles/dtbridge.dir/src/params.c.o
+[4/26] Building C object CMakeFiles/dtbridge.dir/src/core.c.o
+[5/26] Building C object CMakeFiles/dtbridge.dir/src/actions2.c.o
+[6/26] Building C object CMakeFiles/dtbridge.dir/src/instances.c.o
+[7/26] Building C object CMakeFiles/dtbridge.dir/src/history.c.o
+[8/26] Building C object CMakeFiles/dtbridge.dir/src/actions.c.o
+[9/26] Building C object CMakeFiles/dtbridge.dir/src/output.c.o
+[10/26] Building C object CMakeFiles/dtbridge.dir/src/render.c.o
+[11/26] Building C object CMakeFiles/dtbridge.dir/src/presets.c.o
+[12/26] Building C object CMakeFiles/dtbridge.dir/src/styles.c.o
+[13/26] Building C object CMakeFiles/dtbridge.dir/src/times.c.o
+[14/26] Building C object CMakeFiles/dtbridge.dir/src/copypaste.c.o
+[15/26] Building C object CMakeFiles/dtbridge.dir/src/shared.c.o
+[16/26] Building C object CMakeFiles/dtbridge.dir/src/maskdisplay.c.o
+[17/26] Building C object CMakeFiles/dtbridge.dir/src/coords.c.o
+[18/26] Building C object CMakeFiles/dtbridge.dir/src/pickers.c.o
+[19/26] Building C object CMakeFiles/dtbridge.dir/src/blend.c.o
+[20/26] Building C object CMakeFiles/dtbridge.dir/src/actions3.c.o
+[21/26] Building C object CMakeFiles/dtbridge.dir/src/memory.c.o
+[22/26] Building C object CMakeFiles/dtbridge.dir/src/retouch.c.o
+[23/26] Building C object CMakeFiles/dtbridge.dir/src/masks.c.o
+[24/26] Building C object CMakeFiles/dtbridge.dir/src/speed.c.o
+[25/26] Building C object CMakeFiles/dtbridge.dir/src/perspective.c.o
+In file included from /home/runner/work/darktable-android/darktable-android/engine/src/perspective.c:74:
+/home/runner/darktable/src/gui/accelerators.h:200:3: warning: redefinition of typedef 'dt_action_def_t' is a C11 feature [-Wtypedef-redefinition]
+  200 | } dt_action_def_t;
+      |   ^
+/home/runner/darktable/src/dtgtk/button.h:26:32: note: previous definition is here
+   26 | typedef struct dt_action_def_t dt_action_def_t;
+      |                                ^
+1 warning generated.
+[26/26] Linking C shared library libdtbridge.so
+engine for x86_64, darktable 04477d32a00cc5abaea36d5bee084eb40c6eabb2
+NDK 30.0.16248370, API 29
+configure_seconds 5
+build_seconds 124
+bridge_build_seconds 4
+jobs 4
+
+== sizes (stripped, bytes)
+total	65473516
+darktable_lib_and_plugins	13785712
+darktable_plugins_count	153
+darktable-cli	25624
+dependency_libs	36042866
+share_darktable	11369724
+share_lensfun	4249590
+
+libdtbridge	470776
+load_order_entries	42
+
+== bridge: darktable compile definitions it was built with
+-- darktable definitions: GDK_DISABLE_DEPRECATED;GDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_24;GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_MIN_REQUIRED;GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_56;GTK_DISABLE_DEPRECATED;GTK_DISABLE_SINGLE_INCLUDES;HAVE_BUILTIN_CPU_SUPPORTS;HAVE_CONFIG_H;HAVE_LIBRAW=1;HAVE_OPENCL;_XOPEN_SOURCE=700;ANDROID;_FORTIFY_SOURCE=2;NDEBUG;_DARKTABLE_RELEASE
+
+== sysroot libraries not needed by the engine (not shipped)
+libcairo-script-interpreter.so libgailutil-3.so libgirepository-2.0.so libpcre2-posix.so libpng.so libsqlite3.so libsqlite3.so.3.54.1 libtiffxx.so
+
+== OpenMP
+libdarktable.so NEEDED libomp.so: yes
+-- Found OpenMP_C: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP_CXX: -fopenmp=libomp (found suitable version "5.1", minimum required is "4.5")
+-- Found OpenMP: TRUE (found suitable version "5.1", minimum required is "4.5")
+ * OpenMP (required version >= 4.5)
+-- Looking for OpenMP
+
+== ELF load alignment (every PT_LOAD must be >= 0x4000)
+misaligned_files 0
+
+== unresolved NEEDED entries
+missing_needed 0
+-rw-r--r-- 1 runner runner 22980030 Nov 25 11:19 /home/runner/engine-out/engine-x86_64.tar.gz
