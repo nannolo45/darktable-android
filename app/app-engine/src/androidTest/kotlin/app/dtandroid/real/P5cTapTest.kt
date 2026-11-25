@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -14,17 +15,22 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.click
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.dtandroid.darkroom.ASHIFT_OP
 import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.InstanceKey
+import app.dtandroid.darkroom.LUT_OP
+import app.dtandroid.darkroom.LutPatches
 import app.dtandroid.darkroom.RETOUCH_OP
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import app.dtandroid.lpl.SharedHash
 import app.dtandroid.lpl.SharedKey
 import app.dtandroid.lpl.StubLpl
@@ -53,10 +59,8 @@ import java.io.File
  *  t1 R11 (P3l): the library's banner, Review, Update: the style a PC shared is in the engine's styles;
  *  t2 retouch (P3m): the module found by search and opened by a tap, "add circle", a tap on the photo: one heal circle,
  *     one history item, retouch in the saved XMP;
- * Left out (reviewer's rule: two rounds for item 5; both tests failed in run 45692809310 because the darkroom keeps the
- * last test's search text, which the test appended to instead of replacing; the fix was not run): a tap test for the
- * colour look up table (long press on a patch, "delete") and one for perspective guides (draw lines, fit). See
- * docs/experiments/P5c-test-ci-hygiene-REPORT.md.
+ *  t3 colour look up table (P3m): long press on the patches, "delete": 23 patches, one history item;
+ *  t4 perspective guides (P3n): "draw lines", three lines dragged on the photo, "fit vertical": one history item.
  * Results go to files/p2b-test/p5c-results.txt.
  */
 @RunWith(AndroidJUnit4::class)
@@ -145,10 +149,29 @@ class P5cTapTest {
         if (has("search modules")) {
             compose.onAllNodesWithContentDescription("search modules")[0].performTextReplacement(name)
             TestFiles.record(res, "${tag}_module", "found by search")
+            // The search field takes the focus and the keyboard comes up; on the emulator's 320 x 640 screen the panel
+            // then has no height and the list composes no row (run 45713442504: search text right, no module row).
+            // The keyboard is closed, as a user does before tapping the result.
+            val shown = System.currentTimeMillis() + 90_000
+            while (!has(name) && System.currentTimeMillis() < shown) { hideKeyboard(); compose.waitForIdle(); Thread.sleep(200) }
             tapDesc(tag, name)
         } else {
             TestFiles.record(res, "${tag}_module", "no search field in this layout: controller.goToModule")
             c.goToModule(key)
+        }
+    }
+
+    private fun hideKeyboard() {
+        scenario?.onActivity {
+            it.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
+        }
+    }
+
+    private fun photoSwipe(tag: String, x0: Float, y0: Float, x1: Float, y1: Float) {
+        until(tag, "the photo") { has("photo") }
+        compose.onAllNodesWithContentDescription("photo")[0].performTouchInput {
+            swipe(Offset(width * x0, height * y0), Offset(width * x1, height * y1), 500)
         }
     }
 
@@ -222,5 +245,48 @@ class P5cTapTest {
         val xmp = File(item.xmpPath).readText()
         assertTrue("retouch is in the saved XMP", xmp.contains("darktable:operation=\"retouch\""))
         TestFiles.record(res, "t2", "passed")
+    }
+
+    // ---- t3: colour look up table (P3m)
+
+    @Test fun t3_lookUpTablePatchDeletedByLongPressAndMenu() {
+        val (c, _) = openPhoto("lut")
+        val key = InstanceKey(LUT_OP, 0)
+        openModule("t3", c, "color look up table", key)
+        until("t3", "the patch grid") { has("patches") }
+        fun n() = LutPatches.of(c.state.value.modules.first { it.key == key }.params)!!.n
+        assertEquals(24, n())
+        val n0 = items(c)
+        val grid = compose.onAllNodesWithContentDescription("patches")[0]
+        runCatching { grid.performScrollTo() }
+        grid.performTouchInput { longClick(center) }
+        tapText("t3", "delete")
+        until("t3", "23 patches") { n() == 23 }
+        until("t3", "one history item") { items(c) == n0 + 1 }
+        TestFiles.record(res, "t3", "patches 24 -> ${n()}, history items $n0 -> ${items(c)}")
+    }
+
+    // ---- t4: perspective guides (P3n)
+
+    @Test fun t4_drawnLinesAndFitByTaps() {
+        val (c, _) = openPhoto("persp")
+        val key = InstanceKey(ASHIFT_OP, 0)
+        openModule("t4", c, "rotate and perspective", key)
+        until("t4", "perspective focused") { c.perspective.state.value.st?.focused == true }
+        tapDesc("t4", "draw lines")
+        until("t4", "the drawn-lines structure") { c.perspective.state.value.st?.method == "drawn" }
+        // three near-vertical lines, a little converging at the top
+        photoSwipe("t4", 0.30f, 0.80f, 0.32f, 0.20f)
+        photoSwipe("t4", 0.50f, 0.80f, 0.50f, 0.20f)
+        photoSwipe("t4", 0.70f, 0.80f, 0.68f, 0.20f)
+        val st = c.perspective.state.value.st!!
+        TestFiles.record(res, "t4_lines", "lines ${st.lines.size}, vertical ${st.vertical}, horizontal ${st.horizontal}, message ${st.message}")
+        until("t4", "three lines drawn (lines ${st.lines.size}, vertical ${st.vertical})") { (c.perspective.state.value.st?.lines?.size ?: 0) >= 3 }
+        val n0 = items(c)
+        tapDesc("t4", "fit vertical")
+        until("t4", "the fit written as one history item (message ${c.perspective.state.value.st?.message})") { items(c) == n0 + 1 }
+        val s = c.perspective.state.value.st!!
+        TestFiles.record(res, "t4_fit", "rotation %.4f lensshift_v %.4f lensshift_h %.4f, items $n0 -> ${items(c)}".format(s.rotation, s.lensshiftV, s.lensshiftH))
+        assertTrue("the fit changed the parameters", s.rotation != 0.0 || s.lensshiftV != 0.0)
     }
 }
