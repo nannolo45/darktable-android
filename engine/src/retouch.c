@@ -714,7 +714,10 @@ static dt_iop_module_t *_focused(void)
 {
   if(!rf_focus || !dtb_S.open) return NULL;
   dt_iop_module_t *m = dtb__find(rf_op, rf_prio);
-  return m && !strcmp(m->op, "retouch") ? m : NULL;
+  if(m && !strcmp(m->op, "retouch")) return m;
+  // the instance went (deleted): the focus goes with it, as desktop's
+  dtb__focus_drop();
+  return NULL;
 }
 
 gboolean dtb__focus_active(void)
