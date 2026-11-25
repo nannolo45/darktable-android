@@ -348,6 +348,7 @@ int dtb_close(void)
 {
   NEED_SESSION();
   dtb__ashift_drop();
+  dtb__focus_drop();
   dtb__pipes_free();
   dtb__undo_clear();
   dt_dev_cleanup(&dtb_S.dev);

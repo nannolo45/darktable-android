@@ -329,4 +329,14 @@ void dtb__ashift_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, cons
                       const dt_iop_roi_t *const roi_in);
 void dtb__ashift_drop(void);
 
+/* retouch.c (P4c): retouch's focus. While a retouch instance has the focus
+ * (dtb_retouch_focus "begin", not paused) every bridge render, size,
+ * coordinate transform and picker leaves out the modules desktop skips then
+ * (imageop.c dt_iop_module_is_skipped: after the focused module in the pipe,
+ * operation_tags() & its operation_tags_filter(), here decoration and
+ * cropping), as dtb__bypass_begin does for "bypass". At close: dropped. */
+gboolean dtb__focus_active(void);
+gboolean dtb__focus_skips(const dt_iop_module_t *m);
+void dtb__focus_drop(void);
+
 #endif

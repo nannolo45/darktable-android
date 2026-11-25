@@ -1,0 +1,176 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+/*
+ * Tests of P4c item 1 (dtb_retouch_focus), part of the test driver:
+ * dtb_test.c includes this file after dtb_test_p3n.c.
+ *
+ *   rtfocus <raw> <xmp> <outdir>   C37: retouch's focus shows the whole,
+ *                                  uncropped picture (desktop skips crop);
+ *                                  frame, sizes, coordinates, pause/resume,
+ *                                  no history; a heal spot outside the crop
+ *                                  placed while focused survives the XMP;
+ *                                  XMP for darktable-cli
+ */
+
+static JsonNode *p4c_focus(const char *action)
+{
+  char *s = NULL;
+  MUST(dtb_retouch_focus("retouch", 0, action, &s));
+  return jparse_owned(s);
+}
+
+static void p4c_point(const char *dir, double x, double y, double *ox, double *oy)
+{
+  gchar *req = g_strdup_printf("{\"direction\":\"%s\",\"points\":[[%.6f,%.6f]]}", dir, x, y);
+  char *s = NULL;
+  MUST(dtb_coords_transform(req, &s));
+  g_free(req);
+  JsonNode *n = jparse_owned(s);
+  JsonArray *p = json_array_get_array_element(json_object_get_array_member(json_node_get_object(n), "points"), 0);
+  *ox = json_array_get_double_element(p, 0);
+  *oy = json_array_get_double_element(p, 1);
+  json_node_unref(n);
+}
+
+static uint8_t *p4c_preview(const char *opts, int *w, int *h)
+{
+  uint8_t *px = NULL;
+  MUST(dtb_render_preview_ex(800, opts, &px, w, h));
+  return px;
+}
+
+static int cmd_rtfocus(const char *raw, const char *xmp, const char *outdir)
+{
+  MUST(dtb_open(raw, xmp));
+  int end = 0;
+  char *s = NULL;
+  // a crop of the middle (freehand), as one history item
+  MUST(dtb_params_set("crop", 0, "{\"cx\":0.25,\"cy\":0.25,\"cw\":0.75,\"ch\":0.75,\"ratio_d\":0,\"ratio_n\":0}"));
+  MUST(dtb_set_enabled("crop", 0, 1));
+  MUST(dtb_history_seal());
+  int wc, hc;
+  MUST(dtb_render_size(1.0f, &wc, &hc));
+  double ox, oy;
+  p4c_point("to_processed", 0.1, 0.1, &ox, &oy);
+  fprintf(stdout, "RESULT cropped: %dx%d, original 0.1,0.1 -> %.4f,%.4f\n", wc, hc, ox, oy);
+  CHECK(ox < 0.0 && oy < 0.0, "a point left of and above the crop is outside the cropped picture");
+
+  // 0. errors: not retouch, unknown action; "state" before begin is not focused
+  EXPECT(dtb_retouch_focus("exposure", 0, "begin", &s), DTB_E_ARG);
+  EXPECT(dtb_retouch_focus("retouch", 0, "spin", &s), DTB_E_ARG);
+  JsonNode *st = p4c_focus("state");
+  CHECK(!json_object_get_boolean_member(json_node_get_object(st), "focused"), "not focused before begin");
+  json_node_unref(st);
+
+  // 1. begin: the whole picture, crop left out, the frame where crop's parameters say; no history item
+  const int h0 = history_count(&end);
+  st = p4c_focus("begin");
+  JsonObject *o = json_node_get_object(st);
+  CHECK(json_object_get_boolean_member(o, "focused"), "begin: focused");
+  JsonArray *lo = json_object_get_array_member(o, "left_out");
+  gboolean crop_out = FALSE;
+  for(guint i = 0; i < json_array_get_length(lo); i++)
+    crop_out |= !strcmp(json_object_get_string_member(json_array_get_object_element(lo, i), "op"), "crop");
+  CHECK(crop_out, "crop is left out while retouch has the focus");
+  JsonNode *fr = json_object_get_member(o, "frame");
+  CHECK(fr && JSON_NODE_HOLDS_ARRAY(fr), "a frame while crop is left out");
+  double f[8] = { 0 };
+  if(fr && JSON_NODE_HOLDS_ARRAY(fr))
+    for(int k = 0; k < 4; k++)
+    {
+      JsonArray *c = json_array_get_array_element(json_node_get_array(fr), k);
+      f[2 * k] = json_array_get_double_element(c, 0);
+      f[2 * k + 1] = json_array_get_double_element(c, 1);
+    }
+  fprintf(stdout, "RESULT frame: %.4f,%.4f %.4f,%.4f %.4f,%.4f %.4f,%.4f (crop 0.25..0.75)\n", f[0], f[1], f[2], f[3],
+          f[4], f[5], f[6], f[7]);
+  const double tol = 0.01;
+  CHECK(fabs(f[0] - 0.25) < tol && fabs(f[1] - 0.25) < tol && fabs(f[4] - 0.75) < tol && fabs(f[5] - 0.75) < tol
+            && fabs(f[2] - 0.75) < tol && fabs(f[7] - 0.75) < tol,
+        "frame = crop's box within %.2f", tol);
+  json_node_unref(st);
+  CHECK(history_count(&end) == h0, "begin adds no history item");
+  int wf, hf;
+  MUST(dtb_render_size(1.0f, &wf, &hf));
+  long info_w = info_int("width");
+  fprintf(stdout, "RESULT focused: %dx%d (image_info width %ld), cropped %dx%d\n", wf, hf, info_w, wc, hc);
+  CHECK(wf > wc && hf > hc, "focused: the uncropped picture is larger");
+  CHECK(info_w == wf, "image_info follows the focus");
+  p4c_point("to_processed", 0.1, 0.1, &ox, &oy);
+  fprintf(stdout, "RESULT focused: original 0.1,0.1 -> %.4f,%.4f\n", ox, oy);
+  CHECK(ox > 0.0 && oy > 0.0 && ox < 0.25 && oy < 0.25, "the point is inside the whole picture, left of and above the frame");
+
+  // the focused render equals one that leaves crop out with "bypass" (unfocused), byte for byte
+  int pw, ph, bw, bh;
+  uint8_t *pf = p4c_preview(NULL, &pw, &ph);
+  json_node_unref(p4c_focus("pause"));
+  uint8_t *pb = p4c_preview("{\"bypass\":[{\"op\":\"crop\",\"priority\":0}]}", &bw, &bh);
+  int md = -1;
+  double mean = 0.0;
+  if(pw == bw && ph == bh) md = max_diff(pf, pb, (size_t)4 * pw * ph, &mean);
+  fprintf(stdout, "RESULT focused preview %dx%d vs bypass of crop %dx%d: max %d mean %.4f\n", pw, ph, bw, bh, md, mean);
+  CHECK(md == 0, "focused render = render with crop bypassed");
+  free(pb);
+
+  // 2. pause: the edit as it is (for LightPhotoLibrary), resume: whole again; no history
+  int wp, hp, wr, hr;
+  MUST(dtb_render_size(1.0f, &wp, &hp));
+  st = p4c_focus("resume");
+  MUST(dtb_render_size(1.0f, &wr, &hr));
+  fprintf(stdout, "RESULT paused %dx%d, resumed %dx%d\n", wp, hp, wr, hr);
+  CHECK(wp == wc && hp == hc, "paused: the cropped picture");
+  CHECK(wr == wf && hr == hf, "resumed: the whole picture");
+  CHECK(json_object_get_boolean_member(json_node_get_object(st), "focused")
+            && !json_object_get_boolean_member(json_node_get_object(st), "paused"), "resumed: focused");
+  json_node_unref(st);
+  CHECK(history_count(&end) == h0, "pause/resume add no history item");
+
+  // 3. a heal spot outside the crop, placed while focused: one item; the whole picture changes there
+  const int hA = history_count(&end);
+  MUST(dtb_retouch_add("retouch", 0, "{\"type\":\"circle\",\"geometry\":{\"center\":[0.1,0.1],\"radius\":0.03,\"border\":0.01},"
+                                     "\"source\":[0.16,0.12]}", &s));
+  JsonNode *idn = jparse_owned(s);
+  const int id = (int)json_object_get_int_member(json_node_get_object(idn), "id");
+  json_node_unref(idn);
+  CHECK(history_count(&end) == hA + 1, "the heal spot is one history item");
+  int pw2, ph2;
+  uint8_t *pf2 = p4c_preview(NULL, &pw2, &ph2);
+  md = -1;
+  if(pw2 == pw && ph2 == ph) md = max_diff(pf, pf2, (size_t)4 * pw * ph, &mean);
+  fprintf(stdout, "RESULT heal outside the crop, focused picture: max %d mean %.4f\n", md, mean);
+  CHECK(md > 0, "the heal spot changes the whole picture");
+  free(pf);
+  free(pf2);
+
+  // 4. end: the cropped picture again, no history item; the XMP for darktable-cli
+  const int hE = history_count(&end);
+  st = p4c_focus("end");
+  CHECK(!json_object_get_boolean_member(json_node_get_object(st), "focused"), "end: not focused");
+  CHECK(JSON_NODE_HOLDS_NULL(json_object_get_member(json_node_get_object(st), "frame")), "end: no frame");
+  json_node_unref(st);
+  int we, he;
+  MUST(dtb_render_size(1.0f, &we, &he));
+  CHECK(we == wc && he == hc, "end: the cropped picture (%dx%d)", we, he);
+  CHECK(history_count(&end) == hE, "end adds no history item");
+  save_render(outdir, "p4c_focus");
+
+  // 5. round trip: the spot is in the XMP where it was placed
+  char *x = path_join(outdir, "p4c_focus.xmp");
+  MUST(dtb_close());
+  MUST(dtb_open(raw, x));
+  JsonNode *rt = p3m_state();
+  JsonObject *sh = p3m_shape(rt, id);
+  CHECK(sh != NULL, "the heal spot is in the XMP");
+  if(sh)
+  {
+    gchar *g = json_to_string(json_object_get_member(sh, "geometry"), FALSE);
+    fprintf(stdout, "RESULT reopened: shape %d %s geometry %s\n", id, json_object_get_string_member(sh, "algorithm"), g);
+    g_free(g);
+  }
+  json_node_unref(rt);
+  st = p4c_focus("state");
+  CHECK(!json_object_get_boolean_member(json_node_get_object(st), "focused"), "a new session starts unfocused");
+  json_node_unref(st);
+  free(x);
+  MUST(dtb_close());
+  return g_fail;
+}

@@ -6,6 +6,8 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineMemory
 import app.dtandroid.engine.api.RetouchShape
 import app.dtandroid.engine.api.RetouchState
+import app.dtandroid.engine.api.InstanceRef
+import app.dtandroid.engine.api.RetouchFocus
 import app.dtandroid.engine.api.PerspectiveState
 import app.dtandroid.engine.api.GuideLine
 import app.dtandroid.engine.api.GuideHandle
@@ -435,6 +437,7 @@ class FakeEngine(
         requireInit()
         session = null
         fp = null
+        rtFocus = null
     }
 
     override suspend fun imageInfo(): ImageInfo = onEngine {
@@ -822,7 +825,7 @@ class FakeEngine(
             inst(b.op, b.priority)
             if (!def(b.op).canSwitch) fail(EngineError.ARG, "${b.op} cannot be left out: it has no on/off switch")
             b.op to b.priority
-        }.toSet()
+        }.toSet() + focusLeftOut()
     }
 
     /**
@@ -2261,6 +2264,49 @@ class FakeEngine(
             s.setParams(op, priority, emptyMap(), merge = true)
             s.items = s.items.dropLast(1) + s.items.last().copy(params = p)
         }
+    }
+
+    // ------------------------------------------------------------ P4c: retouch's focus (a stand-in)
+
+    /** The focused retouch instance and whether it is paused; null when none has the focus. */
+    private var rtFocus: Triple<String, Int, Boolean>? = null
+
+    /** Calls to [retouchFocus] by action, for tests. */
+    val retouchFocusCalls = java.util.concurrent.CopyOnWriteArrayList<String>()
+
+    /**
+     * The modules left out while retouch has the focus: crop instances that are on (the stand-in renders no crop, so
+     * the picture keeps its size; the frame is crop's box).
+     */
+    private fun Session.focusLeftOut(): List<Pair<String, Int>> {
+        val f = rtFocus?.takeIf { !it.third } ?: return emptyList()
+        if (live()[f.first to f.second] == null) return emptyList()
+        return live().filter { (k, l) -> k.first == "crop" && l.enabled }.keys.toList()
+    }
+
+    override suspend fun retouchFocus(op: String, priority: Int, action: String): RetouchFocus = onEngine {
+        val s = requireSession()
+        s.inst(op, priority)
+        if (op != "retouch") fail(EngineError.ARG, "$op is not retouch")
+        retouchFocusCalls.add(action)
+        val ours = rtFocus?.let { it.first == op && it.second == priority } == true
+        when (action) {
+            "begin" -> rtFocus = Triple(op, priority, false)
+            "end" -> if (ours) rtFocus = null
+            "pause" -> if (ours) rtFocus = Triple(op, priority, true)
+            "resume" -> if (ours) rtFocus = Triple(op, priority, false)
+            "state" -> {}
+            else -> fail(EngineError.ARG, "action: begin, end, pause, resume or state")
+        }
+        val f = rtFocus?.takeIf { it.first == op && it.second == priority }
+        val out = s.focusLeftOut()
+        val frame = out.firstOrNull()?.let { k ->
+            val p = s.live()[k]!!.params
+            fun v(n: String, d: Double) = (p[n] as? JsonPrimitive)?.doubleOrNull ?: d
+            val l = v("cx", 0.0); val t = v("cy", 0.0); val r = v("cw", 1.0); val b = v("ch", 1.0)
+            listOf(l to t, r to t, r to b, l to b)
+        }
+        RetouchFocus(f != null, f?.third == true, out.map { InstanceRef(it.first, it.second) }, frame)
     }
 
     // ------------------------------------------------------------ 6.11 (P3n): rotate and perspective (a stand-in)

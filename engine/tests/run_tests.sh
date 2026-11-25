@@ -433,6 +433,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     fi
     cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
   fi
+  # brief P4c: retouch's focus shows the uncropped picture; a heal spot outside the crop survives the XMP
+  if want C37; then
+    drv C37 rtfocus "retouch focus: uncropped picture, frame, sizes, coordinates, pause/resume, no history; heal outside the crop, round trip"
+    parity C37 p4c_focus
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done

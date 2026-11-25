@@ -6,6 +6,7 @@ import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.PickRequest
+import app.dtandroid.engine.api.RetouchFocus
 import app.dtandroid.engine.api.RetouchShape
 import app.dtandroid.engine.api.RetouchState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,6 +107,12 @@ data class RetouchUi(
     /** "pick fill color from image" armed: the next tap on the photo picks */
     val picking: Boolean = false,
     val note: String? = null,
+    /**
+     * Brief P4c: the engine's focus on the open instance (desktop's view while retouch is focused): the photo is the
+     * whole picture with crop (and the other modules desktop skips) left out; [RetouchFocus.frame] is the edit's
+     * picture in it, drawn as a guide. Null while the panel is closed.
+     */
+    val focus: RetouchFocus? = null,
 ) {
     val selectedShape: RetouchShape? get() = selected?.let { id -> st?.shapes?.firstOrNull { it.id == id } }
     val wavelet: Boolean get() = (st?.numScales ?: 0) > 0
@@ -129,15 +136,62 @@ class Retouch internal constructor(private val c: DarkroomController) {
     /** Another photo: nothing open, drawn or chosen; the module's switches back to desktop's defaults. */
     fun reset() { val was = _state.value.suppress; _state.value = RetouchUi(); if (was) c.requestRender() }
 
-    /** The panel of [key] opened (or the photo changed under it): its shapes read. */
+    /**
+     * The panel of [key] opened (or the photo changed under it): the module takes the engine's focus (brief P4c: the
+     * whole picture, as desktop), then its shapes are read.
+     */
     suspend fun open(key: InstanceKey) {
         if (_state.value.key != key) {
             val was = _state.value.suppress
             _state.value = RetouchUi(key = key)
             if (was) c.requestRender()
         }
+        // in the controller's scope: the screen's effect that called this restarts when the picture's size changes
+        if (_state.value.focus?.focused != true && c.state.value.info != null && !beginning) {
+            beginning = true
+            c.launch { try { focusBegin(key) } finally { beginning = false } }
+        }
         reload()
     }
+
+    /**
+     * Brief P4c: desktop's focus in (imageop.c dt_iop_request_focus): the engine leaves out crop and the other skipped
+     * modules from now on. A change for the controller (its picture size and the picture are read again), no history
+     * item.
+     */
+    @Volatile private var beginning = false
+
+    private suspend fun focusBegin(key: InstanceKey) {
+        try {
+            c.engineChange { e ->
+                val f = e.retouchFocus(key.op, key.priority, "begin")
+                _state.update { if (it.key == key) it.copy(focus = f) else it }
+                if (_state.value.key != key) runCatching { e.retouchFocus(key.op, key.priority, "end") }
+            }
+        } catch (x: kotlinx.coroutines.CancellationException) { throw x } catch (x: Exception) { note(x) }
+    }
+
+    /** Brief P4c: the focus leaves (the panel closed or another module's opened): the edit's own picture again. */
+    private fun focusEnd(key: InstanceKey) {
+        c.launch {
+            try {
+                c.engineChange { e -> runCatching { e.retouchFocus(key.op, key.priority, "end") } }
+            } catch (x: kotlinx.coroutines.CancellationException) { throw x } catch (x: Exception) { note(x) }
+        }
+    }
+
+    /**
+     * Brief P4c: a render for someone else on the open photo (LightPhotoLibrary, under the engine lock): the focus is
+     * paused around it so it gets the edit's own, cropped picture, as rotate and perspective's (P3n).
+     */
+    internal suspend fun <T> pausedLocked(e: DarktableEngine, block: suspend () -> T): T {
+        val k = _state.value.key?.takeIf { _state.value.focus?.focused == true } ?: return block()
+        runCatching { e.retouchFocus(k.op, k.priority, "pause") }
+        try { return block() } finally { runCatching { e.retouchFocus(k.op, k.priority, "resume") } }
+    }
+
+    /** Brief P4c: whether the photo now shows the whole picture for retouch (no picture for the filmstrip). */
+    fun uncropped(): Boolean = _state.value.focus?.let { it.focused && !it.paused && it.leftOut.isNotEmpty() } == true
 
     /** Another module expanded or retouch collapsed (DarkroomController.toggleExpanded, goToModule): its tools go. */
     fun focusChanged() {
@@ -148,8 +202,11 @@ class Retouch internal constructor(private val c: DarkroomController) {
     /** The panel closed: tools off; "temporarily switch off shapes" ends with it, as desktop's (only while focused). */
     fun close() {
         val was = _state.value.suppress
-        _state.update { it.copy(key = null, tool = null, press = null, pressNow = null, pathPoints = emptyList(), stroke = null, drag = null, picking = false, suppress = false) }
-        if (was) c.requestRender()
+        val k = _state.value.key
+        val focused = _state.value.focus?.focused == true
+        _state.update { it.copy(key = null, tool = null, press = null, pressNow = null, pathPoints = emptyList(), stroke = null, drag = null, picking = false, suppress = false, focus = null) }
+        // brief P4c: the focus goes (the edit's own picture is rendered again by that change)
+        if (k != null && focused) focusEnd(k) else if (was) c.requestRender()
     }
 
     suspend fun reload() {
@@ -170,11 +227,14 @@ class Retouch internal constructor(private val c: DarkroomController) {
         val k = _state.value.key ?: return
         if (c.state.value.modules.none { it.key == k }) return
         val st = e.retouch(k.op, k.priority)
+        // brief P4c: the frame follows crop (undo, redo, a crop change elsewhere)
+        val focus = _state.value.focus?.takeIf { it.focused }?.let { runCatching { e.retouchFocus(k.op, k.priority, "state") }.getOrNull() ?: it }
         val shown = st.shapes.filter { it.scale == st.currScale }
         val outlines = outlinesLocked(e, shown)
         _state.update { u ->
             if (u.key != k) u
-            else u.copy(st = st, outlines = outlines, selected = u.selected?.takeIf { id -> shown.any { it.id == id } }, note = null)
+            else u.copy(st = st, outlines = outlines, selected = u.selected?.takeIf { id -> shown.any { it.id == id } }, note = null,
+                focus = if (u.focus?.focused == true) focus else u.focus)
         }
     }
 

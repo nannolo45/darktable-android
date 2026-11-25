@@ -364,12 +364,14 @@ void dtb__bypass_begin(dtb_pipe_t *p, const dtb_render_opts_t *o, dtb_bypass_t *
   saved->pipe = p;
   saved->processed_width = p->pipe.processed_width;
   saved->processed_height = p->pipe.processed_height;
-  if(!o || !o->bypass || o->bypass->len == 0) return;
+  // P4c: while retouch has the focus, desktop's skipped modules too (retouch.c, dtb__focus_skips)
+  const gboolean focus = dtb__focus_active();
+  if(!focus && (!o || !o->bypass || o->bypass->len == 0)) return;
   for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
   {
     dt_dev_pixelpipe_iop_t *piece = n->data;
-    gboolean hit = FALSE;
-    for(guint i = 0; i < o->bypass->len && !hit; i++) hit = piece->module == g_ptr_array_index(o->bypass, i);
+    gboolean hit = focus && dtb__focus_skips(piece->module);
+    for(guint i = 0; o && o->bypass && i < o->bypass->len && !hit; i++) hit = piece->module == g_ptr_array_index(o->bypass, i);
     if(!hit || !piece->enabled || saved->n >= DTB_BYPASS_MAX) continue;
     saved->piece[saved->n] = piece;
     saved->hash[saved->n] = piece->hash;
