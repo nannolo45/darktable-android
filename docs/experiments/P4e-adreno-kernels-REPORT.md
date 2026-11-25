@@ -43,7 +43,7 @@ The check (clang 18, all 54 `.cl` files compile): before the patch 3 places, aft
 The fix: `.x/.y/.z` for the constant row index, a private `float[3]` for the loop index; every component is summed in
 the same order (i = 0, 1, 2), `.w` stays 0.
 
-CI (commit CI_COMMIT): RESULTS_PLACEHOLDER
+CI (commit 0187cc6, 25 Nov 2026, all green): g0-app 45653810325 (bridge suite incl. C36 and the before/after kernel check), p2b-real-engine 45653810928 (emulator), p2a-app 45653810866 (unit tests).
 
 ## 4. Upstream issue / pull request text (not opened)
 
