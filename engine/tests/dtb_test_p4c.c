@@ -253,3 +253,47 @@ static int cmd_pickwork(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_close());
   return g_fail;
 }
+
+/*
+ *   diffpreset <raw> <xmp> <outdir> C39: diffuse or sharpen's built-in
+ *                                  presets are listed under their stored
+ *                                  names ("_builtin_" + the shown name,
+ *                                  gui/presets.c); "lens deblur | medium"
+ *                                  applies by that name, one history item,
+ *                                  its parameters; the shown name is no row
+ */
+static int cmd_diffpreset(const char *raw, const char *xmp, const char *outdir)
+{
+  (void)outdir;
+  MUST(dtb_open(raw, xmp));
+  char *s = NULL;
+  MUST(dtb_presets_list("diffuse", 0, &s));
+  JsonNode *n = jparse_owned(s);
+  JsonArray *a = json_node_get_array(n);
+  int builtins = 0;
+  gboolean medium = FALSE;
+  for(guint i = 0; i < json_array_get_length(a); i++)
+  {
+    JsonObject *p = json_array_get_object_element(a, i);
+    const char *name = json_object_get_string_member(p, "name");
+    if(!json_object_get_boolean_member(p, "builtin")) continue;
+    builtins++;
+    fprintf(stdout, "RESULT diffuse built-in: '%s' usable %d\n", name, json_object_get_boolean_member(p, "usable"));
+    if(!strcmp(name, "_builtin_lens deblur | medium")) medium = json_object_get_boolean_member(p, "usable");
+  }
+  json_node_unref(n);
+  CHECK(builtins >= 2, "diffuse has built-in presets (%d)", builtins);
+  CHECK(medium, "'_builtin_lens deblur | medium' is listed and usable");
+  int end = 0;
+  const int h0 = history_count(&end);
+  EXPECT(dtb_preset_apply("diffuse", 0, "lens deblur | medium"), DTB_E_NOT_FOUND);
+  CHECK(history_count(&end) == h0, "the shown name applies nothing");
+  MUST(dtb_preset_apply("diffuse", 0, "_builtin_lens deblur | medium"));
+  const int h1 = history_count(&end);
+  const double it = param_num("diffuse", 0, "iterations"), rad = param_num("diffuse", 0, "radius");
+  fprintf(stdout, "RESULT applied: items %d -> %d, iterations %g, radius %g\n", h0, h1, it, rad);
+  CHECK(h1 == h0 + 1, "one history item");
+  CHECK(it == 16 && rad == 10, "the preset's parameters (iterations 16, radius 10: iop/diffuse.c init_presets)");
+  MUST(dtb_close());
+  return g_fail;
+}

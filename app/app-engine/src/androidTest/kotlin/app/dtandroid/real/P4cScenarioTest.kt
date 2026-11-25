@@ -4,6 +4,7 @@ package app.dtandroid.real
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.dtandroid.darkroom.DarkroomController
+import app.dtandroid.darkroom.DtNames
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.RETOUCH_OP
 import app.dtandroid.darkroom.RetouchTool
@@ -32,6 +33,8 @@ import java.io.File
  * (outside the edit's picture), the panel closed (the cropped picture again). The XMP is kept as p4c-heal.xmp with the
  * app's export p4c-heal.jpg; the workflow renders the XMP with darktable-cli and compares; the spot is read back from
  * the XMP in a new session.
+ * r2 (item 3): diffuse or sharpen's presets sheet lists its built-in presets; "lens deblur | medium" is found by the
+ * name shown and applied through the sheet: one history item, the preset's parameters, the picture changes.
  */
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -131,5 +134,41 @@ class P4cScenarioTest {
         assertNotNull(back.shapes.single().source)
         assertEquals(center[0], c2[0], 1e-4)
         assertEquals(center[1], c2[1], 1e-4)
+    }
+
+    @Test fun r2_diffuseBuiltInPresetAppliedByName() {
+        TestFiles.engine()
+        val dir = File(TestFiles.ctx.filesDir, "p4c-diffuse").apply { deleteRecursively(); mkdirs() }
+        val raw = File(dir, TestFiles.raw.name).also { TestFiles.raw.copyTo(it); it.setWritable(false, false) }
+        val item = SeriesItem(raw.name, raw.path, File(dir, raw.name + ".xmp").path)
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        scenario!!.onActivity { it.vm.show(Screen.DARKROOM) }
+        val c = AppHost.controller
+        runBlocking { c.start(Series("p4c diffuse", listOf(item)), 0, filmstrip = false, thumbnails = false) }
+        waitFor("preview") { c.state.value.preview != null }
+        val key = InstanceKey("diffuse", 0)
+        val plain = runBlocking { c.withEngine { e -> e.renderPreview(800) } }
+        runBlocking { c.stylesPresets.loadPresets(key) }
+        val list = c.stylesPresets.state.value.presets
+        val builtins = list.filter { it.builtin }
+        TestFiles.record(res, "r2_list", builtins.joinToString(", ") { "${it.name} (usable ${it.usable})" })
+        assertTrue("diffuse lists built-in presets", builtins.size >= 2)
+        val stored = DtNames.storedName(builtins.map { it.name }, "lens deblur | medium")
+        assertEquals("_builtin_lens deblur | medium", stored)
+        val n0 = items(c)
+        assertTrue("applied by the sheet: ${c.stylesPresets.state.value.note}", runBlocking { c.stylesPresets.applyPreset(key, stored!!) })
+        val m = c.state.value.modules.first { it.key == key }
+        val it = (m.params["iterations"] as JsonPrimitive).content.toDouble()
+        val rad = (m.params["radius"] as JsonPrimitive).content.toDouble()
+        val after = runBlocking { c.withEngine { e -> e.renderPreview(800) } }
+        var sum = 0L
+        for (i in plain.rgba.indices) if (i % 4 != 3) sum += kotlin.math.abs((plain.rgba[i].toInt() and 255) - (after.rgba[i].toInt() and 255))
+        val d = sum.toDouble() / (plain.width * plain.height * 3)
+        TestFiles.record(res, "r2_applied", "items $n0 -> ${items(c)}, enabled ${m.enabled}, iterations $it, radius $rad, preview diff %.4f".format(d))
+        assertEquals("one history item", n0 + 1, items(c))
+        assertTrue(m.enabled)
+        assertEquals(16.0, it, 0.0)
+        assertEquals(10.0, rad, 0.0)
+        assertTrue("the picture changes ($d)", d > 0.0)
     }
 }

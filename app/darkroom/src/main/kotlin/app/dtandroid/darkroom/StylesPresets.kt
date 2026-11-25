@@ -104,6 +104,14 @@ object DtNames {
     /** The last segment: what a row of the folded tree shows. */
     fun leaf(name: String) = segments(name).last()
 
+    /**
+     * Brief P4c: the stored name of the preset or style shown as [shown]: the same name, else the one that is shown
+     * so. darktable stores its own presets as `_builtin_` + the name (gui/presets.c dt_gui_presets_add_generic), so
+     * diffuse or sharpen's "lens deblur | medium" is "_builtin_lens deblur | medium" in the presets table; the engine
+     * finds presets by the stored name, as desktop does.
+     */
+    fun storedName(names: List<String>, shown: String): String? = names.firstOrNull { it == shown } ?: names.firstOrNull { display(it) == shown }
+
     /** A style darktable ships (share/darktable/styles): imported again at every start when missing. */
     fun shipped(styleName: String) = styleName.startsWith(L10N)
 }

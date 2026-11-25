@@ -1078,7 +1078,16 @@ class FakeEngine(
     private fun builtinPresets(): List<FPreset> {
         val d = catalog["exposure"] ?: return emptyList()
         val p = runCatching { setPath(d, d.defaultParams, "exposure", JsonPrimitive(0.7)) }.getOrDefault(d.defaultParams)
-        return listOf(FPreset("exposure", "_builtin_scene-referred default", "", true, d.version, true, p))
+        val exposure = listOf(FPreset("exposure", "_builtin_scene-referred default", "", true, d.version, true, p))
+        // brief P4c: two of diffuse or sharpen's built-in presets, stored as darktable stores them (`_builtin_` prefix)
+        val df = catalog["diffuse"] ?: return exposure
+        fun deblur(iterations: Int, radius: Int) = runCatching {
+            setPath(df, setPath(df, df.defaultParams, "iterations", JsonPrimitive(iterations)), "radius", JsonPrimitive(radius))
+        }.getOrDefault(df.defaultParams)
+        return exposure + listOf(
+            FPreset("diffuse", "_builtin_lens deblur | soft", "", true, df.version, true, deblur(8, 8)),
+            FPreset("diffuse", "_builtin_lens deblur | medium", "", true, df.version, true, deblur(16, 10)),
+        )
     }
 
     private fun problemOf(op: String, moduleVersion: Int, blendVersion: Int): ItemProblem? {
