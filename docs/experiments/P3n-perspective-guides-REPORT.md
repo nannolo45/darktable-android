@@ -117,7 +117,7 @@ Logs: `ci-logs` branch, `runs/<run id>-a1/` (g0-linux/<camera>/C33.log, p2b-emul
    null and only the "near" indices are sent. `JniEngine` keeps the last copy per instance. Tests: C33 (omitted for the
    current revision, sent for an older one) and JVM `linesAreKeptWhenTheEngineSendsNone`.
 
-CI for these changes: RUNS_FINAL.
+CI for these changes, on db90da6: g0-app 45535183522 success, p2a-app 45535187117 success, p2b-real-engine 45535193523 success.
 
 ## 7. Open questions for the reviewer (before the decisions above)
 
