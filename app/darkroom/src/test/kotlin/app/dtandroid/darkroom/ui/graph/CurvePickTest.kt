@@ -72,7 +72,7 @@ class CurvePickTest {
     @Test fun rgbCurveLinkedUsesTheRec2020Luminance() {
         val i = stats("RGB", listOf(0.5, 0.25, 0.1))
         val m = CurvePick.mark("rgbcurve", 0, rgbParams(independent = false), i, null)!!
-        assertEquals(0.2627 * 0.5 + 0.6780 * 0.25 + 0.0593 * 0.1, m.mean, 1e-12)
+        assertEquals(0.2790405 * 0.5 + 0.6753473 * 0.25 + 0.0456121 * 0.1, m.mean, 1e-12)  // brief P5c: darktable's Rec 2020 row
         // the channel asked for makes no difference in linked mode (desktop writes the luminance into channel 0 only)
         assertEquals(m.mean, CurvePick.mark("rgbcurve", 2, rgbParams(false), i, null)!!.mean, 1e-12)
     }

@@ -81,7 +81,42 @@ class P4cCurvePickTest {
 
     @Test fun withoutTheEnginesValuesTheDefaultWorkingProfileIsUsed() {
         val m = CurvePick.mark("rgbcurve", 0, rgbParams(independent = false), stats(listOf(0.2, 0.5, 0.1)), null)!!
-        assertEquals(0.2627 * 0.2 + 0.6780 * 0.5 + 0.0593 * 0.1, m.mean, 1e-12)
+        // brief P5c: darktable's linear Rec 2020 row (D50-adapted), not the rounded ITU coefficients
+        assertEquals(0.2790405 * 0.2 + 0.6753473 * 0.5 + 0.0456121 * 0.1, m.mean, 1e-12)
+        assertEquals(0.39804, m.mean, 1e-5)
+    }
+
+    @Test fun theFallbackRowIsDarktablesLinearRec2020LuminanceRow() {
+        // independent check: Y row of the Rec 2020 primaries (D65, src/common/colorspaces.c Rec2020_Primaries),
+        // Bradford-adapted to D50 as lcms does for the profile's matrix; the stored row is lcms's s15Fixed16 rounding of it
+        val p = listOf(0.708 to 0.292, 0.170 to 0.797, 0.131 to 0.046)
+        fun xyz(x: Double, y: Double) = doubleArrayOf(x / y, 1.0, (1 - x - y) / y)
+        val cols = p.map { xyz(it.first, it.second) }
+        val w = xyz(0.3127, 0.3290)
+        // solve primaries * s = white (3x3, Cramer)
+        fun det(a: Array<DoubleArray>) = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) -
+            a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
+        val m = Array(3) { r -> DoubleArray(3) { c -> cols[c][r] } }
+        val d = det(m)
+        val s = DoubleArray(3) { k -> det(Array(3) { r -> DoubleArray(3) { c -> if (c == k) w[r] else m[r][c] } }) / d }
+        val rgbToXyz = Array(3) { r -> DoubleArray(3) { c -> m[r][c] * s[c] } }
+        val bf = arrayOf(doubleArrayOf(0.8951, 0.2664, -0.1614), doubleArrayOf(-0.7502, 1.7135, 0.0367), doubleArrayOf(0.0389, -0.0685, 1.0296))
+        fun mul(a: Array<DoubleArray>, b: Array<DoubleArray>) = Array(3) { i -> DoubleArray(3) { j -> (0..2).sumOf { a[i][it] * b[it][j] } } }
+        fun vec(a: Array<DoubleArray>, v: DoubleArray) = DoubleArray(3) { i -> (0..2).sumOf { a[i][it] * v[it] } }
+        val d50 = doubleArrayOf(0.9642, 1.0, 0.8249)
+        val cw = vec(bf, w); val cd = vec(bf, d50)
+        val inv = run {
+            val dd = det(bf)
+            Array(3) { i -> DoubleArray(3) { j ->
+                val r = (0..2).filter { it != j }; val c = (0..2).filter { it != i }
+                val minor = bf[r[0]][c[0]] * bf[r[1]][c[1]] - bf[r[0]][c[1]] * bf[r[1]][c[0]]
+                (if ((i + j) % 2 == 0) minor else -minor) / dd } }
+        }
+        val scale = Array(3) { i -> DoubleArray(3) { j -> if (i == j) cd[i] / cw[i] else 0.0 } }
+        val adapted = mul(mul(inv, scale), mul(bf, rgbToXyz))
+        val row = adapted[1]
+        CurvePick.REC2020_Y.forEachIndexed { k, v -> assertEquals("Y coefficient $k", row[k], v, 5e-6) }
+        assertEquals(1.0, CurvePick.REC2020_Y.sum(), 1e-6)
     }
 
     @Test fun rgbCurvesZoomAndOffsetMoveTheMark() {
