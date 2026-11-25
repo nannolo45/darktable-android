@@ -132,6 +132,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
     val progress by vm.agent.progress.collectAsState()
     val steps by vm.agent.steps.collectAsState()
     val errors by vm.agent.lastError.collectAsState()
+    val retrying by vm.agent.retrying.collectAsState()
+    val online by AppHost.online.collectAsState()
     val lplThumbs by vm.lplThumbs.collectAsState()
     val notes by vm.agent.notes.collectAsState()
     val serverNotes by vm.agent.serverNotes.collectAsState()
@@ -150,11 +152,9 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
         val mine = photos.filter { it.server == srv.origin }
         val waiting = mine.count { vm.agent.isDirty(it) || it.status == PhotoStatus.DIRTY || it.previewPending }
         val err = errors[srv.origin]
-        val conn = when {
-            err != null -> err.userText
-            srv.origin in errors -> "connected"
-            else -> "not contacted yet"
-        }
+        // brief P4a: "waiting for connection" without a network, "retrying" while a call is repeated or work waits
+        val conn = app.dtandroid.lpl.LinkWords.connection(err, srv.origin in errors, retrying[srv.origin], online,
+            workWaiting = waiting > 0 || vm.agent.queuedExports() > 0 || mine.any { it.status == PhotoStatus.DOWNLOADING })
         val line = PhotoList.serverLine(srv.deviceName, conn, waiting, autoSync)
         sections += PhotoList.Section(
             key = srv.origin.url, title = "LightPhotoLibrary", line = line,

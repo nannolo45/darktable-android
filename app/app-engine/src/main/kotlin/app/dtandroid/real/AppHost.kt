@@ -583,6 +583,24 @@ object AppHost {
     }
 
     /** Whether a server with waiting work did not answer its last call. */
+    /**
+     * Brief P4a: whether the phone has a network now (Android's ConnectivityManager; true until it said otherwise), for
+     * "waiting for connection" in the list and the sync notification.
+     */
+    val online: kotlinx.coroutines.flow.StateFlow<Boolean> by lazy {
+        val flow = kotlinx.coroutines.flow.MutableStateFlow(true)
+        runCatching {
+            val cm = app.getSystemService(android.net.ConnectivityManager::class.java)
+            fun now() = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            flow.value = now()
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) { flow.value = true }
+                override fun onLost(network: android.net.Network) { flow.value = now() }
+            })
+        }
+        flow
+    }
+
     fun waitingServerUnreachable(): Boolean {
         val errors = agent.lastError.value
         val origins = agent.pending().map { it.server }.toSet() + if (agent.queuedExports() > 0) servers.list().map { it.origin } else emptyList()

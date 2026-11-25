@@ -81,18 +81,20 @@ data class SyncNotice(val title: String, val text: String, val fraction: Float?,
          * [batch]: the batch downloads of every server added up, or null; [sendTotal]/[sendDone]: the edits counted by
          * [SendCounter]; [stepProgress]: the progress (0..1) of the step under way now (R16), if it has one.
          */
-        fun of(batch: BatchView?, sendTotal: Int, sendDone: Int, exports: Int, stepProgress: Double?): SyncNotice {
+        fun of(batch: BatchView?, sendTotal: Int, sendDone: Int, exports: Int, stepProgress: Double?, link: String? = null): SyncNotice {
+            // brief P4a: [link] (LinkWords.notice) says "waiting for connection" or "retrying" when that is what happens
+            val text = if (link != null) "LightPhotoLibrary · $link" else "LightPhotoLibrary"
             if (batch != null && batch.running) {
                 val n = minOf(batch.processed + 1, batch.total)
-                return SyncNotice("Downloading · $n of ${batch.total}", "LightPhotoLibrary", batch.fraction, canStop = true)
+                return SyncNotice("Downloading · $n of ${batch.total}", text, batch.fraction, canStop = true)
             }
             if (sendTotal > 0) {
                 val n = minOf(sendDone + 1, sendTotal)
                 val f = ((sendDone + (stepProgress ?: 0.0).coerceIn(0.0, 1.0)) / sendTotal).toFloat().coerceIn(0f, 1f)
-                return SyncNotice("Sending edits · $n of $sendTotal", "LightPhotoLibrary", f, canStop = false)
+                return SyncNotice("Sending edits · $n of $sendTotal", text, f, canStop = false)
             }
-            if (exports > 0) return SyncNotice("Sending exports · $exports waiting", "LightPhotoLibrary", null, canStop = false)
-            return SyncNotice("LightPhotoLibrary", "syncing", null, canStop = false)
+            if (exports > 0) return SyncNotice("Sending exports · $exports waiting", text, null, canStop = false)
+            return SyncNotice("LightPhotoLibrary", link ?: "syncing", null, canStop = false)
         }
 
         /**

@@ -52,6 +52,18 @@ class LplClient(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Brief P4a: told before each automatic repeat after a failure that can pass (attempt 1 = the first repeat, the wait
+     * before it in ms), so the app can say "retrying" while it waits. Set by [LplAgent].
+     */
+    @Volatile var onRetry: ((attempt: Int, waitMs: Long, e: LplException) -> Unit)? = null
+
+    private fun backoff(attempt: Int, e: LplException) {
+        val wait = settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L }
+        onRetry?.invoke(attempt + 1, wait, e)
+        sleep(wait)
+    }
+
     // ------------------------------------------------------------------ calls of PLAN.md 4.1
 
     /** `POST /api/agents/heartbeat`. Not repeated: the next heartbeat follows anyway. */
@@ -206,7 +218,7 @@ class LplClient(
                 // the answer may be what was lost: look before sending the file again
                 arrived()?.let { log?.invoke("POST /api/photos/$id/exports: the answer was lost, the server has it (export ${it.exportId})"); return it }
                 if (attempt >= settings.retries) throw e
-                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                backoff(attempt, e)
                 attempt++
             }
         }
@@ -265,7 +277,7 @@ class LplClient(
             } catch (e: LplException) {
                 if (!e.transient || attempts >= settings.downloadResumes) throw e
                 attempts++
-                sleep(settings.backoffMs.getOrElse(attempts - 1) { settings.backoffMs.lastOrNull() ?: 0L })
+                backoff(attempts - 1, e)
             }
         }
     }
@@ -433,7 +445,7 @@ class LplClient(
                 return callOnce(method, path, body, contentType, readTimeoutMs, withToken, handle = handle)
             } catch (e: LplException) {
                 if (!e.transient || attempt >= retries) throw e
-                sleep(settings.backoffMs.getOrElse(attempt) { settings.backoffMs.lastOrNull() ?: 0L })
+                backoff(attempt, e)
                 attempt++
             }
         }

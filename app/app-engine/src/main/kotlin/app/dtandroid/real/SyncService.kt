@@ -84,8 +84,10 @@ class SyncService : Service() {
             }
             beats++
             val steps = AppHost.agent.steps.value.values
+            // brief P4a: say so when the connection is gone or a call is being repeated
+            val link = app.dtandroid.lpl.LinkWords.notice(AppHost.waitingServerUnreachable(), AppHost.agent.retrying.value.isNotEmpty(), AppHost.online.value)
             val notice = SyncNotice.of(SyncNotice.sum(AppHost.agent.batches.value.values), counter.total, counter.done, w0.exports,
-                steps.firstOrNull { it.progress != null }?.progress)
+                steps.firstOrNull { it.progress != null }?.progress, link)
             titles += notice.title
             nm.notify(NOTIFICATION_ID, build(this, notice))
             delay(AppHost.HEARTBEAT_MS)

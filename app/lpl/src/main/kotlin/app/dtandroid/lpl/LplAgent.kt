@@ -120,7 +120,16 @@ class LplAgent(
     private val clients = ConcurrentHashMap<ServerOrigin, LplClient>()
 
     private fun lockOf(o: ServerOrigin, id: Long) = locks.getOrPut(o to id) { Mutex() }
-    fun client(o: ServerOrigin): LplClient = clients.getOrPut(o) { clientFor(o) }
+    fun client(o: ServerOrigin): LplClient = clients.getOrPut(o) {
+        clientFor(o).also { c -> c.onRetry = { attempt, wait, _ -> _retrying.update { it + (o to Retrying(attempt, wait)) } } }
+    }
+
+    /** Brief P4a: a call to the server failed and is about to be repeated (attempt n, after a wait). */
+    data class Retrying(val attempt: Int, val waitMs: Long)
+
+    private val _retrying = MutableStateFlow<Map<ServerOrigin, Retrying>>(emptyMap())
+    /** Brief P4a: servers whose call is being repeated now; gone when the call ended (answered or given up). */
+    val retrying: StateFlow<Map<ServerOrigin, Retrying>> = _retrying.asStateFlow()
 
     init {
         _photos.value = load()
@@ -248,6 +257,8 @@ class LplAgent(
         } catch (e: LplException) {
             if (e.transient || e.failure == LplFailure.UNAUTHORIZED || e.failure == LplFailure.TLS) noteReachable(o, e)
             throw e
+        } finally {
+            if (o in _retrying.value) _retrying.update { it - o }
         }
     }
 
