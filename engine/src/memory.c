@@ -57,13 +57,34 @@ static void _member(JsonBuilder *b, const char *name, const size_t v)
   json_builder_add_int_value(b, (gint64)v);
 }
 
-static void _cache_members(JsonBuilder *b, const char *name, const dt_cache_t *c)
+/* bytes held by a cache's entries (their buffers' sizes) and how many there
+ * are. The image cache counts differently per level: mip_thumbs' cost is
+ * bytes, mip_full's and mip_f's cost is entries (one each; their quota is
+ * worker threads + 1 buffers, common/mipmap_cache.c dt_mipmap_cache_init),
+ * so the bytes are summed from the entries themselves. */
+static void _cache_members(JsonBuilder *b, const char *name, dt_cache_t *c)
 {
+  size_t bytes = 0;
+  guint n = 0;
+  dt_pthread_mutex_lock(&c->lock);
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init(&it, c->hashtable);
+  while(g_hash_table_iter_next(&it, &key, &value))
+  {
+    const dt_cache_entry_t *e = value;
+    bytes += e->data_size;
+    n++;
+  }
+  const size_t quota = c->cost_quota;
+  dt_pthread_mutex_unlock(&c->lock);
   char k[64];
   snprintf(k, sizeof(k), "%s", name);
-  _member(b, k, c->cost);
+  _member(b, k, bytes);
+  snprintf(k, sizeof(k), "%s_entries", name);
+  _member(b, k, n);
   snprintf(k, sizeof(k), "%s_quota", name);
-  _member(b, k, c->cost_quota);
+  _member(b, k, quota);
 }
 
 static char *_info(void)

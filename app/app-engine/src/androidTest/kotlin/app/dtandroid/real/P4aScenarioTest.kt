@@ -175,7 +175,9 @@ class P4aScenarioTest {
         waitFor("level 2 done", 30_000) { runBlocking { AppEngine.engine.memoryInfo() }.pipesReady == 0 }
         val m2 = runBlocking { AppEngine.engine.memoryInfo() }
         note("b_3_after_trim_memory_complete", m2)
-        assertTrue("level 2 frees the open image's input: ${m0.mipmapFull} -> ${m2.mipmapFull}", m2.mipmapFull < m0.mipmapFull)
+        assertTrue("an input was held: ${m0.describe()}", m0.mipmapFull + m0.mipmapF > 0)
+        assertTrue("level 2 frees the open image's input: ${m0.mipmapFull + m0.mipmapF} -> ${m2.mipmapFull + m2.mipmapF}",
+            m2.mipmapFull + m2.mipmapF < m0.mipmapFull + m0.mipmapF)
         assertEquals("the edit is kept", history, c.state.value.history)
         assertEquals(0.8, exposure(v)!!, 1e-6)
         val engineHistory = runBlocking { AppEngine.engine.history() }
@@ -210,9 +212,8 @@ class P4aScenarioTest {
         waitFor("the message", 60_000) { AppHost.controller.state.value.message != null || AppHost.controller.state.value.placeholder != null }
         val m = AppHost.controller.state.value.message
         TestFiles.record(res, "c_message", "darkroom says: $m")
-        if (CrashLog.isBridgeMessage(m)) {
-            waitFor("in the crash log", 10_000) { AppHost.crashLog.entries().count { it.kind == CrashLog.KIND_BRIDGE } > before }
-        }
+        waitFor("in the crash log", 10_000) { AppHost.crashLog.entries().count { it.kind == CrashLog.KIND_BRIDGE } > before }
+        assertTrue(AppHost.crashLog.entries().last { it.kind == CrashLog.KIND_BRIDGE }.text.startsWith("cannot open P4A_NOT_A_RAW.cr2: IO: "))
         TestFiles.record(res, "c_bridge_entries", AppHost.crashLog.entries().filter { it.kind == CrashLog.KIND_BRIDGE }.takeLast(3).map { it.text })
         runBlocking { runCatching { AppHost.controller.closePhoto() } }
         TestFiles.record(res, "c", "passed")

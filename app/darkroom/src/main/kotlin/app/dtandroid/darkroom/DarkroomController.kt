@@ -467,6 +467,8 @@ class DarkroomController(
             // brief P2h: the app's sentence as it is, without the error's name in front
             val why = if (isNoPicture(e)) NO_PICTURE else e.message
             _state.update { it.copy(info = null, message = "cannot open ${item.fileName}: $why", working = null, workingProgress = null) }
+            // brief P4a: shown in the app's words; the engine's own message goes to the crash log
+            onEngineErrorShown?.invoke("cannot open ${item.fileName}: ${e.message}")
         }
         _state.update { it.copy(loading = false, working = if (it.info != null && it.preview == null) RENDERING else it.working) }
     }
@@ -2107,6 +2109,9 @@ class DarkroomController(
             }
         }
     }
+
+    /** Brief P4a: an engine error the darkroom shows in its own words (opening a photo); the app logs the engine's text. */
+    @Volatile var onEngineErrorShown: ((String) -> Unit)? = null
 
     /** Brief P4a: told when a render failed for lack of memory even after giving memory back (the app logs it). */
     @Volatile var onOutOfMemory: ((String) -> Unit)? = null

@@ -350,7 +350,8 @@ int dtb_cache_drop(void);
  * as JSON: {"pipe_full", "pipe_full_peak", "pipe_preview",
  * "pipe_preview_peak" (the pipelines' cached intermediate buffers, now and
  * the most so far), "pipes_ready" (0..2), "mipmap_full", "mipmap_f",
- * "mipmap_thumbs" (the image cache's bytes per level) each with a "_quota",
+ * "mipmap_thumbs" (the image cache's bytes per level) each with "_entries"
+ * and "_quota" (darktable's limit: bytes for thumbs, entries for full and f),
  * "rss" (the process's resident memory)}. Works with or without an image
  * open. */
 int dtb_memory_info(char **json);

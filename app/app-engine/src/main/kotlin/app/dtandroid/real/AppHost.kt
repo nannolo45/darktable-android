@@ -162,6 +162,7 @@ object AppHost {
         controllerMade = true
         DarkroomController(AppEngine.engine, schema, builtins, layouts, AppEngine.scope, thumbnailStore = thumbs).also { c ->
             // brief P4a: a render that failed for lack of memory even after memory was given back is logged
+            c.onEngineErrorShown = { text -> crashLog.append(CrashLog.KIND_BRIDGE, text) }
             c.onOutOfMemory = { detail -> crashLog.append(CrashLog.KIND_RENDER_OOM, "a render failed for lack of memory after the engine gave memory back: $detail") }
             c.source = Source
             c.versionHost = Versions // brief P3f

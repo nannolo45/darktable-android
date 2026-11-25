@@ -8,7 +8,8 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * Brief P4a (engine-api.md 10, `dtb_memory_info`): what the engine holds, in bytes. [pipeFull]/[pipePreview]: the two
- * pipelines' cached intermediate buffers; [mipmapFull]/[mipmapF]/[mipmapThumbs]: darktable's image cache per level;
+ * pipelines' cached intermediate buffers; [mipmapFull]/[mipmapF]/[mipmapThumbs]: darktable's image cache per level
+ * (bytes; `*Entries` how many buffers; `*Quota` darktable's limit, bytes for thumbs, buffers for full and f);
  * [rss]: the process's resident memory as the engine read it. -1 = not reported.
  */
 data class EngineMemory(
@@ -17,6 +18,7 @@ data class EngineMemory(
     val mipmapFull: Long = -1, val mipmapFullQuota: Long = -1, val mipmapF: Long = -1, val mipmapFQuota: Long = -1,
     val mipmapThumbs: Long = -1, val mipmapThumbsQuota: Long = -1,
     val rss: Long = -1,
+    val mipmapFullEntries: Long = -1, val mipmapFEntries: Long = -1, val mipmapThumbsEntries: Long = -1,
 ) {
     /** What the engine's caches hold together (pipelines and image cache), bytes; -1 when unknown. */
     val engineBytes: Long get() = listOf(pipeFull, pipePreview, mipmapFull, mipmapF, mipmapThumbs).filter { it >= 0 }.takeIf { it.isNotEmpty() }?.sum() ?: -1
@@ -24,8 +26,8 @@ data class EngineMemory(
     fun describe(): String {
         fun mb(v: Long) = if (v < 0) "?" else String.format(java.util.Locale.ROOT, "%.1f", v / 1048576.0)
         return "pipelines ${mb(pipeFull)} + ${mb(pipePreview)} MB (peak ${mb(pipeFullPeak)} + ${mb(pipePreviewPeak)}), " +
-            "image cache full ${mb(mipmapFull)} / ${mb(mipmapFullQuota)} MB, f ${mb(mipmapF)} / ${mb(mipmapFQuota)} MB, " +
-            "thumbs ${mb(mipmapThumbs)} / ${mb(mipmapThumbsQuota)} MB, process RSS ${mb(rss)} MB"
+            "image cache full ${mb(mipmapFull)} MB in $mipmapFullEntries of $mipmapFullQuota buffers, f ${mb(mipmapF)} MB in $mipmapFEntries of $mipmapFQuota, " +
+            "thumbs ${mb(mipmapThumbs)} MB in $mipmapThumbsEntries (limit ${mb(mipmapThumbsQuota)} MB), process RSS ${mb(rss)} MB"
     }
 
     companion object {
@@ -35,7 +37,8 @@ data class EngineMemory(
             val o = e as? JsonObject ?: return NONE
             fun n(k: String) = (o[k] as? JsonPrimitive)?.longOrNull ?: -1L
             return EngineMemory(n("pipe_full"), n("pipe_full_peak"), n("pipe_preview"), n("pipe_preview_peak"), n("pipes_ready").toInt(),
-                n("mipmap_full"), n("mipmap_full_quota"), n("mipmap_f"), n("mipmap_f_quota"), n("mipmap_thumbs"), n("mipmap_thumbs_quota"), n("rss"))
+                n("mipmap_full"), n("mipmap_full_quota"), n("mipmap_f"), n("mipmap_f_quota"), n("mipmap_thumbs"), n("mipmap_thumbs_quota"), n("rss"),
+                n("mipmap_full_entries"), n("mipmap_f_entries"), n("mipmap_thumbs_entries"))
         }
     }
 }
