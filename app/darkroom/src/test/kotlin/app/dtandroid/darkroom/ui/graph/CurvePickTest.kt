@@ -84,7 +84,8 @@ class CurvePickTest {
         val expectedMean = (116.0 * Math.cbrt(0.18) - 16.0) / 100.0
         assertEquals(expectedMean, lin.mean, 1e-6)
         assertEquals("below the cut: the linear branch, 903.3 * Y / 100", 903.2963 * 0.005 / 100.0, lin.min, 1e-4)
-        assertEquals(1.0, lin.max, 1e-9)
+        // white: darktable's Rec 2020 row sums to 0.9999999 (s15Fixed16 rounding of the D50-adapted matrix), not exactly 1 (brief P5c)
+        assertEquals(1.0, lin.max, 1e-6)
         // independent channels each get it
         val ind = CurvePick.mark("rgbcurve", 1, rgbParams(true, grey = true), stats("RGB", listOf(0.05, 0.18, 0.9)), null)!!
         assertEquals(expectedMean, ind.mean, 1e-6)
