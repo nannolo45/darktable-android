@@ -31,7 +31,7 @@ Logs: `ci-logs` branch, `runs/<run id>-a1/g0-linux/p4d_opencl.txt`, `C4d.log` (d
 
 - **p2a-app 45609366440**: success (JVM tests, screenshots, rule check).
 - **p2b-real-engine 45609371168**: success (APKs, emulator contract and scenario tests). **45615733474** (after the
-  manifest check was moved, see section 5): see the run; its APK step printed the merged manifest quoted in item 2.
+  manifest check was moved, see section 5): success; its APK step printed the merged manifest quoted in item 2.
 - **g0-app 45609377024**: success, **487 PASS, 0 FAIL**. This run used the old test id "C37", which other branches already use for other tests, so it was renamed "C4d" (see the final run below). C4d result:
   - first try `/nonexistent/libOpenCL.so` (from app): not opened, dlerror "cannot open shared object file: No such file or directory";
   - second try `/lib/x86_64-linux-gnu/libOpenCL.so.1`: opened, status 0, 1 platform. It was handed to darktable, and darktable opened exactly that file (its log: "opencl library '/lib/x86_64-linux-gnu/libOpenCL.so.1' found … preference …");
@@ -39,6 +39,7 @@ Logs: `ci-logs` branch, `runs/<run id>-a1/g0-linux/p4d_opencl.txt`, `C4d.log` (d
   - darktable's log was caught: 34 441 bytes, ending with "[opencl_init] FINALLY". It is also still on stdout (C4d.log);
   - `dtb_opencl_library` after the start: refused with DTB_E_STATE.
   - C36 (P4b) is unchanged: PoCL running, PSNR 95.77 dB, export on the GPU.
+- **g0-app 45623559755** (final commit, `tests="C36 C4d"`): success, PASS C36, PASS **C4d**, PASS safety (RAW files unchanged).
 
 ## 4. Upstream notes
 
