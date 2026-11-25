@@ -420,7 +420,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   fi
   # brief P4b: OpenCL allowed and switched on (a device only where the runner has one, e.g. PoCL); one camera
   if want C36 && [ "$C" = cr2 ]; then
-    drv C36 opencl "OpenCL opt-in: started on request; no device = the CPU's picture byte for byte; a device = PSNR against the CPU; off again = the CPU's picture"
+    # bounded: PoCL compiles darktable's kernels on the runner's CPU at the first switch on (minutes)
+    t36=$(date +%s)
+    if DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl "$RAW" "$XMP" "$D" > "$D/C36.log" 2>&1; then
+      pass C36 "$C" "OpenCL opt-in: started on request; no device = the CPU's picture byte for byte; a device = PSNR against the CPU; off again = the CPU's picture: $(grep '^RESULT' "$D/C36.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t36 )) s)"
+    else
+      rc36=$?
+      fail C36 "$C" "OpenCL opt-in: $( [ $rc36 = 124 ] && echo 'timed out after 2400 s; ')$(grep '^FAIL' "$D/C36.log" | head -5 | tr '\n' ';') see $D/C36.log"
+    fi
     cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
   fi
   if want C32; then
