@@ -1,0 +1,15 @@
+before	photos left 0, queued exports 0, work SyncWork(autoSync=true, editsClosed=0, editsOpen=0, exports=0, downloading=false, inFlight=false, unreachable=false, stalledPasses=0)
+s1_end	synced after 1220 ms; service created 1x, seen running: true, gone after 2047 ms, stop: STOP_DONE; titles [LightPhotoLibrary]
+s1	passed
+before	photos left 0, queued exports 0, work SyncWork(autoSync=true, editsClosed=0, editsOpen=0, exports=0, downloading=false, inFlight=false, unreachable=false, stalledPasses=0)
+s2_phase	+2018 ms copying seen; job taken; copying true; batches [BatchView(total=2, onPhone=2, processed=2, running=false, stopped=false), BatchView(total=2, onPhone=0, processed=0, running=true, stopped=false)]; service true
+s2_phase	+2083 ms activity stopped; job taken; copying true; batches [BatchView(total=2, onPhone=2, processed=2, running=false, stopped=false), BatchView(total=2, onPhone=0, processed=0, running=true, stopped=false)]; service true
+s2_phase	+2305 ms end of wait; originals asked [/api/photos/91/original, /api/photos/92/original]; job done; copying false; batches [BatchView(total=2, onPhone=2, processed=2, running=false, stopped=false), BatchView(total=2, onPhone=2, processed=2, running=false, stopped=false)]; service true
+s2_end	job done {"status":"done","arrived":[91,92],"present":[],"failed":[],"skipped":[]}; service created 1x, seen running: true, stop: STOP_DONE; titles [Downloading · 1 of 2]
+s2	passed
+before	photos left 0, queued exports 0, work SyncWork(autoSync=true, editsClosed=0, editsOpen=0, exports=0, downloading=false, inFlight=false, unreachable=false, stalledPasses=0)
+s3_end	work at done: SyncWork(autoSync=false, editsClosed=0, editsOpen=0, exports=0, downloading=false, inFlight=false, unreachable=false, stalledPasses=0); service created 0x, seen running: false; xmp posts 0, preview posts 0
+s3	passed
+before	photos left 0, queued exports 0, work SyncWork(autoSync=true, editsClosed=0, editsOpen=0, exports=0, downloading=false, inFlight=false, unreachable=false, stalledPasses=0)
+s4_end	service seen running: true, gone after 12135 ms, stop: STOP_HANDOVER; job 4201 pending: true; xmp posts 0
+s4	passed
