@@ -363,7 +363,7 @@ Gate G3: checklist of these modules on the phone, and on the tablet layout in th
 3. **P5c test and CI hygiene:** p2b's permission allow-list and `pipefail`; a registry for bridge test ids; emulator tap tests for the R11, retouch, look up table and perspective dialogs (today Robolectric only); CurvePick fallback to darktable's Rec 2020 row.
 4. **Upstream reports** (texts drafted here, posted by the owner or with his OK): Adreno vector subscripts in `basic.cl` (with the patch), loss of a selectively pasted second instance (P3j), drawn perspective line deletion also dropping the last line (P3n).
 5. **G3 checklist** written for the owner (after 1–2), then the owner's G2 and G3 checks.
-6. **From the audit, as the owner picks:** missing/partial modules (liquify first if wanted), retouch wavelet decompose, rotation gesture for shapes, curve graph zoom and "scale for graph", 8-thread CPU experiment for diffuse, tablet layout on a real tablet.
+6. **From the audit** (owner, 26 Nov 2026: reviewer's order; first P6a = white balance presets, graduated density position, missing pickers and auto buttons; then LUT 3D with files **both** from a folder on the phone and synced from the PCs through LightPhotoLibrary). Candidates: missing/partial modules (liquify first if wanted), retouch wavelet decompose, rotation gesture for shapes, curve graph zoom and "scale for graph", 8-thread CPU experiment for diffuse, tablet layout on a real tablet.
 7. **LightPhotoLibrary:** repeat-safe export upload; per-device tokens (R7, optional).
 8. **darktable 5.8.0** when released (routine from 2).
 
