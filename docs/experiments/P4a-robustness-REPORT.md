@@ -58,7 +58,72 @@ p2b-emulator/p2b-test/p4a-results.txt and instrument-summary.txt, p2a-app/screen
 
 ## 3. Results with numbers
 
-CI_RESULTS_PLACEHOLDER
+CI runs on this branch (final): **g0-app 45554775048** (bridge suite, all three cameras: 479 PASS, 0 FAIL, C34
+included), **p2b-real-engine 45554674667** (JVM 621 tests in 88 classes, 0 failed; emulator 119 instrumented tests, 0
+failed, P4aScenarioTest a/b/c passed; no crash in `crashes.txt`), **p2a-app 45554678495** (JVM and screenshots, passed).
+p2b and p2a ran on `0d600a375`; the commits after it change only `engine/tests/dtb_test_p4a.c` (run by g0) and this
+report. Earlier runs on the branch: g0 45546035226 and p2b 45546260959 failed (`memory.c` used `fopen`, which
+darktable poisons); g0 45547424824 passed but C34 printed FAILs it did not return (section 0); p2b 45547427850 passed
+with the image cache counted in buffers (section 0).
+
+**JVM tests added** (all pass locally and in CI): `P4aDownloadsTest` 6 (40 downloads of 50 kB to 2.5 MB, each cut 1 to 4
+times at random points: every resume asks `bytes=<bytes on disk>-` with `If-Range`, the result is byte-identical; an
+agent with no resumes left fails mid-file, a new agent resumes from 700 001 bytes; Range ignored → whole file again;
+size unknown; checksum mismatch → downloaded again once, refused the second time with nothing becoming the RAW),
+`P4aUploadsTest` 10, `P4aLinkWordsTest` 2, `P4aCrashLogTest` 7 (Robolectric: uncaught exception written and handed on
+to the previous handler, cap 200 entries and by bytes, torn line, escaping, simulated native crash / ANR / low-memory
+exits through `ShadowActivityManager`, added once; a Java crash already written is not added twice),
+`P4aCrashLogScreenshotTest` 5, `P4aMemoryTest` 4. All `:lpl:test` (172) and `:darkroom` unit tests pass locally;
+`P3aCropToolTest.theToolOpensOnTheUncroppedPictureWithoutChangingTheEdit` failed once in a full local run under load
+(`bypassPreviews` 2 instead of 1) and passed three times alone and in CI: a timing-dependent count, not touched here.
+
+**Real LightPhotoLibrary** (local, main, Starlette 1.7.0): `RealServerRun` passed, `P4a-results/real-lpl-run.txt`:
+15 000 000-byte original, stopped at 5 046 272 and resumed: `(Range from 5046272) -> 206`, same SHA-256 as a complete
+download; whole file already on disk → 416 → downloaded again cleanly.
+
+**Emulator, download cut mid-file** (x86_64, API 33, `p4a-results.txt`): the public 15 855 600-byte test RAW stalled at
+1 048 576 bytes, the server stopped: the take failed `UNREACHABLE` after the client's resumes, the record stayed
+`downloading`, no RAW file, 1 048 576 bytes in the part file. Server back: one request `206 bytes=1048576-`, done in
+125 ms, byte-identical, part file gone; the engine opened it and rendered 512 x 340.
+
+**Engine memory, bridge test C34, x86_64 Linux CI runner (4 cores), not phone numbers.** One photo open, a 1024 px
+preview and a 640 x 480 region at scale 0.5 rendered:
+
+| | pipelines (full + preview) | image cache full / f | process RSS |
+|---|---|---|---|
+| arw, rendered | 260.6 + 88.7 MB | 38.5 / 19.8 MB | 484 MB |
+| after level 1 | 0 + 0 | 38.5 / 19.8 MB | 135 MB |
+| after level 2 | 0 + 0 (pipelines freed) | 0 / 0 | 80 MB |
+| rendered again | 260.6 + 88.7 MB | 38.5 / 19.8 MB | 485 MB |
+| cr2, rendered → level 1 → level 2 | 39.5 + 58.6 → 0 → 0 | 19.7 / 19.8 → same → 0 | 214 → 116 → 79 MB |
+| raf, rendered → level 1 → level 2 | 240.2 + 88.0 → 0 → 0 | 50.9 / 19.8 → same → 0 | 475 → 147 → 79 MB |
+
+At both levels and on all three cameras: history count and end unchanged, the exposure change kept, undo brings back the
+value before it, and the preview and the region after the trim are byte-identical to the ones before. Engine started
+with nothing open: 70 MB RSS.
+
+**Engine memory on the emulator, app with the darkroom open** (x86_64, API 33, `p4a-results.txt`; PSS from
+`Debug.getMemoryInfo`, after 20 earlier scenario classes in the same process):
+
+| | pipelines | image cache full / f | engine RSS | app PSS |
+|---|---|---|---|---|
+| engine started, earlier tests' photos still cached | 0 | 78.9 MB (4 buffers) / 98.9 MB (5) | 440 MB | 355 MB |
+| photo open, rendered | 0 + 77.5 MB | 98.6 MB (5) / 79.1 MB (4) | 530 MB | 445 MB |
+| after `trimMemory(RUNNING_LOW)` (level 1) | 0 | 19.7 (1) / 19.8 (1) | 366 MB | 282 MB |
+| after `onTrimMemory(TRIM_MEMORY_COMPLETE)` through the application (level 2) | 0 | 0 / 0 | 335 MB | 251 MB |
+| next change rendered (RAW read again: 484 ms to the new preview) | 0 + 77.5 MB | 19.7 (1) / 19.8 (1) | 457 MB | 373 MB |
+
+Edit kept (history equal, exposure 0.8 in the panel and in the engine's history). Two findings for the phone: darktable
+**keeps decoded inputs of earlier photos** (up to worker threads + 1 buffers per level: 5 on the emulator, so about
+180 MB here after a series) until something evicts them, which level 1 now does; and **one pipeline's cache reaches
+240 to 260 MB** for a 24 MP RAW region on the Linux runner (darktable limits it by a fraction of the available memory,
+`mem_fraction`), so on the phone the numbers depend on its memory and thread count.
+
+**Crash log**: screenshots `phone-{darktable,modern,l1}-p4a-01-crash-log.png`, `phone-darktable-p4a-02-crash-log-clear.png`,
+`phone-modern-p4a-03-crash-log-empty.png` in `runs/45554678495-a1/p2a-app/screenshots/` (also made by p2b). On the
+emulator `ApplicationExitInfo` was read without error (no earlier exit of the test app recorded: 0 entries); the
+darkroom's "cannot open … no picture" was logged with the engine's text (`cannot open P4A_NOT_A_RAW.cr2: IO: …`), and
+bridge errors from the other scenario classes were there too (`ARG: style … unknown_operation`, `READ_ONLY: …`).
 
 ## 4. Uploads: what can be repeated, and what was changed
 
@@ -101,6 +166,10 @@ connection", "retrying" or "server not reachable · retrying" to its second line
    memory; the thumbs quota and the pipelines' cache limit will be larger than on the emulator. Please open a large RAW,
    zoom in, then switch to another app for a minute and back: the photo must still show the edit, the first render after
    that may take about a second longer (level 2 reads the RAW again). The crash log should then show nothing new.
+   Also open five or six photos of a series one after the other: darktable keeps the decoded inputs of earlier photos
+   (worker threads + 1 buffers per level; on the 8-core phone that may be 9 RAWs' worth) until a trim; if the phone
+   becomes slow or Android stops the app in the background, that is the first number to look at (timings page /
+   crash log "stopped by Android: low memory").
 2. **Downloads**: take a photo from LPL, switch Wi-Fi off in the middle, on again, open it: it continues (the list says
    "waiting for connection" while off). Same with the app swiped away in the middle.
 3. **Crash log**: Settings › About › crash log should be empty on a phone that never crashed; after a crash it lists it
