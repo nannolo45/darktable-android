@@ -599,6 +599,20 @@ jobs:
             cp "$A/p3m-$name.xmp" /tmp/ci-out/ 2>/dev/null || true
           done
           echo "p3m=$p3m" >> "$GITHUB_OUTPUT"
+          # brief P4c: a heal spot placed outside the crop while retouch had the focus (the whole picture)
+          p4c=ok
+          for name in heal; do
+            if [ ! -f "$A/p4c-$name.xmp" ] || [ ! -f "$A/p4c-$name.jpg" ]; then
+              echo "p4c $name: no XMP or export from the emulator" | tee -a /tmp/ci-out/compare.txt; p4c=bad; continue
+            fi
+            /home/runner/dt-linux/bin/darktable-cli "$T/$P2B_RAW" "$A/p4c-$name.xmp" "/tmp/cli-p4c-$name.jpg" \
+              --core --configdir "/tmp/cli-config-p4c-$name" --cachedir "/tmp/cli-cache-p4c-$name" \
+              --conf plugins/imageio/format/jpeg/quality=95 > "/tmp/ci-out/cli-p4c-$name.log" 2>&1 || true
+            r=$(check "$A/p4c-$name.jpg" "/tmp/cli-p4c-$name.jpg" "p4c $name: app export vs darktable-cli of the app's XMP" | tail -1)
+            [ "$r" = ok ] || p4c=bad
+            cp "$A/p4c-$name.xmp" /tmp/ci-out/ 2>/dev/null || true
+          done
+          echo "p4c=$p4c" >> "$GITHUB_OUTPUT"
           # brief P3n: rotate and perspective fitted on a dragged rectangle and on lines found
           p3n=ok
           for name in rect lines; do
@@ -619,8 +633,8 @@ jobs:
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}-p3b${{ steps.c.outputs.p3b }}-p3c${{ steps.c.outputs.p3c }}-p3d${{ steps.c.outputs.p3d }}-p3e${{ steps.c.outputs.p3e }}-p3eb${{ steps.c.outputs.p3eb }}-p3m${{ steps.c.outputs.p3m }}-p3n${{ steps.c.outputs.p3n }}"
+        run: tools/ci/push-ci-logs.sh /tmp/ci-out p2b-compare "${{ job.status }}-g0${{ steps.c.outputs.g0 }}-edit${{ steps.c.outputs.edit }}-sf${{ steps.c.outputs.sf }}-crop${{ steps.c.outputs.crop }}-p2j${{ steps.c.outputs.p2j }}-p3a${{ steps.c.outputs.p3a }}-p3b${{ steps.c.outputs.p3b }}-p3c${{ steps.c.outputs.p3c }}-p3d${{ steps.c.outputs.p3d }}-p3e${{ steps.c.outputs.p3e }}-p3eb${{ steps.c.outputs.p3eb }}-p3m${{ steps.c.outputs.p3m }}-p3n${{ steps.c.outputs.p3n }}-p4c${{ steps.c.outputs.p4c }}"
 
       - name: Fail if a comparison failed
-        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok' || steps.c.outputs.p3b != 'ok' || steps.c.outputs.p3c != 'ok' || steps.c.outputs.p3d != 'ok' || steps.c.outputs.p3e != 'ok' || steps.c.outputs.p3eb != 'ok' || steps.c.outputs.p3m != 'ok' || steps.c.outputs.p3n != 'ok'
+        if: steps.c.outputs.g0 != 'ok' || steps.c.outputs.edit != 'ok' || steps.c.outputs.sf != 'ok' || steps.c.outputs.crop != 'ok' || steps.c.outputs.p2j != 'ok' || steps.c.outputs.p3a != 'ok' || steps.c.outputs.p3b != 'ok' || steps.c.outputs.p3c != 'ok' || steps.c.outputs.p3d != 'ok' || steps.c.outputs.p3e != 'ok' || steps.c.outputs.p3eb != 'ok' || steps.c.outputs.p3m != 'ok' || steps.c.outputs.p3n != 'ok' || steps.c.outputs.p4c != 'ok'
         run: exit 1
