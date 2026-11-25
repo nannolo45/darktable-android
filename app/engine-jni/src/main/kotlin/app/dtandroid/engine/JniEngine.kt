@@ -5,6 +5,9 @@ import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineMemory
+import app.dtandroid.engine.api.EngineResources
+import app.dtandroid.engine.api.EngineStartOptions
+import app.dtandroid.engine.api.OpenClInfo
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
 import app.dtandroid.engine.api.RetouchState
@@ -167,6 +170,14 @@ class JniEngine private constructor() : DarktableEngine {
         if (initialised) throw EngineException(EngineError.STATE, "engine already initialised")
         if (Engine.prepared == null) throw EngineException(EngineError.STATE, "engine not unpacked and loaded (Engine.prepare)")
         check(NativeBridge.init(paths.configDir, paths.cacheDir, paths.dataDir, paths.moduleDir, paths.tmpDir, paths.library, threads))
+        initialised = true
+    }
+
+    // brief P4b (engine-api.md 11)
+    override suspend fun init(paths: EnginePaths, threads: Int, options: EngineStartOptions) = onEngine {
+        if (initialised) throw EngineException(EngineError.STATE, "engine already initialised")
+        if (Engine.prepared == null) throw EngineException(EngineError.STATE, "engine not unpacked and loaded (Engine.prepare)")
+        check(NativeBridge.initEx(paths.configDir, paths.cacheDir, paths.dataDir, paths.moduleDir, paths.tmpDir, paths.library, threads, options.toJson()))
         initialised = true
     }
 
@@ -362,6 +373,17 @@ class JniEngine private constructor() : DarktableEngine {
         requireInit()
         val st = IntArray(1)
         EngineMemory.fromJson(json(NativeBridge.memoryTrim(level, st), st))
+    }
+
+    // brief P4b (engine-api.md 11)
+    override suspend fun resourcesInfo(): EngineResources = onEngine { EngineResources.fromJson(get(NativeBridge.JSON_RESOURCES_INFO)) }
+
+    override suspend fun openclInfo(): OpenClInfo = onEngine { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }
+
+    override suspend fun openclSet(enabled: Boolean): OpenClInfo = onEngine {
+        requireInit()
+        val st = IntArray(1)
+        OpenClInfo.fromJson(json(NativeBridge.openclSet(enabled, st), st))
     }
 
     override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }

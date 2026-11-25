@@ -26,6 +26,9 @@ interface DarktableEngine {
 
     /** Start the engine without its desktop interface. [threads] 0 = engine default. */
     suspend fun init(paths: EnginePaths, threads: Int = 0)
+
+    /** Brief P4b (`dtb_init_ex`): start with [options] (resources, cache sizes, OpenCL allowed). */
+    suspend fun init(paths: EnginePaths, threads: Int, options: EngineStartOptions) = init(paths, threads)
     suspend fun shutdown()
     suspend fun engineInfo(): EngineInfo
 
@@ -133,6 +136,19 @@ interface DarktableEngine {
      * is kept at both levels. Returns the memory afterwards.
      */
     suspend fun memoryTrim(level: Int): EngineMemory = EngineMemory.NONE
+
+    /** Brief P4b (`dtb_resources_info`): darktable's memory budget and cache counters. */
+    suspend fun resourcesInfo(): EngineResources = EngineResources.NONE
+
+    /** Brief P4b (`dtb_opencl_info`): OpenCL's state and how the renders ran. */
+    suspend fun openclInfo(): OpenClInfo = OpenClInfo.NONE
+
+    /**
+     * Brief P4b (`dtb_opencl_set`): OpenCL on or off for the next renders; the first switch on starts darktable's
+     * OpenCL (can take minutes the first time). Throws [EngineException] (STATE) when the engine has no OpenCL or the
+     * start did not allow it.
+     */
+    suspend fun openclSet(enabled: Boolean): OpenClInfo = throw EngineException(EngineError.STATE, "this engine has no OpenCL")
 
     // 2.8 output
 

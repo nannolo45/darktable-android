@@ -244,6 +244,21 @@ Java_app_dtandroid_engine_NativeBridge_init(JNIEnv *env, jclass cls, jstring con
   return r;
 }
 
+/* brief P4b: dtb_init_ex with start-up options as JSON (engine-api.md 11) */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_initEx(JNIEnv *env, jclass cls, jstring configdir,
+                                              jstring cachedir, jstring datadir, jstring moduledir,
+                                              jstring tmpdir, jstring library, jint threads, jstring options)
+{
+  jstr_t c = _str(env, configdir), ca = _str(env, cachedir), d = _str(env, datadir),
+         m = _str(env, moduledir), t = _str(env, tmpdir), l = _str(env, library), o = _str(env, options);
+  const dtb_paths_t p = { .configdir = c.s, .cachedir = ca.s, .datadir = d.s, .moduledir = m.s,
+                          .tmpdir = t.s, .library = l.s };
+  const int r = dtb_init_ex(&p, threads, o.s);
+  _str_free(&c); _str_free(&ca); _str_free(&d); _str_free(&m); _str_free(&t); _str_free(&l); _str_free(&o);
+  return r;
+}
+
 JNIEXPORT void JNICALL
 Java_app_dtandroid_engine_NativeBridge_shutdown(JNIEnv *env, jclass cls)
 {
@@ -506,6 +521,8 @@ static jstring _json_status(JNIEnv *env, int code, char *s, jintArray status)
 #define DTJ_HISTORY 3
 #define DTJ_UNDO_STATE 4
 #define DTJ_MEMORY_INFO 5
+#define DTJ_RESOURCES_INFO 6
+#define DTJ_OPENCL_INFO 7
 
 JNIEXPORT jstring JNICALL
 Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint what, jintArray status)
@@ -520,8 +537,19 @@ Java_app_dtandroid_engine_NativeBridge_jsonGet(JNIEnv *env, jclass cls, jint wha
     case DTJ_HISTORY: r = dtb_history(&s); break;
     case DTJ_UNDO_STATE: r = dtb_undo_state(&s); break;
     case DTJ_MEMORY_INFO: r = dtb_memory_info(&s); break;
+    case DTJ_RESOURCES_INFO: r = dtb_resources_info(&s); break;
+    case DTJ_OPENCL_INFO: r = dtb_opencl_info(&s); break;
     default: r = DTB_E_ARG; break;
   }
+  return _json_status(env, r, s, status);
+}
+
+/* brief P4b: OpenCL on or off (engine-api.md 11); the opencl_info afterwards */
+JNIEXPORT jstring JNICALL
+Java_app_dtandroid_engine_NativeBridge_openclSet(JNIEnv *env, jclass cls, jboolean enabled, jintArray status)
+{
+  char *s = NULL;
+  const int r = dtb_opencl_set(enabled ? 1 : 0, &s);
   return _json_status(env, r, s, status);
 }
 
