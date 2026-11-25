@@ -14,7 +14,7 @@ object PerfLog {
     data class Step(val pipe: String, val module: String, val device: String, val ms: Double, val tiled: Boolean)
 
     private val STEP = Regex("""\[dev_pixelpipe] took ([0-9.]+) secs \([0-9.]+ CPU\) \[([^\]]*)] processed `([^']*)' on (GPU|CPU|)( with tiling)?""")
-    private val TROUBLE = Regex("""error|fail|out of memory|fallback|insufficient|can't|cannot""", RegexOption.IGNORE_CASE)
+    private val TROUBLE = Regex("""error|fail|out of memory|fallback|insufficient|can't|cannot|couldn't|could not""", RegexOption.IGNORE_CASE)
 
     fun steps(log: String): List<Step> = log.lineSequence().mapNotNull { l ->
         STEP.find(l)?.let { m ->
