@@ -12,7 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.swipe
@@ -147,7 +147,7 @@ class P5cTapTest {
         val end = System.currentTimeMillis() + 10_000
         while (!has("search modules") && System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(50) }
         if (has("search modules")) {
-            compose.onAllNodesWithContentDescription("search modules")[0].performTextInput(name)
+            compose.onAllNodesWithContentDescription("search modules")[0].performTextReplacement(name)
             TestFiles.record(res, "${tag}_module", "found by search")
             tapDesc(tag, name)
         } else {
