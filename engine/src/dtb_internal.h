@@ -78,6 +78,13 @@ typedef struct dtb_session_t
   gboolean group_changed;
 } dtb_session_t;
 
+/* speed.c (brief P4b) */
+int dtb__speed_options(const char *json, gchar **argv, int *argc, int max_argc);
+void dtb__speed_after_init(void);
+void dtb__speed_pipe_made(dtb_pipe_t *p, gboolean full);
+void dtb__speed_render_begin(void);
+void dtb__speed_render_end(void);
+
 /* core.c */
 extern dtb_session_t dtb_S;
 extern gboolean dtb_inited;

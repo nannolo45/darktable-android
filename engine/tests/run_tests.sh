@@ -31,6 +31,8 @@ CLI_LEVEL=""
 [ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && CLI_LEVEL="--conf resourcelevel=$DTB_TEST_RESOURCELEVEL"
 [ -n "${DTB_TEST_RESOURCELEVEL:-}" ] && export DTB_TEST_RESOURCELEVEL
 CLI="$DT_PREFIX/bin/darktable-cli"
+# brief P4b: darktable is built with OpenCL now; every darktable-cli reference runs with --disable-opencl, so the
+# references stay CPU renders even where an OpenCL device exists (PoCL on the runner for C36)
 CMP="python3 -I $HERE/compare.py"
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
@@ -53,7 +55,7 @@ want() { [ -z "$ONLY" ] || echo " $ONLY " | grep -q " $1 "; }
 # darktable-cli export to PNG, with a configuration of its own
 cli() { # raw xmp out.png log
   rm -f "$3"
-  "$CLI" "$1" "$2" "$3" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" $CLI_LEVEL \
+  "$CLI" "$1" "$2" "$3" --core --disable-opencl --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" $CLI_LEVEL \
     >> "$4" 2>&1
 }
 
@@ -125,7 +127,7 @@ print(len(docs[0]), "module instances,", len(docs[1]["items"]), "history items")
     cmp_rec T3 "$C" "$D/instances_bridge.ppm" "$D/instances_cli.png"
     # what darktable itself reads from the XMP: darktable-cli --verbose prints
     # the history it loaded into its library (the desktop's read path)
-    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core $CLI_LEVEL \
+    "$CLI" "$RAW" "$D/instances.xmp" "$D/instances_cli_v.png" --verbose --core --disable-opencl $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" > "$D/T3-cli-history.txt" 2>&1
     rm -f "$D/instances_cli_v.png"
   fi
@@ -260,13 +262,13 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     fi
     # JPEG: the same encoder and quality, so the decoded pixels must match
     rm -f "$D/x_export_cli.jpg"
-    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+    "$CLI" "$RAW" "$XMP" "$D/x_export_cli.jpg" --core --disable-opencl $CLI_LEVEL --configdir "$OUT/cli-config" \
       --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
     cmp_rec X1 "$C" "$D/x_export.jpg" "$D/x_export_cli.jpg"
     # preview: a different input (the downscaled mipmap) by design, so this is
     # a measurement against darktable-cli's own downscaled export, not a check
     rm -f "$D/x_preview_cli.png"
-    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core $CLI_LEVEL \
+    "$CLI" "$RAW" "$XMP" "$D/x_preview_cli.png" --width 1024 --height 1024 --hq false --core --disable-opencl $CLI_LEVEL \
       --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     note "INFO X1 $C preview vs darktable-cli 1024 px export: $($CMP "$D/x_preview.ppm" "$D/x_preview_cli.png" --tolerance 255 2>&1)"
   fi
@@ -299,7 +301,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     # darktable-cli must find the LUT the driver set, in the same root folder
     if [ -f "$D/actions.xmp" ]; then
       rm -f "$D/actions_cli.png"
-      "$CLI" "$RAW" "$D/actions.xmp" "$D/actions_cli.png" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+      "$CLI" "$RAW" "$D/actions.xmp" "$D/actions_cli.png" --core --disable-opencl $CLI_LEVEL --configdir "$OUT/cli-config" \
         --cachedir "$OUT/cli-cache" --conf "plugins/darkroom/lut3d/def_path=$D/luts" >> "$D/cli.log" 2>&1
       cmp_rec C4 "$C" "$D/actions_bridge.ppm" "$D/actions_cli.png"
     else
@@ -313,7 +315,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C8 reopen "open(raw, NULL) is the default edit, open(raw, xmp) that XMP's edit"
     # the default edit as darktable-cli makes it from the RAW alone
     rm -f "$D/reopen_default_cli.png"
-    "$CLI" "$RAW" "$D/reopen_default_cli.png" --core --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" \
+    "$CLI" "$RAW" "$D/reopen_default_cli.png" --core --disable-opencl --configdir "$OUT/cli-config" --cachedir "$OUT/cli-cache" \
       $CLI_LEVEL >> "$D/cli.log" 2>&1
     cmp_rec C8 "$C/default-edit-vs-cli" "$D/reopen_default_bridge.ppm" "$D/reopen_default_cli.png"
   fi
@@ -324,7 +326,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     if [ -f "$D/out.xmp" ]; then
       cli "$RAW" "$D/out.xmp" "$D/c7_cli.png" "$D/cli.log"
       cmp_rec C7 "$C" "$D/e_8.png" "$D/c7_cli.png" --tolerance 0
-      "$CLI" "$RAW" "$D/out.xmp" "$D/c7_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+      "$CLI" "$RAW" "$D/out.xmp" "$D/c7_cli.jpg" --core --disable-opencl $CLI_LEVEL --configdir "$OUT/cli-config" \
         --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
       cmp_rec C7 "$C" "$D/e_default.jpg" "$D/c7_cli.jpg" --tolerance 0
     fi
@@ -357,11 +359,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     # levels on the test images (P1b report). The exact check is the parity of the bridge's XMP above.
     rm -rf "$OUT/cli-config-style-$C"; cp -r "$W/config" "$OUT/cli-config-style-$C"
     rm -f "$D/style_cli_append.png" "$D/style_cli_overwrite.png"
-    "$CLI" "$RAW" "$D/style_cli_append.png" --style "p1b public" --core $CLI_LEVEL \
+    "$CLI" "$RAW" "$D/style_cli_append.png" --style "p1b public" --core --disable-opencl $CLI_LEVEL \
       --configdir "$OUT/cli-config-style-$C" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     cmp_rec C12 "$C/bridge-append-vs-cli-style" "$D/style_default_append_bridge.ppm" "$D/style_cli_append.png" --tolerance 2 --mean-tolerance 0.5
     # --style-overwrite replaces the history with the style alone (no default edit): not desktop's overwrite
-    "$CLI" "$RAW" "$D/style_cli_overwrite.png" --style "p1b public" --style-overwrite --core $CLI_LEVEL \
+    "$CLI" "$RAW" "$D/style_cli_overwrite.png" --style "p1b public" --style-overwrite --core --disable-opencl $CLI_LEVEL \
       --configdir "$OUT/cli-config-style-$C" --cachedir "$OUT/cli-cache" >> "$D/cli.log" 2>&1
     note "INFO C12 $C bridge overwrite (default edit + style) vs darktable-cli --style-overwrite (style only): $($CMP "$D/style_default_append_bridge.ppm" "$D/style_cli_overwrite.png" --tolerance 255 2>&1)"
     if "$DTB" "$W" persist "$RAW" styles "$D" > "$D/C12-persist.log" 2>&1; then
@@ -412,6 +414,25 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C34 memory "memory: info, trim levels 1 and 2 keep history, parameters and undo; renders after a trim equal the ones before"
     cp -f "$D/p4a_memory.txt" "$OUT/" 2>/dev/null || true
   fi
+  # brief P4b (engine-api.md 11): start-up options, resources, switching photos with 3 and 1 inputs kept
+  if want C35; then
+    drv C35 resources "resources: options refused when wrong, resource values and cache sizes reach darktable, OpenCL not allowed; back to a photo with 3 inputs kept: no new decode, same renders"
+    drv C35 resources1 "resources: back to a photo with 1 input kept decodes it again, same renders"
+    for k in 3 1; do cp -f "$D/p4b_resources_$k.txt" "$OUT/p4b_resources_${k}_$C.txt" 2>/dev/null || true; done
+  fi
+  # brief P4b: OpenCL allowed and switched on (a device only where the runner has one, e.g. PoCL); one camera
+  if want C36 && [ "$C" = cr2 ]; then
+    # bounded: PoCL compiles darktable's kernels on the runner's CPU at the first switch on (minutes)
+    t36=$(date +%s)
+    # darktable's own OpenCL log (-d opencl) goes into C36.log
+    if DTB_DT_DEBUG=opencl DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl "$RAW" "$XMP" "$D" > "$D/C36.log" 2>&1; then
+      pass C36 "$C" "OpenCL opt-in: started on request; no device = the CPU's picture byte for byte; a device = PSNR against the CPU; off again = the CPU's picture: $(grep '^RESULT' "$D/C36.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t36 )) s)"
+    else
+      rc36=$?
+      fail C36 "$C" "OpenCL opt-in: $( [ $rc36 = 124 ] && echo 'timed out after 2400 s; ')$(grep '^FAIL' "$D/C36.log" | head -5 | tr '\n' ';') see $D/C36.log"
+    fi
+    cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
+  fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
     for f in p3m_shapes p3m_source p3m_settings p3m_removed p3m_wavelet p3m_lut_changed p3m_lut_added p3m_lut_reset p3m_lut_deleted; do parity C32 $f; done
@@ -420,7 +441,7 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C27 exportprog "export progress in order to 100 %, cancel leaves no file"
     if [ -f "$D/p3g_export.jpg" ]; then
       rm -f "$D/p3g_export_cli.jpg"
-      "$CLI" "$RAW" "$XMP" "$D/p3g_export_cli.jpg" --core $CLI_LEVEL --configdir "$OUT/cli-config" \
+      "$CLI" "$RAW" "$XMP" "$D/p3g_export_cli.jpg" --core --disable-opencl $CLI_LEVEL --configdir "$OUT/cli-config" \
         --cachedir "$OUT/cli-cache" --conf plugins/imageio/format/jpeg/quality=95 >> "$D/cli.log" 2>&1
       cmp_rec C27 "$C" "$D/p3g_export.jpg" "$D/p3g_export_cli.jpg"
       # the same pixels: a second export, the export after the cancels, dtb_export without progress

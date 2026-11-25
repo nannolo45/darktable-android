@@ -154,6 +154,7 @@ An edit made on desktop with a module the phone cannot edit yet is never lost or
 - Preview pipeline from a downscaled input for immediate feedback, full pipeline only for the visible region at screen scale, cancel on new input.
 - OpenMP on all cores; darktable's resource level tuned for phones; tiling for large images.
 - OpenCL later and opt-in per device (F8).
+  - **Built (brief P4b, 25 Nov 2026):** the engine is built with OpenCL and starts without it; Settings › processing › "use the GPU" starts it and keeps it only if a test render agrees with the CPU's; "processing memory" (normal / more / less) chooses darktable's resource values, pipeline cache sizes and decoded photos kept by the phone's total memory; "measure speed" renders the public test RAW and copies the times. Report: docs/experiments/P4b-speed-REPORT.md.
 - **Measured at gate G0** (24 MP RAF, default edit, single runs): with 4 threads, preview after an exposure change 0.09 s, screen-sized region at 100 % after a change 0.22 s, full-size render 2.6 s, full-size JPEG export 3.1 s. With all 8 threads the interactive steps were slower (preview 0.56 s), because the slow cores hold up the evenly split work. The engine therefore runs on the fast cores only, pinned.
 - **Targets to confirm at gate G0 on the target phone** (targets, not measurements): preview after a slider move under 0.3 s; visible region under 3 s for a 40 MP RAF; full export under 60 s.
 

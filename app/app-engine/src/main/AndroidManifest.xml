@@ -39,6 +39,11 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="false"
         android:theme="@style/Theme.Dt">
+        <!-- brief P4b: the phone vendor's OpenCL library, opened by darktable only when the GPU is switched on;
+             Android 12 and later let an app open a vendor library only when it is declared here. Not required:
+             the app runs without it. libOpenCL_adreno.so: Qualcomm's own name on some phones. -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL_adreno.so" android:required="false" />
         <!-- singleTask: one window; a hand-off link that arrives while the app is open reaches it (onNewIntent) -->
         <activity
             android:name=".MainActivity"

@@ -232,6 +232,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             },
             HostAction("LightPhotoLibrary server…") { vm.showServerForm() },
             HostAction("timings…") { vm.openTimings() },
+            // brief P4b: GPU, processing memory, measure speed
+            HostAction("processing…") { vm.openProcessing() },
             HostAction("about") { vm.show(Screen.ABOUT) },
         ),
         messages = listOfNotNull(lib.busy) + lib.messages,
@@ -326,6 +328,7 @@ fun AboutScreen(vm: AppViewModel, ready: AppEngine.Status.Ready, appVersion: Str
             // brief P4a: the local crash log
             DtTextButton("crash log", { vm.show(Screen.CRASH_LOG) }, compact = true)
             DtTextButton("timings", { vm.openTimings() }, compact = true)
+            DtTextButton("processing", { vm.openProcessing() }, compact = true)
             DtTextButton("back", { vm.show(Screen.LIBRARY) }, compact = true)
         }
         Divider()
@@ -397,5 +400,19 @@ fun CrashLogPage(onCopy: (String) -> Unit, onBack: () -> Unit) = Page {
         onCopy = { onCopy(app.dtandroid.darkroom.robust.CrashLog.format(entries.asReversed())) },
         onClear = { AppHost.crashLog.clear(); tick++ },
         onBack = onBack,
+    )
+}
+
+/** Brief P4b: Settings › processing (GPU, processing memory, measure speed), process-wide state in [Processing]. */
+@Composable
+fun ProcessingPage(vm: AppViewModel, appVersion: String, onCopy: (String) -> Unit) = Page {
+    val ui by Processing.ui.collectAsState()
+    app.dtandroid.darkroom.ui.ProcessingScreen(
+        ui,
+        onGpu = { Processing.setGpu(it, vm.controller) },
+        onMemory = { Processing.setMemory(it) },
+        onMeasure = { Processing.measure(vm.controller, appVersion) },
+        onCopy = { ui.speedText?.let(onCopy) },
+        onBack = { vm.show(Screen.LIBRARY) },
     )
 }

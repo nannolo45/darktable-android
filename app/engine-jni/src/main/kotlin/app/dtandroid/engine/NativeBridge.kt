@@ -51,6 +51,11 @@ object NativeBridge {
         configdir: String, cachedir: String, datadir: String, moduledir: String,
         tmpdir: String, library: String, threads: Int,
     ): Int
+    /** brief P4b: dtb_init_ex, [options] JSON (engine-api.md 11) */
+    @JvmStatic external fun initEx(
+        configdir: String, cachedir: String, datadir: String, moduledir: String,
+        tmpdir: String, library: String, threads: Int, options: String,
+    ): Int
     @JvmStatic external fun shutdown()
     @JvmStatic external fun lastError(): String
     @JvmStatic external fun engineVersion(): String
@@ -89,6 +94,11 @@ object NativeBridge {
     const val JSON_UNDO_STATE = 4
     /** brief P4a: dtb_memory_info */
     const val JSON_MEMORY_INFO = 5
+    /** brief P4b: dtb_resources_info, dtb_opencl_info */
+    const val JSON_RESOURCES_INFO = 6
+    const val JSON_OPENCL_INFO = 7
+    /** brief P4b: dtb_opencl_set; the opencl_info afterwards */
+    @JvmStatic external fun openclSet(enabled: Boolean, status: IntArray): String?
     @JvmStatic external fun jsonGet(what: Int, status: IntArray): String?
     /** brief P4a: dtb_memory_trim; the memory_info afterwards */
     @JvmStatic external fun memoryTrim(level: Int, status: IntArray): String?

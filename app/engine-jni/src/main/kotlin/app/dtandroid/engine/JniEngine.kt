@@ -5,6 +5,9 @@ import app.dtandroid.engine.api.DarktableEngine
 import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineMemory
+import app.dtandroid.engine.api.EngineResources
+import app.dtandroid.engine.api.EngineStartOptions
+import app.dtandroid.engine.api.OpenClInfo
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
 import app.dtandroid.engine.api.RetouchState
@@ -128,7 +131,28 @@ class JniEngine private constructor() : DarktableEngine {
         } catch (e: OutOfMemoryError) {
             // brief P4a: the picture's Java buffer could not be made: an engine error the darkroom handles, not a crash
             throw EngineException(EngineError.ENGINE, "out of memory for the rendered picture")
-        } finally { synchronized(cancelGuard) { rendering = false } }
+        } finally {
+            synchronized(cancelGuard) { rendering = false }
+            watchGpu()
+        }
+    }
+
+    /**
+     * Brief P4b: called on the engine thread after a render or an export during which darktable reported an OpenCL error (it then
+     * finished that render on the CPU), or once when darktable stopped OpenCL for the session after repeated errors.
+     */
+    @Volatile var onOpenClTrouble: ((OpenClInfo) -> Unit)? = null
+    @Volatile private var gpuWatched = false
+    private var fallbacksSeen = 0L
+    private var stoppedSeen = false
+
+    private fun watchGpu() {
+        if (!gpuWatched) return
+        val i = runCatching { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }.getOrNull() ?: return
+        val trouble = i.rendersFallback > fallbacksSeen || (i.stopped && !stoppedSeen)
+        fallbacksSeen = i.rendersFallback
+        stoppedSeen = i.stopped
+        if (trouble) runCatching { onOpenClTrouble?.invoke(i) }
     }
 
     /** Run [block] on the engine thread; skip it if the caller is cancelled before it starts. */
@@ -167,6 +191,14 @@ class JniEngine private constructor() : DarktableEngine {
         if (initialised) throw EngineException(EngineError.STATE, "engine already initialised")
         if (Engine.prepared == null) throw EngineException(EngineError.STATE, "engine not unpacked and loaded (Engine.prepare)")
         check(NativeBridge.init(paths.configDir, paths.cacheDir, paths.dataDir, paths.moduleDir, paths.tmpDir, paths.library, threads))
+        initialised = true
+    }
+
+    // brief P4b (engine-api.md 11)
+    override suspend fun init(paths: EnginePaths, threads: Int, options: EngineStartOptions) = onEngine {
+        if (initialised) throw EngineException(EngineError.STATE, "engine already initialised")
+        if (Engine.prepared == null) throw EngineException(EngineError.STATE, "engine not unpacked and loaded (Engine.prepare)")
+        check(NativeBridge.initEx(paths.configDir, paths.cacheDir, paths.dataDir, paths.moduleDir, paths.tmpDir, paths.library, threads, options.toJson()))
         initialised = true
     }
 
@@ -364,6 +396,21 @@ class JniEngine private constructor() : DarktableEngine {
         EngineMemory.fromJson(json(NativeBridge.memoryTrim(level, st), st))
     }
 
+    // brief P4b (engine-api.md 11)
+    override suspend fun resourcesInfo(): EngineResources = onEngine { EngineResources.fromJson(get(NativeBridge.JSON_RESOURCES_INFO)) }
+
+    override suspend fun openclInfo(): OpenClInfo = onEngine { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }
+
+    override suspend fun openclSet(enabled: Boolean): OpenClInfo = onEngine {
+        requireInit()
+        val st = IntArray(1)
+        OpenClInfo.fromJson(json(NativeBridge.openclSet(enabled, st), st)).also {
+            gpuWatched = it.running
+            fallbacksSeen = it.rendersFallback
+            stoppedSeen = it.stopped
+        }
+    }
+
     override suspend fun cacheDrop() = onEngine { requireInit(); check(synchronized(cancelGuard) { NativeBridge.cacheDrop() }) }
 
     // ------------------------------------------------------------------ 2.8 output
@@ -372,7 +419,7 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun export(path: String, options: ExportOptions) = onEngine {
         requireInit()
-        check(NativeBridge.exportWith(path, options.toJson().toString()))
+        try { check(NativeBridge.exportWith(path, options.toJson().toString())) } finally { watchGpu() }
     }
 
     /** P3g (engine-api.md section 7): the listener runs on the engine thread, inside the export. */
@@ -382,7 +429,7 @@ class JniEngine private constructor() : DarktableEngine {
         val listener = ExportListener { step, module, modules, fraction ->
             onProgress(ExportProgress(steps[step.coerceIn(0, steps.size - 1)], module, modules, fraction))
         }
-        check(NativeBridge.exportProgress(path, options.toJson().toString(), listener))
+        try { check(NativeBridge.exportProgress(path, options.toJson().toString(), listener)) } finally { watchGpu() }
     }
 
     /** P3g: dtb_export_cancel is an atomic flag in the bridge, safe from any thread at any time once the engine is up. */

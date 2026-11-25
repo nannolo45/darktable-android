@@ -72,6 +72,10 @@
 #include <unistd.h>
 
 static int g_fail = 0;
+/* brief P4b: start-up options for dtb_init_ex (NULL = dtb_init's), and
+ * options that must be refused before the start (each tried first) */
+static const char *g_init_options = NULL;
+static const char *const *g_init_bad_options = NULL;
 
 #define CHECK(cond, ...)                                                \
   do {                                                                  \
@@ -181,7 +185,14 @@ static void engine_start_ext(const char *workdir, int threads, const char *extra
     free(rc);
   }
   dtb_paths_t p = { configdir, cachedir, datadir, moduledir, tmpdir, library };
-  MUST(dtb_init(&p, threads));
+  for(int i = 0; g_init_bad_options && g_init_bad_options[i]; i++)
+  {
+    const int r = dtb_init_ex(&p, threads, g_init_bad_options[i]);
+    CHECK(r != DTB_OK, "dtb_init_ex refuses %s", g_init_bad_options[i]);
+    if(r == DTB_OK) dtb_shutdown();
+    else fprintf(stdout, "RESULT refused %d %s: %s\n", r, g_init_bad_options[i], dtb_last_error());
+  }
+  MUST(dtb_init_ex(&p, threads, g_init_options));
 }
 
 static void engine_start(const char *workdir) { engine_start_ext(workdir, 0, NULL); }
@@ -3207,6 +3218,7 @@ static int cmd_cpus(const char *workdir)
 #include "dtb_test_p3m.c"
 #include "dtb_test_p3n.c"
 #include "dtb_test_p4a.c"
+#include "dtb_test_p4b.c"
 
 int main(int argc, char **argv)
 {
@@ -3231,7 +3243,12 @@ int main(int argc, char **argv)
     g_free(rc);
   }
   else
+  {
+    // brief P4b: the start-up options of its commands
+    g_init_options = p4b_options(cmd, argv[1]);
+    if(!strcmp(cmd, "resources")) g_init_bad_options = p4b_bad_options;
     engine_start(argv[1]);
+  }
   {
     char *s = NULL;
     MUST(dtb_engine_info(&s));
@@ -3254,7 +3271,7 @@ int main(int argc, char **argv)
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
       { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
-      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch }, { "perspective", cmd_perspective }, { "memory", cmd_memory },
+      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch }, { "perspective", cmd_perspective }, { "memory", cmd_memory }, { "resources", cmd_resources }, { "resources1", cmd_resources1 }, { "opencl", cmd_opencl },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);

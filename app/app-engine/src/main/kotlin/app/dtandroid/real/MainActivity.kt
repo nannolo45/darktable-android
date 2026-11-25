@@ -161,6 +161,7 @@ class MainActivity : ComponentActivity() {
                         layoutFiles = layoutFiles, importFiles = importFiles)
                     screen == Screen.ABOUT -> AboutScreen(vm, ready, appVersion())
                     screen == Screen.TIMINGS -> TimingsScreen(vm, appVersion(), onShare = { share(it) })
+                    screen == Screen.PROCESSING -> ProcessingPage(vm, appVersion(), onCopy = { copyText(it, "dt-android speed") })
                 }
             }
         }
@@ -182,13 +183,14 @@ class MainActivity : ComponentActivity() {
             Screen.SERVER -> vm.show(Screen.LIBRARY)
             Screen.HANDOFF -> vm.cancelHandOff()
             Screen.TIMINGS -> vm.show(if (vm.controller.state.value.info != null) Screen.DARKROOM else Screen.LIBRARY)
+            Screen.PROCESSING -> if (!Processing.ui.value.busy) vm.show(Screen.LIBRARY)
         }
     }
 
     /** brief P4a: "copy" on the crash log: the text goes to the clipboard, nowhere else */
-    private fun copyText(text: String) {
+    private fun copyText(text: String, label: String = "dt-android crash log") {
         val cm = getSystemService(android.content.ClipboardManager::class.java) ?: return
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("dt-android crash log", text))
+        cm.setPrimaryClip(android.content.ClipData.newPlainText(label, text))
     }
 
     private fun share(text: String) {
