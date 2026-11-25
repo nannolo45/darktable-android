@@ -353,6 +353,20 @@ Gate G3: checklist of these modules on the phone, and on the tablet layout in th
 
 **Phase 5: maintenance.** `UPDATE.md` proven by a real version bump, remaining modules by demand, optional nightly-following build.
 
+### 6.1 Status and remaining work (updated 25 Nov 2026)
+
+**Done:** Phases 0–3 (gates G0 and G1 passed; G2 and G3 wait for the owner's checks), R11 shared styles/presets/layouts, Phase 4 robustness (P4a) and speed (P4b: benchmark, memory by RAM). **GPU (OpenCL):** works on the Adreno 650 after a kernel patch (P4e, `patches/0001`), but measured 2–3× slower than the CPU per module and without darktable's pipeline cache reuse (owner's phone, 25 Nov); it stays an opt-in that switches itself off when slower. GPU work is closed unless drivers or darktable change.
+
+**Remaining, in order** (owner asked for the plan to be adjusted, 25 Nov 2026):
+1. **P5a module coverage audit.** Every processing module of the pinned darktable, not only the 29 priority ones: works / partly / missing on the phone, with the reason (e.g. liquify's on-photo tool, LUT 3D file chooser, lens correction's lens list and lensfun data, denoise profiles, watermark/framing assets). Output: a table the owner picks from; checked by bridge renders against darktable-cli where possible.
+2. **P5b engine bump to the current darktable development version** (`UPDATE.md` proven by a real bump; schema-diff; `patches/` re-applied; module-version check against the owner's PC nightly). Keeps phone and PCs on compatible module versions until 5.8.0, then the same routine for 5.8.0.
+3. **P5c test and CI hygiene:** p2b's permission allow-list and `pipefail`; a registry for bridge test ids; emulator tap tests for the R11, retouch, look up table and perspective dialogs (today Robolectric only); CurvePick fallback to darktable's Rec 2020 row.
+4. **Upstream reports** (texts drafted here, posted by the owner or with his OK): Adreno vector subscripts in `basic.cl` (with the patch), loss of a selectively pasted second instance (P3j), drawn perspective line deletion also dropping the last line (P3n).
+5. **G3 checklist** written for the owner (after 1–2), then the owner's G2 and G3 checks.
+6. **From the audit, as the owner picks:** missing/partial modules (liquify first if wanted), retouch wavelet decompose, rotation gesture for shapes, curve graph zoom and "scale for graph", 8-thread CPU experiment for diffuse, tablet layout on a real tablet.
+7. **LightPhotoLibrary:** repeat-safe export upload; per-device tokens (R7, optional).
+8. **darktable 5.8.0** when released (routine from 2).
+
 ## 7. How implementation runs
 
 - Coding is done by Opus agents, one work package each, from a written brief in `docs/briefs/`: scope, files they may touch, interfaces they must not change, acceptance tests, and the relevant sections of this plan.
