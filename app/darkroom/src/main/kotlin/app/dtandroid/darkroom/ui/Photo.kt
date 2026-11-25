@@ -150,6 +150,17 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
     val drawing = ms.draw?.takeIf { !s.before && tool == null }
     val drawOn = drawing != null
     val currentDraw by rememberUpdatedState(drawing)
+    // brief P3m: retouch's panel is open: its shapes over the photo; its tools and its shapes take one finger, two
+    // fingers pan and zoom (not on "before", the crop tool's picture, while a mask shape is drawn or a picker is armed)
+    val rtu by controller.retouch.state.collectAsState()
+    val retouchOn = controller.retouch.active(s) && tool == null && !drawOn && s.picker == null
+    val currentRetouch by rememberUpdatedState(retouchOn)
+    val rtTool = retouchOn && rtu.tool != null
+    // brief P3m: the colour look up table's picker armed: a tap picks
+    val lutU by controller.lut.state.collectAsState()
+    val lutPick = lutU.picking && lutU.key != null && controller.lut.wanted(s) == lutU.key && !s.before && tool == null && s.picker == null && !drawOn
+    val currentLutPick by rememberUpdatedState(lutPick)
+    val retouchSourceColor = c.retouchSource
     // brief P3e: the tone equalizer's panel is open: a vertical one-finger drag on the photo edits the band under the finger
     // (not zoomed in, so that a drag there still pans; not with a picker armed, a shape drawn or the crop tool)
     val eqKey = controller.toneEqWanted(s)?.takeIf { !s.before && tool == null && s.picker == null && !drawOn }
@@ -199,8 +210,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                     val b = lc.boundsInWindow()
                     controller.photoArea = PhotoArea(b.left, b.top, b.width, b.height)
                 }
-                .pointerInput(s.index, twoFingerUndo, drawOn) {
-                    if (drawOn) return@pointerInput // brief P3d: taps place shapes while drawing
+                .pointerInput(s.index, twoFingerUndo, drawOn, rtTool) {
+                    if (drawOn || rtTool) return@pointerInput // brief P3d, P3m: taps place shapes while drawing
                     detectTapGestures(onDoubleTap = { p ->
                         if (zoom > 1.01f) { zoom = 1f; cx = 0.5f; cy = 0.5f } else {
                             // centre 100 % on the tapped point
@@ -272,6 +283,21 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                             down.consume()
                             draw = true
                         }
+                        // brief P3m: retouch takes the finger when a tool is on or it lands on a shape; else a tap
+                        // there selects, unselects or picks when the gesture ends
+                        var rt = false
+                        var rtLast = picturePoint(down.position)
+                        var rtTap: Pair<Float, Float>? = null
+                        if (currentRetouch && currentTool == null && !draw && currentPicker == null) {
+                            val ds = currentFit * zoom
+                            val (px, py) = rtLast
+                            if (controller.retouch.touchDown(px.toDouble(), py.toDouble(), (touch.toPx() / 2 / (iw * ds)).toDouble(), (touch.toPx() / 2 / (ih * ds)).toDouble())) {
+                                down.consume()
+                                rt = true
+                            } else rtTap = rtLast
+                        } else if (currentLutPick && currentTool == null && !draw && currentPicker == null) {
+                            rtTap = rtLast
+                        }
                         var pick = false
                         var pickPending = false
                         var pickMoved = 0f
@@ -336,6 +362,22 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                                     if (ch != null && ch.pressed && ch.positionChanged()) {
                                         val (px, py) = picturePoint(ch.position)
                                         controller.masks.touchMove(px.toDouble(), py.toDouble())
+                                    }
+                                    ev.changes.forEach { it.consume() }
+                                    continue
+                                }
+                            }
+                            if (rt) {
+                                if (pressed >= 2) {
+                                    controller.retouch.touchCancel()
+                                    rt = false
+                                    maxPointers = max(maxPointers, pressed)
+                                } else {
+                                    val ch = ev.changes.firstOrNull { it.id == down.id }
+                                    if (ch != null && ch.pressed && ch.positionChanged()) {
+                                        rtLast = picturePoint(ch.position)
+                                        val ds = currentFit * zoom
+                                        controller.retouch.touchMove(rtLast.first.toDouble(), rtLast.second.toDouble(), slop / (iw * ds).toDouble(), slop / (ih * ds).toDouble())
                                     }
                                     ev.changes.forEach { it.consume() }
                                     continue
@@ -426,6 +468,18 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
                         } while (ev.changes.any { it.pressed })
                         if (eq) { controller.toneEqEnd(); return@awaitEachGesture }
                         if (draw) { controller.masks.touchUp(); return@awaitEachGesture }
+                        if (rt) {
+                            val ds = currentFit * zoom
+                            controller.retouch.touchUp(rtLast.first.toDouble(), rtLast.second.toDouble(), (touch.toPx() / 2 / (iw * ds)).toDouble(), (touch.toPx() / 2 / (ih * ds)).toDouble())
+                            return@awaitEachGesture
+                        }
+                        val tapAt = rtTap
+                        if (tapAt != null && maxPointers == 1 && moved < slop) {
+                            val ds = currentFit * zoom
+                            if (currentLutPick) controller.lut.tap(tapAt.first.toDouble(), tapAt.second.toDouble())
+                            else controller.retouch.tap(tapAt.first.toDouble(), tapAt.second.toDouble(), (touch.toPx() / 2 / (iw * ds)).toDouble(), (touch.toPx() / 2 / (ih * ds)).toDouble())
+                            return@awaitEachGesture
+                        }
                         if (frame) { controller.cropDragEnd(); return@awaitEachGesture }
                         if (pick) { controller.pickerDragEnd(); return@awaitEachGesture }
                         if (pickPending) {
@@ -521,6 +575,8 @@ fun PhotoView(controller: DarkroomController, s: DarkroomState, inset: Dp, twoFi
             // brief P3d: the shape being drawn, or the shape tapped in the masks tab
             if (drawing != null) drawDrawTool(drawing, left, top, imgW, imgH, maskLook)
             else if (!s.before && tool == null && s.view == app.dtandroid.darkroom.BottomView.MASKS) ms.outline?.let { drawMaskOutline(it, left, top, imgW, imgH, maskLook) }
+            // brief P3m: retouch's shapes, sources and what is being placed
+            if (retouchOn) drawRetouch(rtu, left, top, imgW, imgH, maskLook, retouchSourceColor)
             tool?.line?.let { l -> drawStraightenLine(left + l[0] * imgW, top + l[1] * imgH, left + l[2] * imgW, top + l[3] * imgH, cropLook) }
         }
         // brief P2i: at fit nothing is said after a change; zoomed in, "rendering…" while the sharp region comes

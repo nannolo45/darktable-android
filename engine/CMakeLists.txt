@@ -102,6 +102,7 @@ add_library(dtbridge SHARED
   src/coords.c      # coordinates original <-> processed (P1b part 2, 6.5)
   src/blend.c       # blending of an instance (P1b part 2, 6.6)
   src/masks.c       # drawn masks (P1b part 2, 6.7)
+  src/retouch.c     # retouch shapes (P3m, 6.10)
 )
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})

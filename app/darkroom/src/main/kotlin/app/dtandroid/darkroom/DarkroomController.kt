@@ -437,6 +437,7 @@ class DarkroomController(
                 cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
         }
         masksOrNull?.reset() // brief P3d: another photo: no drawing, no sheet, no module chosen
+        retouchOrNull?.reset() // brief P3m: the same for retouch's tools
         // told after the state says no photo is open, so the source sees the photo as closed
         if (left != null) source?.left(left)
     }
@@ -495,6 +496,7 @@ class DarkroomController(
                     cropTool = null, picker = null, showMask = null, maskModes = emptyMap())
             }
             masksOrNull?.reset()
+            retouchOrNull?.reset()
             if (left != null) source?.left(left)
         }
     }
@@ -834,6 +836,8 @@ class DarkroomController(
             pickerAfterChangeLocked(before)
             // brief P3d: the masks tab reads its module's blending and the photo's shapes again (undo and redo too)
             masksOrNull?.afterChangeLocked(engine)
+            // brief P3m: retouch's panel reads its shapes again (undo and redo too)
+            retouchOrNull?.afterChangeLocked(engine)
         }
         requestRender()
     }
@@ -2569,13 +2573,21 @@ class DarkroomController(
             else s.copy(group = GroupTab.Active, forceShow = key, expanded = key, search = "", overlay = null)
         }
         pickerCheck() // brief P3c: another module's panel: the picker goes
+        retouchFocus()
         launch { syncCropTool() } // brief P3a: crop's panel opened or another module's
     }
 
     fun toggleExpanded(key: InstanceKey) {
         _state.update { it.copy(expanded = if (it.expanded == key) null else key, overlay = null) }
         pickerCheck() // brief P3c: leaving the picker's module disarms it
+        retouchFocus()
         launch { syncCropTool() } // brief P3a: opening crop's panel opens the tool; closing it or opening another leaves it
+    }
+
+    /** Brief P3m: retouch's tools and "switch off shapes", the look up table's picker, only while their module is expanded. */
+    private fun retouchFocus() {
+        retouchOrNull?.focusChanged()
+        if (lutLazyInit) lut.focusChanged()
     }
 
     fun setView(v: BottomView) {
@@ -2716,9 +2728,29 @@ class DarkroomController(
     /** Brief P3d stage 2b: parametric channels and mask refinement (ParametricMasks.kt). */
     val parametric: ParametricMasks by lazy { ParametricMasks(this) }
 
-    /** The render options of "show mask": none unless it is on for an instance. */
-    private fun maskRenderOptions(): RenderOptions =
-        _state.value.showMask?.let { RenderOptions(showMask = app.dtandroid.engine.api.InstanceRef(it.op, it.priority)) } ?: RenderOptions.NONE
+    /**
+     * The render options of "show mask": none unless it is on for an instance. Brief P3m: retouch's "temporarily switch
+     * off shapes" leaves retouch out of the render (the edit untouched).
+     */
+    private fun maskRenderOptions(): RenderOptions {
+        val base = _state.value.showMask?.let { RenderOptions(showMask = app.dtandroid.engine.api.InstanceRef(it.op, it.priority)) } ?: RenderOptions.NONE
+        val off = retouchOrNull?.suppressed() ?: return base
+        return base.copy(bypass = base.bypass + app.dtandroid.engine.api.InstanceRef(off.op, off.priority))
+    }
+
+    // ------------------------------------------------------------------ brief P3m: retouch and the colour look up table
+
+    private val retouchLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Retouch(this) }
+    private val retouchOrNull: Retouch? get() = if (retouchLazy.isInitialized()) retouchLazy.value else null
+
+    /** Retouch's shapes and tools (Retouch.kt). */
+    val retouch: Retouch get() = retouchLazy.value
+
+    private val lutLazy = lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Lut(this) }
+    private val lutLazyInit: Boolean get() = lutLazy.isInitialized()
+
+    /** The colour look up table's patch editor (Lut.kt). */
+    val lut: Lut get() = lutLazy.value
 
     /** Brief P3d: "show mask" on for [key] or off (null); renders again. */
     fun setShowMask(key: InstanceKey?) {

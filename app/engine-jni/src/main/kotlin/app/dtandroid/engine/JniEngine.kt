@@ -6,6 +6,7 @@ import app.dtandroid.engine.api.EngineError
 import app.dtandroid.engine.api.EngineException
 import app.dtandroid.engine.api.EngineInfo
 import app.dtandroid.engine.api.EnginePaths
+import app.dtandroid.engine.api.RetouchState
 import app.dtandroid.engine.api.ExportOptions
 import app.dtandroid.engine.api.ExportProgress
 import app.dtandroid.engine.api.ExportStep
@@ -568,5 +569,31 @@ class JniEngine private constructor() : DarktableEngine {
 
     override suspend fun maskGroupWrap(group: Int, ids: List<Int>, operator: String?): Int = onEngine {
         idOf(p3d(NativeBridge.P3D_GROUP_WRAP, operator, kotlinx.serialization.json.JsonArray(ids.map { JsonPrimitive(it) }).toString(), n1 = group))
+    }
+
+    // 6.10 (P3m): retouch
+    override suspend fun retouch(op: String, priority: Int): RetouchState = onEngine {
+        RetouchState.fromJson(p3d(NativeBridge.P3M_RETOUCH, op, n1 = priority))
+    }
+
+    override suspend fun retouchAdd(op: String, priority: Int, type: String, geometry: JsonObject, source: Pair<Double, Double>?, algorithm: String?): Int = onEngine {
+        val req = kotlinx.serialization.json.buildJsonObject {
+            put("type", JsonPrimitive(type)); put("geometry", geometry)
+            source?.let { put("source", kotlinx.serialization.json.JsonArray(listOf(JsonPrimitive(it.first), JsonPrimitive(it.second)))) }
+            algorithm?.let { put("algorithm", JsonPrimitive(it)) }
+        }
+        idOf(p3d(NativeBridge.P3M_RETOUCH_ADD, op, req.toString(), n1 = priority))
+    }
+
+    override suspend fun retouchShapeSet(op: String, priority: Int, id: Int, changes: JsonObject) = onEngine {
+        p3d(NativeBridge.P3M_RETOUCH_SET, op, changes.toString(), n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun retouchShapeRemove(op: String, priority: Int, id: Int) = onEngine {
+        p3d(NativeBridge.P3M_RETOUCH_REMOVE, op, n1 = priority, n2 = id); Unit
+    }
+
+    override suspend fun retouchSelect(op: String, priority: Int, id: Int) = onEngine {
+        p3d(NativeBridge.P3M_RETOUCH_SELECT, op, n1 = priority, n2 = id); Unit
     }
 }

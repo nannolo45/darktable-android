@@ -14,6 +14,8 @@
 #include "common/colorspaces.h"
 #include "common/image_cache.h"
 #include "common/iop_order.h"
+#include "develop/blend.h"
+#include "develop/masks.h"
 #include "develop/tiling.h"
 
 #include <math.h>
@@ -55,6 +57,8 @@ static int _margin_override(void)
 
 static void _pipe_free(dtb_pipe_t *p)
 {
+  if(p->shape_hash) g_hash_table_destroy(p->shape_hash);
+  p->shape_hash = NULL;
   if(!p->ready) return;
   dt_dev_pixelpipe_cleanup(&p->pipe);
   dt_mipmap_cache_release(&p->buf);
@@ -115,6 +119,49 @@ static void _forms_swap_out(GList *saved)
   if(darktable.develop) darktable.develop->forms = saved;
 }
 
+/* P3m: dt_iop_commit_params() (develop/imageop.c) puts a piece's mask group
+ * into its hash only while the module "is blending": its blend mask_mode is
+ * not off, or it is the focused module (dt_dev_gui_module()). Retouch
+ * (IOP_FLAGS_NO_MASKS) keeps mask_mode off and holds its shapes in the group
+ * named by its blend mask_id; its params list only the shapes' ids and
+ * settings. On desktop the module is focused whenever a shape is edited, so
+ * the shapes are in the hash; the bridge has no focused module, so moving a
+ * shape or its source left the hash, and the cached output, as they were
+ * (engine test C32: "moving the source changes the picture"). After each
+ * synchronisation the group's shapes are added to such a piece's hash here.
+ * The hash a commit gave is kept, so a piece that was not committed again
+ * gets the same addition again, never a second one. */
+typedef struct dtb_shape_hash_t
+{
+  dt_hash_t base, with_shapes;
+} dtb_shape_hash_t;
+
+static void _shapes_into_hash(dtb_pipe_t *p)
+{
+  GHashTable *next = g_hash_table_new_full(NULL, NULL, NULL, g_free);
+  for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
+  {
+    dt_dev_pixelpipe_iop_t *piece = n->data;
+    const dt_develop_blend_params_t *bp = piece->blendop_data;
+    if(!piece->enabled || !bp || !(piece->module->flags() & IOP_FLAGS_SUPPORTS_BLENDING)
+       || bp->mask_mode != DEVELOP_MASK_DISABLED)
+      continue;  // off, or the commit already hashed the group (is_blending)
+    dt_masks_form_t *grp = dt_masks_get_from_id_ext(dtb_S.dev.forms, bp->mask_id);
+    dt_masks_form_t *bgrp = dt_masks_get_from_id_ext(dtb_S.dev.forms, bp->blend_mask_id);
+    if(!grp && !bgrp) continue;
+    const dtb_shape_hash_t *old = p->shape_hash ? g_hash_table_lookup(p->shape_hash, piece) : NULL;
+    dtb_shape_hash_t *h = g_new(dtb_shape_hash_t, 1);
+    h->base = (old && old->with_shapes == piece->hash) ? old->base : piece->hash;
+    dt_hash_t v = h->base;
+    if(grp) v = dt_masks_group_hash_ext(v, grp, dtb_S.dev.forms);
+    if(bgrp) v = dt_masks_group_hash_ext(v, bgrp, dtb_S.dev.forms);
+    h->with_shapes = piece->hash = v;
+    g_hash_table_insert(next, piece, h);
+  }
+  if(p->shape_hash) g_hash_table_destroy(p->shape_hash);
+  p->shape_hash = next;
+}
+
 /* Set up a cached pipeline the way dt_imageio_export_with_flags() does for
  * an export: same pipe type, so every module takes its export code path,
  * and the same input. Unlike the export pipe, it gets the darkroom's cache
@@ -173,6 +220,8 @@ static int _pipe_ensure(dtb_pipe_t *p, const dt_mipmap_size_t size)
               : (what & DT_DEV_PIPE_SYNCH) ? "render.pipe_change_synch_all"
               : (what & DT_DEV_PIPE_TOP_CHANGED) ? "render.pipe_change_synch_top" : "render.pipe_change_other", t0);
   }
+  // also when nothing was synchronised: a shape can change with no history step the pipe sees
+  _shapes_into_hash(p);
   return DTB_OK;
 }
 

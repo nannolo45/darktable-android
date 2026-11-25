@@ -61,6 +61,14 @@ class DtColors(t: TokenSource) {
     /** brief P3d, masks on the photo: a shape's outline (light over a dark edge); the fill is `maskOverlay` */
     val maskLine = t.color("color.maskLine")
     val maskShadow = t.color("color.maskShadow")
+    /** brief P3m: a retouch shape's source outline (the target is drawn as `maskLine`) */
+    val retouchSource = t.color("color.retouchSource")
+    /** brief P3m, colour look up table's patch grid: its ground, the outline of an altered patch (light, then dark inside), the selected patch's mark on dark and on light patches (desktop: grey 0.2, 0.8 and 0.2, white or black) */
+    val patchBg = t.color("color.patchBg")
+    val patchAltered = t.color("color.patchAltered")
+    val patchAlteredInner = t.color("color.patchAlteredInner")
+    val patchMarkLight = t.color("color.patchMarkLight")
+    val patchMarkDark = t.color("color.patchMarkDark")
     /** brief P3h, snapshot split view: the divider line and its round handle (light over a dark edge) */
     val splitLine = t.color("color.splitLine")
     val splitShadow = t.color("color.splitShadow")
@@ -149,6 +157,11 @@ class DtSizes(t: TokenSource) {
     val maskLine = t.dp("size.maskLine")
     val maskHandle = t.dp("size.maskHandle")
     val maskIndicator = t.dp("size.maskIndicator")
+    /** brief P3m: the gap between look up table patches, an altered patch's outline, the selected patch's mark inset, retouch's fill colour swatch */
+    val patchGap = t.dp("size.patchGap")
+    val patchOutline = t.dp("size.patchOutline")
+    val patchMarkInset = t.dp("size.patchMarkInset")
+    val fillSwatch = t.dp("size.fillSwatch")
     val shapeButton = t.dp("size.shapeButton")
     /** brief P3d stage 2b: the markers of a four-marker range slider (a diamond) and the line of an open one */
     val rangeMarker = t.dp("size.rangeMarker")

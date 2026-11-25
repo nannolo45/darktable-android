@@ -25,6 +25,7 @@ typedef struct dtb_pipe_t
   dt_dev_pixelpipe_t pipe;
   dt_mipmap_buffer_t buf;
   dt_mipmap_size_t size;
+  GHashTable *shape_hash;  // piece -> dtb_shape_hash_t, see render.c _shapes_into_hash
 } dtb_pipe_t;
 
 /* one whole-history state for undo and redo, kept in darktable's
@@ -270,6 +271,17 @@ void dtb__export_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece);
 
 /* actions2.c: 1 = no such action there */
 int dtb__module_action2(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+
+/* masks.c, for retouch.c (P3m): a form's geometry JSON, points from geometry
+ * JSON, a new form in the session (no history), control points, one masks
+ * history item for m, an [x, y] member of o */
+struct dt_masks_form_t;
+void dtb__mask_geometry(JsonBuilder *b, const struct dt_masks_form_t *f);
+GList *dtb__mask_points(int type, JsonObject *g, int *err);
+struct dt_masks_form_t *dtb__mask_form_new(int type, GList *pts, const char *name);
+void dtb__mask_init_ctrl(struct dt_masks_form_t *f);
+void dtb__mask_record(dt_iop_module_t *m);
+int dtb__mask_pair(JsonObject *o, const char *k, float *v);
 
 /* masks.c: desktop's dt_masks_iop_use_same_as on the session's forms (no history) */
 gboolean dtb__masks_use_same_as(dt_iop_module_t *m, dt_iop_module_t *src);
