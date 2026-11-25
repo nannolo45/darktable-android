@@ -1,0 +1,5250 @@
+{
+ "brief": "P5a",
+ "darktable_commit": "04477d3",
+ "generator": "tools/module-audit.py",
+ "modules": [
+  {
+   "op": "agx",
+   "name": "AgX",
+   "source": "src/iop/agx.c",
+   "version": 8,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 38,
+    "usable": 38,
+    "unbound_open": [],
+    "pickers_marked": 5,
+    "pickers_missing": [
+     "white relative exposure",
+     "black relative exposure",
+     "set black and white relative exposure us",
+     "pivot relative exposure",
+     "pivot target output"
+    ],
+    "graphs": [
+     "tone mapping curve"
+    ],
+    "buttons": [
+     "read exposure from metadata and exposure",
+     "reset primaries to a predefined configur",
+     "set from above"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the five colour pickers (white, black and pivot exposure, \"set black and white\") and three buttons (read exposure from metadata, reset primaries, set from above) are not built; the read-only curve display is not drawn; every slider works",
+   "tests": ""
+  },
+  {
+   "op": "ashift",
+   "name": "rotate and perspective",
+   "source": "src/iop/ashift.c",
+   "version": 5,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 10,
+    "usable": 10,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [
+     "automatically correct for vertical persp",
+     "automatically correct for horizontal per",
+     "automatically correct for vertical and h"
+    ],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "cl",
+     "cr",
+     "ct",
+     "cb",
+     "last_drawn_lines_count"
+    ],
+    "array_values": 208,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": "on-photo guides (P3n)"
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "C33",
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C33"
+  },
+  {
+   "op": "atrous",
+   "name": "contrast equalizer",
+   "source": "src/iop/atrous.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "octaves"
+    ],
+    "array_values": 60,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "band editor (P3e-b)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "basecurve",
+   "name": "base curve",
+   "source": "src/iop/basecurve.c",
+   "version": 6,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 4,
+    "unbound_open": [
+     {
+      "label": "scale for graph",
+      "kind": "slider",
+      "note": "needs the curve editor (a later package)",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "abscissa: input, ordinate: output. works"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 126,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the curve itself cannot be drawn: no graph editor for base curve (the tone curve editor could be reused); its presets and the other sliders work; \"scale for graph\" also waits for it",
+   "tests": ""
+  },
+  {
+   "op": "basicadj",
+   "name": "basic adjustments",
+   "source": "src/iop/basicadj.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 10,
+    "usable": 10,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "middle gray",
+     "apply auto exposure based on a region de"
+    ],
+    "graphs": [],
+    "buttons": [
+     "auto"
+    ],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "hlcomprthresh"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "\"auto\" and two pickers are not built",
+   "tests": ""
+  },
+  {
+   "op": "bilat",
+   "name": "local contrast",
+   "source": "src/iop/bilat.c",
+   "version": 3,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 7,
+    "usable": 7,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "bilateral",
+   "name": "surface blur",
+   "source": "src/iop/bilateral.cc",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "reserved"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "bloom",
+   "name": "bloom",
+   "source": "src/iop/bloom.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "blurs",
+   "name": "blurs",
+   "source": "src/iop/blurs.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 9,
+    "usable": 9,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "borders",
+   "name": "framing",
+   "source": "src/iop/borders.c",
+   "version": 4,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 11,
+    "usable": 11,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "pick border color from image",
+     "pick frame line color from image"
+    ],
+    "graphs": [],
+    "buttons": [
+     "",
+     "select frame line color"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "max_border_size"
+    ],
+    "array_values": 66,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "border and frame line colours cannot be chosen: desktop's colour buttons and their pickers are not built (needs a colour dialog); sizes, aspect and position work",
+   "tests": "C14"
+  },
+  {
+   "op": "cacorrect",
+   "name": "raw chromatic aberrations",
+   "source": "src/iop/cacorrect.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "not checked",
+    "detail": "no on/off switch for this image class"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "cacorrectrgb",
+   "name": "chromatic aberrations",
+   "source": "src/iop/cacorrectrgb.c",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "censorize",
+   "name": "censorize",
+   "source": "src/iop/censorize.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "channelmixer",
+   "name": "channel mixer",
+   "source": "src/iop/channelmixer.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 0,
+    "unbound_open": [
+     {
+      "label": "destination",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "red",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "green",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "blue",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "algorithm_version"
+    ],
+    "array_values": 21,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "the destination list and its red/green/blue sliders are interface-only on desktop and not built",
+   "tests": ""
+  },
+  {
+   "op": "channelmixerrgb",
+   "name": "color calibration",
+   "source": "src/iop/channelmixerrgb.c",
+   "version": 4,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 42,
+    "usable": 39,
+    "unbound_open": [
+     {
+      "label": "chart",
+      "kind": "combobox",
+      "note": "needs the colour checker tool (a later package)",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "optimize for",
+      "kind": "combobox",
+      "note": "needs the colour checker tool (a later package)",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "patch scale",
+      "kind": "slider",
+      "note": "needs the colour checker tool (a later package)",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [
+     "this is the color of the scene illuminan",
+     "the input color that should be mapped to",
+     "the desired target color after mapping"
+    ],
+    "buttons": [
+     "check the output delta E",
+     "recompute the profile",
+     "accept the computed profile and set it i"
+    ],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "x",
+     "y",
+     "checker_box_set"
+    ],
+    "array_values": 32,
+    "array_values_bound": 18
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "partly",
+   "size": "large",
+   "gap": "the colour checker calibration (chart, optimize for, patch scale, compute/check/accept buttons) needs a chart frame drawn on the photo, not built; everything else, the illuminant picker included, works",
+   "tests": "C19"
+  },
+  {
+   "op": "clahe",
+   "name": "old local contrast",
+   "source": "src/iop/clahe.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 0,
+    "unbound_open": [
+     {
+      "label": "radius",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "amount",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "radius and amount are interface-only on desktop: not built",
+   "tests": ""
+  },
+  {
+   "op": "clipping",
+   "name": "crop and rotate",
+   "source": "src/iop/clipping.c",
+   "version": 5,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 9,
+    "usable": 6,
+    "unbound_open": [
+     {
+      "label": "flip",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "keystone",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "aspect",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "k_h",
+     "k_v",
+     "kxa",
+     "kya",
+     "kxb",
+     "kyb",
+     "kxc",
+     "kyc",
+     "kxd",
+     "kyd",
+     "k_type",
+     "k_sym",
+     "k_apply",
+     "ratio_n",
+     "ratio_d"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "sliders work; flip, keystone and aspect lists are not built (crop and perspective replace it)",
+   "tests": ""
+  },
+  {
+   "op": "colisa",
+   "name": "contrast brightness saturation",
+   "source": "src/iop/colisa.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "colorbalance",
+   "name": "color balance",
+   "source": "src/iop/colorbalance.c",
+   "version": 3,
+   "group": "no group (search only)",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 26,
+    "usable": 17,
+    "unbound_open": [
+     {
+      "label": "color control sliders",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "hue",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "saturation",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "hue",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "saturation",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "hue",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "saturation",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "optimize luma",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "neutralize colors",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 9,
+    "pickers_missing": [
+     "contrast fulcrum",
+     "factor",
+     "hue",
+     "factor",
+     "hue",
+     "factor",
+     "hue",
+     "optimize luma",
+     "neutralize colors"
+    ],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 12,
+    "array_values_bound": 12
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "desktop's HSL view of lift/gamma/gain (hue and saturation sliders) and the two pickers (optimize luma, neutralize colors) are not built; the RGB factor sliders work; desktop lists it in no module group (search only)",
+   "tests": ""
+  },
+  {
+   "op": "colorbalancergb",
+   "name": "color balance rgb",
+   "source": "src/iop/colorbalancergb.c",
+   "version": 5,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 34,
+    "usable": 33,
+    "unbound_open": [
+     {
+      "label": "checkerboard size",
+      "kind": "slider",
+      "note": "needs the mask preview (a later package)",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 6,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [
+     "",
+     ""
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C9"
+  },
+  {
+   "op": "colorchecker",
+   "name": "color look up table",
+   "source": "src/iop/colorchecker.c",
+   "version": 2,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 6,
+    "usable": 0,
+    "unbound_open": [
+     {
+      "label": "patch",
+      "kind": "combobox",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "lightness",
+      "kind": "slider",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "green-magenta offset",
+      "kind": "slider",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "blue-yellow offset",
+      "kind": "slider",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "saturation",
+      "kind": "slider",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "target color",
+      "kind": "combobox",
+      "note": "needs the patch editor (a later package)",
+      "built_in_app_panel": true
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "num_patches"
+    ],
+    "array_values": 294,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": "patch grid and picker (P3m)"
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "C32",
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C32"
+  },
+  {
+   "op": "colorcontrast",
+   "name": "color contrast",
+   "source": "src/iop/colorcontrast.c",
+   "version": 2,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "a_offset",
+     "b_offset",
+     "unbound"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "colorcorrection",
+   "name": "color correction",
+   "source": "src/iop/colorcorrection.c",
+   "version": 1,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "drag the line for split-toning. bright m"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "hia",
+     "hib",
+     "loa",
+     "lob"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the colour grid where desktop drags the two split-toning points is not built, so the four colour parameters cannot be changed; only saturation works",
+   "tests": ""
+  },
+  {
+   "op": "colorequal",
+   "name": "color equalizer",
+   "source": "src/iop/colorequal.c",
+   "version": 4,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 32,
+    "usable": 32,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "node placement",
+     "white level"
+    ],
+    "graphs": [
+     "double-click to reset the curve\nmiddle-c"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "band editor (P3e-b)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "two pickers (node placement, white level) are not built",
+   "tests": ""
+  },
+  {
+   "op": "colorharmonizer",
+   "name": "color harmonizer",
+   "source": "src/iop/colorharmonizer.c",
+   "version": 1,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 16,
+    "usable": 16,
+    "unbound_open": [],
+    "pickers_marked": 5,
+    "pickers_missing": [
+     "anchor hue",
+     "hue of this harmony node (0°–360°).\nonly",
+     "hue of this harmony node (0°–360°).\nonly",
+     "hue of this harmony node (0°–360°).\nonly",
+     "hue of this harmony node (0°–360°).\nonly"
+    ],
+    "graphs": [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    "buttons": [
+     "analyze the image's hue distribution and",
+     "import the harmony rule and anchor hue c"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "anchor_hue"
+    ],
+    "array_values": 8,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "the hue pickers (anchor hue and the four harmony hues) and the \"analyze\" and \"import\" buttons are not built; the sliders and lists work",
+   "tests": ""
+  },
+  {
+   "op": "colorin",
+   "name": "input color profile",
+   "source": "src/iop/colorin.c",
+   "version": 8,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "type",
+     "intent",
+     "blue_mapping",
+     "type_work",
+     "output_rgb"
+    ],
+    "array_values": 1024,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "your own ICC profile files cannot be added (desktop reads them from its color/in folder); the built-in and embedded profiles work",
+   "tests": "C14"
+  },
+  {
+   "op": "colorize",
+   "name": "colorize",
+   "source": "src/iop/colorize.c",
+   "version": 2,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "hue"
+    ],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "version"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "the hue picker is not built; the sliders work",
+   "tests": ""
+  },
+  {
+   "op": "colormapping",
+   "name": "color mapping",
+   "source": "src/iop/colormapping.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "",
+     ""
+    ],
+    "buttons": [
+     "acquire as source",
+     "acquire as target"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "flag"
+    ],
+    "array_values": 4106,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "medium",
+   "gap": "needs \"acquire as source\" and \"acquire as target\" (two images' colours), not built; with nothing acquired the module does nothing",
+   "tests": ""
+  },
+  {
+   "op": "colorout",
+   "name": "output color profile",
+   "source": "src/iop/colorout.c",
+   "version": 5,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "type",
+     "intent"
+    ],
+    "array_values": 512,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "your own ICC profile files cannot be added (desktop's color/out folder); the built-in profiles work",
+   "tests": ""
+  },
+  {
+   "op": "colorreconstruct",
+   "name": "color reconstruction",
+   "source": "src/iop/colorreconstruction.c",
+   "version": 3,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "colortransfer",
+   "name": "color transfer",
+   "source": "src/iop/colortransfer.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "flag",
+     "n"
+    ],
+    "array_values": 2048,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "missing",
+   "size": "-",
+   "gap": "no controls on desktop either (deprecated); renders and keeps its values",
+   "tests": ""
+  },
+  {
+   "op": "colorzones",
+   "name": "color zones",
+   "source": "src/iop/colorzones.c",
+   "version": 5,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 3,
+    "unbound_open": [
+     {
+      "label": "edit by area",
+      "kind": "toggle",
+      "note": "needs the curve editor (a later package)",
+      "built_in_app_panel": true
+     },
+     {
+      "label": "interpolation method",
+      "kind": "combobox",
+      "note": "needs the curve editor (a later package)",
+      "built_in_app_panel": true
+     }
+    ],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "create a curve based on an area from the"
+    ],
+    "graphs": [
+     "",
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "splines_version"
+    ],
+    "array_values": 126,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "band editor (P3e-b)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "\"create a curve from an area\" picker is not built; the band editor, its options and \"pick/show color\" work",
+   "tests": ""
+  },
+  {
+   "op": "contrastntexture",
+   "name": "contrast & texture",
+   "source": "src/iop/contrastntexture.c",
+   "version": 3,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 8,
+    "usable": 8,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "total gain applied per detail size.\nsoli"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "crop",
+   "name": "crop",
+   "source": "src/iop/crop.c",
+   "version": 3,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "ratio_n",
+     "ratio_d"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": "on-photo crop (P3a)"
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "C20",
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "P3a crop tool (emulator), C20"
+  },
+  {
+   "op": "defringe",
+   "name": "defringe",
+   "source": "src/iop/defringe.c",
+   "version": 1,
+   "group": "no group (search only)",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": true
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 1, mean 0.00000, PSNR 121.04"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "desktop shows it as deprecated in its message but not in its flags (see the report's upstream notes); listed in no module group (search only)",
+   "tests": ""
+  },
+  {
+   "op": "demosaic",
+   "name": "demosaic",
+   "source": "src/iop/demosaic.c",
+   "version": 8,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 15,
+    "usable": 15,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "moire_thrs",
+     "moire_mix",
+     "dng_gainmap"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C9"
+  },
+  {
+   "op": "demosaicscale",
+   "name": "crop and scale input",
+   "source": "src/iop/demosaicscale.c",
+   "version": 1,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "denoiseprofile",
+   "name": "denoise (profiled)",
+   "source": "src/iop/denoiseprofile.c",
+   "version": 12,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 15,
+    "usable": 15,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 90,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the wavelet curves (graph of the \"wavelets\" mode) are not built; profiles, non-local means mode and all sliders work",
+   "tests": "C14"
+  },
+  {
+   "op": "diffuse",
+   "name": "diffuse or sharpen",
+   "source": "src/iop/diffuse.c",
+   "version": 2,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 15,
+    "usable": 15,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C39"
+  },
+  {
+   "op": "dither",
+   "name": "dither or posterize",
+   "source": "src/iop/dither.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "palette",
+     "random.radius"
+    ],
+    "array_values": 4,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "enlargecanvas",
+   "name": "enlarge canvas",
+   "source": "src/iop/enlargecanvas.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "equalizer",
+   "name": "legacy equalizer",
+   "source": "src/iop/equalizer.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 36,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "missing",
+   "size": "-",
+   "gap": "no controls on desktop either (deprecated); renders and keeps its values",
+   "tests": ""
+  },
+  {
+   "op": "exposure",
+   "name": "exposure",
+   "source": "src/iop/exposure.c",
+   "version": 7,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 9,
+    "usable": 9,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [
+     "the input color that should be mapped to",
+     "the desired target exposure after mappin"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "T2, C19"
+  },
+  {
+   "op": "filmic",
+   "name": "filmic",
+   "source": "src/iop/filmic.c",
+   "version": 3,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 15,
+    "usable": 0,
+    "unbound_open": [
+     {
+      "label": "middle gray luminance",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "white relative exposure",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "black relative exposure",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "safety factor",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "auto tune levels",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "contrast",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "linear region",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "shadows/highlights balance",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "global saturation",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "extreme luminance saturation",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "intent",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "target black luminance",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "target middle gray",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "target white luminance",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "target gamma",
+      "kind": "slider",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 4,
+    "pickers_missing": [
+     "middle gray luminance",
+     "white relative exposure",
+     "black relative exposure",
+     "auto tune levels"
+    ],
+    "graphs": [
+     "read-only graph, use the parameters belo"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "grey_point_source",
+     "black_point_source",
+     "white_point_source",
+     "security_factor",
+     "grey_point_target",
+     "black_point_target",
+     "white_point_target",
+     "output_power",
+     "latitude_stops",
+     "contrast",
+     "saturation",
+     "global_saturation",
+     "balance",
+     "interpolator",
+     "preserve_color"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "missing",
+   "size": "medium",
+   "gap": "all its sliders are interface-only on desktop (none bound to a parameter): not built; renders and keeps its values",
+   "tests": ""
+  },
+  {
+   "op": "filmicrgb",
+   "name": "filmic rgb",
+   "source": "src/iop/filmicrgb.c",
+   "version": 6,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 28,
+    "usable": 28,
+    "unbound_open": [],
+    "pickers_marked": 4,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "compensate_icc_black",
+     "spline_version"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "the read-only curve display is not drawn",
+   "tests": ""
+  },
+  {
+   "op": "finalscale",
+   "name": "scale into final size",
+   "source": "src/iop/finalscale.c",
+   "version": 1,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "flip",
+   "name": "orientation",
+   "source": "src/iop/flip.c",
+   "version": 2,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [
+     "rotate 90 degrees CCW",
+     "rotate 90 degrees CW",
+     "flip horizontally",
+     "flip vertically"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "orientation"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "gamma",
+   "name": "display encoding",
+   "source": "src/iop/gamma.c",
+   "version": 1,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "globaltonemap",
+   "name": "global tonemap",
+   "source": "src/iop/globaltonemap.c",
+   "version": 3,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "graduatednd",
+   "name": "graduated density",
+   "source": "src/iop/graduatednd.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "hue"
+    ],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "offset"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "the filter line cannot be moved: its position (\"offset\") is set only by dragging on the photo on desktop; a slider through a schema override would do; density, hardness, rotation, hue and saturation work (hue picker not built)",
+   "tests": ""
+  },
+  {
+   "op": "grain",
+   "name": "grain",
+   "source": "src/iop/grain.c",
+   "version": 2,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "channel"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "hazeremoval",
+   "name": "haze removal",
+   "source": "src/iop/hazeremoval.c",
+   "version": 3,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "compatibility_mode",
+     "adaptive"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "highlights",
+   "name": "highlight reconstruction",
+   "source": "src/iop/highlights.c",
+   "version": 5,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 10,
+    "usable": 10,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "highpass",
+   "name": "highpass",
+   "source": "src/iop/highpass.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "hotpixels",
+   "name": "hot pixels",
+   "source": "src/iop/hotpixels.c",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "invert",
+   "name": "invert",
+   "source": "src/iop/invert.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     ""
+    ],
+    "graphs": [],
+    "buttons": [
+     ""
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 4,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "missing",
+   "size": "small",
+   "gap": "its only control is the film colour picker, not built; an old edit renders and keeps its values",
+   "tests": ""
+  },
+  {
+   "op": "lens",
+   "name": "lens correction",
+   "source": "src/iop/lens.cc",
+   "version": 10,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 20,
+    "usable": 17,
+    "unbound_open": [
+     {
+      "label": "mm",
+      "kind": "combobox",
+      "note": "not available yet on the phone",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "f/",
+      "kind": "combobox",
+      "note": "not available yet on the phone",
+      "built_in_app_panel": false
+     },
+     {
+      "label": "d",
+      "kind": "combobox",
+      "note": "not available yet on the phone",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [
+     "camera model",
+     "find camera",
+     "lens model",
+     "find lens"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "crop",
+     "focal",
+     "aperture",
+     "distance",
+     "scale_md_v1",
+     "md_version",
+     "has_been_set"
+    ],
+    "array_values": 258,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "camera and lens cannot be chosen by hand (desktop's searchable camera and lens lists; the bridge already sets a lens, C14) and the focal length, aperture and distance lists are not built; with a lens the lensfun database knows, automatic detection from Exif works; the lensfun database is in the APK",
+   "tests": "C14"
+  },
+  {
+   "op": "levels",
+   "name": "levels",
+   "source": "src/iop/levels.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 3,
+    "pickers_missing": [
+     "pick black point from image",
+     "pick medium gray point from image",
+     "pick white point from image"
+    ],
+    "graphs": [
+     "drag handles to set black, gray, and whi"
+    ],
+    "buttons": [
+     "auto"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 3,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "the levels graph, \"auto\" and the three pickers are not built (rgb levels replaces it)",
+   "tests": ""
+  },
+  {
+   "op": "liquify",
+   "name": "liquify",
+   "source": "src/iop/liquify.c",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [],
+    "array_values": 1100,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "large",
+   "gap": "liquify is drawn on the photo (points, lines, curves with strength and radius handles); the on-photo tool is not built, the panel has no controls of its own",
+   "tests": ""
+  },
+  {
+   "op": "lowlight",
+   "name": "lowlight vision",
+   "source": "src/iop/lowlight.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 12,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the lowlight curve (graph), the module's main control, is not built; only blue shift works",
+   "tests": ""
+  },
+  {
+   "op": "lowpass",
+   "name": "lowpass",
+   "source": "src/iop/lowpass.c",
+   "version": 4,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 5,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "order",
+     "unbound"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "lut3d",
+   "name": "LUT 3D",
+   "source": "src/iop/lut3d.c",
+   "version": 3,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 2,
+    "unbound_open": [
+     {
+      "label": "",
+      "kind": "combobox",
+      "note": "needs a LUT folder (a later package)",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [
+     "select a png (haldclut), a cube or a 3dl"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "nb_keypoints"
+    ],
+    "array_values": 12928,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "medium",
+   "gap": "no way to choose a LUT file: desktop lists the files of its LUT folder (a preference the phone does not have); needs a file chooser and an answer to where the .cube/.3dl/.png files come from (phone storage, or synced from the PC through LightPhotoLibrary); with no file the module does nothing",
+   "tests": ""
+  },
+  {
+   "op": "mask_manager",
+   "name": "mask manager",
+   "source": "src/iop/mask_manager.c",
+   "version": 2,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "monochrome",
+   "name": "monochrome",
+   "source": "src/iop/monochrome.c",
+   "version": 2,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "highlights"
+    ],
+    "graphs": [
+     "drag and scroll mouse wheel to adjust th"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "a",
+     "b",
+     "size"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the colour filter position (the round a/b graph you drag on desktop) is not built, so only the neutral filter and \"highlights\" are available",
+   "tests": ""
+  },
+  {
+   "op": "negadoctor",
+   "name": "negadoctor",
+   "source": "src/iop/negadoctor.c",
+   "version": 2,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 16,
+    "usable": 16,
+    "unbound_open": [],
+    "pickers_marked": 7,
+    "pickers_missing": [
+     "pick color of film material from image",
+     "D max",
+     "scan exposure bias",
+     "pick shadows color from image",
+     "pick illuminant color from image",
+     "paper black (density correction)",
+     "print exposure adjustment"
+    ],
+    "graphs": [],
+    "buttons": [
+     "",
+     "",
+     ""
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 12,
+    "array_values_bound": 9
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the seven colour pickers are not built (film base colour, D max, scan exposure, shadows, illuminant, paper black, print exposure); scanning negatives starts with \"pick the film base\", so the module is hard to use without them",
+   "tests": ""
+  },
+  {
+   "op": "nlmeans",
+   "name": "astrophoto denoise",
+   "source": "src/iop/nlmeans.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "overexposed",
+   "name": "overexposed",
+   "source": "src/iop/overexposed.c",
+   "version": 3,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "overlay",
+   "name": "composite",
+   "source": "src/iop/overlay.c",
+   "version": 2,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 8,
+    "usable": 8,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "alignment",
+     "imgid",
+     "compositing"
+    ],
+    "array_values": 1024,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "large",
+   "gap": "composite needs another photo of the library chosen as the overlay; no way to choose it, and the phone's engine library does not hold the other photos",
+   "tests": ""
+  },
+  {
+   "op": "primaries",
+   "name": "rgb primaries",
+   "source": "src/iop/primaries.c",
+   "version": 1,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 8,
+    "usable": 8,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "profile_gamma",
+   "name": "unbreak input profile",
+   "source": "src/iop/profile_gamma.c",
+   "version": 2,
+   "group": "no group (search only)",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 8,
+    "usable": 7,
+    "unbound_open": [
+     {
+      "label": "auto tune levels",
+      "kind": "combobox",
+      "note": "no override says",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 4,
+    "pickers_missing": [
+     "middle gray luma",
+     "black relative exposure",
+     "dynamic range",
+     "auto tune levels"
+    ],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "four pickers and \"auto tune level\" are not built; the sliders work; desktop lists it in no module group (search only)",
+   "tests": ""
+  },
+  {
+   "op": "rasterfile",
+   "name": "external raster masks",
+   "source": "src/iop/rasterfile.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [
+     "select a PNG or PFM file from the raster",
+     "vectorize"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "entry_kind",
+     "entry_origin",
+     "entry_width",
+     "entry_height",
+     "entry_bpc"
+    ],
+    "array_values": 4224,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "medium",
+   "gap": "needs a PNG or PFM mask file chosen with a file chooser, not built; with no file the module does nothing",
+   "tests": ""
+  },
+  {
+   "op": "rawdenoise",
+   "name": "raw denoise",
+   "source": "src/iop/rawdenoise.c",
+   "version": 2,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 40,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the per-frequency curves (graph) are not built; the noise threshold works",
+   "tests": ""
+  },
+  {
+   "op": "rawoverexposed",
+   "name": "raw overexposed",
+   "source": "src/iop/rawoverexposed.c",
+   "version": 1,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "rawprepare",
+   "name": "raw black/white point",
+   "source": "src/iop/rawprepare.c",
+   "version": 2,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 6,
+    "usable": 6,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "left",
+     "top",
+     "right",
+     "bottom"
+    ],
+    "array_values": 4,
+    "array_values_bound": 4
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "relight",
+   "name": "fill light",
+   "source": "src/iop/relight.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "toggle tool for picking median lightness"
+    ],
+    "graphs": [
+     "select the center of fill-light\nctrl+cli"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "center"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "the picker is not built",
+   "tests": ""
+  },
+  {
+   "op": "retouch",
+   "name": "retouch",
+   "source": "src/iop/retouch.c",
+   "version": 3,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 5,
+    "usable": 4,
+    "unbound_open": [
+     {
+      "label": "mask opacity",
+      "kind": "slider",
+      "note": "needs the mask tools (a later package)",
+      "built_in_app_panel": true
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [
+     "top slider adjusts where the merge scale",
+     "adjust preview levels"
+    ],
+    "buttons": [
+     "select fill color"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "algorithm",
+     "num_scales",
+     "curr_scale",
+     "merge_from_scale",
+     "max_heal_iter"
+    ],
+    "array_values": 3306,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": "retouch panel and on-photo shapes (P3m)"
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "C32",
+   "editing": "works",
+   "size": "small",
+   "gap": "wavelet decompose cannot be edited (the picture shows it); shapes have no rotation gesture (a slider instead)",
+   "tests": "C32, C37"
+  },
+  {
+   "op": "rgbcurve",
+   "name": "rgb curve",
+   "source": "src/iop/rgbcurve.c",
+   "version": 1,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 126,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "curve editor (P3e)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C19, C38"
+  },
+  {
+   "op": "rgblevels",
+   "name": "rgb levels",
+   "source": "src/iop/rgblevels.c",
+   "version": 1,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 4,
+    "pickers_missing": [
+     "apply auto levels based on a region defi"
+    ],
+    "graphs": [
+     "drag handles to set black, gray, and whi"
+    ],
+    "buttons": [
+     "auto"
+    ],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [],
+    "array_values": 9,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "curve editor (P3e)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "\"auto\" and \"apply auto levels from an area\" are not built; the levels graph and the black, gray and white pickers work",
+   "tests": "C19"
+  },
+  {
+   "op": "rotatepixels",
+   "name": "rotate pixels",
+   "source": "src/iop/rotatepixels.c",
+   "version": 1,
+   "group": "hidden",
+   "flags": {
+    "deprecated": false,
+    "hidden": true,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": null,
+   "schema": {
+    "status": "hidden",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "n/a",
+   "size": "-",
+   "gap": "hidden on desktop too: darktable places and sets it itself",
+   "tests": ""
+  },
+  {
+   "op": "satcurvergb",
+   "name": "saturation curve",
+   "source": "src/iop/satcurvergb.c",
+   "version": 1,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 7,
+    "usable": 7,
+    "unbound_open": [],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "pick saturation from image"
+    ],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "gf_protect_from",
+     "gf_protect_to"
+    ],
+    "array_values": 84,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the saturation curve itself (graph) cannot be edited, nor its picker; the protect sliders work",
+   "tests": ""
+  },
+  {
+   "op": "scalepixels",
+   "name": "scale pixels",
+   "source": "src/iop/scalepixels.c",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "shadhi",
+   "name": "shadows and highlights",
+   "source": "src/iop/shadhi.c",
+   "version": 5,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 8,
+    "usable": 8,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "order",
+     "reserved2",
+     "flags",
+     "low_approximation"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "sharpen",
+   "name": "sharpen",
+   "source": "src/iop/sharpen.c",
+   "version": 1,
+   "group": "correct",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 3,
+    "usable": 3,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "sigmoid",
+   "name": "sigmoid",
+   "source": "src/iop/sigmoid.c",
+   "version": 4,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 15,
+    "usable": 15,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C9"
+  },
+  {
+   "op": "soften",
+   "name": "soften",
+   "source": "src/iop/soften.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 4,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "spektrafilm",
+   "name": "spektrafilm",
+   "source": "src/iop/spektrafilm.c",
+   "version": 3,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 71,
+    "usable": 71,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "pre-compression boost",
+     "post-compression scale"
+    ],
+    "graphs": [],
+    "buttons": [
+     "download data pack",
+     "reset only this section",
+     "check for data pack updates",
+     "reset only this section",
+     "reset only this section",
+     "reset only this section",
+     "reset only this section",
+     "reset only this section",
+     "reset only this section",
+     "reset only this section"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "film_hash",
+     "lut_hash",
+     "paper_hash",
+     "scan_film",
+     "grain_blur_base",
+     "upsampling_hash",
+     "pack_hash"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "two pickers (pre-compression boost, post-compression scale) are not built; \"download data pack\" is not needed (the app carries the pack)",
+   "tests": ""
+  },
+  {
+   "op": "splittoning",
+   "name": "split-toning",
+   "source": "src/iop/splittoning.c",
+   "version": 1,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 6,
+    "usable": 6,
+    "unbound_open": [],
+    "pickers_marked": 2,
+    "pickers_missing": [
+     "hue",
+     "hue"
+    ],
+    "graphs": [],
+    "buttons": [
+     "",
+     ""
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "the two hue pickers are not built; the sliders work",
+   "tests": ""
+  },
+  {
+   "op": "spots",
+   "name": "spot removal",
+   "source": "src/iop/spots.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 128,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "needs_input": "no test",
+   "editing": "missing",
+   "size": "large",
+   "gap": "shapes are drawn on the photo; retouch replaces it; an old edit renders and keeps its spots",
+   "tests": ""
+  },
+  {
+   "op": "temperature",
+   "name": "white balance",
+   "source": "src/iop/temperature.c",
+   "version": 5,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": true,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": true,
+   "schema": {
+    "status": "ok",
+    "controls": 9,
+    "usable": 8,
+    "unbound_open": [
+     {
+      "label": "settings",
+      "kind": "combobox",
+      "note": "not available yet on the phone",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "preset"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "on in the test edit (T1)"
+   },
+   "editing": "partly",
+   "size": "small",
+   "gap": "the \"settings\" list (camera presets such as daylight, cloudy, flash and their fine-tuning) is not built; the bridge already lists the presets (C14), the app needs the list; temperature, tint, as shot, camera reference and \"from image area\" work",
+   "tests": "C14"
+  },
+  {
+   "op": "tonecurve",
+   "name": "tone curve",
+   "source": "src/iop/tonecurve.c",
+   "version": 5,
+   "group": "tone",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 4,
+    "usable": 3,
+    "unbound_open": [
+     {
+      "label": "scale for graph",
+      "kind": "slider",
+      "note": "needs the curve editor (a later package)",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [],
+    "graphs": [
+     ""
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "tonecurve_preset",
+     "tonecurve_unbound_ab"
+    ],
+    "array_values": 126,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "curve editor (P3e)",
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "\"scale for graph\" (a display zoom of the graph) is not built",
+   "tests": ""
+  },
+  {
+   "op": "toneequal",
+   "name": "tone equalizer",
+   "source": "src/iop/toneequal.c",
+   "version": 2,
+   "group": "base",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": true,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 18,
+    "usable": 18,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "double-click to reset the curve"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "smoothing"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": "curve editor (P3e)",
+    "tool": "drag on the photo (P3e)"
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C19"
+  },
+  {
+   "op": "tonemap",
+   "name": "tone mapping",
+   "source": "src/iop/tonemap.cc",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "velvia",
+   "name": "velvia",
+   "source": "src/iop/velvia.c",
+   "version": 2,
+   "group": "color",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 2,
+    "usable": 2,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "vibrance",
+   "name": "vibrance",
+   "source": "src/iop/vibrance.c",
+   "version": 2,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 1,
+    "usable": 1,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": ""
+  },
+  {
+   "op": "vignette",
+   "name": "vignetting",
+   "source": "src/iop/vignette.c",
+   "version": 4,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 10,
+    "usable": 10,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [],
+    "buttons": [],
+    "on_photo_on_desktop": true,
+    "scalar_params_unbound": [
+     "unbound"
+    ],
+    "array_values": 0,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "works",
+   "size": "small",
+   "gap": "no on-photo handles; every value has a slider",
+   "tests": ""
+  },
+  {
+   "op": "watermark",
+   "name": "watermark",
+   "source": "src/iop/watermark.c",
+   "version": 7,
+   "group": "effect",
+   "flags": {
+    "deprecated": false,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": false,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 9,
+    "usable": 8,
+    "unbound_open": [
+     {
+      "label": "",
+      "kind": "combobox",
+      "note": "not available yet on the phone",
+      "built_in_app_panel": false
+     }
+    ],
+    "pickers_marked": 1,
+    "pickers_missing": [
+     "pick color from image"
+    ],
+    "graphs": [],
+    "buttons": [
+     "",
+     "text font, tags:\n$(WATERMARK_FONT_FAMILY",
+     "watermark color, tag:\n$(WATERMARK_COLOR)"
+    ],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "alignment"
+    ],
+    "array_values": 835,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "partly",
+   "size": "medium",
+   "gap": "the watermark list (SVG files from darktable's watermarks folder, which the APK carries), the text font and the colour button are not built, nor the 3x3 alignment; the default watermark and the sliders work; fonts on Android not checked",
+   "tests": ""
+  },
+  {
+   "op": "zonesystem",
+   "name": "zone system",
+   "source": "src/iop/zonesystem.c",
+   "version": 1,
+   "group": "deprecated",
+   "flags": {
+    "deprecated": true,
+    "hidden": false,
+    "one_instance": false,
+    "default_visible": false,
+    "deprecated_msg": true,
+    "deprecated_flag_in_default_group": false
+   },
+   "default_enabled": false,
+   "schema": {
+    "status": "ok",
+    "controls": 0,
+    "usable": 0,
+    "unbound_open": [],
+    "pickers_marked": 0,
+    "pickers_missing": [],
+    "graphs": [
+     "",
+     "lightness zones\nuse mouse scrollwheel to"
+    ],
+    "buttons": [],
+    "on_photo_on_desktop": false,
+    "scalar_params_unbound": [
+     "size"
+    ],
+    "array_values": 25,
+    "array_values_bound": 0
+   },
+   "app": {
+    "graph_editor": null,
+    "tool": null
+   },
+   "render_bayer": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "render_xtrans": {
+    "result": "yes",
+    "detail": "max 0, mean 0.00000, PSNR inf"
+   },
+   "editing": "missing",
+   "size": "medium",
+   "gap": "the zone bar (graph) is its only control: not built",
+   "tests": ""
+  }
+ ],
+ "counts": {
+  "total": 97,
+  "hidden": 7,
+  "deprecated": 16,
+  "editing": {
+   "works": 56,
+   "partly": 23,
+   "missing": 11,
+   "n/a": 7
+  },
+  "editing_current": {
+   "works": 50,
+   "partly": 19,
+   "missing": 5
+  },
+  "renders": {
+   "bayer": {
+    "yes": 97,
+    "no": 0,
+    "not checked": 0
+   },
+   "xtrans": {
+    "yes": 96,
+    "no": 0,
+    "not checked": 1
+   }
+  }
+ }
+}
