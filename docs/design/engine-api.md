@@ -794,3 +794,21 @@ Test: C34 (`engine/tests/dtb_test_p4a.c`): numbers before and after renders and 
 keeps the pipelines and frees buffers, level 2 frees the pipelines and the open image's input; after each, the history
 count and end, the exposure parameter and undo are as before, and the preview and a region render byte for byte as
 before the trim.
+
+## 11. P4b: start-up options, resources, OpenCL opt-in (25 Nov 2026)
+
+| C | Kotlin | Behaviour |
+|---|---|---|
+| `int dtb_init_ex(const dtb_paths_t *paths, int threads, const char *options_json)` | `init(paths, threads, EngineStartOptions)` | `dtb_init` with options (NULL = `dtb_init`): `"opencl"` (bool: `dtb_opencl_set(1)` may start OpenCL later), `"resource_level"` + `"resource_values"` (darktable's `resourcelevel` and `resource_<level>`, passed as `--conf`, nothing written to darktablerc), `"pipe_cache_fraction": [full, preview]` (the bridge pipelines' `dt_dev_pixelpipe_cache_t.mem_fraction`, set right after `dt_dev_pixelpipe_init`; their cache may hold available memory / n bytes), `"inputs_kept"` (the image cache's `mip_full` and `mip_f` `cost_quota`, set after `dt_init`). Unknown members, wrong types or ranges: ARG / TYPE / RANGE, before darktable starts. darktable always starts with `--disable-opencl`. |
+| `int dtb_resources_info(char **json)` | `resourcesInfo(): EngineResources` | `{ "level", "values", "total_memory", "available_memory" (dt_get_available_mem), "singlebuffer_memory", "mipmap_memory", "pipe_cache_fraction": [f, p], "pipe_cache_limit": [bytes, bytes], "inputs_kept", "worker_threads", "pipe_full_hits", "pipe_full_tests", "pipe_preview_hits", "pipe_preview_tests", "mipmap_full_requests", "mipmap_full_misses" }`. |
+| `int dtb_opencl_info(char **json)` | `openclInfo(): OpenClInfo` | `{ "built", "allowed", "started", "library", "inited", "enabled", "running", "stopped", "error_count", "devices": [ { "name", "platform", "version", "memory", "unified", "disabled" } ], "renders", "renders_gpu", "renders_fallback", "last_render" }`. A render (`_pipe_run`) counts as `gpu` when `dt_opencl_running()` was true at its start and darktable's OpenCL error count did not change, `fallback` when it changed (darktable then ran the pipe again on the CPU, `dt_dev_pixelpipe_process`), else `cpu`. Exports (darktable's own export pipe) are not counted. |
+| `int dtb_opencl_set(int enabled, char **json)` | `openclSet(enabled): OpenClInfo` | Sets darktable's `opencl` and calls `dt_opencl_update_settings`. The first switch on also sets `clplatform_other` (Qualcomm and ARM platforms have no key of their own), chooses the library (darktable's own names first, then the Android vendor paths; a path found that way becomes `opencl_library` for the session) and runs `dt_opencl_init` once, as desktop's background job does after the modules are loaded (kernels are made per device on first use). STATE when the start did not allow OpenCL or the engine has none. |
+
+The app (brief P4b): `ProcessingResources.plan` chooses the options by total memory and "processing memory";
+`GpuCheck` switches OpenCL on only after a CPU and a GPU test render agree (PSNR ≥ 40 dB); `JniEngine.onOpenClTrouble`
+reports renders that fell back to the CPU (crash log).
+
+Tests: C35 (`engine/tests/dtb_test_p4b.c` `resources`, `resources1`): wrong options refused; the values reach darktable;
+OpenCL not allowed: no library, `dtb_opencl_set` refused; two copies of the RAW opened in turn: with 3 inputs kept going
+back decodes nothing and renders the same, with 1 it decodes again. C36 (`opencl`): OpenCL allowed and switched on;
+without a device the picture is the CPU's byte for byte; with one (PoCL on the runner) the PSNR against the CPU.
