@@ -103,13 +103,21 @@ add_library(dtbridge SHARED
   src/blend.c       # blending of an instance (P1b part 2, 6.6)
   src/masks.c       # drawn masks (P1b part 2, 6.7)
   src/retouch.c     # retouch shapes (P3m, 6.10)
+  src/perspective.c # rotate and perspective: structure, guides, fit (P3n, 6.11)
 )
+# P3n: perspective.c compiles darktable's own iop/ashift.c (unmodified) to call
+# its structure, fit and mouse functions; every symbol of it stays inside the
+# library (the copy of the module's entry points never meets the module
+# darktable loads), and it links GTK as the module does (darktable's own
+# dependency; GTK is never initialised)
+set_source_files_properties(src/perspective.c PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden")
+pkg_check_modules(DTB_GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})
 target_include_directories(dtbridge SYSTEM PRIVATE ${DT_SYS_INCS})
 target_compile_definitions(dtbridge PRIVATE ${DT_DEFS})
 target_compile_options(dtbridge PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
-target_link_libraries(dtbridge PRIVATE ${DARKTABLE_LIB} PkgConfig::DTB_DEPS OpenMP::OpenMP_C m)
+target_link_libraries(dtbridge PRIVATE ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::DTB_GTK OpenMP::OpenMP_C m)
 set_target_properties(dtbridge PROPERTIES BUILD_RPATH "${DARKTABLE_LIBDIR}")
 
 # the test driver dtb_test (S3 tests); runs on Linux only

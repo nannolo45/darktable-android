@@ -312,4 +312,14 @@ int dtb__module_action3(dt_iop_module_t *m, const char *action, JsonObject *args
 /* actions.c */
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 
+/* perspective.c (P3n): rotate and perspective's structure, guides and fit.
+ * After a bridge pipe synchronised: the focused instance's piece shows the
+ * whole picture (commit_params with the focus); after a module's process:
+ * ashift's copy of its input on the preview pipe; at close: the interface
+ * data dropped */
+void dtb__ashift_after_sync(dtb_pipe_t *p);
+void dtb__ashift_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const void *const i,
+                      const dt_iop_roi_t *const roi_in);
+void dtb__ashift_drop(void);
+
 #endif

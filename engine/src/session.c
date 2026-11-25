@@ -347,6 +347,7 @@ int dtb_open(const char *raw_path, const char *xmp_path)
 int dtb_close(void)
 {
   NEED_SESSION();
+  dtb__ashift_drop();
   dtb__pipes_free();
   dtb__undo_clear();
   dt_dev_cleanup(&dtb_S.dev);
