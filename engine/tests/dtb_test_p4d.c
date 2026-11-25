@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
  * Brief P4d bridge test (included by dtb_test.c):
- *   opencl_lib <raw> <xmp> <outdir>  C37: dtb_opencl_library is honoured. The
+ *   opencl_lib <raw> <xmp> <outdir>  C4d: dtb_opencl_library is honoured. The
  *              runner's OpenCL library is given by its absolute path
  *              (DTB_TEST_OCL_LIB, PoCL through the ICD loader) after a path
  *              that does not exist: the first try fails with dlerror's text,
@@ -18,7 +18,7 @@ static int cmd_opencl_lib(const char *raw, const char *xmp, const char *outdir)
   const char *lib = g_getenv("DTB_TEST_OCL_LIB");
   CHECK(lib && lib[0] == '/', "DTB_TEST_OCL_LIB names the runner's OpenCL library by absolute path (got %s)", lib ? lib : "nothing");
   if(!lib || lib[0] != '/') return 1;
-  GString *out = g_string_new("brief P4d, C37: OpenCL library chosen by the app, x86_64 Linux CI runner (PoCL), not phone numbers\n");
+  GString *out = g_string_new("brief P4d, C4d: OpenCL library chosen by the app, x86_64 Linux CI runner (PoCL), not phone numbers\n");
   char *s = NULL;
   MUST(dtb_opencl_diagnostics(&s));
   JsonNode *n;

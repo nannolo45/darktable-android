@@ -434,16 +434,16 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     cp -f "$D/p4b_opencl.txt" "$OUT/" 2>/dev/null || true
   fi
   # brief P4d: the app's library choice is honoured (the runner's OpenCL library by absolute path); one camera
-  if want C37 && [ "$C" = cr2 ]; then
+  if want C4d && [ "$C" = cr2 ]; then
     t37=$(date +%s)
     ocl=$(ldconfig -p 2>/dev/null | awk '/libOpenCL\.so\.1 .*x86-64/ {print $NF; exit}')
-    if DTB_TEST_OCL_LIB="$ocl" DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl_lib "$RAW" "$XMP" "$D" > "$D/C37.log" 2>&1 \
-       && grep -q "^\[opencl_init\] FINALLY" "$D/C37.log"; then
-      pass C37 "$C" "OpenCL library from the app ($ocl after a missing path): tried in order, handed to darktable, opened, device found, log caught and still on stdout: $(grep '^RESULT' "$D/C37.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t37 )) s)"
+    if DTB_TEST_OCL_LIB="$ocl" DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl_lib "$RAW" "$XMP" "$D" > "$D/C4d.log" 2>&1 \
+       && grep -q "^\[opencl_init\] FINALLY" "$D/C4d.log"; then
+      pass C4d "$C" "OpenCL library from the app ($ocl after a missing path): tried in order, handed to darktable, opened, device found, log caught and still on stdout: $(grep '^RESULT' "$D/C4d.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t37 )) s)"
     else
-      fail C37 "$C" "OpenCL library from the app ($ocl): $(grep '^FAIL' "$D/C37.log" | head -5 | tr '\n' ';')$(grep -q '^\[opencl_init\] FINALLY' "$D/C37.log" || echo ' darktable log not on stdout;') see $D/C37.log"
+      fail C4d "$C" "OpenCL library from the app ($ocl): $(grep '^FAIL' "$D/C4d.log" | head -5 | tr '\n' ';')$(grep -q '^\[opencl_init\] FINALLY' "$D/C4d.log" || echo ' darktable log not on stdout;') see $D/C4d.log"
     fi
-    cp -f "$D/p4d_opencl.txt" "$D/C37.log" "$OUT/" 2>/dev/null || true
+    cp -f "$D/p4d_opencl.txt" "$D/C4d.log" "$OUT/" 2>/dev/null || true
   fi
   if want C32; then
     drv C32 retouch "retouch shapes: each algorithm and shape, source, settings, remove, reopen, wavelet kept; colour look up table"
