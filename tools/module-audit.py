@@ -135,12 +135,9 @@ FINDINGS = {
 NEEDS_INPUT = {"retouch": "C32", "liquify": "", "spots": "", "colorchecker": "C32", "lut3d": "", "rasterfile": "",
                "overlay": "", "colormapping": "", "ashift": "C33", "crop": "C20"}
 
-# controls the schema marks unbound (and whose override note still says "a later package") that a hand-built panel
-# of the app now provides: the override notes are older than the panels (P3e-b, P3m)
-APP_PANEL_CONTROLS = {"colorchecker": None,  # LutPanel replaces the whole panel
-                      "colorzones": {"edit by area", "interpolation method"},  # BandEditor ZONES_OWN
-                      "retouch": {"mask opacity"}}  # RetouchPanel
-APP_PANEL_PICKERS = {"colorchecker": None, "retouch": {"pick fill color from image"}}
+# controls the schema marks unbound that a hand-built panel of the app provides (or leaves out on purpose): the override
+# notes of class f (brief P5c; before it a table here, because the notes still said "a later package")
+APP_PANEL_PICKERS = {"colorchecker": None, "retouch": {"pick fill color from image"}}  # RetouchPanel, LutPanel
 
 GROUP_ORDER = ["base", "tone", "color", "correct", "effect", "no group (search only)"]
 
@@ -186,7 +183,7 @@ def layout_groups():
 
 
 def overrides():
-    fixed, notes, pickers = set(), {}, {}
+    fixed, notes, pickers, built = set(), {}, {}, set()
     for f in sorted((REPO / "schema/overrides").glob("*.json")):
         o = json.loads(f.read_text())
         for kind in ("bind_action", "aspect_list", "replace_with_buttons", "computed", "value_list", "toggle_writes",
@@ -199,9 +196,11 @@ def overrides():
                 fixed.add((o["op"], sl[k]))
         for e in o.get("note", []):
             notes[(o["op"], e["node"])] = e["text"]
+            if e.get("class") == "f":
+                built.add((o["op"], e["node"]))
         for e in o.get("picker", []):
             pickers.setdefault(o["op"], set()).add(e["node"])
-    return fixed, notes, pickers
+    return fixed, notes, pickers, built
 
 
 def app_tools():
@@ -301,7 +300,7 @@ def main(argv):
     schema = json.loads((REPO / "schema/ui-schema.json").read_text())
     smods = schema["modules"]
     groups = layout_groups()
-    fixed, notes, pickers = overrides()
+    fixed, notes, pickers, built = overrides()
     graphs_app, tools_app = app_tools()
     res = load_results(rdir)
     for op in FINDINGS:
@@ -321,7 +320,7 @@ def main(argv):
             return op in table and (table[op] is None or label in table[op])
         open_ = [{"label": (c.get("label") or "").strip(), "kind": c["kind"],
                   "note": notes.get((op, c["id"]), "no override says"),
-                  "built_in_app_panel": by_panel(APP_PANEL_CONTROLS, (c.get("label") or "").strip())}
+                  "built_in_app_panel": (op, c["id"]) in built}
                  for c in val if c not in bound]
         marks = [c for c in ctrls if (c.get("quad") or {}).get("colorpicker") or c["kind"] == "colorpicker_button"]
         pk_missing = [(c.get("label") or c.get("tooltip") or "").strip()[:40] for c in marks

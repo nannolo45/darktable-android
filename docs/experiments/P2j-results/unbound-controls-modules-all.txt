@@ -1,24 +1,16 @@
 # modules: all (scene-referred (sigmoid)): 80 modules
-base curve (basecurve) | scale for graph | slider | class d: needs the curve editor (a later package)
+base curve (basecurve) | scale for graph | slider | class d: not built: the curve editor (P3e) draws the graph linear (P4c)
 white balance (temperature) | settings | combobox | class b: not available yet on the phone
-tone curve (tonecurve) | scale for graph | slider | class d: needs the curve editor (a later package)
+tone curve (tonecurve) | scale for graph | slider | class d: not built: the curve editor (P3e) draws the graph linear (P4c)
 color calibration (channelmixerrgb) | chart | combobox | class d: needs the colour checker tool (a later package)
 color calibration (channelmixerrgb) | optimize for | combobox | class d: needs the colour checker tool (a later package)
 color calibration (channelmixerrgb) | patch scale | slider | class d: needs the colour checker tool (a later package)
 color balance rgb (colorbalancergb) | checkerboard size | slider | section mask preview settings | class d: needs the mask preview (a later package)
-color look up table (colorchecker) | patch | combobox | class d: needs the patch editor (a later package)
-color look up table (colorchecker) | lightness | slider | class d: needs the patch editor (a later package)
-color look up table (colorchecker) | green-magenta offset | slider | class d: needs the patch editor (a later package)
-color look up table (colorchecker) | blue-yellow offset | slider | class d: needs the patch editor (a later package)
-color look up table (colorchecker) | saturation | slider | class d: needs the patch editor (a later package)
-color look up table (colorchecker) | target color | combobox | class d: needs the patch editor (a later package)
-color zones (colorzones) | edit by area | toggle | class d: needs the curve editor (a later package)
-color zones (colorzones) | interpolation method | combobox | class d: needs the curve editor (a later package)
 LUT 3D (lut3d) |  | combobox | class b: needs a LUT folder (a later package)
 profile: not in the control schema
 lens correction (lens) | mm | combobox | class b: not available yet on the phone
 lens correction (lens) | f/ | combobox | class b: not available yet on the phone
 lens correction (lens) | d | combobox | class b: not available yet on the phone
-retouch (retouch) | mask opacity | slider | section shapes | class d: needs the mask tools (a later package)
 watermark (watermark) |  | combobox | class b: not available yet on the phone
-# 21 controls still disabled for want of a parameter binding: b 6, d 15
+# 12 controls still disabled for want of a parameter binding: b 6, d 6
+# 9 more are built in hand-made panels of the app (class f) and not listed
