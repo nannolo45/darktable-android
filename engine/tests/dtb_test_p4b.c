@@ -259,6 +259,7 @@ static int cmd_opencl(const char *raw, const char *xmp, const char *outdir)
   MUST(dtb_opencl_set(1, &s));
   const double start_s = p4b_now() - t0;
   g_string_append_printf(out, "switched on in %.1f s: %s\n", start_s, s);
+  fprintf(stdout, "P4B opencl after switching on: %s\n", s);
   o = p4b_obj(s, &n);
   CHECK(json_object_get_boolean_member(o, "started"), "OpenCL started");
   const gboolean running = json_object_get_boolean_member(o, "running");

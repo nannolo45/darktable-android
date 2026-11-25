@@ -10,6 +10,11 @@ on:
     branches: [g0-test-app, p1a-engine-core, p1c-engine-followups, hotfix-stale-lock, t1-stability, p3l-shared-styles-presets, p3m-retouch-lut]
     paths-ignore: ["docs/**", "*.md"]
   workflow_dispatch:
+    inputs:
+      tests:
+        description: "Bridge tests to run (for example C35 C36); empty = all"
+        type: string
+        default: ""
 
 # nothing by default; jobs ask for what they need
 permissions: {}
@@ -124,8 +129,10 @@ jobs:
           set +e
           # brief P4b, C36: an OpenCL device on the CPU (PoCL) for the bridge's OpenCL path; run_tests.sh gives every
           # darktable-cli reference --disable-opencl, so the references stay CPU renders
-          { sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends pocl-opencl-icd; } > /tmp/pocl-install.log 2>&1 || echo "PoCL not installed"
-          engine/tests/run_tests.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/bridge-tests
+          { sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends pocl-opencl-icd ocl-icd-libopencl1 clinfo; } > /tmp/pocl-install.log 2>&1 || echo "PoCL not installed"
+          { clinfo -l; ls -l /etc/OpenCL/vendors/ /usr/lib/x86_64-linux-gnu/libOpenCL*; } > /tmp/clinfo.txt 2>&1 || true
+          # brief P4b: a dispatch may name the tests to run (a diagnosis run); a full run leaves it empty
+          engine/tests/run_tests.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/bridge-tests ${{ inputs.tests }}
           echo "rc=$?" >> "$GITHUB_OUTPUT"
           # P1a: every failure counts, T5 included (render_region has its margin now)
           failures=$(grep -c '^FAIL' /home/runner/bridge-tests/summary.txt)
@@ -173,6 +180,8 @@ jobs:
           } > "$L/summary.txt"
           cp /home/runner/bridge-tests/summary.txt "$L/bridge-tests-summary.txt" 2>/dev/null || true
           cp /home/runner/bridge-tests/comparisons.txt "$L/bridge-tests-comparisons.txt" 2>/dev/null || true
+          # brief P4b: C35 and C36 numbers, the OpenCL set-up of the runner
+          cp /home/runner/bridge-tests/p4b_*.txt /tmp/clinfo.txt /tmp/pocl-install.log "$L/" 2>/dev/null || true
           for c in cr2 raf arw; do
             mkdir -p "$L/$c"; cp /home/runner/bridge-tests/$c/*.log "$L/$c/" 2>/dev/null || true
           done

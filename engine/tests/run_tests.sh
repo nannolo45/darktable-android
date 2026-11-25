@@ -424,7 +424,8 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   if want C36 && [ "$C" = cr2 ]; then
     # bounded: PoCL compiles darktable's kernels on the runner's CPU at the first switch on (minutes)
     t36=$(date +%s)
-    if DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl "$RAW" "$XMP" "$D" > "$D/C36.log" 2>&1; then
+    # darktable's own OpenCL log (-d opencl) goes into C36.log
+    if DTB_DT_DEBUG=opencl DTB_TEST_CLASS="$CLASS" timeout 2400 "$DTB" "$W" opencl "$RAW" "$XMP" "$D" > "$D/C36.log" 2>&1; then
       pass C36 "$C" "OpenCL opt-in: started on request; no device = the CPU's picture byte for byte; a device = PSNR against the CPU; off again = the CPU's picture: $(grep '^RESULT' "$D/C36.log" | grep -v 'RESULT engine\|RESULT exit' | cut -d' ' -f2- | tr '\n' ';') ($(( $(date +%s) - t36 )) s)"
     else
       rc36=$?
