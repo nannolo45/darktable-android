@@ -122,8 +122,8 @@ jobs:
         id: tests
         run: |
           set +e
-          # brief P4b, C36: an OpenCL device on the CPU (PoCL) for the bridge's OpenCL path; darktable-cli's own
-          # configuration leaves PoCL's platform off (clplatform_portablecomputinglanguage=false), so the references stay CPU
+          # brief P4b, C36: an OpenCL device on the CPU (PoCL) for the bridge's OpenCL path; run_tests.sh gives every
+          # darktable-cli reference --disable-opencl, so the references stay CPU renders
           { sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends pocl-opencl-icd; } > /tmp/pocl-install.log 2>&1 || echo "PoCL not installed"
           engine/tests/run_tests.sh /home/runner/dt-linux/bridge-build /home/runner/dt-linux /home/runner/dtt /home/runner/bridge-tests
           echo "rc=$?" >> "$GITHUB_OUTPUT"
