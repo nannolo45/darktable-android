@@ -103,7 +103,23 @@ Logs: `ci-logs` branch, `runs/<run id>-a1/` (g0-linux/<camera>/C33.log, p2b-emul
   time see it too (exports and XMPs never do: they go through darktable's own pipe).
 - Removed lines are not drawn in drawn mode (as desktop); in found mode all lines are sent.
 
-## 6. Open questions for the reviewer
+## 6. Reviewer's decisions (25 Nov 2026) and the changes made for them
+
+1. Compiling `iop/ashift.c` unmodified is accepted under rule 1; `docs/UPDATE.md` now lists what to check in
+   `perspective.c` on every upstream bump.
+2. Desktop's drawn-line deletion is kept (parity). **Upstream bug candidate:** `ashift.c` `button_pressed`, right-click
+   removal of a drawn line in "lines" mode copies `lines_count - 1` entries skipping `n`, so the last line is lost too.
+3. LightPhotoLibrary renders while the panel is open: new bridge actions `pause` / `resume` (pipes show the edit as it
+   is, no history); `DarkroomController.withPhotoSession` brackets the block with them on the open photo
+   (`Perspective.pausedLocked`). Tests: C33 (paused render size = the edit's, resumed = whole, no history item, fit
+   refused while paused) and JVM `lightPhotoLibraryRendersSeeTheCroppedEdit`.
+4. Lines and handles are sent only when they changed: every answer has `rev`; with `known_rev` equal to it they come as
+   null and only the "near" indices are sent. `JniEngine` keeps the last copy per instance. Tests: C33 (omitted for the
+   current revision, sent for an older one) and JVM `linesAreKeptWhenTheEngineSendsNone`.
+
+CI for these changes: RUNS_FINAL.
+
+## 7. Open questions for the reviewer (before the decisions above)
 
 1. Deleting a drawn line also drops the last line (upstream). Keep desktop's behaviour, or file it upstream and
    meanwhile let the app delete only by deleting the last line?

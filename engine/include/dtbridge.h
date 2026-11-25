@@ -689,7 +689,9 @@ int dtb_retouch_select(const char *op, int priority, int id);
  *             the bridge's renders show its whole, uncropped picture and the
  *             calls below work; "end" gives the focus back (drawn lines and
  *             rectangle saved in the parameters, structure dropped);
- *   "state"   nothing changes;
+ *   "state"   nothing changes; "pause" / "resume": renders show the edit
+ *             as it is (cropped) until "resume", for renders made for someone
+ *             else while focused; nothing else changes;
  *   "structure" { "method": "lines_found" | "rectangle" | "drawn",
  *             "enhance"?: "none" | "edges" | "detail" | "both" } the
  *             structure buttons (a button that is on goes off);
@@ -706,13 +708,15 @@ int dtb_retouch_select(const char *op, int priority, int id);
  * "fit_enabled", "vertical", "horizontal", "flipped", "handled", "size":
  * [w, h], "lines": [ { "p": [x1, y1, x2, y2], "kind": "vertical_used" |
  * "vertical_outlier" | "horizontal_used" | "horizontal_outlier" | "other",
- * "color": "green" | "red" | "blue" | "yellow" | "grey", "near" } ],
- * "handles": [ { "p": [x, y], "near" } ], "area": { "from": [x, y], "select" }
+ * "color": "green" | "red" | "blue" | "yellow" | "grey" } ] | null,
+ * "handles": [ { "p": [x, y] } ], "rev", "near_lines": [i], "near_handles": [i], "area": { "from": [x, y], "select" }
  * | null, "clip": [[x, y] x 4] | null, "crop": [cl, cr, ct, cb], "params": {
  * "rotation", "lensshift_v", "lensshift_h", "shear", "cropmode",
  * "saved_lines" }, "message": string | null }; positions are fractions of the
  * rendered picture. Changes are one history item per request (one undo
- * step); DTB_E_STATE without "begin". */
+ * step); DTB_E_STATE without "begin". "lines" and "handles" are null when
+ * they did not change since the request's "known_rev" (the last "rev" the
+ * caller got). */
 int dtb_ashift(const char *op, int priority, const char *request_json, char **json);
 
 #ifdef __cplusplus

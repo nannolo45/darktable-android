@@ -126,6 +126,17 @@ class Perspective internal constructor(private val c: DarkroomController) {
         } catch (x: EngineException) { note(x) }
     }
 
+    /**
+     * A render for someone else on the open photo (LightPhotoLibrary's preview, under the engine lock): the module's
+     * focus is paused around it so it gets the edit's own, cropped picture, as P3a's crop tool brackets its picture.
+     * Nothing in the history or the structure changes.
+     */
+    internal suspend fun <T> pausedLocked(e: DarktableEngine, block: suspend () -> T): T {
+        val k = _state.value.key?.takeIf { !readOnly && _state.value.st?.focused == true } ?: return block()
+        runCatching { e.ashift(k.op, k.priority, req("pause")) }
+        try { return block() } finally { runCatching { e.ashift(k.op, k.priority, req("resume")) } }
+    }
+
     private fun note(x: Exception) = _state.update { it.copy(note = (x as? EngineException)?.detail ?: x.message ?: x.javaClass.simpleName) }
 
     private fun req(action: String) = buildJsonObject { put("action", action) }

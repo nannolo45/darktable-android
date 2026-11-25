@@ -654,6 +654,11 @@ int dtb_ashift(const char *op, int priority, const char *request_json, char **js
   `ARG` for another module or a bad request, `READ_ONLY` for anything but "state" on a read-only session.
 - Desktop writes the shadow crop to the parameters when the focus leaves; the bridge writes it at the end of every
   request, so the module's parameters always equal the history.
+- `pause` / `resume` (allowed read-only, no history): between them the pipes show the edit as it is (cropped); the app
+  brackets LightPhotoLibrary's renders on the open photo with them (`DarkroomController.withPhotoSession`).
+- Every answer carries `"rev"`, the revision of `lines` and `handles`; with `"known_rev"` equal to it in the request they
+  come as null (unchanged), while `"near_lines"` and `"near_handles"` (indices) come every time. `JniEngine` keeps the
+  last copy per instance and fills them in.
 - Kotlin: `ashift(op, priority, request: JsonObject): PerspectiveState`; JNI code 12 of the `p3d` entry point.
 
 ## 7. P3g: export progress and cancel (23 Nov 2026)

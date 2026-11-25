@@ -194,6 +194,9 @@ static dt_iop_ashift_gui_data_t *pv_g = NULL;
 static char pv_op[20];                       // its instance
 static int pv_prio = -1;
 static gboolean pv_focus = FALSE;            // between "begin" and "end"
+static gboolean pv_paused = FALSE;           // "pause": focused, but the pipes show the edit as it is
+static gint64 pv_lines_rev = 0;              // revision of the lines and handles last built
+static dt_hash_t pv_lines_hash = 0;
 static dt_hash_t pv_salted[2];               // focused piece hashes, full and preview pipe
 
 static void pv_g_free(void)
@@ -210,6 +213,7 @@ static void pv_g_free(void)
   pv_g = NULL;
   pv_prio = -1;
   pv_focus = FALSE;
+  pv_paused = FALSE;
   memset(pv_toggle, 0, sizeof(pv_toggle));
 }
 
@@ -330,7 +334,7 @@ void dtb__ashift_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, cons
  * cropped picture is used. The hash a commit gave is salted once. */
 void dtb__ashift_after_sync(dtb_pipe_t *p)
 {
-  if(!pv_g || !pv_focus) return;
+  if(!pv_g || !pv_focus || pv_paused) return;
   const int k = p == &dtb_S.full ? 0 : 1;
   for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
   {
@@ -443,7 +447,7 @@ static const char *pv_kind(const dt_iop_ashift_linetype_t t)
 static const char *const pv_colors[] = { "grey", "green", "red", "blue", "yellow" };
 
 /* the state: what desktop draws in gui_post_expose and shows in the panel */
-static char *pv_state_json(dt_iop_module_t *self, const gboolean handled)
+static char *pv_state_json(dt_iop_module_t *self, const gboolean handled, const gint64 known_rev)
 {
   dt_iop_ashift_gui_data_t *g = pv_g;
   const dt_iop_ashift_params_t *p = self->params;
@@ -454,7 +458,7 @@ static char *pv_state_json(dt_iop_module_t *self, const gboolean handled)
   JsonBuilder *b = json_builder_new();
   json_builder_begin_object(b);
   json_builder_set_member_name(b, "focused");
-  json_builder_add_boolean_value(b, pv_focus);
+  json_builder_add_boolean_value(b, pv_focus && !pv_paused);
   json_builder_set_member_name(b, "enabled");
   json_builder_add_boolean_value(b, self->enabled);
   json_builder_set_member_name(b, "method");
@@ -487,35 +491,42 @@ static char *pv_state_json(dt_iop_module_t *self, const gboolean handled)
   json_builder_end_array(b);
 
   // the lines as gui_post_expose draws them: removed lines of a drawn
-  // structure are hidden; "near" is drawn thicker
+  // structure are hidden; "near" is drawn thicker. Lines and handles are sent
+  // only when they changed since the revision the caller has ("known_rev");
+  // which of them are near the finger is sent every time, as indices
   const gboolean drawn = g->current_structure_method == ASHIFT_METHOD_QUAD
                          || g->current_structure_method == ASHIFT_METHOD_LINES;
-  json_builder_set_member_name(b, "lines");
-  json_builder_begin_array(b);
+  JsonBuilder *lb = json_builder_new();
+  json_builder_begin_object(lb);
+  json_builder_set_member_name(lb, "lines");
+  json_builder_begin_array(lb);
+  GArray *near_l = g_array_new(FALSE, FALSE, sizeof(int)), *near_h = g_array_new(FALSE, FALSE, sizeof(int));
+  int shown = 0;
   if(g->points_idx && g->draw_points)
     for(int n = 0; n < g->points_lines_count; n++)
     {
       const dt_iop_ashift_points_idx_t *ix = &g->points_idx[n];
       if(drawn && ix->type != ASHIFT_LINE_HORIZONTAL_SELECTED && ix->type != ASHIFT_LINE_VERTICAL_SELECTED) continue;
-      json_builder_begin_object(b);
-      json_builder_set_member_name(b, "p");
-      json_builder_begin_array(b);
-      pv_xy(b, g->draw_points[4 * n], g->draw_points[4 * n + 1], wd, ht);
-      pv_xy(b, g->draw_points[4 * n + 2], g->draw_points[4 * n + 3], wd, ht);
-      json_builder_end_array(b);
-      json_builder_set_member_name(b, "kind");
-      json_builder_add_string_value(b, pv_kind(ix->type));
-      json_builder_set_member_name(b, "color");
-      json_builder_add_string_value(b, pv_colors[CLAMP((int)ix->color, 0, 4)]);
-      json_builder_set_member_name(b, "near");
-      json_builder_add_boolean_value(b, ix->near != 0);
-      json_builder_end_object(b);
+      if(ix->near) g_array_append_val(near_l, shown);
+      shown++;
+      json_builder_begin_object(lb);
+      json_builder_set_member_name(lb, "p");
+      json_builder_begin_array(lb);
+      pv_xy(lb, g->draw_points[4 * n], g->draw_points[4 * n + 1], wd, ht);
+      pv_xy(lb, g->draw_points[4 * n + 2], g->draw_points[4 * n + 3], wd, ht);
+      json_builder_end_array(lb);
+      json_builder_set_member_name(lb, "kind");
+      json_builder_add_string_value(lb, pv_kind(ix->type));
+      json_builder_set_member_name(lb, "color");
+      json_builder_add_string_value(lb, pv_colors[CLAMP((int)ix->color, 0, 4)]);
+      json_builder_end_object(lb);
     }
-  json_builder_end_array(b);
+  json_builder_end_array(lb);
 
   // the corners of a drawn structure (rectangle: 4, drawn lines: both ends)
-  json_builder_set_member_name(b, "handles");
-  json_builder_begin_array(b);
+  json_builder_set_member_name(lb, "handles");
+  json_builder_begin_array(lb);
+  int hshown = 0;
   if(drawn && g->draw_points && g->lines)
   {
     const int nb = g->current_structure_method == ASHIFT_METHOD_LINES ? g->lines_count * 2 : MIN(4, g->lines_count * 2);
@@ -523,17 +534,51 @@ static char *pv_state_json(dt_iop_module_t *self, const gboolean handled)
     {
       if(g->lines[i / 2].type != ASHIFT_LINE_HORIZONTAL_SELECTED && g->lines[i / 2].type != ASHIFT_LINE_VERTICAL_SELECTED)
         continue;
-      json_builder_begin_object(b);
-      json_builder_set_member_name(b, "p");
-      json_builder_begin_array(b);
-      pv_xy(b, g->draw_points[i * 2], g->draw_points[i * 2 + 1], wd, ht);
-      json_builder_end_array(b);
-      json_builder_set_member_name(b, "near");
-      json_builder_add_boolean_value(b, g->draw_near_point == i);
-      json_builder_end_object(b);
+      if(g->draw_near_point == i) g_array_append_val(near_h, hshown);
+      hshown++;
+      json_builder_begin_object(lb);
+      json_builder_set_member_name(lb, "p");
+      json_builder_begin_array(lb);
+      pv_xy(lb, g->draw_points[i * 2], g->draw_points[i * 2 + 1], wd, ht);
+      json_builder_end_array(lb);
+      json_builder_end_object(lb);
     }
   }
-  json_builder_end_array(b);
+  json_builder_end_array(lb);
+  json_builder_end_object(lb);
+  JsonNode *ln = json_builder_get_root(lb);
+  g_object_unref(lb);
+  {
+    gchar *txt = json_to_string(ln, FALSE);
+    const dt_hash_t h = dt_hash(DT_INITHASH, txt, strlen(txt));
+    g_free(txt);
+    if(h != pv_lines_hash)
+    {
+      pv_lines_hash = h;
+      pv_lines_rev++;
+    }
+  }
+  json_builder_set_member_name(b, "rev");
+  json_builder_add_int_value(b, pv_lines_rev);
+  JsonObject *lo = json_node_get_object(ln);
+  const char *keys[2] = { "lines", "handles" };
+  for(int k = 0; k < 2; k++)
+  {
+    json_builder_set_member_name(b, keys[k]);
+    if(known_rev == pv_lines_rev) json_builder_add_null_value(b);
+    else json_builder_add_value(b, json_node_copy(json_object_get_member(lo, keys[k])));
+  }
+  json_node_unref(ln);
+  GArray *nears[2] = { near_l, near_h };
+  const char *nkeys[2] = { "near_lines", "near_handles" };
+  for(int k = 0; k < 2; k++)
+  {
+    json_builder_set_member_name(b, nkeys[k]);
+    json_builder_begin_array(b);
+    for(guint i = 0; i < nears[k]->len; i++) json_builder_add_int_value(b, g_array_index(nears[k], int, i));
+    json_builder_end_array(b);
+    g_array_free(nears[k], TRUE);
+  }
 
   // the selection area of shift+drag
   json_builder_set_member_name(b, "area");
@@ -668,7 +713,7 @@ int dtb_ashift(const char *op, int priority, const char *request_json, char **js
     json_node_unref(rn);
     return dtb__err(DTB_E_ARG, "expected { \"action\": ... }");
   }
-  const gboolean reading = !strcmp(action, "state");
+  const gboolean reading = !strcmp(action, "state") || !strcmp(action, "pause") || !strcmp(action, "resume");
   if(!reading && dtb_S.read_only)
   {
     json_node_unref(rn);
@@ -724,6 +769,7 @@ int dtb_ashift(const char *op, int priority, const char *request_json, char **js
     if(!pv_focus)
     {
       pv_focus = TRUE;
+      pv_paused = FALSE;
       pv_salted[0] = pv_salted[1] = DT_INVALID_HASH;
       dtb__pipes_dirty(DT_DEV_PIPE_SYNCH);
       gui_focus(m, TRUE);
@@ -736,12 +782,25 @@ int dtb_ashift(const char *op, int priority, const char *request_json, char **js
     {
       gui_focus(m, FALSE);
       pv_focus = FALSE;
+      pv_paused = FALSE;
+      dtb__pipes_dirty(DT_DEV_PIPE_SYNCH);
+    }
+  }
+  else if(!strcmp(action, "pause") || !strcmp(action, "resume"))
+  {
+    // a render for someone else (LightPhotoLibrary) while focused: the edit as
+    // it is, cropped; the focus, the structure and the history are untouched
+    const gboolean pause = !strcmp(action, "pause");
+    if(pv_focus && pv_paused != pause)
+    {
+      pv_paused = pause;
+      pv_salted[0] = pv_salted[1] = DT_INVALID_HASH;
       dtb__pipes_dirty(DT_DEV_PIPE_SYNCH);
     }
   }
   else if(reading)
     ;
-  else if(!pv_focus)
+  else if(!pv_focus || pv_paused)
     r = dtb__err(DTB_E_STATE, "%s %d: call \"begin\" first", m->op, priority);
   else if(!strcmp(action, "structure"))
   {
@@ -890,7 +949,9 @@ int dtb_ashift(const char *op, int priority, const char *request_json, char **js
           _get_bounded_inside(g->points, g->points_idx, g->points_lines_count, (float)x * wd, (float)y * ht,
                               g->lastx * wd, g->lasty * ht, g->isbounding);
       }
-      out = pv_state_json(m, handled);
+      double known = -1.0;
+      if(pv_dbl(req, "known_rev", &known) != 1) known = -1.0;
+      out = pv_state_json(m, handled, (gint64)known);
     }
   }
   m->gui_data = NULL;

@@ -2244,6 +2244,7 @@ class FakeEngine(
     /** The stand-in's structure: lines as fractions of the picture; no geometry (the real engine runs ashift.c). */
     private class FakePersp(val op: String, val priority: Int) {
         var focused = false
+        var paused = false
         var method = "none"
         var lines = mutableListOf<MutableList<Double>>()  // x1, y1, x2, y2
         var kinds = mutableListOf<String>()
@@ -2277,7 +2278,7 @@ class FakeEngine(
         }
         val cm = when ((p["cropmode"] as? JsonPrimitive)?.content) { "ASHIFT_CROP_OFF" -> 0; "ASHIFT_CROP_ASPECT" -> 2; else -> 1 }
         val clip = if (focused && enabled && cm != 0) listOf(crop[0] to crop[2], crop[0] to crop[3], crop[1] to crop[3], crop[1] to crop[2]) else null
-        return PerspectiveState(focused, enabled, method, method == "lines_found", method == "rectangle", method == "drawn", method != "none",
+        return PerspectiveState(focused && !paused, enabled, method, method == "lines_found", method == "rectangle", method == "drawn", method != "none",
             vertical(), horizontal(), false, handled, ls, hs, if (area) press else null, areaSelect, clip, crop,
             num("rotation"), num("lensshift_v"), num("lensshift_h"), num("shear"), cm, drawnSaved.size, message)
     }
@@ -2298,7 +2299,7 @@ class FakeEngine(
         fun str(k: String) = (request[k] as? JsonPrimitive)?.takeIf { it.isString }?.content
         fun dbl(k: String) = (request[k] as? JsonPrimitive)?.doubleOrNull
         val action = str("action") ?: fail(EngineError.ARG, "expected { \"action\": ... }")
-        if (action != "state" && s.readOnly) fail(EngineError.READ_ONLY, "read-only")
+        if (action !in listOf("state", "pause", "resume") && s.readOnly) fail(EngineError.READ_ONLY, "read-only")
         var f = fp?.takeIf { it.op == op && it.priority == priority }
         if (f == null) {
             if (action != "begin") fail(EngineError.STATE, "call \"begin\" first")
@@ -2311,11 +2312,13 @@ class FakeEngine(
         val r = (dbl("radius") ?: 0.02).coerceAtLeast(1e-6)
         fun item() { s.beginChange(); s.addItem(op, priority, true, p); enabled = true }
         fun clean() { f.method = "none"; f.lines.clear(); f.kinds.clear() }
-        fun needFocus() { if (!f.focused) fail(EngineError.STATE, "call \"begin\" first") }
+        fun needFocus() { if (!f.focused || f.paused) fail(EngineError.STATE, "call \"begin\" first") }
         var near: Pair<Double, Double>? = null
         when (action) {
-            "begin" -> f.focused = true
-            "end" -> { if (f.method == "drawn") f.drawnSaved = f.lines.map { it.toList() }.toMutableList(); clean(); f.focused = false }
+            "begin" -> { f.focused = true; f.paused = false }
+            "pause" -> if (f.focused) f.paused = true
+            "resume" -> f.paused = false
+            "end" -> { f.paused = false; if (f.method == "drawn") f.drawnSaved = f.lines.map { it.toList() }.toMutableList(); clean(); f.focused = false }
             "state" -> {}
             "structure" -> {
                 needFocus()

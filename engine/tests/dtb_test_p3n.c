@@ -227,6 +227,21 @@ static int cmd_perspective(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_render_size(1.0f, &wb, &hb));
     fprintf(stdout, "RESULT focus: picture %dx%d, focused %dx%d (whole picture, as desktop with the focus)\n", wf, hf, wb, hb);
     CHECK(wb >= wf && hb >= hf && (wb > wf || hb > hf), "focused: the uncropped picture (%dx%d vs %dx%d)", wb, hb, wf, hf);
+    // a render for LightPhotoLibrary while focused: "pause" gives the edit's own (cropped) picture, "resume" the whole one
+    const int hP = history_count(&end);
+    JsonNode *ps = p3n("{\"action\":\"pause\"}");
+    int wp, hp;
+    MUST(dtb_render_size(1.0f, &wp, &hp));
+    CHECK(!json_object_get_boolean_member(p3n_o(ps), "focused"), "paused: not focused");
+    json_node_unref(ps);
+    EXPECT(dtb_ashift("ashift", 0, "{\"action\":\"fit\",\"axis\":\"both\"}", &s), DTB_E_STATE);
+    json_node_unref(p3n("{\"action\":\"resume\"}"));
+    int wr, hr;
+    MUST(dtb_render_size(1.0f, &wr, &hr));
+    fprintf(stdout, "RESULT pause: %dx%d (edit %dx%d), resumed %dx%d, items %d -> %d\n", wp, hp, wf, hf, wr, hr, hP, history_count(&end));
+    CHECK(wp == wf && hp == hf, "paused: the edit's cropped picture");
+    CHECK(wr == wb && hr == hb, "resumed: the whole picture again");
+    CHECK(history_count(&end) == hP, "pause and resume change no history");
   }
 
   // 3. recovering known parameters (rectangle and drawn lines, each fit)
@@ -297,6 +312,24 @@ static int cmd_perspective(const char *raw, const char *xmp, const char *outdir)
     json_node_unref(st);
   }
   CHECK(vused >= 2 && hused >= 2, "enough lines for a fit (%d vertical, %d horizontal)", vused, hused);
+  // the lines are sent only when they changed since the revision the caller has
+  {
+    JsonNode *a = p3n("{\"action\":\"state\"}");
+    const gint64 rev = json_object_get_int_member(p3n_o(a), "rev");
+    char q[96];
+    snprintf(q, sizeof(q), "{\"action\":\"state\",\"known_rev\":%ld}", (long)rev);
+    JsonNode *b2 = p3n(q);
+    const gboolean same = JSON_NODE_HOLDS_NULL(json_object_get_member(p3n_o(b2), "lines"))
+                          && json_object_get_int_member(p3n_o(b2), "rev") == rev;
+    snprintf(q, sizeof(q), "{\"action\":\"state\",\"known_rev\":%ld}", (long)rev - 1);
+    JsonNode *c2 = p3n(q);
+    const gboolean resent = !JSON_NODE_HOLDS_NULL(json_object_get_member(p3n_o(c2), "lines"));
+    fprintf(stdout, "RESULT revision %ld: unchanged lines omitted %d, an older revision gets them %d\n", (long)rev, same, resent);
+    CHECK(same && resent, "lines only when changed");
+    json_node_unref(a);
+    json_node_unref(b2);
+    json_node_unref(c2);
+  }
   // tap with the right button (app: long press) on a used vertical line: deselected
   st = p3n("{\"action\":\"state\"}");
   JsonArray *ls = json_object_get_array_member(p3n_o(st), "lines");

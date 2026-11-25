@@ -2473,7 +2473,11 @@ class DarkroomController(
             val s = _state.value
             when {
                 // brief P3f: the open session is the open version's; another version of the open photo waits until it closes
-                s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> { usedOpen = true; Result.success(block(e)) }
+                s.info != null && s.current?.rawPath == rawPath && s.current?.xmpPath == xmpPath -> {
+                    usedOpen = true
+                    // brief P3n: rotate and perspective's focus (the uncropped picture) paused for this render
+                    Result.success(perspectiveOrNull?.pausedLocked(e) { block(e) } ?: block(e))
+                }
                 s.info == null && !fetching -> {
                     // brief P2h: a file without a picture is not opened again until it changes, and a session
                     // that turns out to have none is closed before [block] could render it

@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -213,5 +214,37 @@ class P3nPerspectiveTest {
         c.perspective.reset()
         assertNull(c.perspective.state.value.key)
         assertNotNull(c.state.value.info)
+    }
+
+    @Test fun lightPhotoLibraryRendersSeeTheCroppedEdit() = runBlocking {
+        val c = controller()
+        open(c)
+        c.perspective.structure("rectangle")
+        waitFor("rectangle") { st(c).method == "rectangle" }
+        val cur = c.state.value.current!!
+        val h0 = items(c)
+        // a session on the open photo (LightPhotoLibrary's preview): the focus is paused inside it
+        val inside = c.withPhotoSession(cur.rawPath, cur.xmpPath) { e -> e.ashift(ASHIFT_OP, 0, kotlinx.serialization.json.buildJsonObject { put("action", "state") }).focused }
+        assertEquals("paused inside the session", false, inside)
+        val after = c.withEngine { e -> e.ashift(ASHIFT_OP, 0, kotlinx.serialization.json.buildJsonObject { put("action", "state") }) }
+        assertTrue("focused again after it", after.focused)
+        assertEquals("the rectangle is kept", "rectangle", after.method)
+        assertEquals("no history item", h0, items(c))
+    }
+
+    @Test fun linesAreKeptWhenTheEngineSendsNone() {
+        val full = app.dtandroid.engine.api.PerspectiveState.fromJson(kotlinx.serialization.json.Json.parseToJsonElement(
+            """{"focused":true,"enabled":true,"method":"lines_found","structure":{"lines_found":true,"rectangle":false,"drawn":false},
+               "fit_enabled":true,"vertical":1,"horizontal":0,"flipped":false,"handled":false,"size":[10,10],"rev":7,
+               "lines":[{"p":[0.1,0.1,0.1,0.9],"kind":"vertical_used","color":"green"}],"handles":[],"near_lines":[],"near_handles":[],
+               "area":null,"clip":null,"crop":[0,1,0,1],"params":{"rotation":0,"lensshift_v":0,"lensshift_h":0,"shear":0,"cropmode":1,"saved_lines":0},"message":null}"""))
+        val next = app.dtandroid.engine.api.PerspectiveState.fromJson(kotlinx.serialization.json.Json.parseToJsonElement(
+            """{"focused":true,"enabled":true,"method":"lines_found","structure":{"lines_found":true,"rectangle":false,"drawn":false},
+               "fit_enabled":true,"vertical":1,"horizontal":0,"flipped":false,"handled":false,"size":[10,10],"rev":7,
+               "lines":null,"handles":null,"near_lines":[0],"near_handles":[],
+               "area":null,"clip":null,"crop":[0,1,0,1],"params":{"rotation":0,"lensshift_v":0,"lensshift_h":0,"shear":0,"cropmode":1,"saved_lines":0},"message":null}"""), full)
+        assertEquals(1, next.lines.size)
+        assertTrue("near marks come with every answer", next.lines[0].near)
+        assertFalse(full.lines[0].near)
     }
 }
