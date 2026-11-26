@@ -1,0 +1,15 @@
+x86_64 emulator numbers, not phone numbers; whole run 61 s
+dt-android speed (brief P4b): public test RAW mire1.cr2 (darktable-tests), measured on this device
+app: p4b-emulator-test, engine package ebbf0e64788165dd
+android api 33; memory 5923 MB; 6 to 8 GB phone, processing memory normal: darktable resource level default (256 8 32 700), pipeline caches 1/8 and 1/32, 2 decoded photos kept
+engine not pinned: all CPUs are equally fast; the engine uses every CPU it may
+gpu: off
+threads: 4
+fit = whole photo in 2400 x 1080; 100% = 1080 x 1080 at 100 %; heavy = default + diffuse + bilat + channelmixerrgb + sigmoid (diffuse as its preset "lens deblur | medium")
+times in ms: first render after opening (RAW decode included) | 3 renders after an exposure change | median
+cpu default fit  first    421 | 183 198 198 | median 198
+cpu default 100% first    198 | 135 138 154 | median 138
+cpu heavy   fit  first   4806 | 4794 4824 4779 | median 4794
+cpu heavy   100% first   9726 | 9708 9735 9759 | median 9735
+engine: resource level default (256 8 32 700): darktable counts 4899 MB, plans with 1224 MB; pipeline caches up to 153 + 38 MB (full + preview); decoded photos kept 2; thumbnail cache 153 MB
+RAW decodes since the app started: 110
