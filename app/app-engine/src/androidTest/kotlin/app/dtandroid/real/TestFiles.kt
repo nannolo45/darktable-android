@@ -77,6 +77,39 @@ object TestFiles {
         return ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes().decodeToString() }
     }
 
+    /** Whether the soft keyboard is on screen (window insets; the emulator is API 33). */
+    fun imeVisible(sc: androidx.test.core.app.ActivityScenario<*>?): Boolean {
+        var v = false
+        sc?.onActivity {
+            v = android.os.Build.VERSION.SDK_INT >= 30 &&
+                it.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime()) == true
+        }
+        return v
+    }
+
+    /**
+     * Brief P6c: one attempt to close the soft keyboard the module search opened. On the emulator's 320 x 640 screen the
+     * keyboard leaves the panel no height and the module list composes no row (P5cTapTest.t3 failed on CI that way in runs
+     * 45723595363 and 45775913088: the tree dump showed the search field focused, every panel node 0 px high, the
+     * keyboard's 235 px missing from the layout). hideSoftInputFromWindow alone sometimes does not close it, so each
+     * attempt also takes the focus off the field and asks the window's insets controller; from the [attempt] 10 on, while
+     * the keyboard is still shown, the Back key (which closes a shown keyboard before anything else) is sent.
+     */
+    fun closeKeyboard(sc: androidx.test.core.app.ActivityScenario<*>?, attempt: Int) {
+        sc?.onActivity {
+            it.currentFocus?.clearFocus()
+            it.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
+            if (android.os.Build.VERSION.SDK_INT >= 30) it.window.decorView.windowInsetsController?.hide(android.view.WindowInsets.Type.ime())
+        }
+        if (attempt >= 10 && imeVisible(sc)) instr.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+    }
+
+    /** What the input method service says about the keyboard, for the results file when a wait timed out. */
+    fun imeDiagnosis(): String = runCatching { shell("dumpsys input_method").lineSequence()
+        .filter { l -> listOf("mInputShown", "mImeWindowVis", "mCurFocusedWindow", "mShowRequested", "mCurId").any { l.contains(it) } }
+        .joinToString(" | ") { it.trim() } }.getOrElse { "dumpsys failed: ${it.message}" }
+
     fun md5(f: File): String {
         val md = java.security.MessageDigest.getInstance("MD5")
         f.inputStream().use { s ->

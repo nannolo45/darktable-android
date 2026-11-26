@@ -152,19 +152,19 @@ class P5cTapTest {
             // The search field takes the focus and the keyboard comes up; on the emulator's 320 x 640 screen the panel
             // then has no height and the list composes no row (run 45713442504: search text right, no module row).
             // The keyboard is closed, as a user does before tapping the result.
+            // waits for the real condition: the module's row exists, which needs the keyboard gone (TestFiles.closeKeyboard)
             val shown = System.currentTimeMillis() + 90_000
-            while (!has(name) && System.currentTimeMillis() < shown) { hideKeyboard(); compose.waitForIdle(); Thread.sleep(200) }
+            var attempt = 0
+            while (!has(name) && System.currentTimeMillis() < shown) {
+                if (TestFiles.imeVisible(scenario)) TestFiles.closeKeyboard(scenario, attempt++)
+                compose.waitForIdle(); Thread.sleep(200)
+            }
+            if (!has(name)) TestFiles.record(res, "${tag}_module_wait", "no row after 90 s; keyboard visible ${TestFiles.imeVisible(scenario)}, attempts $attempt; ${TestFiles.imeDiagnosis()}")
+            else if (attempt > 0) TestFiles.record(res, "${tag}_module_wait", "row appeared after $attempt keyboard closing attempts")
             tapDesc(tag, name)
         } else {
             TestFiles.record(res, "${tag}_module", "no search field in this layout: controller.goToModule")
             c.goToModule(key)
-        }
-    }
-
-    private fun hideKeyboard() {
-        scenario?.onActivity {
-            it.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
         }
     }
 
