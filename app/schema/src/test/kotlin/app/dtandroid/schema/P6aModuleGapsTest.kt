@@ -73,6 +73,31 @@ class P6aModuleGapsTest {
         assertNotNull(load(badRange))
     }
 
+    @Test fun graduatedDensityHasAnOffsetSliderAfterRotation() {
+        val g = m("graduatednd")
+        val ids = g.controls.map { it.id }
+        val off = g.controls.filterIsInstance<Control.Slider>().single { it.binding == Binding.Param("offset") }
+        assertEquals("right after rotation", ids.indexOf(2) + 1, ids.indexOf(off.id))
+        assertEquals(5, off.id)
+        assertEquals(0.0, off.hardMin, 0.0)
+        assertEquals(100.0, off.hardMax, 0.0)
+        assertEquals(50.0, off.default, 0.0)
+        assertEquals("%", off.format)
+        // the other sliders keep their ids
+        assertEquals("rotation", g.control(2)!!.label)
+        assertEquals("hue", g.control(3)!!.label)
+    }
+
+    @Test fun addSliderIsChecked() {
+        val text = SchemaLoader.schemaTextFromResources()
+        fun load(o: String) = runCatching { SchemaLoader.load(text, mapOf("x.json" to o)) }.exceptionOrNull()?.message
+        fun grad(extra: String) = """{"op":"graduatednd","add_slider":[{"after":2,"expect_label":"rotation","hard_min":0,"hard_max":100,"default":50$extra}]}"""
+        assertNull(load(grad(""","param":"offset"""")))
+        assertNotNull("no such parameter", load(grad(""","param":"nope"""")))
+        assertNotNull("already has a slider", load(grad(""","param":"density"""")))
+        assertNotNull("wrong label", load("""{"op":"graduatednd","add_slider":[{"after":2,"expect_label":"hue","param":"offset","hard_min":0,"hard_max":100,"default":50}]}"""))
+    }
+
     @Test fun theSettingsAnswerParses() {
         assertEquals(7, settings.jsonArray.size)
         assertEquals("section", settings.jsonArray[4].jsonObject["kind"].toString().trim('"'))

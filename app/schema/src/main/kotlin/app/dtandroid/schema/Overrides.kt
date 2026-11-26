@@ -23,7 +23,30 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 internal object Overrides {
 
-    fun apply(m: ModuleSchema, o: JsonObject, file: String): ModuleSchema {
+    fun apply(m0: ModuleSchema, o: JsonObject, file: String): ModuleSchema {
+        // brief P6a: a slider desktop does not have, for a parameter desktop sets only on the photo (graduated
+        // density's offset): inserted after `after`, with the next free id, the limits the override gives
+        var m = m0
+        (o["add_slider"] as? JsonArray)?.forEach { ae ->
+            val a = ae.jsonObject
+            val after = a.int("after") ?: throw SchemaException("$file: add_slider without after")
+            val target = m.control(after) ?: throw SchemaException("$file: ${m.op} has no node $after")
+            val expectLabel = a.str("expect_label")
+            if (expectLabel != null && target.label != expectLabel) throw SchemaException("$file: node $after is \"${target.label}\", expected \"$expectLabel\"")
+            val param = a.str("param") ?: throw SchemaException("$file: add_slider without param")
+            val field = m.params[param] ?: throw SchemaException("$file: ${m.op} has no parameter $param")
+            if (field.type != "float") throw SchemaException("$file: add_slider: $param is ${field.type}, not float")
+            if (m.allControls().any { (it as? Control.Slider)?.binding == Binding.Param(param) }) throw SchemaException("$file: $param already has a slider")
+            fun d(k: String) = a.dbl(k) ?: throw SchemaException("$file: add_slider without $k")
+            val lo = d("hard_min"); val hi = d("hard_max")
+            if ((field.min != null && lo < field.min) || (field.max != null && hi > field.max)) throw SchemaException("$file: add_slider: limits outside $param's")
+            val id = (m.allControls().maxOfOrNull { it.id } ?: -1) + 1
+            val slider = Control.Slider(id, a.str("label") ?: param, a.str("tooltip"), false, Binding.Param(param),
+                softMin = a.dbl("soft_min") ?: lo, softMax = a.dbl("soft_max") ?: hi, hardMin = lo, hardMax = hi, default = d("default"),
+                step = a.dbl("step") ?: -1.0, digits = a.int("digits") ?: 2, factor = 1.0, offset = 0.0, format = a.str("format") ?: "",
+                textDefault = null, integer = false)
+            m = m.copy(controls = insertAfter(m.controls, after, slider))
+        }
         var controls = m.controls
         (o["replace_with_buttons"] as? JsonArray)?.forEach { re ->
             val r = re.jsonObject
@@ -102,6 +125,18 @@ internal object Overrides {
         // brief P3c: colour pickers and their settings
         val p3c = P3cOverrides.apply(p2j, o, file)
         return p3c.copy(overrides = m.overrides + file, aspect = aspect)
+    }
+
+    /** brief P6a: [c] after the control [id], in the same list */
+    internal fun insertAfter(cs: List<Control>, id: Int, c: Control): List<Control> = cs.flatMap { x ->
+        if (x.id == id) listOf(x, c) else listOf(when (x) {
+            is Control.Collapsible -> x.copy(children = insertAfter(x.children, id, c))
+            is Control.Page -> x.copy(children = insertAfter(x.children, id, c))
+            is Control.Tabs -> x.copy(pages = insertAfter(x.pages, id, c).filterIsInstance<Control.Page>())
+            is Control.Stack -> x.copy(pages = insertAfter(x.pages, id, c).filterIsInstance<Control.Page>())
+            is Control.Group -> x.copy(children = insertAfter(x.children, id, c))
+            else -> x
+        })
     }
 
     internal fun replace(cs: List<Control>, id: Int, f: (Control) -> Control): List<Control> = cs.map { c ->
