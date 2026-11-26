@@ -235,6 +235,34 @@ JSON of one style (`dtb_styles_list`):
   `scale_md_v1` = 0, below the field's limit 0.9). One history item.
 - `lens: list_lenses {camera}`: every entry gains `"min_aperture": number | null` and `"max_aperture": number | null`
   (Lensfun's f-numbers of the lens; the aperture list of `_lens_set` runs from the largest opening to the smallest).
+- Brief P6d, lens correction by hand (Lensfun method; `iop/lens.cc`). The lists the phone shows are made by the app
+  (desktop's tables and `_lens_set`'s clipping, `LensLists.kt`); the engine gives the database and what desktop
+  computes from it:
+  - `lens: list_cameras` -> `[ {maker, model, variant, mount, crop_factor} ]` (`GetCameras()`, as before);
+    `lens: list_lenses {camera?}`: `camera` (the Model string) is now optional: without it, or for a camera
+    Lensfun does not know, desktop's picker lists every lens (`g->camera` NULL). A `camera` that is given but not
+    in the database is still `NOT_FOUND`.
+  - `lens: find_cameras` -> the same entries, desktop's "find camera" (`_camera_autosearch_clicked`):
+    `FindCamerasExt(NULL, <camera of the module's defaults = Exif's model>, 0)`, the whole list when Exif has no
+    camera. (Desktop passes a maker buffer it never fills; none is used.)
+  - `lens: find_lenses {camera?}` -> `[ lens ]` (the `list_lenses` entries), desktop's "find lens"
+    (`_lens_autosearch_clicked`): `FindLenses(camera, NULL, <lens of the module's defaults = Exif's sanitised lens
+    name>, SORT_AND_UNIQUIFY)`.
+  - `lens: get_state` -> `{has_been_set, camera_param, lens_param, exif: {maker, model, lens}, camera: object|null,
+    lens: object|null, focal, aperture, distance, crop}`: what `gui_update` shows. Without `has_been_set` the module's
+    defaults stand in for the parameters, as desktop's does. `camera` is `FindCamerasExt(NULL, camera_param)[0]`
+    (`null` = "this camera is not in the Lensfun database"), `lens` is `FindLenses(camera, NULL, lens_param, 0)[0]`
+    (`null` = "no matching lens in the Lensfun database"; `exif.lens` is then what desktop shows). The lens object has
+    the `list_lenses` fields plus `crop_factor`, `type` (`lfLens::GetLensTypeDesc`) and `mounts` (names).
+  - `lens: set_camera {model, maker?, variant?}` [M]: `_camera_menu_select`: `camera` = the model, `crop` = the
+    camera's crop factor, `has_been_set` = true; the lens parameter is not touched (desktop's does not either).
+    `maker` and `variant` pick one of several entries with the same model. One history item; unknown camera:
+    `NOT_FOUND`.
+  - `lens: set_lens {camera?, lens, maker?}` [M]: as before; `camera` is optional (without it the camera and the crop
+    factor stay), `maker` picks one of several lenses with the same model.
+  - `lens: set_value {name: "focal"|"aperture"|"distance", value}` [M]: what the three
+    `_lens_comboentry_*_update` callbacks do: the value, then `has_been_set` = true. The value must be above 0
+    (`ARG`). One history item.
   *Why module actions and not an unchecked `param_set` (P2j question 1):* the out-of-range values are fixed values one
   desktop callback writes, not a range; an action writes exactly those values and nothing else, while a flag on
   `param_set` would open every field to any value and remove the range check that protects the XMP.

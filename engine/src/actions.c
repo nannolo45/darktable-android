@@ -892,9 +892,295 @@ static float _lf_autoscale(dt_iop_module_t *m, lfDatabase *db, const lfCamera *c
   return scale;
 }
 
+/* ------------------------------------------------------------------ */
+/* brief P6d: camera and lens by hand (engine-api.md 5.4)              */
+
+static gboolean _maker_is(const lfMLstr s, const char *maker)
+{
+  const char *m = _ml(s);
+  return maker && m && !strcmp(m, maker);
+}
+
+static void _json_camera(JsonBuilder *b, const lfCamera *c)
+{
+  json_builder_begin_object(b);
+  _add_str_or_null(b, "maker", _ml(c->Maker));
+  _add_str_or_null(b, "model", c->Model);
+  _add_str_or_null(b, "variant", _ml(c->Variant));
+  _add_str_or_null(b, "mount", c->Mount);
+  json_builder_set_member_name(b, "crop_factor");
+  json_builder_add_double_value(b, c->CropFactor);
+  json_builder_end_object(b);
+}
+
+/* the lens as list_lenses gives it; `detail` adds what _lens_set() puts in
+ * the lens button's tooltip (crop factor, type, mounts) */
+static void _json_lens(JsonBuilder *b, const lfLens *l, gboolean detail)
+{
+  json_builder_begin_object(b);
+  _add_str_or_null(b, "maker", _ml(l->Maker));
+  _add_str_or_null(b, "model", l->Model);
+  json_builder_set_member_name(b, "min_focal");
+  json_builder_add_double_value(b, l->MinFocal);
+  json_builder_set_member_name(b, "max_focal");
+  json_builder_add_double_value(b, l->MaxFocal);
+  json_builder_set_member_name(b, "min_aperture");
+  if(l->MinAperture > 0) json_builder_add_double_value(b, l->MinAperture);
+  else json_builder_add_null_value(b);
+  json_builder_set_member_name(b, "max_aperture");
+  if(l->MaxAperture > 0) json_builder_add_double_value(b, l->MaxAperture);
+  else json_builder_add_null_value(b);
+  if(detail)
+  {
+    json_builder_set_member_name(b, "crop_factor");
+    json_builder_add_double_value(b, l->CropFactor);
+    _add_str_or_null(b, "type", lf_get_lens_type_desc(l->Type, NULL));
+    json_builder_set_member_name(b, "mounts");
+    json_builder_begin_array(b);
+    for(int i = 0; l->Mounts && l->Mounts[i]; i++) json_builder_add_string_value(b, l->Mounts[i]);
+    json_builder_end_array(b);
+  }
+  json_builder_end_object(b);
+}
+
+/* _parse_model() of iop/lens.cc: leading white space dropped */
+static const char *_skip_space(const char *t)
+{
+  while(t && *t && g_ascii_isspace(*t)) t++;
+  return t ? t : "";
+}
+
+/* a text parameter of the module's defaults (reload_defaults(): Exif's
+ * camera model and sanitised lens name), "" when absent */
+static gchar *_default_text(dt_iop_module_t *m, const char *name)
+{
+  void *orig = m->params;
+  m->params = m->default_params;
+  size_t n = 0;
+  char *c = dtb__param_chars(m, name, &n);
+  gchar *r = g_strdup(c ? c : "");
+  m->params = orig;
+  return r;
+}
+
+/* get_state: what gui_update() shows (camera_set and _lens_set): without
+ * has_been_set desktop takes the defaults for the parameters */
+static int _lens_state(dt_iop_module_t *m, lfDatabase *db, char **res)
+{
+  void *orig = m->params;
+  const int *hbs = dtb__param_int(m, "has_been_set");
+  const gboolean set = hbs && *hbs;
+  if(!set) m->params = m->default_params;
+  size_t n = 0;
+  char *pc = dtb__param_chars(m, "camera", &n);
+  char *pl = dtb__param_chars(m, "lens", &n);
+  const float *focal = dtb__param_float(m, "focal");
+  const float *aperture = dtb__param_float(m, "aperture");
+  const float *distance = dtb__param_float(m, "distance");
+  const float *crop = dtb__param_float(m, "crop");
+  gchar *camera_name = g_strdup(pc ? pc : "");
+  gchar *lens_name = g_strdup(pl ? pl : "");
+  const double v[4] = { focal ? *focal : 0, aperture ? *aperture : 0, distance ? *distance : 0, crop ? *crop : 0 };
+  m->params = orig;
+
+  // Exif's names, from the image record
+  char xmaker[128] = { 0 }, xmodel[128] = { 0 }, xlens[256] = { 0 };
+  const dt_image_t *img = dt_image_cache_get(dtb_S.imgid, 'r');
+  if(img)
+  {
+    g_strlcpy(xmaker, img->exif_maker, sizeof(xmaker));
+    g_strlcpy(xmodel, img->exif_model, sizeof(xmodel));
+    g_strlcpy(xlens, img->exif_lens, sizeof(xlens));
+    dt_image_cache_read_release(img);
+  }
+
+  dt_pthread_mutex_lock(&darktable.plugin_threadsafe);
+  const lfCamera **cam = camera_name[0] ? lf_db_find_cameras_ext(db, NULL, camera_name, 0) : NULL;
+  const lfCamera *c0 = cam ? cam[0] : NULL;
+  const lfLens **lenslist = NULL;
+  if(lens_name[0])
+  {
+    const char *model = _skip_space(lens_name);
+    lenslist = lf_db_find_lenses_hd(db, c0, NULL, model[0] ? model : NULL, 0);
+  }
+  JsonBuilder *b = json_builder_new();
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "has_been_set");
+  json_builder_add_boolean_value(b, set);
+  _add_str_or_null(b, "camera_param", camera_name);
+  _add_str_or_null(b, "lens_param", lens_name);
+  json_builder_set_member_name(b, "exif");
+  json_builder_begin_object(b);
+  _add_str_or_null(b, "maker", xmaker);
+  _add_str_or_null(b, "model", xmodel);
+  _add_str_or_null(b, "lens", xlens);
+  json_builder_end_object(b);
+  json_builder_set_member_name(b, "camera");
+  if(c0) _json_camera(b, c0);
+  else json_builder_add_null_value(b);
+  json_builder_set_member_name(b, "lens");
+  if(lenslist && lenslist[0]) _json_lens(b, lenslist[0], TRUE);
+  else json_builder_add_null_value(b);
+  json_builder_set_member_name(b, "focal");
+  json_builder_add_double_value(b, v[0]);
+  json_builder_set_member_name(b, "aperture");
+  json_builder_add_double_value(b, v[1]);
+  json_builder_set_member_name(b, "distance");
+  json_builder_add_double_value(b, v[2]);
+  json_builder_set_member_name(b, "crop");
+  json_builder_add_double_value(b, v[3]);
+  json_builder_end_object(b);
+  if(lenslist) lf_free(lenslist);
+  if(cam) lf_free(cam);
+  dt_pthread_mutex_unlock(&darktable.plugin_threadsafe);
+  g_free(camera_name);
+  g_free(lens_name);
+  *res = dtb__json_finish(b);
+  return DTB_OK;
+}
+
+/* a camera of the database by what the picker shows: maker, model and
+ * variant (variant "" = none) */
+static const lfCamera *_lf_camera_exact(lfDatabase *db, const char *maker, const char *model, const char *variant)
+{
+  const lfCamera *const *cams = lf_db_get_cameras(db);
+  for(int i = 0; cams && cams[i]; i++)
+  {
+    if(strcmp(cams[i]->Model, model)) continue;
+    if(maker && maker[0] && !_maker_is(cams[i]->Maker, maker)) continue;
+    const char *v = _ml(cams[i]->Variant);
+    if(variant && strcmp(v ? v : "", variant)) continue;
+    return cams[i];
+  }
+  return NULL;
+}
+
+static int _act_lens_p6d(dt_iop_module_t *m, const char *action, JsonObject *a, char **res)
+{
+  const gboolean set_camera = !strcmp(action, "set_camera");
+  const gboolean set_value = !strcmp(action, "set_value");
+  if((set_camera || set_value) && _need_writable()) return DTB_E_READ_ONLY;
+  lfDatabase *db = _lf_db();
+  if(!db) return dtb__err(DTB_E_ENGINE, "Lensfun database not available");
+
+  if(!strcmp(action, "get_state")) return _lens_state(m, db, res);
+
+  if(!strcmp(action, "find_cameras"))
+  {
+    // _camera_autosearch_clicked(): the whole list when Exif has no camera, else
+    // FindCamerasExt(maker, Exif's model); desktop passes a maker it never sets
+    // (an uninitialised buffer), so none is used here
+    gchar *txt = _default_text(m, "camera");
+    const char *model = _skip_space(txt);
+    dt_pthread_mutex_lock(&darktable.plugin_threadsafe);
+    const lfCamera *const *all = model[0] ? NULL : lf_db_get_cameras(db);
+    const lfCamera **found = model[0] ? lf_db_find_cameras_ext(db, NULL, model, 0) : NULL;
+    const lfCamera *const *list = found ? (const lfCamera *const *)found : all;
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_array(b);
+    for(int i = 0; list && list[i]; i++) _json_camera(b, list[i]);
+    json_builder_end_array(b);
+    if(found) lf_free(found);
+    dt_pthread_mutex_unlock(&darktable.plugin_threadsafe);
+    g_free(txt);
+    *res = dtb__json_finish(b);
+    return DTB_OK;
+  }
+
+  if(!strcmp(action, "find_lenses"))
+  {
+    // _lens_autosearch_clicked(): FindLenses(camera, NULL, Exif's lens name, SORT_AND_UNIQUIFY);
+    // no camera (or one Lensfun does not know) searches the whole database
+    const char *camera = NULL;
+    if(json_object_has_member(a, "camera") && !_arg_str(a, "camera", &camera))
+      return dtb__err(DTB_E_TYPE, "find_lenses takes {camera?}");
+    gchar *txt = _default_text(m, "lens");
+    const char *model = _skip_space(txt);
+    dt_pthread_mutex_lock(&darktable.plugin_threadsafe);
+    const lfCamera *cam = (camera && camera[0]) ? _lf_camera(db, camera) : NULL;
+    const lfLens **lenses = lf_db_find_lenses_hd(db, cam, NULL, model[0] ? model : NULL, LF_SEARCH_SORT_AND_UNIQUIFY);
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_array(b);
+    for(int i = 0; lenses && lenses[i]; i++) _json_lens(b, lenses[i], FALSE);
+    json_builder_end_array(b);
+    if(lenses) lf_free(lenses);
+    dt_pthread_mutex_unlock(&darktable.plugin_threadsafe);
+    g_free(txt);
+    *res = dtb__json_finish(b);
+    return DTB_OK;
+  }
+
+  int r = DTB_OK;
+  void *tmp = dtb__memdup(m->params, m->params_size);
+  void *orig = m->params;
+  m->params = tmp;
+  int *has_been_set = dtb__param_int(m, "has_been_set");
+  if(!has_been_set)
+    r = dtb__err(DTB_E_ENGINE, "lens parameters not found (upstream changed?)");
+  else if(set_camera)
+  {
+    // _camera_menu_select() with _camera_set(): model and crop factor, then has_been_set
+    const char *model = NULL, *maker = NULL, *variant = NULL;
+    if(!_arg_str(a, "model", &model)) r = dtb__err(DTB_E_TYPE, "set_camera takes {model, maker?, variant?}");
+    (void)_arg_str(a, "maker", &maker);
+    (void)_arg_str(a, "variant", &variant);
+    size_t ncam = 0;
+    char *pcam = r ? NULL : dtb__param_chars(m, "camera", &ncam);
+    float *crop = r ? NULL : dtb__param_float(m, "crop");
+    if(!r && (!pcam || !crop)) r = dtb__err(DTB_E_ENGINE, "lens parameters not found (upstream changed?)");
+    if(!r)
+    {
+      dt_pthread_mutex_lock(&darktable.plugin_threadsafe);
+      const lfCamera *cam = _lf_camera_exact(db, maker, model, variant);
+      if(!cam && !variant && !maker) cam = _lf_camera(db, model);
+      if(!cam) r = dtb__err(DTB_E_NOT_FOUND, "camera '%s' is not in the Lensfun database", model);
+      else
+      {
+        memset(pcam, 0, ncam);
+        g_strlcpy(pcam, cam->Model, ncam);
+        *crop = cam->CropFactor;
+        *has_been_set = TRUE;
+      }
+      dt_pthread_mutex_unlock(&darktable.plugin_threadsafe);
+    }
+  }
+  else
+  {
+    // _lens_comboentry_*_update(): the value, then has_been_set
+    const char *name = NULL;
+    double value = 0;
+    if(!_arg_str(a, "name", &name) || _arg_num(a, "value", &value) != 1
+       || (strcmp(name, "focal") && strcmp(name, "aperture") && strcmp(name, "distance")))
+      r = dtb__err(DTB_E_TYPE, "set_value takes {name: focal|aperture|distance, value}");
+    else if(!(value > 0.0) || value > 1e6)
+      r = dtb__err(DTB_E_ARG, "%s must be a number above 0", name);
+    else
+    {
+      float *f = dtb__param_float(m, name);
+      if(!f) r = dtb__err(DTB_E_ENGINE, "lens has no %s parameter (upstream changed?)", name);
+      else
+      {
+        *f = (float)value;
+        *has_been_set = TRUE;
+      }
+    }
+  }
+  m->params = orig;
+  if(!r)
+  {
+    _commit(m, tmp);
+    *res = g_strdup("{}");
+  }
+  g_free(tmp);
+  return r;
+}
+
 static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char **res)
 {
   const gboolean mutating = !strcmp(action, "set_lens");
+  if(!strcmp(action, "get_state") || !strcmp(action, "find_cameras") || !strcmp(action, "find_lenses")
+     || !strcmp(action, "set_camera") || !strcmp(action, "set_value"))
+    return _act_lens_p6d(m, action, a, res);
   if(strcmp(action, "list_cameras") && strcmp(action, "list_lenses") && !mutating)
     return dtb__err(DTB_E_NOT_FOUND, "lens has no action '%s'", action);
   if(mutating && _need_writable()) return DTB_E_READ_ONLY;
@@ -929,15 +1215,24 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
   }
   else
   {
-    const char *camera = NULL, *lens = NULL;
-    if(!_arg_str(a, "camera", &camera)) r = dtb__err(DTB_E_TYPE, "%s takes {camera%s}", action, mutating ? ", lens" : "");
-    else if(mutating && !_arg_str(a, "lens", &lens)) r = dtb__err(DTB_E_TYPE, "set_lens takes {camera, lens}");
-    const lfCamera *cam = r ? NULL : _lf_camera(db, camera);
-    if(!r && !cam) r = dtb__err(DTB_E_NOT_FOUND, "camera '%s' is not in the Lensfun database", camera);
+    // brief P6d: the camera is optional, as desktop's picker without a camera Lensfun knows
+    // (g->camera NULL) lists every lens; set_lens then leaves the camera and crop factor alone
+    const char *camera = NULL, *lens = NULL, *maker = NULL;
+    if(json_object_has_member(a, "camera") && !_arg_str(a, "camera", &camera))
+      r = dtb__err(DTB_E_TYPE, "%s takes {camera?%s}", action, mutating ? ", lens, maker?" : "");
+    else if(mutating && !_arg_str(a, "lens", &lens)) r = dtb__err(DTB_E_TYPE, "set_lens takes {camera?, lens, maker?}");
+    if(!r) (void)_arg_str(a, "maker", &maker);
+    const gboolean have_camera = camera && camera[0];
+    const lfCamera *cam = (r || !have_camera) ? NULL : _lf_camera(db, camera);
+    if(!r && have_camera && !cam) r = dtb__err(DTB_E_NOT_FOUND, "camera '%s' is not in the Lensfun database", camera);
     if(!r && !mutating)
     {
-      // _lens_menusearch_clicked(): FindLenses(camera, NULL, NULL, SORT_AND_UNIQUIFY)
-      const lfLens **lenses = lf_db_find_lenses_hd(db, cam, NULL, NULL, LF_SEARCH_SORT_AND_UNIQUIFY);
+      // _lens_menusearch_clicked(): FindLenses(camera, NULL, NULL, SORT_AND_UNIQUIFY). With no camera that
+      // search finds nothing in Lensfun 0.3.4 (desktop's picker then does not open); brief P6d lists every
+      // lens of the database instead, so a camera Lensfun does not know does not leave the picker empty
+      const lfLens *const *all = cam ? NULL : lf_db_get_lenses(db);
+      const lfLens **found = cam ? lf_db_find_lenses_hd(db, cam, NULL, NULL, LF_SEARCH_SORT_AND_UNIQUIFY) : NULL;
+      const lfLens *const *lenses = cam ? (const lfLens *const *)found : all;
       JsonBuilder *b = json_builder_new();
       json_builder_begin_array(b);
       for(int i = 0; lenses && lenses[i]; i++)
@@ -961,7 +1256,7 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
         json_builder_end_object(b);
       }
       json_builder_end_array(b);
-      if(lenses) lf_free(lenses);
+      if(found) lf_free(found);
       *res = dtb__json_finish(b);
     }
     else if(!r)
@@ -969,10 +1264,18 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
       const lfLens **lenses = lf_db_find_lenses_hd(db, cam, NULL, lens, 0);
       const lfLens *l = NULL;
       for(int i = 0; lenses && lenses[i] && !l; i++)
-        if(!strcmp(lenses[i]->Model, lens)) l = lenses[i];
-      if(!l && lenses) l = lenses[0];
+        if(!strcmp(lenses[i]->Model, lens) && (!maker || _maker_is(lenses[i]->Maker, maker))) l = lenses[i];
+      // without a camera the name search can miss a lens that is in the database (two of 1304 in 0.3.4): the list
+      // the picker shows is searched for the exact model (and maker) too
+      if(!l && !cam)
+      {
+        const lfLens *const *every = lf_db_get_lenses(db);
+        for(int i = 0; every && every[i] && !l; i++)
+          if(!strcmp(every[i]->Model, lens) && (!maker || _maker_is(every[i]->Maker, maker))) l = every[i];
+      }
+      if(!l && !maker && lenses) l = lenses[0];
       if(!l)
-        r = dtb__err(DTB_E_NOT_FOUND, "lens '%s' not found for camera '%s'", lens, camera);
+        r = dtb__err(DTB_E_NOT_FOUND, "lens '%s' not found for camera '%s'", lens, camera ? camera : "");
       else
       {
         void *tmp = dtb__memdup(m->params, m->params_size);
@@ -990,9 +1293,12 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
         else
         {
           // _camera_set(): model and crop factor
-          memset(pcam, 0, ncam);
-          g_strlcpy(pcam, cam->Model, ncam);
-          *crop = cam->CropFactor;
+          if(cam)
+          {
+            memset(pcam, 0, ncam);
+            g_strlcpy(pcam, cam->Model, ncam);
+            *crop = cam->CropFactor;
+          }
           // _lens_set(): model; a prime lens fixes the focal length
           memset(plens, 0, nlens);
           g_strlcpy(plens, l->Model, nlens);

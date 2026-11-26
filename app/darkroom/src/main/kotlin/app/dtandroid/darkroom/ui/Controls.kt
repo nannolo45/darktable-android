@@ -134,6 +134,11 @@ private fun Controls(controls: List<Control>, ctx: PanelContext) {
 
 @Composable
 private fun ControlView(c: Control, ctx: PanelContext) {
+    // brief P6d: lens correction's camera, lens and value rows are hand-built (desktop's menus and editable lists)
+    if (ctx.module.op == app.dtandroid.darkroom.LENS_OP && app.dtandroid.darkroom.LensNodes.handles(c.id)) {
+        LensRows(c.id, ctx)
+        return
+    }
     when (c) {
         // containers: their children fade one by one (the dragged slider may be one of them)
         is Control.Stack, is Control.Page, is Control.Group, is Control.Collapsible, is Control.Tabs -> ControlBody(c, ctx)

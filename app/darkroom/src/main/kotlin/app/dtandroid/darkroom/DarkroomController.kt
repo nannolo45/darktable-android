@@ -2746,6 +2746,9 @@ class DarkroomController(
     /** Brief P6b: lut 3D's file chooser over the phone's LUT folder (Lut3dFiles.kt); the host attaches the folder. */
     val lut3d: Lut3dFiles by lazy { Lut3dFiles(this) }
 
+    /** Brief P6d: lens correction's camera and lens by hand and its value lists (LensByHand.kt). */
+    val lens: LensByHand by lazy { LensByHand(this) }
+
     /** Brief P6b: lut 3D's file, by its path relative to the LUT folder: one history step (bridge `set_file`). */
     suspend fun chooseLutFile(key: InstanceKey, path: String) = change {
         engine.moduleAction(key.op, key.priority, "set_file", kotlinx.serialization.json.buildJsonObject { put("path", JsonPrimitive(path)) })
