@@ -24,13 +24,7 @@
     "usable": 38,
     "unbound_open": [],
     "pickers_marked": 5,
-    "pickers_missing": [
-     "white relative exposure",
-     "black relative exposure",
-     "set black and white relative exposure us",
-     "pivot relative exposure",
-     "pivot target output"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "tone mapping curve"
     ],
@@ -57,9 +51,9 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "partly",
-   "size": "medium",
-   "gap": "the five colour pickers (white, black and pivot exposure, \"set black and white\") and three buttons (read exposure from metadata, reset primaries, set from above) are not built; the read-only curve display is not drawn; every slider works",
-   "tests": ""
+   "size": "small",
+   "gap": "the read-only curve display is not drawn; every slider, the five pickers and the three buttons work",
+   "tests": "C43"
   },
   {
    "op": "ashift",
@@ -245,7 +239,6 @@
     "unbound_open": [],
     "pickers_marked": 2,
     "pickers_missing": [
-     "middle gray",
      "apply auto exposure based on a region de"
     ],
     "graphs": [],
@@ -273,8 +266,8 @@
    },
    "editing": "works",
    "size": "small",
-   "gap": "\"auto\" and two pickers are not built",
-   "tests": ""
+   "gap": "\"auto\" and its area picker are not built (auto exposure from a histogram of the module's input); the middle gray picker works",
+   "tests": "C43"
   },
   {
    "op": "bilat",
@@ -1100,7 +1093,7 @@
    },
    "editing": "partly",
    "size": "small",
-   "gap": "desktop's HSL view of lift/gamma/gain (hue and saturation sliders) and the two pickers (optimize luma, neutralize colors) are not built; the RGB factor sliders work; desktop lists it in no module group (search only)",
+   "gap": "desktop's HSL view of lift/gamma/gain (hue and saturation sliders) and the pickers are not built: \"optimize luma\" and \"neutralize colors\" use the patches its other pickers kept in the panel (left out by P6a); the RGB factor sliders work; desktop lists it in no module group (search only)",
    "tests": ""
   },
   {
@@ -1373,10 +1366,7 @@
     "usable": 32,
     "unbound_open": [],
     "pickers_marked": 2,
-    "pickers_missing": [
-     "node placement",
-     "white level"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "double-click to reset the curve\nmiddle-c"
     ],
@@ -1399,9 +1389,9 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "works",
-   "size": "small",
-   "gap": "two pickers (node placement, white level) are not built",
-   "tests": ""
+   "size": "-",
+   "gap": "the node placement picker shows the picked values only (desktop marks the hue on its graph)",
+   "tests": "C43"
   },
   {
    "op": "colorharmonizer",
@@ -1424,13 +1414,7 @@
     "usable": 16,
     "unbound_open": [],
     "pickers_marked": 5,
-    "pickers_missing": [
-     "anchor hue",
-     "hue of this harmony node (0°–360°).\nonly",
-     "hue of this harmony node (0°–360°).\nonly",
-     "hue of this harmony node (0°–360°).\nonly",
-     "hue of this harmony node (0°–360°).\nonly"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "",
      "",
@@ -1466,8 +1450,8 @@
    },
    "editing": "partly",
    "size": "small",
-   "gap": "the hue pickers (anchor hue and the four harmony hues) and the \"analyze\" and \"import\" buttons are not built; the sliders and lists work",
-   "tests": ""
+   "gap": "the \"analyze\" and \"import\" buttons are not built (analyze reads a hue histogram that desktop's process() collects); the sliders, lists and hue pickers work",
+   "tests": "C43"
   },
   {
    "op": "colorin",
@@ -1542,9 +1526,7 @@
     "usable": 4,
     "unbound_open": [],
     "pickers_marked": 1,
-    "pickers_missing": [
-     "hue"
-    ],
+    "pickers_missing": [],
     "graphs": [],
     "buttons": [],
     "on_photo_on_desktop": false,
@@ -1567,9 +1549,9 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "works",
-   "size": "small",
-   "gap": "the hue picker is not built; the sliders work",
-   "tests": ""
+   "size": "-",
+   "gap": "",
+   "tests": "C43"
   },
   {
    "op": "colormapping",
@@ -1804,9 +1786,7 @@
      }
     ],
     "pickers_marked": 2,
-    "pickers_missing": [
-     "create a curve based on an area from the"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "",
      ""
@@ -1832,9 +1812,9 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "works",
-   "size": "small",
-   "gap": "\"create a curve from an area\" picker is not built; the band editor, its options and \"pick/show color\" work",
-   "tests": ""
+   "size": "-",
+   "gap": "",
+   "tests": "C43"
   },
   {
    "op": "contrastntexture",
@@ -2807,10 +2787,10 @@
     "result": "yes",
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
-   "editing": "partly",
+   "editing": "works",
    "size": "small",
-   "gap": "the filter line cannot be moved: its position (\"offset\") is set only by dragging on the photo on desktop; a slider through a schema override would do; density, hardness, rotation, hue and saturation work (hue picker not built)",
-   "tests": ""
+   "gap": "the filter line is not drawn on the photo (its position is a slider, 0..100 %, where desktop drags the line); the hue picker is not built",
+   "tests": "C42"
   },
   {
    "op": "grain",
@@ -3068,9 +3048,7 @@
     "usable": 0,
     "unbound_open": [],
     "pickers_marked": 1,
-    "pickers_missing": [
-     ""
-    ],
+    "pickers_missing": [],
     "graphs": [],
     "buttons": [
      ""
@@ -3092,10 +3070,10 @@
     "result": "yes",
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
-   "editing": "missing",
-   "size": "small",
-   "gap": "its only control is the film colour picker, not built; an old edit renders and keeps its values",
-   "tests": ""
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C43"
   },
   {
    "op": "lens",
@@ -3196,11 +3174,7 @@
     "usable": 4,
     "unbound_open": [],
     "pickers_marked": 3,
-    "pickers_missing": [
-     "pick black point from image",
-     "pick medium gray point from image",
-     "pick white point from image"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "drag handles to set black, gray, and whi"
     ],
@@ -3226,8 +3200,8 @@
    },
    "editing": "partly",
    "size": "small",
-   "gap": "the levels graph, \"auto\" and the three pickers are not built (rgb levels replaces it)",
-   "tests": ""
+   "gap": "the levels graph and \"auto\" are not built (rgb levels replaces it); the three pickers work",
+   "tests": "C43"
   },
   {
    "op": "liquify",
@@ -3798,22 +3772,10 @@
    "schema": {
     "status": "ok",
     "controls": 8,
-    "usable": 7,
-    "unbound_open": [
-     {
-      "label": "auto tune levels",
-      "kind": "combobox",
-      "note": "no override says",
-      "built_in_app_panel": false
-     }
-    ],
+    "usable": 8,
+    "unbound_open": [],
     "pickers_marked": 4,
-    "pickers_missing": [
-     "middle gray luma",
-     "black relative exposure",
-     "dynamic range",
-     "auto tune levels"
-    ],
+    "pickers_missing": [],
     "graphs": [],
     "buttons": [],
     "on_photo_on_desktop": false,
@@ -3833,10 +3795,10 @@
     "result": "yes",
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
-   "editing": "partly",
-   "size": "small",
-   "gap": "four pickers and \"auto tune level\" are not built; the sliders work; desktop lists it in no module group (search only)",
-   "tests": ""
+   "editing": "works",
+   "size": "-",
+   "gap": "desktop lists it in no module group (search only)",
+   "tests": "C43"
   },
   {
    "op": "rasterfile",
@@ -4060,9 +4022,7 @@
     "usable": 2,
     "unbound_open": [],
     "pickers_marked": 1,
-    "pickers_missing": [
-     "toggle tool for picking median lightness"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "select the center of fill-light\nctrl+cli"
     ],
@@ -4087,8 +4047,8 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "works",
-   "size": "small",
-   "gap": "the picker is not built",
+   "size": "-",
+   "gap": "the picker shows the picked values only (desktop marks them on its center slider)",
    "tests": ""
   },
   {
@@ -4225,9 +4185,7 @@
     "usable": 2,
     "unbound_open": [],
     "pickers_marked": 4,
-    "pickers_missing": [
-     "apply auto levels based on a region defi"
-    ],
+    "pickers_missing": [],
     "graphs": [
      "drag handles to set black, gray, and whi"
     ],
@@ -4251,10 +4209,10 @@
     "result": "yes",
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
-   "editing": "partly",
-   "size": "small",
-   "gap": "\"auto\" and \"apply auto levels from an area\" are not built; the levels graph and the black, gray and white pickers work",
-   "tests": "C19"
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C19, C43"
   },
   {
    "op": "rotatepixels",
@@ -4655,7 +4613,7 @@
    },
    "editing": "works",
    "size": "small",
-   "gap": "two pickers (pre-compression boost, post-compression scale) are not built; \"download data pack\" is not needed (the app carries the pack)",
+   "gap": "two pickers (pre-compression boost, post-compression scale) are not built: desktop solves its film simulation for the picked highlight (_solve_boost_for_lightness, _solve_scale_for_lightness), which the engine cannot call without a copy of the simulation; \"download data pack\" is not needed (the app carries the pack)",
    "tests": ""
   },
   {
@@ -4679,10 +4637,7 @@
     "usable": 6,
     "unbound_open": [],
     "pickers_marked": 2,
-    "pickers_missing": [
-     "hue",
-     "hue"
-    ],
+    "pickers_missing": [],
     "graphs": [],
     "buttons": [
      "",
@@ -4706,9 +4661,9 @@
     "detail": "max 0, mean 0.00000, PSNR inf"
    },
    "editing": "works",
-   "size": "small",
-   "gap": "the two hue pickers are not built; the sliders work",
-   "tests": ""
+   "size": "-",
+   "gap": "",
+   "tests": "C43"
   },
   {
    "op": "spots",
@@ -4775,15 +4730,8 @@
    "schema": {
     "status": "ok",
     "controls": 9,
-    "usable": 8,
-    "unbound_open": [
-     {
-      "label": "settings",
-      "kind": "combobox",
-      "note": "not available yet on the phone",
-      "built_in_app_panel": false
-     }
-    ],
+    "usable": 9,
+    "unbound_open": [],
     "pickers_marked": 1,
     "pickers_missing": [],
     "graphs": [],
@@ -4807,10 +4755,10 @@
     "result": "yes",
     "detail": "on in the test edit (T1)"
    },
-   "editing": "partly",
-   "size": "small",
-   "gap": "the \"settings\" list (camera presets such as daylight, cloudy, flash and their fine-tuning) is not built; the bridge already lists the presets (C14), the app needs the list; temperature, tint, as shot, camera reference and \"from image area\" work",
-   "tests": "C14"
+   "editing": "works",
+   "size": "-",
+   "gap": "",
+   "tests": "C14, C41, C43"
   },
   {
    "op": "tonecurve",
@@ -5224,14 +5172,14 @@
   "hidden": 7,
   "deprecated": 16,
   "editing": {
-   "works": 56,
-   "partly": 23,
-   "missing": 11,
+   "works": 61,
+   "partly": 19,
+   "missing": 10,
    "n/a": 7
   },
   "editing_current": {
-   "works": 50,
-   "partly": 19,
+   "works": 54,
+   "partly": 15,
    "missing": 5
   },
   "renders": {
