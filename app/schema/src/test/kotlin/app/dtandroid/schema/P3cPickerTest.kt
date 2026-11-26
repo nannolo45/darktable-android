@@ -47,9 +47,12 @@ class P3cPickerTest {
         assertEquals("set_nodes_from_area", m("rgbcurve").pickers.getValue(7).action!!.name)
         assertNull("show color only shows the values", m("rgbcurve").pickers.getValue(6).action)
         assertEquals("spot", m("channelmixerrgb").pickers.getValue(6).action!!.name)
-        // pickers without an engine action are not built (shown greyed out)
-        assertNull(m("colorzones").pickers[7])
-        assertNull(m("rgblevels").pickers[12])
+        // pickers without an engine action are not built (shown greyed out). Brief P6a built colour zones' "create
+        // curve" and rgb levels' "auto region" (changed on purpose): spektrafilm's and graduated density's stay
+        assertNotNull(m("colorzones").pickers[7])
+        assertNotNull(m("rgblevels").pickers[12])
+        assertNull(m("spektrafilm").pickers[100])
+        assertNull(m("graduatednd").pickers[3])
     }
 
     @Test fun settingsAreBoundAndNoLongerWait() {
