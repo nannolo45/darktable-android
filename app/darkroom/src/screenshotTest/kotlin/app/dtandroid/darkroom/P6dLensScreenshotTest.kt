@@ -29,7 +29,7 @@ class PhoneP6dScreenshots : ScreenshotBase() {
 
     private fun shots(tokens: DtTokens, name: String) {
         // the file's camera and lens are not in the stand-in's Lensfun: desktop's "pick one" state
-        val c = show(tokens = tokens) { setParam(key, "method", JsonPrimitive(1L)); toggleExpanded(key) } // method: Lensfun database, desktop's default
+        val c = show(tokens = tokens) { setParam(key, "method", JsonPrimitive("DT_IOP_LENS_METHOD_LENSFUN")); toggleExpanded(key) } // method: Lensfun database, desktop's default
         c.goToModule(key)
         runBlocking { c.lens.refresh(key).join() }
         assertTrue(c.lens.ui.value.state != null)
