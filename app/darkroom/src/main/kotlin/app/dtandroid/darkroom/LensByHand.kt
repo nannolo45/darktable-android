@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.darkroom
 
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,27 +53,27 @@ class LensByHand(private val c: DarkroomController) {
         c.engineRead { it.moduleAction(LENS_OP, key.priority, name, args) }
 
     /** Read what the panel shows (get_state) again, after a change or a photo. */
-    fun refresh(key: InstanceKey) {
-        c.launch {
-            val st = runCatching { LensPicker.parseState(action(key, "get_state")) }.getOrNull()
-            _ui.update { it.copy(state = st ?: it.state, stateKey = key) }
-        }
+    fun refresh(key: InstanceKey): Job = c.launch { readState(key) }
+
+    private suspend fun readState(key: InstanceKey) {
+        val st = runCatching { LensPicker.parseState(action(key, "get_state")) }.getOrNull()
+        _ui.update { it.copy(state = st ?: it.state, stateKey = key) }
     }
 
     /** Open a picker; [found] starts with desktop's auto-search result (the Exif camera or lens) instead of every entry. */
-    fun open(key: InstanceKey, pick: LensPick, found: Boolean) {
+    fun open(key: InstanceKey, pick: LensPick, found: Boolean): Job {
         _ui.update { it.copy(found = found, loading = true, error = null, cameras = emptyList(), lenses = emptyList()) }
         c.setOverlay(Overlay.LensPicker(key, pick))
-        load(key, pick, found)
+        return load(key, pick, found)
     }
 
     /** "show all" inside a picker opened by "find" */
-    fun showAll(key: InstanceKey, pick: LensPick) {
+    fun showAll(key: InstanceKey, pick: LensPick): Job {
         _ui.update { it.copy(found = false, loading = true, error = null) }
-        load(key, pick, false)
+        return load(key, pick, false)
     }
 
-    private fun load(key: InstanceKey, pick: LensPick, found: Boolean) {
+    private fun load(key: InstanceKey, pick: LensPick, found: Boolean): Job =
         c.launch {
             try {
                 when (pick) {
@@ -93,22 +94,20 @@ class LensByHand(private val c: DarkroomController) {
                 _ui.update { it.copy(loading = false, error = e.message ?: "the list could not be read") }
             }
         }
-    }
 
-    private fun write(key: InstanceKey, name: String, args: JsonObject) {
+    private fun write(key: InstanceKey, name: String, args: JsonObject): Job =
         c.launch {
             engineChange { e ->
                 e.moduleAction(LENS_OP, key.priority, name, args)
                 e.historySeal()
             }
-            refresh(key)
+            readState(key)
         }
-    }
 
     /** _camera_menu_select(): the camera and its crop factor; the lens stays as it is, as on desktop. */
-    fun chooseCamera(key: InstanceKey, cam: LensCamera) {
+    fun chooseCamera(key: InstanceKey, cam: LensCamera): Job {
         c.setOverlay(null)
-        write(key, "set_camera", buildJsonObject {
+        return write(key, "set_camera", buildJsonObject {
             put("model", cam.model)
             put("maker", cam.maker)
             cam.variant?.let { put("variant", it) }
@@ -116,18 +115,18 @@ class LensByHand(private val c: DarkroomController) {
     }
 
     /** _lens_menu_select(): the lens, the automatic scale, `has_been_set`. */
-    fun chooseLens(key: InstanceKey, lens: LensInfo) {
+    fun chooseLens(key: InstanceKey, lens: LensInfo): Job {
         c.setOverlay(null)
-        write(key, "set_lens", buildJsonObject {
+        return write(key, "set_lens", buildJsonObject {
             put("lens", lens.model)
             put("maker", lens.maker)
         })
     }
 
     /** _lens_comboentry_*_update(): the value and `has_been_set`. */
-    fun setValue(key: InstanceKey, kind: LensValueKind, value: Double) {
+    fun setValue(key: InstanceKey, kind: LensValueKind, value: Double): Job {
         c.setOverlay(null)
-        write(key, "set_value", buildJsonObject {
+        return write(key, "set_value", buildJsonObject {
             put("name", kind.param)
             put("value", JsonPrimitive(value))
         })

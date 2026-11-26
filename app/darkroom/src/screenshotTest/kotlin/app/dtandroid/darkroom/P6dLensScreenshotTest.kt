@@ -6,6 +6,7 @@ import androidx.compose.ui.test.performTextInput
 import app.dtandroid.darkroom.ui.DarkroomLayout
 import app.dtandroid.ui.theme.DtTokens
 import app.dtandroid.ui.theme.Skin
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,26 +24,20 @@ class PhoneP6dScreenshots : ScreenshotBase() {
     override val layout = DarkroomLayout.PHONE
     private val key = InstanceKey(LENS_OP, 0)
 
-    private fun waitUntil(what: String, cond: () -> Boolean) {
-        val end = System.currentTimeMillis() + 15_000
-        while (!runCatching(cond).getOrDefault(false) && System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(10) }
-        assertTrue("timed out: $what", runCatching(cond).getOrDefault(false))
-    }
-
     private fun shots(tokens: DtTokens, name: String) {
         // the file's camera and lens are not in the stand-in's Lensfun: desktop's "pick one" state
         val c = show(tokens = tokens) { toggleExpanded(key) }
         c.goToModule(key)
-        waitUntil("state read") { c.lens.ui.value.state != null }
+        runBlocking { c.lens.refresh(key).join() }
+        assertTrue(c.lens.ui.value.state != null)
         settle(c)
         compose.onNodeWithContentDescription("camera model").assertExists()
         capture("$name-p6d-01-unknown")
 
         // a camera and a lens chosen
-        runCatching { c.lens.chooseCamera(key, LensCamera("Canon", "Canon EOS 40D", null, "Canon EF-S", 1.6)) }
-        waitUntil("camera") { c.lens.ui.value.state?.camera != null || runCatching { c.state.value.history.items.isNotEmpty() }.getOrDefault(false) }
-        c.lens.chooseLens(key, LensInfo("Canon", "Canon EF-S 18-55mm f/3.5-5.6 IS", 18.0, 55.0, 3.5, 5.6))
-        waitUntil("lens") { c.lens.ui.value.state?.lens != null }
+        runBlocking { c.lens.chooseCamera(key, LensCamera("Canon", "Canon EOS 40D", null, "Canon EF-S", 1.6)).join() }
+        runBlocking { c.lens.chooseLens(key, LensInfo("Canon", "Canon EF-S 18-55mm f/3.5-5.6 IS", 18.0, 55.0, 3.5, 5.6)).join() }
+        assertTrue(c.lens.ui.value.state?.lens != null)
         settle(c)
         c.goToModule(key)
         settle(c)
@@ -50,8 +45,8 @@ class PhoneP6dScreenshots : ScreenshotBase() {
         capture("$name-p6d-02-module")
 
         // the camera picker, then with a search
-        c.lens.open(key, LensPick.CAMERA, found = false)
-        waitUntil("cameras") { c.lens.ui.value.cameras.size == 6 }
+        runBlocking { c.lens.open(key, LensPick.CAMERA, found = false).join() }
+        assertEquals(6, c.lens.ui.value.cameras.size)
         settle(c)
         compose.onNodeWithContentDescription("search cameras").assertExists()
         capture("$name-p6d-03-camera-picker")
@@ -61,8 +56,8 @@ class PhoneP6dScreenshots : ScreenshotBase() {
         c.setOverlay(null)
 
         // the lens picker, then with a search
-        c.lens.open(key, LensPick.LENS, found = false)
-        waitUntil("lenses") { c.lens.ui.value.lenses.size == 4 }
+        runBlocking { c.lens.open(key, LensPick.LENS, found = false).join() }
+        assertEquals(4, c.lens.ui.value.lenses.size)
         settle(c)
         capture("$name-p6d-05-lens-picker")
         compose.onNodeWithContentDescription("search lenses").performTextInput("fish")
