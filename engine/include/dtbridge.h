@@ -215,7 +215,9 @@ int dtb_module_reset(const char *op, int priority);
  *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal, min_aperture, max_aperture} ];
  *                   use_latest_md [M] (desktop's "use latest algorithm": md_version 2, scale_md_v1 0);
  *                   set_lens {camera, lens} [M]
- *   lut3d:          set_file {path} [M]
+ *   lut3d:          set_file {path} [M]: path relative to the LUT folder
+ *                   (dtb_lut_folder_set), or absolute inside it; ".." refused,
+ *                   .gmz refused (no G'MIC), a missing file DTB_E_IO
  *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
  *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
  *   P1b part 2 (engine-api.md 6.3), each picks an "area" or "point" first:
@@ -231,6 +233,24 @@ int dtb_module_reset(const char *op, int priority);
  *                   entry of that name; names can repeat, indices do not) */
 int dtb_module_action(const char *op, int priority, const char *action, const char *args_json,
                       char **result_json);
+
+/* Brief P6b (PLAN 4.6): the LUT folder, darktable's preference
+ * plugins/darkroom/lut3d/def_path (desktop sets it in preferences >
+ * processing). lut3d's "filepath" and set_file {path} are relative to it.
+ * dir: an absolute path, or NULL / "" for none (lut3d then renders as a
+ * pass-through, as on desktop). With an image open, its pipelines are made
+ * again and their caches emptied (the history is not touched), so lut3d
+ * reads its file again: call it again
+ * with the same folder after a file in it was added, changed or removed.
+ * A file that is missing or unreadable renders as a pass-through (the picture
+ * is unchanged), as desktop does. */
+int dtb_lut_folder_set(const char *dir);
+
+/* 1 when lut3d reads a file of this name: a suffix .png .PNG .cube .CUBE
+ * .3dl .3DL, spelt as iop/lut3d.c's _calculate_clut() tests them (desktop's
+ * list shows ".Cube" too, but renders nothing for it). No G'MIC in this
+ * build, so never for .gmz. Needs no engine. */
+int dtb_lut_name_usable(const char *name);
 
 /* ---------------------------------------------------------------------- */
 /* 2.5 instances                                                           */

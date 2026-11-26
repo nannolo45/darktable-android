@@ -67,6 +67,7 @@ Brief: the brief (`docs/briefs/`) that introduced it.
 | C41 | wbsettings | dtb_test_p6a.c | P6a | white balance settings list, camera presets and fine tuning against wb_presets.json; darktable-cli parity |
 | C42 | gradoffset | dtb_test_p6a.c | P6a | graduated density offset (slider); darktable-cli parity |
 | C43 | dtb_pickref p6a (tool) | dtb_pickref.c, pickref_*.c | P6a | P6a pickers and buttons, white balance presets' temperature/tint, against darktable's callbacks |
+| C44 | lut3dfiles | dtb_test_p6b.c | P6b | LUT folder set through the bridge; .cube, .3dl, Hald .png by relative path; missing file; darktable-cli parity |
 
 ## Shared ids
 

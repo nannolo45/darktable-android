@@ -19,6 +19,7 @@
 #include "common/noiseprofiles.h"
 #include "common/wb_presets.h"
 #include "control/conf.h"
+#include "develop/pixelpipe_cache.h"
 
 #include <lcms2.h>
 #include <lensfun.h>
@@ -1021,6 +1022,39 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
 /* ================================================================== */
 /* lut3d, iop/lut3d.c                                                 */
 
+/* The suffixes _calculate_clut() (iop/lut3d.c) tests, case by case */
+int dtb_lut_name_usable(const char *name)
+{
+  static const char *const ext[] = { ".png", ".PNG", ".cube", ".CUBE", ".3dl", ".3DL" };
+  for(size_t i = 0; name && i < G_N_ELEMENTS(ext); i++)
+    if(g_str_has_suffix(name, ext[i])) return 1;
+  return 0;
+}
+
+/* Brief P6b: the LUT folder is darktable's preference
+ * plugins/darkroom/lut3d/def_path, as desktop's preferences dialog sets it.
+ * lut3d reads its file in commit_params; with an image open the pipes'
+ * pieces are made again and their caches emptied, so a file that appeared,
+ * changed or went away is read again (a pass-through output cached under
+ * the same parameters would otherwise stay). */
+int dtb_lut_folder_set(const char *dir)
+{
+  NEED_INIT();
+  const char *d = dir ? dir : "";
+  if(d[0] && !g_path_is_absolute(d)) return dtb__err(DTB_E_ARG, "the LUT folder must be an absolute path: %s", d);
+  dt_conf_set_string("plugins/darkroom/lut3d/def_path", d);
+  if(dtb_S.open)
+  {
+    // the pipes' pieces are made again (commit_params reads the file) and
+    // their cached outputs dropped; the history is not touched
+    dtb_pipe_t *ps[2] = { &dtb_S.full, &dtb_S.preview };
+    for(int i = 0; i < 2; i++)
+      if(ps[i]->ready) dt_dev_pixelpipe_cache_flush(&ps[i]->pipe);
+    dtb__pipes_dirty(DT_DEV_PIPE_REMOVE | DT_DEV_PIPE_SYNCH);
+  }
+  return DTB_OK;
+}
+
 /* _button_clicked() and _filepath_callback() without G'MIC: the file must
  * lie inside the LUT root folder (configuration key
  * plugins/darkroom/lut3d/def_path); params "filepath" holds the path
@@ -1058,9 +1092,14 @@ static int _act_lut3d(dt_iop_module_t *m, const char *action, JsonObject *a, cha
   }
   if(!r)
   {
+    // _calculate_clut() reads only these spellings (.png or .PNG, not .Png);
+    // a file desktop lists but cannot read is refused here rather than set
+    // and silently not applied. No G'MIC in this build: no .gmz.
     gchar *lower = g_ascii_strdown(rel, -1);
-    if(!g_str_has_suffix(lower, ".png") && !g_str_has_suffix(lower, ".cube") && !g_str_has_suffix(lower, ".3dl"))
-      r = dtb__err(DTB_E_ARG, "not a hald CLUT (png) or 3D LUT (cube, 3dl): %s", rel);
+    if(g_str_has_suffix(lower, ".gmz"))
+      r = dtb__err(DTB_E_ARG, "G'MIC compressed LUT (gmz) needs a darktable built with G'MIC: %s", rel);
+    else if(!dtb_lut_name_usable(rel))
+      r = dtb__err(DTB_E_ARG, "not a hald CLUT (png) or 3D LUT (cube, 3dl) darktable reads: %s", rel);
     g_free(lower);
   }
   if(!r)

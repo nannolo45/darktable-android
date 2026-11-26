@@ -44,6 +44,7 @@
  *   perspective                    C33: P3n, see dtb_test_p3n.c
  *   rtfocus, pickwork, diffpreset  C37, C38, C39: P4c, see dtb_test_p4c.c
  *   wbsettings, gradoffset      C41, C42: P6a, see dtb_test_p6a.c
+ *   lut3dfiles                  C44: P6b, see dtb_test_p6b.c
  *   memory                         C34: P4a, see dtb_test_p4a.c
  *   exportprog                     C27: P3g export progress and cancel, see dtb_test_p3g.c
  *   snaphist                       C28: P3h render of another history position, see dtb_test_p3h.c
@@ -3225,6 +3226,7 @@ static int cmd_cpus(const char *workdir)
 #include "dtb_test_p4d.c"
 #include "dtb_test_p5a.c"
 #include "dtb_test_p6a.c"
+#include "dtb_test_p6b.c"
 
 int main(int argc, char **argv)
 {
@@ -3277,7 +3279,7 @@ int main(int argc, char **argv)
       { "cost", cmd_cost }, { "drag", cmd_drag },
       { "e1", cmd_e1 }, { "presets", cmd_presets }, { "persist", cmd_persist },
       { "styles", cmd_styles }, { "actions2", cmd_actions2 }, { "defedit", cmd_defedit }, { "times", cmd_times },
-      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch }, { "perspective", cmd_perspective }, { "memory", cmd_memory }, { "resources", cmd_resources }, { "resources1", cmd_resources1 }, { "opencl", cmd_opencl }, { "rtfocus", cmd_rtfocus }, { "pickwork", cmd_pickwork }, { "diffpreset", cmd_diffpreset }, { "opencl_lib", cmd_opencl_lib }, { "modaudit", cmd_modaudit }, { "wbsettings", cmd_wbsettings }, { "gradoffset", cmd_gradoffset },
+      { "bypass", cmd_bypass }, { "undohash", cmd_undohash }, { "pickers", cmd_pickers }, { "coords", cmd_coords }, { "blend", cmd_blend }, { "masks", cmd_masks }, { "maskshow", cmd_maskshow }, { "masks_desktop", cmd_masks_desktop }, { "masktree", cmd_masktree }, { "exportprog", cmd_exportprog }, { "snaphist", cmd_snaphist }, { "undomask", cmd_undomask }, { "copypaste", cmd_copypaste }, { "shared", cmd_shared }, { "retouch", cmd_retouch }, { "perspective", cmd_perspective }, { "memory", cmd_memory }, { "resources", cmd_resources }, { "resources1", cmd_resources1 }, { "opencl", cmd_opencl }, { "rtfocus", cmd_rtfocus }, { "pickwork", cmd_pickwork }, { "diffpreset", cmd_diffpreset }, { "opencl_lib", cmd_opencl_lib }, { "modaudit", cmd_modaudit }, { "wbsettings", cmd_wbsettings }, { "gradoffset", cmd_gradoffset }, { "lut3dfiles", cmd_lut3dfiles },
     };
     for(size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
       if(!strcmp(cmd, cmds[i].name)) r = cmds[i].f(argv[3], argv[4], argv[5]);
