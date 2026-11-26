@@ -115,6 +115,23 @@ static gchar *p6d_args(const char *camera, const char *lens, const char *maker, 
   return g_string_free(g, FALSE);
 }
 
+/* an edit that may leave the parameters as they were (then no history item is made, as for any module):
+ * one item when a parameter shown here changed, else none or one */
+static JsonNode *p6d_edit_maybe(const char *what, const char *act, const char *args)
+{
+  const int before = p6d_items();
+  p6d_params_t a, b;
+  p6d_read(&a);
+  JsonNode *r = action("lens", 0, act, args, DTB_OK);
+  const int after = p6d_items();
+  p6d_read(&b);
+  const int changed = strcmp(a.camera, b.camera) || strcmp(a.lens, b.lens) || a.focal != b.focal || a.aperture != b.aperture
+                      || a.distance != b.distance || a.crop != b.crop || a.has_been_set != b.has_been_set;
+  CHECK(after == before + 1 || (!changed && after == before), "%s: %d history items before, %d after (parameters %s)", what, before,
+        after, changed ? "changed" : "unchanged");
+  return r;
+}
+
 static int p6d_has_model(JsonArray *a, const char *model)
 {
   for(guint i = 0; i < json_array_get_length(a); i++)
@@ -252,11 +269,13 @@ static int cmd_lensbyhand(const char *raw, const char *xmp, const char *outdir)
     if((strstr(low, "fish") || strstr(low, "fisheye")) && p6d_num(o, "min_focal") <= p6d_num(o, "max_focal")) fish = o;
     g_free(low);
   }
-  CHECK(fish != NULL, "no fisheye lens for '%s'", cam_model);
+  // a fixed-lens camera has one lens only (the Sony compact of the third test image): that one
+  if(!fish && nls >= 1) fish = json_array_get_object_element(lsa, 0);
+  CHECK(fish != NULL, "no lens for '%s'", cam_model);
   if(fish)
   {
     args = p6d_args(cam_model, p6d_str(fish, "model"), p6d_str(fish, "maker"), NULL, NULL);
-    json_node_unref(p6d_edit("set_lens", "set_lens", args));
+    json_node_unref(p6d_edit_maybe("set_lens", "set_lens", args));
     g_free(args);
     p6d_params_t p;
     p6d_read(&p);
@@ -270,15 +289,24 @@ static int cmd_lensbyhand(const char *raw, const char *xmp, const char *outdir)
           "get_state does not show the lens that was set");
     json_node_unref(s2);
   }
-  // a lens without a camera: the camera and crop factor stay
+  // a lens without a camera: the camera and crop factor stay (a lens other than the one set, else nothing changes
+  // and no history item is made)
+  JsonObject *another = NULL;
+  for(guint i = 0; i < nls && !another; i++)
+  {
+    JsonObject *o = json_array_get_object_element(lsa, nls - 1 - i);
+    if(fish && strcmp(p6d_str(o, "model"), p6d_str(fish, "model"))) another = o;
+  }
+  if(another)
   {
     p6d_params_t before, after;
     p6d_read(&before);
-    args = p6d_args(NULL, p6d_str(json_array_get_object_element(lsa, 0), "model"), NULL, NULL, NULL);
+    args = p6d_args(NULL, p6d_str(another, "model"), p6d_str(another, "maker"), NULL, NULL);
     json_node_unref(p6d_edit("set_lens without a camera", "set_lens", args));
     g_free(args);
     p6d_read(&after);
     CHECK(!strcmp(before.camera, after.camera) && before.crop == after.crop, "set_lens without a camera changed the camera");
+    CHECK(!strcmp(after.lens, p6d_str(another, "model")), "set_lens without a camera: lens '%s'", after.lens);
     if(fish)
     {
       args = p6d_args(cam_model, p6d_str(fish, "model"), p6d_str(fish, "maker"), NULL, NULL);
@@ -291,7 +319,12 @@ static int cmd_lensbyhand(const char *raw, const char *xmp, const char *outdir)
   g_free(args);
 
   // ---- the three values: parameter and has_been_set, one history item each
-  static const struct { const char *name; double v; } vals[] = { { "focal", 17.5 }, { "aperture", 5.6 }, { "distance", 2.5 } };
+  // each value differs from the current one (writing the same value is no change, so no history item)
+  p6d_params_t cur;
+  p6d_read(&cur);
+  const struct { const char *name; double v; } vals[] = { { "focal", floor(cur.focal * 1.3 + 0.37) + 0.5 },
+                                                           { "aperture", floor(cur.aperture * 1.3 + 0.37) + 0.5 },
+                                                           { "distance", floor(cur.distance * 0.7 + 0.37) + 0.5 } };
   for(size_t i = 0; i < G_N_ELEMENTS(vals); i++)
   {
     char vargs[128];
@@ -317,10 +350,11 @@ static int cmd_lensbyhand(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_history_goto(end - 1));
     p6d_params_t p;
     p6d_read(&p);
-    CHECK(fabs(p.distance - 2.5) > 1e-5, "undo did not restore the distance (still %g of %d items)", p.distance, n);
+    const double dv = vals[2].v;
+    CHECK(fabs(p.distance - dv) > 1e-5, "undo did not restore the distance (still %g of %d items)", p.distance, n);
     MUST(dtb_history_goto(end));
     p6d_read(&p);
-    CHECK(fabs(p.distance - 2.5) < 1e-5, "redo lost the distance (%g)", p.distance);
+    CHECK(fabs(p.distance - dv) < 1e-5, "redo lost the distance (%g)", p.distance);
   }
 
   // ---- render: differs from the module switched off
