@@ -20,7 +20,7 @@ Brief: docs/briefs/P6d-lens-correction.md. Branch `p6d-lens-correction`.
 ## 3. Results
 - g0 45863255862 (head 7a1ec53): C14 and C45 PASS on cr2, raf, arw. C45 renders equal darktable-cli (max 0, psnr inf) on all three images. Lensfun 0.3.4: 948 cameras, 1304 lenses; set_lens/set_camera/set_value each give one history item, XMP round trip renders identically.
 - p2a 45856799070 (b990e0e): green, 524 tests including the 21 P6d screenshot tests.
-- p2b 45860016575 (b990e0e): green. Second p2b and p2a on 7a1ec53: see PR comment or ci-logs (ids 45868286431, 45868299376).
+- p2b 45860016575 (b990e0e): green. Second p2b 45868286431 and p2a 45868299376 on 7a1ec53: both green.
 - Commits after b990e0e touch only the g0 workflow cache key. Measurements, where any, are x86_64 on 2 cores.
 
 ## 4. Upstream and CI surprises
