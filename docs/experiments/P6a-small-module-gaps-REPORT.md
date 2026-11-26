@@ -144,7 +144,46 @@ python3 -I tools/module-audit.py /tmp/dt --report docs/experiments/P5a-module-au
 
 ## 4. Results with numbers
 
-@@RESULTS@@
+Last code commit **d7e24972** (later commits change `docs/` only).
+
+| Workflow | Run | Result |
+|---|---|---|
+| p2a-app | 45731530940 | success: 647 JVM and screenshot tests, 0 failed (new: schema P6aModuleGapsTest 8, darkroom P6aModuleGapsTest 3, PhoneP6aScreenshots 3); rule check; kept list |
+| g0-app | 45730511265 | Linux bridge suite **514 PASS, 0 FAIL** (C41, C42, C43 on cr2, raf, arw included); Android engines arm64-v8a and x86_64 built; its apk job failed on P6aTapTest's missing import (fixed in d7e24972, then built by p2b) |
+| p2b-real-engine | 45735375991 | success: emulator **OK, 131 tests** (P6aTapTest t1, t2 included); compares as before; APK release **dt-android-d7e24972df5b** |
+| p2b-real-engine | 45732776612 | failure: `P3mRetouchLutTest.algorithmsSettingsOpacityRemove` (JVM, stand-in engine) "expected null, but was (0.33, 0.47)": not touched by P6a, passed in both p2a runs and in the next p2b; a timing flake, reported here, not changed |
+| g0-app | @@C40RUN@@ | `tests=C40`: @@C40RES@@ |
+
+| What | Result | Where |
+|---|---|---|
+| C41 white balance list and presets | 3 cameras (Canon EOS 40D 6 presets, Fujifilm X-T3 7, Sony DSC-RX100M3 15 with "daylight" -7..7): multipliers vs `wb_presets.json` **0** difference, every fine-tuning step 0; desktop's order; one current entry; darktable-cli parity of the XMP: identical (psnr inf) | g0 `g0-linux/<image>/C41.log`; workspace |
+| C42 graduated density offset | one history item; darktable-cli parity identical (psnr inf) on 3 images | same |
+| C43 P6a actions vs desktop's callbacks | **0** largest difference (bound 1e-6) on 3 images: 4 rgb levels auto cases, 3 levels, invert, 2 split-toning, colorize, 4 unbreak profile, basic adjustments, colour equalizer (and its colour space), 3 colour zones, 2 colour harmonizer, 10 AgX pickers, 5 AgX buttons; white balance temperature and tint of 6 + 7 + 141 preset tunings vs `_mul2temp`: 0 K, 0 | g0 `g0-linux/<image>/C43.log` |
+| C4, C14, C19, C25, C38 (touched code nearby) | PASS on 3 images | g0; workspace (37 PASS) |
+| emulator P6aTapTest | t1 rgb levels "auto" by tap: levels R [0.00142, 0.50071, 1.0], history 11 → 13 (module switched on, then auto, as desktop); t2 AgX black relative exposure picker by tap: -10 → -10.4046 EV (denoised area), pivot 0.6155, history 11 → 13 | p2b `p2b-emulator/p2b-test/p6a-results.txt` |
+| screenshots, three skins | `phone-{darktable,modern,l1}-p6a-01-wb-preset.png` (daylight with finetune, +0 mired), `...-p6a-02-wb-settings-list.png` (heading, greyed "user modified" with its reason); looked at | p2a `p2a-app/screenshots/` |
+| audit | works 56 → 61, partly 23 → 19, missing 11 → 10, n/a 7 (current: works 50 → 54, partly 19 → 15, missing 5 → 5) | `docs/experiments/P5a-module-audit.md`, `P5a-results/modules.json` |
+
+Workspace runs (x86_64, 2 cores) used the same commands as CI; no timings were taken.
+
+## 4b. Owner instructions
+
+Install **dt-android-d7e24972df5b** (`dt-android-arm64-v8a.apk`) over the old one.
+
+- **White balance → settings**: tap it: the list has as shot, from image area, user modified (greyed: it is set by
+  the sliders), camera reference, then your camera's name and its presets (daylight, cloudy, shade, flash, ...).
+  Choose one: the photo changes, one history step. Where the preset has fine tuning, the **finetune** slider appears
+  below it (in mired, the camera's own range). "from image area" switches the picker on, as on the PC.
+- **Graduated density → offset** (below rotation): moves the filter line, 50 % = through the centre (for an untilted
+  line 0 % is the top edge and 100 % the bottom edge).
+- **New pickers and buttons** (all as on the PC): rgb levels "auto" and its area picker; AgX's five pickers and its
+  buttons "read exposure", "reset primaries" (blender-like, smooth, unmodified), "set from above"; colour equalizer's
+  white level; colour zones' "create curve"; colour harmonizer's hue pickers; split-toning's and colorize's hue
+  pickers; unbreak input profile's four pickers; basic adjustments' middle gray; invert's film colour (invert is
+  usable now); levels' black, gray, white. Fill light's and colour equalizer's node placement pickers show the
+  values under the photo.
+- **Please check** on a photo you also edit on the PC: white balance with a preset and a finetune step (the channel
+  coefficients should match the PC's), and AgX's "auto tune levels" on the same area.
 
 ## 5. Surprises in upstream
 
