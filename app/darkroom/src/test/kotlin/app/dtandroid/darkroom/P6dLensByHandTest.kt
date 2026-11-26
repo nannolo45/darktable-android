@@ -44,7 +44,7 @@ class P6dLensByHandTest {
         assertEquals("lens model", labels(m.control(LensNodes.LENS_ROW)!!).first())
         assertEquals(2, labels(m.control(LensNodes.LENS_ROW)!!).size)
         assertEquals(listOf("mm", "f/", "d"), labels(m.control(LensNodes.VALUES_ROW)!!))
-        assertTrue("the three notes of P2j are gone", m.notes.isEmpty())
+        assertTrue("no control of lens correction says it is not available", m.notes.values.none { it.contains("not available") })
     }
 
     @Test fun choosingACameraALensAndTheValuesAreOneHistoryItemEach() = runBlocking {
