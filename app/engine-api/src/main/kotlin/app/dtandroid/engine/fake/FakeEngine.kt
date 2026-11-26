@@ -486,6 +486,13 @@ class FakeEngine(
         ModuleInstance.listFromJson(arr)
     }
 
+    /** Brief P6d: the lens module's text fields (camera, lens) are strings here, not the catalog's char arrays: written whole, as one item. */
+    private fun Session.lensWrite(op: String, priority: Int, values: Map<String, JsonPrimitive>) {
+        val cur = live()[op to priority]!!
+        beginChange()
+        addItem(op, priority, true, JsonObject(cur.params + values))
+    }
+
     /** Type and range check, then the new parameter structure. */
     private fun setPath(d: FakeModuleCatalog.ModuleDef, params: JsonObject, path: String, value: JsonPrimitive): JsonObject {
         val steps = ParamPath.parse(path)
@@ -684,9 +691,56 @@ class FakeEngine(
                 s.setParams(op, priority, mapOf("red" to JsonPrimitive(c[0]), "green" to JsonPrimitive(c[1]), "blue" to JsonPrimitive(c[2])), merge = true)
                 JsonObject(emptyMap())
             }
-            "temperature" to "list_presets", "lens" to "list_cameras", "denoiseprofile" to "list_profiles" -> JsonArray(emptyList())
-            "lens" to "list_lenses" -> JsonArray(emptyList())
-            "lens" to "set_lens", "denoiseprofile" to "set_profile" -> {
+            "temperature" to "list_presets", "denoiseprofile" to "list_profiles" -> JsonArray(emptyList())
+            // brief P6d: a small Lensfun of the fake's own, with the bridge's actions (engine/src/actions.c)
+            "lens" to "list_cameras", "lens" to "find_cameras" -> JsonArray(FakeLensfun.cameras.filter { action == "list_cameras" || it.model == FakeLensfun.exifCamera }.map { it.json() })
+            "lens" to "list_lenses", "lens" to "find_lenses" -> {
+                val cam = (args["camera"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                if (cam != null && cam.isNotEmpty() && FakeLensfun.cameras.none { it.model == cam }) fail(EngineError.NOT_FOUND, "camera '$cam' is not in the Lensfun database")
+                JsonArray(FakeLensfun.lenses.filter { action == "list_lenses" || it.model.contains(FakeLensfun.exifLensWord) }.map { it.json(false) })
+            }
+            "lens" to "get_state" -> {
+                val cur = s.live()[op to priority]!!.params
+                fun str(n: String) = (cur[n] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: ""
+                fun num(n: String) = (cur[n] as? JsonPrimitive)?.doubleOrNull ?: 0.0
+                val cam = FakeLensfun.cameras.firstOrNull { it.model == str("camera") }
+                val lens = FakeLensfun.lenses.firstOrNull { it.model == str("lens") }
+                buildJsonObject {
+                    put("has_been_set", (cur["has_been_set"] as? JsonPrimitive)?.booleanOrNull ?: false)
+                    put("camera_param", str("camera")); put("lens_param", str("lens"))
+                    put("exif", buildJsonObject { put("maker", "Canon"); put("model", FakeLensfun.exifCamera); put("lens", "unknown lens 18-50mm") })
+                    put("camera", cam?.json() ?: JsonNull)
+                    put("lens", lens?.json(true) ?: JsonNull)
+                    put("focal", num("focal")); put("aperture", num("aperture")); put("distance", num("distance")); put("crop", num("crop"))
+                }
+            }
+            "lens" to "set_camera" -> {
+                requireWritable()
+                val model = (args["model"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.TYPE, "set_camera takes {model, maker?, variant?}")
+                val variant = (args["variant"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                val cam = FakeLensfun.cameras.firstOrNull { it.model == model && (variant == null || it.variant == variant) } ?: fail(EngineError.NOT_FOUND, "camera '$model' is not in the Lensfun database")
+                s.lensWrite(op, priority, mapOf("camera" to JsonPrimitive(cam.model), "crop" to JsonPrimitive(cam.crop), "has_been_set" to JsonPrimitive(true)))
+                JsonObject(emptyMap())
+            }
+            "lens" to "set_lens" -> {
+                requireWritable()
+                val name = (args["lens"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.TYPE, "set_lens takes {camera?, lens, maker?}")
+                val lens = FakeLensfun.lenses.firstOrNull { it.model == name } ?: fail(EngineError.NOT_FOUND, "lens '$name' not found")
+                val w = mutableMapOf<String, JsonPrimitive>("lens" to JsonPrimitive(lens.model), "has_been_set" to JsonPrimitive(true), "scale" to JsonPrimitive(1.0))
+                if (lens.minFocal >= lens.maxFocal) w["focal"] = JsonPrimitive(lens.minFocal)
+                s.lensWrite(op, priority, w)
+                JsonObject(emptyMap())
+            }
+            "lens" to "set_value" -> {
+                requireWritable()
+                val name = (args["name"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                val v = (args["value"] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull
+                if (name !in listOf("focal", "aperture", "distance") || v == null) fail(EngineError.TYPE, "set_value takes {name: focal|aperture|distance, value}")
+                if (!(v > 0.0)) fail(EngineError.ARG, "$name must be a number above 0")
+                s.lensWrite(op, priority, mapOf(name!! to JsonPrimitive(v), "has_been_set" to JsonPrimitive(true)))
+                JsonObject(emptyMap())
+            }
+            "denoiseprofile" to "set_profile" -> {
                 requireWritable()
                 fail(EngineError.NOT_FOUND, "the fake engine has no presets, lenses or profiles")
             }

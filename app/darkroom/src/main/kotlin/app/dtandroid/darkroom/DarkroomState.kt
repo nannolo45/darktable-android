@@ -91,6 +91,10 @@ sealed interface Overlay {
     data class VersionName(val n: Int) : Overlay
     /** brief P3f: "delete version [n]?" */
     data class VersionDelete(val n: Int) : Overlay
+    /** brief P6d: lens correction's full-screen camera or lens picker ([LensByHand]) */
+    data class LensPicker(val key: InstanceKey, val pick: LensPick) : Overlay
+    /** brief P6d: lens correction's list of focal lengths, apertures or distances, with typed entry */
+    data class LensValue(val key: InstanceKey, val kind: LensValueKind) : Overlay
 }
 
 /** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */

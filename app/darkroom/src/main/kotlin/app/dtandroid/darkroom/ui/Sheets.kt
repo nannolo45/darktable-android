@@ -124,6 +124,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         Overlay.Export -> Unit
         // brief P3f: the versions sheet and its questions are VersionsOverlays' (VersionsSheet.kt)
         Overlay.Versions, is Overlay.VersionName, is Overlay.VersionDelete -> Unit
+        // brief P6d: lens correction's picker and value list are LensOverlays' (LensPanel.kt)
+        is Overlay.LensPicker, is Overlay.LensValue -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return

@@ -1227,8 +1227,12 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
     if(!r && have_camera && !cam) r = dtb__err(DTB_E_NOT_FOUND, "camera '%s' is not in the Lensfun database", camera);
     if(!r && !mutating)
     {
-      // _lens_menusearch_clicked(): FindLenses(camera, NULL, NULL, SORT_AND_UNIQUIFY)
-      const lfLens **lenses = lf_db_find_lenses_hd(db, cam, NULL, NULL, LF_SEARCH_SORT_AND_UNIQUIFY);
+      // _lens_menusearch_clicked(): FindLenses(camera, NULL, NULL, SORT_AND_UNIQUIFY). With no camera that
+      // search finds nothing in Lensfun 0.3.4 (desktop's picker then does not open); brief P6d lists every
+      // lens of the database instead, so a camera Lensfun does not know does not leave the picker empty
+      const lfLens *const *all = cam ? NULL : lf_db_get_lenses(db);
+      const lfLens **found = cam ? lf_db_find_lenses_hd(db, cam, NULL, NULL, LF_SEARCH_SORT_AND_UNIQUIFY) : NULL;
+      const lfLens *const *lenses = cam ? (const lfLens *const *)found : all;
       JsonBuilder *b = json_builder_new();
       json_builder_begin_array(b);
       for(int i = 0; lenses && lenses[i]; i++)
@@ -1252,7 +1256,7 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
         json_builder_end_object(b);
       }
       json_builder_end_array(b);
-      if(lenses) lf_free(lenses);
+      if(found) lf_free(found);
       *res = dtb__json_finish(b);
     }
     else if(!r)
@@ -1261,6 +1265,14 @@ static int _act_lens(dt_iop_module_t *m, const char *action, JsonObject *a, char
       const lfLens *l = NULL;
       for(int i = 0; lenses && lenses[i] && !l; i++)
         if(!strcmp(lenses[i]->Model, lens) && (!maker || _maker_is(lenses[i]->Maker, maker))) l = lenses[i];
+      // without a camera the name search can miss a lens that is in the database (two of 1304 in 0.3.4): the list
+      // the picker shows is searched for the exact model (and maker) too
+      if(!l && !cam)
+      {
+        const lfLens *const *every = lf_db_get_lenses(db);
+        for(int i = 0; every && every[i] && !l; i++)
+          if(!strcmp(every[i]->Model, lens) && (!maker || _maker_is(every[i]->Maker, maker))) l = every[i];
+      }
       if(!l && !maker && lenses) l = lenses[0];
       if(!l)
         r = dtb__err(DTB_E_NOT_FOUND, "lens '%s' not found for camera '%s'", lens, camera ? camera : "");
