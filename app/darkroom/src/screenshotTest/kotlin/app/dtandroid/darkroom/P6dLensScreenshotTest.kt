@@ -2,11 +2,14 @@
 package app.dtandroid.darkroom
 
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.printToString
 import app.dtandroid.darkroom.ui.DarkroomLayout
 import app.dtandroid.ui.theme.DtTokens
 import app.dtandroid.ui.theme.Skin
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,12 +29,14 @@ class PhoneP6dScreenshots : ScreenshotBase() {
 
     private fun shots(tokens: DtTokens, name: String) {
         // the file's camera and lens are not in the stand-in's Lensfun: desktop's "pick one" state
-        val c = show(tokens = tokens) { toggleExpanded(key) }
+        val c = show(tokens = tokens) { setParam(key, "method", JsonPrimitive(1L)); toggleExpanded(key) } // method: Lensfun database, desktop's default
         c.goToModule(key)
         runBlocking { c.lens.refresh(key).join() }
         assertTrue(c.lens.ui.value.state != null)
         settle(c)
-        compose.onNodeWithContentDescription("camera model").assertExists()
+        try { compose.onNodeWithContentDescription("camera model").assertExists() } catch (e: AssertionError) {
+            throw AssertionError(e.message + compose.onRoot().printToString(60), e)
+        }
         capture("$name-p6d-01-unknown")
 
         // a camera and a lens chosen
