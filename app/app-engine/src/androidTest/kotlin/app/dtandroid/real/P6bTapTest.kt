@@ -132,10 +132,10 @@ class P6bTapTest {
             val shown = System.currentTimeMillis() + 90_000
             var attempt = 0
             while (!has(name) && System.currentTimeMillis() < shown) {
-                if (TestFiles.imeVisible(scenario)) TestFiles.closeKeyboard(scenario, attempt++)
+                TestFiles.closeKeyboard(scenario, attempt++)
                 compose.waitForIdle(); Thread.sleep(200)
             }
-            if (!has(name)) TestFiles.record(res, "${tag}_module_wait", "no row after 90 s; keyboard visible ${TestFiles.imeVisible(scenario)}, attempts $attempt; ${TestFiles.imeDiagnosis()}")
+            if (!has(name)) TestFiles.record(res, "${tag}_module_wait", "no row after 90 s; keyboard shown ${TestFiles.imeShown()}, attempts $attempt; ${TestFiles.imeDiagnosis()}")
             tapDesc(tag, name)
         } else {
             TestFiles.record(res, "${tag}_module", "no search field in this layout: controller.goToModule")

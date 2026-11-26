@@ -77,23 +77,21 @@ object TestFiles {
         return ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes().decodeToString() }
     }
 
-    /** Whether the soft keyboard is on screen (window insets; the emulator is API 33). */
-    fun imeVisible(sc: androidx.test.core.app.ActivityScenario<*>?): Boolean {
-        var v = false
-        sc?.onActivity {
-            v = android.os.Build.VERSION.SDK_INT >= 30 &&
-                it.window.decorView.rootWindowInsets?.isVisible(android.view.WindowInsets.Type.ime()) == true
-        }
-        return v
-    }
+    /**
+     * Whether the input method service says its keyboard is shown. The window insets are not used: in p2b run 45799493184
+     * (P5cTapTest.t4) they said "no keyboard" for 90 s while the service had `mInputShown=true` and the panel had no height.
+     */
+    fun imeShown(): Boolean = shell("dumpsys input_method").contains("mInputShown=true")
 
     /**
      * Brief P6c: one attempt to close the soft keyboard the module search opened. On the emulator's 320 x 640 screen the
      * keyboard leaves the panel no height and the module list composes no row (P5cTapTest.t3 failed on CI that way in runs
      * 45723595363 and 45775913088: the tree dump showed the search field focused, every panel node 0 px high, the
      * keyboard's 235 px missing from the layout). hideSoftInputFromWindow alone sometimes does not close it, so each
-     * attempt also takes the focus off the field and asks the window's insets controller; from the [attempt] 10 on, while
-     * the keyboard is still shown, the Back key (which closes a shown keyboard before anything else) is sent.
+     * attempt also takes the focus off the field and asks the window's insets controller; every 10th attempt, while the
+     * input method service still says the keyboard is shown, the Back key (which closes a shown keyboard before
+     * anything else) is sent. Called for as long as the module's row is missing, not gated on a keyboard check (the
+     * window insets did not report the keyboard in run 45799493184, t4).
      */
     fun closeKeyboard(sc: androidx.test.core.app.ActivityScenario<*>?, attempt: Int) {
         sc?.onActivity {
@@ -102,7 +100,7 @@ object TestFiles {
                 .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
             if (android.os.Build.VERSION.SDK_INT >= 30) it.window.decorView.windowInsetsController?.hide(android.view.WindowInsets.Type.ime())
         }
-        if (attempt >= 10 && imeVisible(sc)) instr.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        if (attempt >= 10 && attempt % 10 == 0 && imeShown()) instr.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
     }
 
     /** What the input method service says about the keyboard, for the results file when a wait timed out. */
