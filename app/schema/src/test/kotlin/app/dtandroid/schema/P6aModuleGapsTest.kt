@@ -98,6 +98,46 @@ class P6aModuleGapsTest {
         assertNotNull("wrong label", load("""{"op":"graduatednd","add_slider":[{"after":2,"expect_label":"hue","param":"offset","hard_min":0,"hard_max":100,"default":50}]}"""))
     }
 
+    @Test fun theNewPickersCallTheirEngineActions() {
+        fun act(op: String, node: Int) = m(op).pickers.getValue(node).action
+        assertEquals("auto_levels", act("rgblevels", 12)!!.name)
+        assertEquals(mapOf("channel" to 1), act("rgblevels", 12)!!.tabArgs)
+        assertTrue(m("rgblevels").pickers.getValue(12).area)
+        for ((node, which) in listOf(3 to "white", 4 to "black", 9 to "range", 12 to "pivot_x", 13 to "pivot_xy")) {
+            val a = act("agx", node)!!
+            assertEquals("pick", a.name)
+            assertEquals("\"$which\"", a.args["which"].toString())
+        }
+        for ((node, which) in listOf(6 to "black", 7 to "grey", 8 to "white")) assertEquals("\"$which\"", act("levels", node)!!.args["which"].toString())
+        assertEquals("pick", act("invert", 3)!!.name)
+        assertEquals("\"shadows\"", act("splittoning", 2)!!.args["which"].toString())
+        assertEquals("\"highlights\"", act("splittoning", 7)!!.args["which"].toString())
+        assertEquals("pick", act("colorize", 0)!!.name)
+        for ((node, which) in listOf(6 to "grey", 7 to "black", 8 to "dynamic_range", 11 to "auto")) assertEquals("\"$which\"", act("profile_gamma", node)!!.args["which"].toString())
+        assertEquals("pick_grey", act("basicadj", 5)!!.name)
+        assertEquals("white_level", act("colorequal", 36)!!.name)
+        // values only: desktop's picker sets no parameter there
+        assertNotNull(m("colorequal").pickers[5])
+        assertNull(act("colorequal", 5))
+        assertNull(act("relight", 3))
+    }
+
+    @Test fun theButtonsAreModuleActions() {
+        val auto = m("rgblevels").actionButtons.getValue(11)
+        assertEquals("auto", auto.label)
+        assertEquals(listOf("auto_levels"), auto.choices.map { it.action })
+        assertEquals("{\"channel\":2}", auto.args(auto.choices[0]) { 2 }.toString())
+        val agx = m("agx").actionButtons
+        assertEquals("read_exposure", agx.getValue(10).choices.single().action)
+        assertEquals(listOf("blender-like", "smooth", "unmodified"), agx.getValue(39).choices.map { it.label })
+        assertEquals("{\"preset\":\"smooth\"}", agx.getValue(39).args(agx.getValue(39).choices[1]) { 0 }.toString())
+        assertEquals("primaries_from_above", agx.getValue(50).choices.single().action)
+        // a node that is not a button is refused
+        val text = SchemaLoader.schemaTextFromResources()
+        val bad = runCatching { SchemaLoader.load(text, mapOf("x.json" to """{"op":"agx","action_button":[{"node":3,"label":"x","action":{"name":"y"}}]}""")) }
+        assertNotNull(bad.exceptionOrNull())
+    }
+
     @Test fun theSettingsAnswerParses() {
         assertEquals(7, settings.jsonArray.size)
         assertEquals("section", settings.jsonArray[4].jsonObject["kind"].toString().trim('"'))

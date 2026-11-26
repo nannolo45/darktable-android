@@ -2,6 +2,7 @@
 package app.dtandroid.schema
 
 import app.dtandroid.schema.SchemaLoader.SchemaException
+import app.dtandroid.schema.SchemaLoader.dbl
 import app.dtandroid.schema.SchemaLoader.int
 import app.dtandroid.schema.SchemaLoader.str
 import kotlinx.serialization.json.JsonArray
@@ -124,7 +125,9 @@ internal object Overrides {
         val p2j = P2jOverrides.apply(m.copy(controls = controls), o, file)
         // brief P3c: colour pickers and their settings
         val p3c = P3cOverrides.apply(p2j, o, file)
-        return p3c.copy(overrides = m.overrides + file, aspect = aspect)
+        // brief P6a: buttons done by module actions
+        val p6a = P6aOverrides.apply(p3c, o, file)
+        return p6a.copy(overrides = m.overrides + file, aspect = aspect)
     }
 
     /** brief P6a: [c] after the control [id], in the same list */

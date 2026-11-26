@@ -1,0 +1,34 @@
+{
+  "op": "splittoning",
+  "reason": "brief P6a: the hue pickers set hue and saturation from the picked colour as splittoning.c color_picker_apply (module action pick, rgb2hsl).",
+  "picker": [
+    {
+      "node": 2,
+      "expect_label": "hue",
+      "label": "shadows hue from the photo",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "shadows"
+        }
+      }
+    },
+    {
+      "node": 7,
+      "expect_label": "hue",
+      "label": "highlights hue from the photo",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "highlights"
+        }
+      }
+    }
+  ]
+}

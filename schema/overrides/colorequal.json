@@ -1,0 +1,26 @@
+{
+  "op": "colorequal",
+  "reason": "brief P6a: white level from an area as colorequal.c color_picker_apply (module action white_level); the node placement picker shows the picked values only (desktop marks the hue on its graph).",
+  "picker": [
+    {
+      "node": 36,
+      "expect_label": "white level",
+      "label": "white level from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "white_level"
+      }
+    },
+    {
+      "node": 5,
+      "expect_label": "node placement",
+      "label": "show the picked hue",
+      "kinds": [
+        "point",
+        "area"
+      ]
+    }
+  ]
+}

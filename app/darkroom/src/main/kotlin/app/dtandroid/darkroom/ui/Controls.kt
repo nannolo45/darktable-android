@@ -167,6 +167,8 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
         // brief P3c: a picker button that stands alone (white balance's "from image area", levels' black, gray, white)
         is Control.Unsupported -> when {
             c.id in ctx.module.pickerMarks -> PickerButtonRow(c, ctx)
+            // brief P6a: a desktop button the engine does (rgb levels' "auto", AgX's buttons)
+            c.id in ctx.module.actionButtons -> ActionButtonRow(c, ctx)
             // brief P3e-b: the band editor stands in for desktop's graph of contrast equalizer, colour zones and colour equalizer
             c.id == BandHost.graphId(ctx.module) -> BandEditor(ctx)
             // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
@@ -597,6 +599,20 @@ fun PickerButton(ctx: PanelContext, controlId: Int, sensitive: Boolean = true) {
         modifier = (if (armed) Modifier.background(c.selected) else Modifier).semantics { stateDescription = if (armed) "on" else "off" },
         enabled = enabled,
     )
+}
+
+/** Brief P6a: a desktop button done by a module action: its text (or, for a menu, one button per entry). */
+@Composable
+private fun ActionButtonRow(c: Control.Unsupported, ctx: PanelContext) {
+    val b = ctx.module.actionButtons[c.id] ?: return
+    Row(Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.sliderRow), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xs)) {
+        if (b.choices.size > 1) DtText(b.label, DtTheme.type.label, if (ctx.readOnly) DtTheme.colors.textDisabled else DtTheme.colors.text, Modifier.weight(1f), maxLines = 2)
+        for ((i, ch) in b.choices.withIndex()) {
+            DtTextButton(ch.label, onClick = { ctx.controller.launch { pressActionButton(ctx.key, c.id, i) } },
+                modifier = if (b.choices.size == 1) Modifier.weight(1f) else Modifier, enabled = !ctx.readOnly, compact = b.choices.size > 1)
+        }
+    }
 }
 
 /** A picker button that stands alone on desktop (an icon in a row): its meaning in words, the button at the right. */

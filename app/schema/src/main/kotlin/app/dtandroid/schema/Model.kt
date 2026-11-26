@@ -76,6 +76,8 @@ data class ModuleSchema(
     val pickerSettings: Map<Int, PickerSetting> = emptyMap(),
     /** Brief P3c deliverable 5: lists whose entries a module action gives per photo (override `action_list`), by control id. */
     val actionLists: Map<Int, ActionList> = emptyMap(),
+    /** brief P6a: desktop buttons whose callbacks the engine does as module actions (override `action_button`) */
+    val actionButtons: Map<Int, ActionButton> = emptyMap(),
 ) {
     /** Every control in tree order. */
     fun allControls(): Sequence<Control> = sequence {

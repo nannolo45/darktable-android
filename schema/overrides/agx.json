@@ -1,0 +1,128 @@
+{
+  "op": "agx",
+  "reason": "brief P6a: the five pickers (white and black relative exposure, auto tune levels, pivot relative exposure, pivot target output) as agx.c color_picker_apply with its _apply_auto_* and _update_pivot_x (module action pick, denoised area as desktop); the buttons read exposure, reset primaries (its three entries) and set from above as _read_exposure_params_callback, _apply_primaries_from_menu_callback, _set_post_curve_primaries_from_pre_callback.",
+  "picker": [
+    {
+      "node": 3,
+      "expect_label": "white relative exposure",
+      "label": "white relative exposure from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "white"
+        }
+      }
+    },
+    {
+      "node": 4,
+      "expect_label": "black relative exposure",
+      "label": "black relative exposure from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "black"
+        }
+      }
+    },
+    {
+      "node": 9,
+      "expect_action_path": "exposure range/auto tune levels",
+      "label": "auto tune levels",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "range"
+        }
+      }
+    },
+    {
+      "node": 12,
+      "expect_label": "pivot relative exposure",
+      "label": "pivot relative exposure from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "pivot_x"
+        }
+      }
+    },
+    {
+      "node": 13,
+      "expect_label": "pivot target output",
+      "label": "pivot target output from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "pivot_xy"
+        }
+      }
+    }
+  ],
+  "action_button": [
+    {
+      "node": 10,
+      "expect_action_path": "exposure range/read exposure",
+      "label": "read exposure",
+      "action": {
+        "name": "read_exposure"
+      }
+    },
+    {
+      "node": 39,
+      "expect_action_path": "reset primaries",
+      "label": "reset primaries",
+      "choices": [
+        {
+          "label": "blender-like",
+          "action": {
+            "name": "reset_primaries",
+            "args": {
+              "preset": "blender"
+            }
+          }
+        },
+        {
+          "label": "smooth",
+          "action": {
+            "name": "reset_primaries",
+            "args": {
+              "preset": "smooth"
+            }
+          }
+        },
+        {
+          "label": "unmodified",
+          "action": {
+            "name": "reset_primaries",
+            "args": {
+              "preset": "unmodified"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "node": 50,
+      "expect_action_path": "reverse pre-mapping primaries",
+      "label": "set from above",
+      "action": {
+        "name": "primaries_from_above"
+      }
+    }
+  ]
+}

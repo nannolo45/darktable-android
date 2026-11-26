@@ -854,3 +854,31 @@ output of the last caught render; then, if `arm`, the next render or export runs
 256 KiB. Later renders are not caught until it is armed again. Kotlin: `DarktableEngine.renderTrace(arm)` gives the log
 (null on engines without it); `PerfLog` turns darktable's `[dev_pixelpipe] took … processed `op' on GPU|CPU [with
 tiling]` lines into a per-module table. Tested by C36 (`RESULT render_trace`).
+
+## 13. P6a: pickers and "auto" buttons from the audit (26 Nov 2026)
+
+Module actions (`dtb_module_action`), each [M] one history item (the module switched on), as the module's own
+callback does it; picker actions take `"area": [x0, y0, x1, y1]` or `"point": [x, y]` (normalised in the picture, as
+6.3) and pick on the module's input as desktop's picker of that control (its colour space; AgX's with desktop's
+denoise flag). Answers: `{picked: {input, output}, values: {field: number}, changed: bool}` (AgX: `values` holds the
+exposure range, pivot and gamma). Engine test C43 (`dtb_pickref p6a`) runs desktop's callbacks compiled verbatim on
+the same picks.
+
+| Module | Action | Desktop's code |
+|---|---|---|
+| `rgblevels` | `auto_levels {channel?, area?}`: without an area the whole picture ("auto"), with one the "auto region" box; `channel` the tab shown (independent channels) | `_auto_levels_callback`, the region tool, `process()`: `_get_selected_area`, `_auto_levels` on the module's input of the preview pipe |
+| `levels` | `pick {which: black \| grey \| white}` | `color_picker_apply` |
+| `invert` | `pick` | `color_picker_apply` (the film colour, four channels of the raw input) |
+| `splittoning` | `pick {which: shadows \| highlights}` | `color_picker_apply` (nothing written within 1e-4) |
+| `colorize` | `pick` | `color_picker_apply` (nothing written within 1e-4) |
+| `profile_gamma` | `pick {which: grey \| black \| dynamic_range \| auto}` | `apply_auto_grey`, `apply_auto_black`, `apply_auto_dynamic_range`, `apply_autotune` |
+| `basicadj` | `pick_grey` | `color_picker_apply` (middle grey) |
+| `colorequal` | `white_level` | `color_picker_apply` (white level; `_pipe_RGB_to_Ych`) |
+| `agx` | `pick {which: black \| white \| range \| pivot_x \| pivot_xy}` | `color_picker_apply`, `_apply_auto_*`, `_update_pivot_x` (the gamma desktop shows is not written) |
+| `agx` | `read_exposure` | `_read_exposure_params_callback` (the exposure module's effective exposure: the enabled instance as `dt_iop_get_module_enabled_preferring_unmasked_first_instance` picks it; 0 in deflicker mode, where desktop takes its panel's value) |
+| `agx` | `reset_primaries {preset: blender \| smooth \| unmodified}` | `_apply_primaries_from_menu_callback` |
+| `agx` | `primaries_from_above` | `_set_post_curve_primaries_from_pre_callback` |
+
+Internal: `dtb__module_input(m, fn, user)` (pickers.c) renders the bridge's preview pipe at scale 1 with the module
+forced to run and calls `fn` on the module's input buffer, as desktop's `process()` sees it on the preview pipe;
+`dtb__area_to_input` maps an area's two corners back to the pipe's input as desktop's region tools keep them.

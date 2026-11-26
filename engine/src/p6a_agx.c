@@ -622,7 +622,8 @@ static int _act_agx_pick(dt_iop_module_t *m, JsonObject *a, char **res)
   float area[4];
   dtb_pick_result_t pk;
   int r = dtb__read_area(a, area);
-  if(!r) r = dtb__pick(m, area, FALSE, FALSE, NULL, &pk);
+  // desktop's AgX pickers are DT_COLOR_PICKER_AREA | DT_COLOR_PICKER_DENOISE (gui_init)
+  if(!r) r = dtb__pick(m, area, TRUE, FALSE, NULL, &pk);
   if(r) return r;
   if(!pk.have[0]) return dtb__err(DTB_E_ARG, "the area gives no sample in agx's input");
   dtb_pipe_t *pp = NULL;

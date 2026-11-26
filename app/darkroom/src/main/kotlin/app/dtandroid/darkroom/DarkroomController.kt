@@ -1742,6 +1742,18 @@ class DarkroomController(
         if (controlId <= ParametricMasks.PICK_BASE) PickerSpec(controlId, "range", point = false, area = true, denoise = false, action = null)
         else schema.modules[key.op]?.pickers?.get(controlId)
 
+    /**
+     * Brief P6a: a desktop button done by a module action (rgb levels' "auto", AgX's buttons): choice [index] of its
+     * override, with the chosen tab page where the override asks for it; one history item, the module switched on.
+     */
+    suspend fun pressActionButton(key: InstanceKey, controlId: Int, index: Int = 0) = change {
+        val b = schema.modules[key.op]?.actionButtons?.get(controlId) ?: throw EngineException(EngineError.STATE, "no such button")
+        val choice = b.choices.getOrNull(index) ?: throw EngineException(EngineError.STATE, "no such choice")
+        val s = _state.value
+        engine.moduleAction(key.op, key.priority, choice.action, b.args(choice) { t -> pickerTab(s, key, t) })
+        engine.historySeal()
+    }
+
     /** Brief P6a: [c] with the limits and default the engine's answer gives (bind_action `range_from`), else as it is. */
     fun withActionRange(s: DarkroomState, key: InstanceKey, c: Control.Slider): Control.Slider {
         val b = c.binding as? Binding.Action ?: return c

@@ -22,6 +22,46 @@ import org.junit.rules.TemporaryFolder
  */
 class P6aModuleGapsTest {
     @get:Rule val tmp = TemporaryFolder()
+
+    /** the stand-in engine, recording module actions (the stand-in has no P6a picker actions: it refuses them) */
+    private class Hooked(val e: app.dtandroid.engine.api.DarktableEngine) : app.dtandroid.engine.api.DarktableEngine by e {
+        val actions = java.util.Collections.synchronizedList(ArrayList<Triple<String, String, kotlinx.serialization.json.JsonObject>>())
+        override suspend fun moduleAction(op: String, priority: Int, action: String, args: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonElement {
+            actions += Triple(op, action, args)
+            return e.moduleAction(op, priority, action, args)
+        }
+    }
+
+    private fun hooked(): Pair<DarkroomController, Hooked> {
+        val dir = tmp.root
+        val engine = Hooked(InterfacePreview.engine(TestSetup.schemaText, app.dtandroid.engine.fake.FakeEngine.Timing.NONE))
+        runBlocking { engine.init(app.dtandroid.engine.api.EnginePaths(dir.path, dir.path, dir.path, dir.path, dir.path)) }
+        val c = DarkroomController(engine, TestSetup.schema, TestSetup.builtins, TestSetup.layouts(dir),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default), previewMaxSize = 600)
+        c.setViewport(Viewport(400, 300))
+        runBlocking { c.start(InterfacePreview.series(java.io.File(dir, "series")), 0, filmstrip = false, thumbnails = false) }
+        return c to engine
+    }
+
+    @Test fun buttonsAndPickersCallTheirActions() = runBlocking {
+        val (c, e) = hooked()
+        val levels = InstanceKey("rgblevels", 0)
+        c.toggleExpanded(levels)
+        c.pressActionButton(levels, 11)
+        waitFor("auto") { e.actions.any { it.first == "rgblevels" && it.second == "auto_levels" } }
+        val a = e.actions.last { it.second == "auto_levels" }.third
+        assertEquals("the tab shown (hidden with linked channels: 0)", "0", a["channel"].toString())
+        val agx = InstanceKey("agx", 0)
+        c.toggleExpanded(agx)
+        c.pressActionButton(agx, 39, 1)
+        waitFor("primaries") { e.actions.any { it.second == "reset_primaries" } }
+        assertEquals("\"smooth\"", e.actions.last { it.second == "reset_primaries" }.third["preset"].toString())
+        c.togglePicker(agx, 4)
+        waitFor("pick") { e.actions.any { it.first == "agx" && it.second == "pick" } }
+        val p = e.actions.last { it.second == "pick" }.third
+        assertEquals("\"black\"", p["which"].toString())
+        assertNotNull("desktop's first area", p["area"])
+    }
     private val wb = InstanceKey("temperature", 0)
 
     private suspend fun waitFor(what: String, cond: () -> Boolean) =
