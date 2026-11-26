@@ -1,0 +1,16 @@
+RESULT engine 04477d3-dirty
+RESULT state: camera param 'Canon EOS 40D', lens param 'Canon EF 100mm f/2.8 Macro USM', Exif model 'Canon EOS 40D' lens 'Canon EF 100mm f/2.8 Macro USM', Lensfun camera found, lens found
+RESULT list_cameras: 948
+RESULT find_cameras: 1 of 948
+RESULT lenses: 302 for 'Canon EOS 40D', find_lenses 2, without a camera 0
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:186: lens lists: 302 for the camera, 0 without []
+RESULT set_camera 'FinePix F810 (widescreen mode)': params camera 'FinePix F810' crop 4.900 (has_been_set 1)
+RESULT set_lens 'Sigma 4.5mm f/2.8 EX DC HSM circular fisheye': focal 4.50, has_been_set 1
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:87: set_lens without a camera: 13 history items before, 13 after (one expected) [set_camera takes {model, maker?, variant?}]
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:87: set_lens (fisheye again): 13 history items before, 13 after (one expected) [set_camera takes {model, maker?, variant?}]
+RESULT set_value focal 17.5: parameter 17.5, has_been_set 1
+RESULT set_value aperture 5.6: parameter 5.6, has_been_set 1
+RESULT set_value distance 2.5: parameter 2.5, has_been_set 1
+RESULT lens set vs module off: max 255, mean 63.9280 (8-bit)
+RESULT XMP round trip render differs by 0
+RESULT exit 1

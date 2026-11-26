@@ -1,0 +1,632 @@
+darktable 04477d3-dirty [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> ENABLED
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+[dt_get_sysresource_level] switched to `default'
+  total mem:       15983MB
+  available mem:   7991MB
+  singlebuff:      124MB
+[opencl_init] opencl disabled by --disable-opencl
+[opencl_init] FINALLY: opencl PREFERENCE=YES is NOT AVAILABLE and NOT ENABLED
+RESULT engine 04477d3-dirty
+[dt_dlopencl_init] found specified opencl runtime library 'libOpenCL.so.1'
+[opencl_init] opencl library 'libOpenCL.so.1' found on your system and loaded, preference 'libOpenCL.so.1'
+[opencl_init] found 1 platform
+[opencl_init] found 1 device
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_id0'
+
+   DEVICE:                   0: 'cpu-haswell-AMD EPYC 7763 64-Core Processor', NEW
+   CONF KEY:                 cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor
+   PLATFORM, VENDOR & ID:    Portable Computing Language, The pocl project, ID=1818455920
+   CANONICAL NAME:           portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor
+   DRIVER VERSION:           5.0+debian
+   DEVICE VERSION:           OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-haswell API=300
+   DEVICE_TYPE:              CPU, unified mem
+   GLOBAL MEM SIZE:          13935 MB
+   MAX IMAGE ALLOC:          4096 MB
+   MAX IMAGE SIZE:           16384 x 16384
+   MAX CONSTANT BUFFER:      512 KB
+   LOCAL MEM SIZE:           512 KB
+   COMPUTE UNITS:            4
+   MAX WORK GROUP SIZE:      4096 (8)
+   MAX WORK ITEM DIMENSIONS: 3 [ 4096 4096 4096 ]
+   ASYNC PIXELPIPE:          NO
+   SUPPORTED ATOMICS:        INT32 INT64 FLOAT32 
+   SUPPORTED DOUBLE:         YES
+   FLOAT32 FMA:              YES
+   EXACT FLOAT32 DIV&SQRT:   YES
+   ROUNDUP WIDTH & HEIGHT    32x32
+   EVENTS HANDLED:           YES
+   OPENCL FAST MODE:         NO
+   DEFAULT DEVICE:           NO
+   AVOIDED MODULES:          none
+   KERNEL BUILD DIRECTORY:   /home/runner/dt-linux/share/darktable/kernels
+   KERNEL DIRECTORY:         /home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian
+   CL COMPILER COMMAND:      -w  -DUNKNOWN=1 -I"/home/runner/dt-linux/share/darktable/kernels"
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_id0'
+[dt_opencl_device_init] testing program `demosaic_ppg.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_ppg.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_ppg.cl' MD5: 'b13e563eba75ac0289a675023feb7d78'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `atrous.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/atrous.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/atrous.cl' MD5: '7309ff6bfcfeecccfd6df13c44b22f99'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basic.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/basic.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basic.cl' MD5: '10a1418e2efcb8481a74935c1913b49e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `blendop.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/blendop.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/blendop.cl' MD5: '32bf0f106a277454ca822a766c8263b1'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `highpass.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/highpass.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/highpass.cl' MD5: '9cf163d6da50e7e13669ba85246b5256'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `nlmeans.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/nlmeans.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/nlmeans.cl' MD5: 'c5c6b79290b90183f300c3da7709e3ee'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `gaussian.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/gaussian.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/gaussian.cl' MD5: '23d83e1dd5a3aae6b393747efe3bd6fd'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `sharpen.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/sharpen.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/sharpen.cl' MD5: '1855e82d4626af14f308f98801776ebf'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `extended.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/extended.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/extended.cl' MD5: '83f82a46f16a634ee77c21580a0621c9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `soften.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/soften.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/soften.cl' MD5: 'bb0b5acb829a7f7a12ce5618b2e3e959'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bilateral.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/bilateral.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bilateral.cl' MD5: '7d251398b3dafe13d3d146bf0d4a7b02'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `denoiseprofile.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/denoiseprofile.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/denoiseprofile.cl' MD5: '9c87935408c54a477d37ac90d3f05b0a'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bloom.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/bloom.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bloom.cl' MD5: 'e83a8a8571b37e2504ed28414252e199'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorreconstruction.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/colorreconstruction.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorreconstruction.cl' MD5: '9040bee1a51e01e1bd439423b7e5147c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_other.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_other.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_other.cl' MD5: '64b5ce8176d738ca2af1e3c6410ab05e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_vng.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_vng.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_vng.cl' MD5: '6229c3335d706648028bf945573baa53'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_markesteijn.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_markesteijn.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_markesteijn.cl' MD5: 'b5c3b85233c950a62038fc98e5cc9126'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `liquify.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/liquify.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/liquify.cl' MD5: 'fe6cdbada329dda2d2af612712229f5e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basecurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/basecurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basecurve.cl' MD5: 'fe695f426e5c111df79230d96bbc205f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `locallaplacian.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/locallaplacian.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/locallaplacian.cl' MD5: 'b7e035d08d5980ed07cff7f146e7a03d'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `dwt.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/dwt.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/dwt.cl' MD5: '241e4aaadcb4aa69f229af4c09db19e3'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `retouch.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/retouch.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/retouch.cl' MD5: 'c9327e58fbce060954e0e857eb7636ca'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `filmic.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/filmic.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/filmic.cl' MD5: '0b07db343fd4e3802451460aecd00cfc'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorspaces.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/colorspaces.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorspaces.cl' MD5: '33ce02a4a76f5e622993cab1729bad7f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basicadj.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/basicadj.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/basicadj.cl' MD5: 'dc09961f065ac20923024039ae7a3ce5'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `rgbcurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/rgbcurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/rgbcurve.cl' MD5: '824bec48257c0578762891868d5322eb'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `guided_filter.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/guided_filter.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/guided_filter.cl' MD5: '4c00644eb398b2ff4d69773a90ac0bc8'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `hazeremoval.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/hazeremoval.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/hazeremoval.cl' MD5: '87ee8381f1a02da229906151b940080b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `lut3d.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/lut3d.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/lut3d.cl' MD5: '81121355f376ec831c49234054f38d7f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `rgblevels.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/rgblevels.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/rgblevels.cl' MD5: 'd99d2e5f7b980cb946840dab5332ed12'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `negadoctor.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/negadoctor.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/negadoctor.cl' MD5: 'ca799dcda7a988d3511e8341d3133b69'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_rcd.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_rcd.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_rcd.cl' MD5: '515d0267d8844773d861548ff8c4535a'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `channelmixer.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/channelmixer.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/channelmixer.cl' MD5: '1c7fc24c372e818c6c1b0fa1077a8b18'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `diffuse.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/diffuse.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/diffuse.cl' MD5: '0d262fef1926b92d389679bc1763273e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `blurs.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/blurs.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/blurs.cl' MD5: '52e13b4aadb007a03f46c81188276637'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bspline.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/bspline.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bspline.cl' MD5: '9eff7d04e24858b71e86e80765ce7f4c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `sigmoid.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/sigmoid.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/sigmoid.cl' MD5: '66fa2875d114520df4da8c902fd1f640'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorequal.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/colorequal.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorequal.cl' MD5: 'f2dada70bf2e60e0721fc634d40455b9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `capture.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/capture.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/capture.cl' MD5: 'd984cbc8413c927bedf20c4a78d1523b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `agx.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/agx.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/agx.cl' MD5: '75a1786bf3ee0ce93cb99386a8aaa936'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorharmonizer.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/colorharmonizer.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/colorharmonizer.cl' MD5: '1052c2764d2fd54ec1c83aad0843ebe9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `overlay.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/overlay.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/overlay.cl' MD5: 'da1182b7d350d1fd48389c55b559c866'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bilinear.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/bilinear.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/bilinear.cl' MD5: 'c10241eaec23f5241f85766969fe5ff2'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `spektrafilm.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/spektrafilm.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/spektrafilm.cl' MD5: '34d43b3c1980478e7a20b546f3116ce3'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `satcurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/satcurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/satcurve.cl' MD5: '0998f31e2e84c95824fc3a486c99000b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `toneequal.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/toneequal.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/toneequal.cl' MD5: 'db87694dc96e4bb19bc6e02d131e91bd'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `contrastntexture.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/contrastntexture.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/contrastntexture.cl' MD5: 'a7329ae73213ddd440a5352fa419ac6c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `cacorrectrgb.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/cacorrectrgb.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/cacorrectrgb.cl' MD5: '64aaa72ba408f617c1d3c865330c7b6f'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `grain.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/grain.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/grain.cl' MD5: 'bd1c78296ffebdc846134499ea923042'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `cacorrect.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/cacorrect.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/cacorrect.cl' MD5: '09bd56e4ebcfe3e9c252266ef8da0c13'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `permutohedral.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/permutohedral.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/permutohedral.cl' MD5: 'de6d854c45e9c867210546d4fe4f390e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_amaze.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_amaze.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_amaze.cl' MD5: '438f144719664e573149394a7dbc5cf2'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_lmmse.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/demosaic_lmmse.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/demosaic_lmmse.cl' MD5: '1c9d6553b1bead7526f182eb1c557923'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `dng_opcode.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian/dng_opcode.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/dt-linux/share/darktable/kernels/dng_opcode.cl' MD5: '0300642665b63ccc089197d80b8cc654'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+   KERNEL LOADING TIME:      2.0900 sec
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuhaswellamdepyc776364coreprocessor_id0'
+[opencl_init] OpenCL successfully initialized. internal numbers and names of available devices:
+[opencl_init]		0	'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor'
+[opencl_init] FINALLY: opencl PREFERENCE=YES is AVAILABLE and ENABLED
+[opencl_init] opencl_scheduling_profile: 'default'
+[opencl_init] opencl_device_priority: '*/!0,*/*/*/!0,*'
+[opencl_init] opencl_mandatory_timeout: 1000
+[opencl_init] set scheduling profile to default, setup has changed
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+     3.2324 [opencl_update_settings] scheduling profile set to default
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+P4B opencl after switching on: {"built":true,"allowed":true,"started":true,"library":"libOpenCL.so.1","inited":true,"enabled":true,"stopped":false,"error_count":0,"running":true,"devices":[{"name":"Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor","platform":"Portable Computing Language","version":"OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-haswell","memory":14612860928,"unified":true,"disabled":false}],"renders":1,"renders_gpu":0,"renders_fallback":0,"last_render":"cpu","kernel_dir":"/home/runner/p4e/exposure/after/work/kernels"}
+RESULT opencl running 1 devices 1 start_s 2.1
+     3.4557 [memory] before pixelpipe process
+             max address space (vmpeak):     1273404 kB
+             cur address space (vmsize):      952116 kB
+             max used memory   (vmhwm ):      307488 kB
+             cur used memory   (vmrss ):      245544 kB
+
+     3.4563 [dev_pixelpipe] took 0.001 secs (0.000 CPU) initing base buffer [export]
+     3.4579 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 2 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4580 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 6 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4696 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.4697 [opencl_events_flush] invalid profiling data for 'rawprepare_1f' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.4697 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 4 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4699 [dev_pixelpipe] took 0.014 secs (0.048 CPU) [export] processed `rawprepare' on GPU
+     3.4700 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4700 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4700 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4804 [opencl_events_flush] invalid profiling data for 'whitebalance_1f' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.4804 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 4 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4808 [dev_pixelpipe] took 0.011 secs (0.033 CPU) [export] processed `temperature' on GPU
+     3.4808 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4808 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4808 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 9 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4902 [opencl_events_flush] invalid profiling data for 'highlights_1f_clip' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.4902 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 4 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4905 [dev_pixelpipe] took 0.010 secs (0.032 CPU) [export] processed `highlights' on GPU
+     3.4905 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 15 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4906 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4906 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 51 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4906 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4907 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [resample_cl] plan 0.000 secs (0.000 CPU) resample 0.000 secs (0.000 CPU)
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 33 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.4908 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 15 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7484 [opencl_events_flush] invalid profiling data for 'border_interpolate' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7484 [opencl_events_flush] invalid profiling data for 'ppg_demosaic_green' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7484 [opencl_events_flush] invalid profiling data for 'ppg_demosaic_redblue' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7484 [opencl_events_flush] invalid profiling data for 'interpolation_resample' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7484 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 10 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7488 [dev_pixelpipe] took 0.258 secs (0.982 CPU) [export] processed `demosaic' on GPU
+     3.7489 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7555 [opencl_events_flush] invalid profiling data for 'exposure' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7555 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 10 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7564 [dev_pixelpipe] took 0.008 secs (0.021 CPU) [export] processed `exposure' on GPU
+     3.7564 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7565 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7565 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7565 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7567 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7569 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7571 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7571 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7571 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7572 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7746 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7746 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7746 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7746 [opencl_events_flush] invalid profiling data for 'colorin_unbound' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.7746 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 10 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7755 [dev_pixelpipe] took 0.019 secs (0.064 CPU) [export] processed `colorin' on GPU
+     3.7755 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7755 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7757 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7759 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7761 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7761 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7762 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 22 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7762 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7762 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7762 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.7762 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 21 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.8076 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.8076 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.8076 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.8076 [opencl_events_flush] invalid profiling data for 'colorout' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.8076 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 10 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.8085 [dev_pixelpipe] took 0.033 secs (0.115 CPU) [export] processed `colorout' on GPU
+     3.8145 [opencl memory] device 'Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor' id=0: 0 MB in use, 3995 MB available GPU mem of 13935 MB
+     3.8154 [opencl_events_flush] invalid profiling data for '[Read Image (from device to host)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     3.8154 [opencl_profiling] profiling device 0 ('Portable Computing Language cpu-haswell-AMD EPYC 7763 64-Core Processor'):
+     3.8154 [opencl_profiling] spent  0.0000 seconds in [Write Image (from host to device)]
+     3.8154 [opencl_profiling] spent  0.0000 seconds in rawprepare_1f
+     3.8154 [opencl_profiling] spent  0.0000 seconds in whitebalance_1f
+     3.8154 [opencl_profiling] spent  0.0000 seconds in highlights_1f_clip
+     3.8154 [opencl_profiling] spent  0.0000 seconds in border_interpolate
+     3.8154 [opencl_profiling] spent  0.0000 seconds in ppg_demosaic_green
+     3.8154 [opencl_profiling] spent  0.0000 seconds in ppg_demosaic_redblue
+     3.8154 [opencl_profiling] spent  0.0000 seconds in interpolation_resample
+     3.8154 [opencl_profiling] spent  0.0000 seconds in exposure
+     3.8154 [opencl_profiling] spent  0.0000 seconds in colorin_unbound
+     3.8154 [opencl_profiling] spent  0.0000 seconds in colorout
+     3.8154 [opencl_profiling] spent  0.0000 seconds in [Read Image (from device to host)]
+     3.8154 [opencl_profiling] spent  0.0000 seconds totally in command queue (with 18 events missing)
+     3.8155 cache report                  [export]                                      Lines=64 important=0 used=2 invalid=0. Now=12MB limit=749MB max=0MB. Hits/run=0.00. Hits/test=0.000
+     3.8156 [memory] after pixelpipe process
+             max address space (vmpeak):     1273404 kB
+             cur address space (vmsize):      965580 kB
+             max used memory   (vmhwm ):      307488 kB
+             cur used memory   (vmrss ):      261284 kB
+
+RESULT render_trace modules 7 on_gpu 7 bytes 18177
+RESULT opencl last gpu psnr 95.77 maxdiff 1 cpu_s 0.150 gpu_s 0.442
+RESULT kernels /home/runner/p4e/exposure/after/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuhaswellAMDEPYC776364CoreProcessor_50debian
+RESULT export_ran gpu
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3995 MB
+   UNIFIED MEM SIZE:         3995 MB
+RESULT exit 0

@@ -1,0 +1,16 @@
+RESULT engine 04477d3-dirty
+RESULT state: camera param 'DSC-RX100M3', lens param 'DSC-RX100 III & compatibles', Exif model 'DSC-RX100M3' lens '', Lensfun camera found, lens found
+RESULT list_cameras: 948
+RESULT find_cameras: 1 of 948
+RESULT lenses: 1 for 'DSC-RX100M3', find_lenses 1, without a camera 0
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:186: lens lists: 1 for the camera, 0 without []
+RESULT set_camera 'FinePix F810 (widescreen mode)': params camera 'FinePix F810' crop 4.900 (has_been_set 1)
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:255: no fisheye lens for 'DSC-RX100M3' [set_camera takes {model, maker?, variant?}]
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:87: set_lens without a camera: 17 history items before, 17 after (one expected) [set_camera takes {model, maker?, variant?}]
+RESULT set_value focal 17.5: parameter 17.5, has_been_set 1
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6d.c:87: aperture: 18 history items before, 18 after (one expected) [lens 'no such lens at all' not found for camera 'DSC-RX100M3']
+RESULT set_value aperture 5.6: parameter 5.6, has_been_set 1
+RESULT set_value distance 2.5: parameter 2.5, has_been_set 1
+RESULT lens set vs module off: max 255, mean 10.6643 (8-bit)
+RESULT XMP round trip render differs by 0
+RESULT exit 1
