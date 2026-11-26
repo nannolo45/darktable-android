@@ -89,6 +89,9 @@ object AppHost {
     /** brief P3i: set by the activity: asks for the notification permission once */
     @Volatile var askNotifications: (() -> Unit)? = null
 
+    /** Brief P6b: Android's file picker for LUT files, set by the activity; the subfolder of the LUT folder to fill. */
+    @Volatile var pickLuts: ((String) -> Unit)? = null
+
     val schema by lazy { SchemaLoader.fromResources() }
     private val builtins by lazy { BuiltinLayouts.fromResources() }
     private val layouts by lazy {
@@ -166,6 +169,13 @@ object AppHost {
             c.onOutOfMemory = { detail -> crashLog.append(CrashLog.KIND_RENDER_OOM, "a render failed for lack of memory after the engine gave memory back: $detail") }
             c.source = Source
             c.versionHost = Versions // brief P3f
+            // brief P6b: lut 3D's LUT folder (app storage, synced through LightPhotoLibrary)
+            c.lut3d.attach(object : app.dtandroid.darkroom.LutHost {
+                override val folder get() = agent.luts.folder
+                override fun pickFromPhone(subfolder: String) { pickLuts?.invoke(subfolder) }
+                override fun onServer(path: String) = agent.luts.onServer(path) != null
+                override suspend fun fetch(path: String) = agent.luts.fetch(path)
+            })
             // brief P3b: favourite and recently used styles and the apply mode, in the app's settings (not darktable's database)
             c.stylesPresets.settings = FileStyleSettings(File(app.filesDir, "styles/settings.json"))
             // brief P3g: where the export screen's files go (Pictures/darktable, the share sheet)
@@ -528,7 +538,11 @@ object AppHost {
                     if (beats++ % EXPORT_QUEUE_BEATS == 0 && agent.queuedExports() > 0) AppEngine.scope.launch { agent.sendQueuedExports() }
                     // brief P3l: shared styles, presets and layouts: asked at most once a minute while the app is open
                     // (each pass also sends this phone's own changes, unless automatic sync is off)
-                    if (sharedPoll?.isActive != true) sharedPoll = AppEngine.scope.launch { runCatching { agent.shared.pollIfDue() } }
+                    if (sharedPoll?.isActive != true) sharedPoll = AppEngine.scope.launch {
+                        runCatching { agent.shared.pollIfDue() }
+                        // brief P6b: the LUT folder, on the same rhythm
+                        runCatching { agent.luts.pollIfDue() }
+                    }
                     // in the order LPL gave them, one after the other
                     if (jobs.isNotEmpty()) AppEngine.scope.launch { jobLock.withLock { for ((origin, job) in jobs) runJob(origin, job) } }
                     // brief P3k: a job kept by a background heartbeat (the sync service's, or the last one) that raced
@@ -669,6 +683,8 @@ object AppHost {
             if (agent.pending().isNotEmpty() || controller.openRawPath() != null || agent.queuedExports() > 0) SyncJob.schedule(app)
             // brief P3l: changes to styles, presets and layouts made in this session go out now
             runCatching { agent.shared.passAll() }
+            // brief P6b: LUT files added or changed on this phone
+            runCatching { agent.luts.passAll() }
         }
     }
 

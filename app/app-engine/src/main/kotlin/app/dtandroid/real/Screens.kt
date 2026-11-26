@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import app.dtandroid.darkroom.SeriesItem
@@ -234,6 +236,8 @@ fun LibraryScreen(vm: AppViewModel, onOpen: () -> Unit, onOpenInLpl: (ServerOrig
             HostAction("timings…") { vm.openTimings() },
             // brief P4b: GPU, processing memory, measure speed
             HostAction("processing…") { vm.openProcessing() },
+            // brief P6b: the LUT folder (lut 3D's files)
+            HostAction("LUT files…") { vm.show(Screen.LUTS) },
             HostAction("about") { vm.show(Screen.ABOUT) },
         ),
         messages = listOfNotNull(lib.busy) + lib.messages,
@@ -416,5 +420,31 @@ fun ProcessingPage(vm: AppViewModel, appVersion: String, onCopy: (String) -> Uni
         onBack = { vm.show(Screen.LIBRARY) },
         onCopyGpu = { ui.gpuDetails?.let(onCopy) },
         onGpuForce = { Processing.forceGpu(vm.controller) },
+    )
+}
+
+/** Brief P6b: Settings › LUT files, from the phone's LUT folder and the LUT exchange with LightPhotoLibrary. */
+@Composable
+fun LutFilesPage(vm: AppViewModel) = Page {
+    val luts = AppHost.agent.luts
+    val views by luts.views.collectAsState()
+    val version by luts.folder.version.collectAsState()
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var files by remember { mutableStateOf(emptyList<app.dtandroid.lpl.LutFile>()) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(version) { files = withContext(Dispatchers.IO) { luts.folder.files() } }
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { luts.showStored() } }
+    val origin = vm.servers.list().map { it.origin }.firstOrNull { views[it]?.active == true }
+    val view = origin?.let { views[it] }
+    val auto by AppHost.agent.settings.autoSync.collectAsState()
+    app.dtandroid.darkroom.ui.LutFilesScreen(
+        app.dtandroid.darkroom.ui.LutFilesUi(files, files.sumOf { it.size }, view?.states.orEmpty(), view?.conflicts.orEmpty(),
+            synced = view != null, autoSync = auto, error = view?.error, message = message, busy = busy),
+        onRemove = { p -> message = if (luts.remove(p)) "removed $p from this phone" else "$p could not be removed" },
+        onResolve = { p, choice -> if (origin != null) { busy = true; scope.launch { message = luts.resolve(origin, p, choice); busy = false } } },
+        onAdd = { AppHost.pickLuts?.invoke("") },
+        onSync = { busy = true; scope.launch { runCatching { luts.passAll(transfer = true) }; busy = false } },
+        onBack = { vm.show(Screen.LIBRARY) },
     )
 }

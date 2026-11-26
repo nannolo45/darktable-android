@@ -60,6 +60,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** brief P6b: LUT files (.cube, .3dl, .png) through Android's picker, copied into the LUT folder's [lutSubfolder] */
+    private var lutSubfolder = ""
+    private val importLuts = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isEmpty()) return@registerForActivityResult
+        val sub = lutSubfolder
+        AppEngine.scope.launch {
+            val files = withContext(Dispatchers.IO) { uris.mapNotNull { uri -> readPicked(uri, app.dtandroid.lpl.LutPaths.MAX_BYTES.toInt()) } }
+            vm.controller.lut3d.import(files, sub)
+            if (files.size < uris.size) vm.controller.lut3d.note("${uris.size - files.size} file(s) could not be read or are larger than 64 MB")
+        }
+    }
+
     private val importFiles = object : ImportFiles {
         override fun pickImport() = importStyles.launch(arrayOf("*/*"))
     }
@@ -92,13 +104,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /** A picked file's name and bytes; null when it cannot be read (or is larger than any style or preset file). */
-    private fun readPicked(uri: Uri): Pair<String, ByteArray>? = runCatching {
+    private fun readPicked(uri: Uri, max: Int = MAX_IMPORT_BYTES): Pair<String, ByteArray>? = runCatching {
         val out = java.io.ByteArrayOutputStream()
         contentResolver.openInputStream(uri)!!.use { s ->
             val buf = ByteArray(1 shl 16)
-            while (out.size() <= MAX_IMPORT_BYTES) { val n = s.read(buf); if (n < 0) break; out.write(buf, 0, n) }
+            while (out.size() <= max) { val n = s.read(buf); if (n < 0) break; out.write(buf, 0, n) }
         }
-        if (out.size() > MAX_IMPORT_BYTES) null else displayName(uri) to out.toByteArray()
+        if (out.size() > max) null else displayName(uri) to out.toByteArray()
     }.getOrNull()
 
     private fun displayName(uri: Uri): String =
@@ -122,6 +134,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         AppHost.askNotifications = null
+        AppHost.pickLuts = null
         super.onDestroy()
     }
 
@@ -131,6 +144,8 @@ class MainActivity : ComponentActivity() {
         AppEngine.start(this)
         // brief P3i: AppHost asks, from its own watch of the export job, when the first export starts
         AppHost.askNotifications = { runOnUiThread { askNotificationsOnce() } }
+        // brief P6b: "Add from phone…" in lut 3D's chooser and in Settings › LUT files
+        AppHost.pickLuts = { sub -> runOnUiThread { lutSubfolder = sub; importLuts.launch(arrayOf("*/*")) } }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = back()
         })
@@ -162,6 +177,7 @@ class MainActivity : ComponentActivity() {
                     screen == Screen.ABOUT -> AboutScreen(vm, ready, appVersion())
                     screen == Screen.TIMINGS -> TimingsScreen(vm, appVersion(), onShare = { share(it) })
                     screen == Screen.PROCESSING -> ProcessingPage(vm, appVersion(), onCopy = { copyText(it, "dt-android speed") })
+                    screen == Screen.LUTS -> LutFilesPage(vm)
                 }
             }
         }
@@ -184,6 +200,7 @@ class MainActivity : ComponentActivity() {
             Screen.HANDOFF -> vm.cancelHandOff()
             Screen.TIMINGS -> vm.show(if (vm.controller.state.value.info != null) Screen.DARKROOM else Screen.LIBRARY)
             Screen.PROCESSING -> if (!Processing.ui.value.busy) vm.show(Screen.LIBRARY)
+            Screen.LUTS -> vm.show(Screen.LIBRARY)
         }
     }
 
