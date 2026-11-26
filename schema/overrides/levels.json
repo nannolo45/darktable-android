@@ -1,0 +1,45 @@
+{
+  "op": "levels",
+  "reason": "brief P6a: the black, grey and white pickers set the levels from the picked lightness as levels.c color_picker_apply (module action pick). \"auto\" (the automatic levels from the histogram desktop's process() computes on the preview pipe) is not built.",
+  "picker": [
+    {
+      "node": 6,
+      "label": "black",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "black"
+        }
+      }
+    },
+    {
+      "node": 7,
+      "label": "gray",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "grey"
+        }
+      }
+    },
+    {
+      "node": 8,
+      "label": "white",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "white"
+        }
+      }
+    }
+  ]
+}

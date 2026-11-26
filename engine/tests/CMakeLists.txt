@@ -11,7 +11,8 @@ set_target_properties(dtb_test PROPERTIES BUILD_RPATH "$<TARGET_FILE_DIR:dtbridg
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 # the copied callbacks are the modules' own code: they refer to GTK as the modules do
 pkg_check_modules(PICKREF_GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
-set(PICKREF_OPS temperature exposure rgblevels rgbcurve channelmixerrgb)
+set(PICKREF_OPS temperature exposure rgblevels rgbcurve channelmixerrgb
+    levels invert splittoning colorize profile_gamma basicadj colorequal colorzones colorharmonizer agx)  # brief P6a: test C43
 set(PICKREF_GEN "${CMAKE_CURRENT_BINARY_DIR}/pickref-gen")
 set(PICKREF_INC "")
 set(PICKREF_UPSTREAM "")

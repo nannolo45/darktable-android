@@ -99,6 +99,8 @@ add_library(dtbridge SHARED
   src/maskdisplay.c # mask display for one render (P1b part 2, 6.8)
   src/pickers.c     # colour pickers, histogram (P1b part 2, 6.3, 6.4)
   src/actions3.c    # module actions that pick (P1b part 2, 6.3)
+  src/p6a_actions.c # pickers and auto buttons of brief P6a
+  src/p6a_agx.c     # AgX's pickers and buttons (P6a)
   src/coords.c      # coordinates original <-> processed (P1b part 2, 6.5)
   src/blend.c       # blending of an instance (P1b part 2, 6.6)
   src/masks.c       # drawn masks (P1b part 2, 6.7)

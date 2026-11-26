@@ -595,7 +595,44 @@ class FakeEngine(
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
                 val (t, tint) = FakeWhiteBalance.fromCoefficients(p)
-                buildJsonObject { put("temperature", t); put("tint", tint); put("tuning", JsonNull); put("preset_index", JsonNull) }
+                // brief P6a: the stand-in camera's presets (FakeWhiteBalance.PRESETS), matched by their multipliers
+                val m = FakeWhiteBalance.match(p)
+                val ft = m?.first?.takeIf { it.tunings.size > 1 }
+                buildJsonObject {
+                    put("temperature", t); put("tint", tint)
+                    if (m != null) put("tuning", m.second) else put("tuning", JsonNull)
+                    if (ft != null) { put("finetune_min", ft.tunings.first()); put("finetune_max", ft.tunings.last()); put("finetune_default", 0) }
+                    else { put("finetune_min", JsonNull); put("finetune_max", JsonNull); put("finetune_default", JsonNull) }
+                    put("preset_index", JsonNull)
+                    if (m != null) put("preset", m.first.name) else put("preset", JsonNull)
+                }
+            }
+            "temperature" to "list_settings" -> {
+                val p = s.live()[op to priority]!!.params
+                val m = FakeWhiteBalance.match(p)
+                val asShot = FakeWhiteBalance.isAsShot(p)
+                val cur = when { m != null -> m.first.name; asShot -> "as shot"; else -> "user modified" }
+                buildJsonArray {
+                    for ((n, k) in listOf("as shot" to "mode", "from image area" to "picker", "user modified" to "mode", "camera reference" to "mode"))
+                        add(buildJsonObject {
+                            put("name", n); put("kind", k); put("current", n == cur); put("choosable", n != "user modified")
+                            if (n == "user modified") put("reason", "set by the temperature, tint or channel sliders")
+                        })
+                    add(buildJsonObject { put("name", "Fake Camera"); put("kind", "section"); put("current", false); put("choosable", false) })
+                    for (pr in FakeWhiteBalance.PRESETS) add(buildJsonObject {
+                        put("name", pr.name); put("kind", "camera"); put("current", pr.name == cur); put("choosable", true)
+                        put("tuning", 0); put("tuning_min", pr.tunings.first()); put("tuning_max", pr.tunings.last()); put("tuning_default", 0)
+                    })
+                }
+            }
+            "temperature" to "apply_preset" -> {
+                requireWritable()
+                val name = (args["name"] as? JsonPrimitive)?.content ?: fail(EngineError.TYPE, "apply_preset takes {name, tuning?}")
+                val tune = (args["tuning"] as? JsonPrimitive)?.intOrNull ?: 0
+                val c = FakeWhiteBalance.coefficients(name, tune) ?: fail(EngineError.NOT_FOUND, "no white balance preset '$name' with tuning $tune")
+                s.beginChange()
+                s.addItem(op, priority, true, JsonObject(s.live()[op to priority]!!.params + mapOf("red" to JsonPrimitive(c[0]), "green" to JsonPrimitive(c[1]), "blue" to JsonPrimitive(c[2]))))
+                JsonObject(emptyMap())
             }
             // P1b (engine-api.md 5.4)
             "colorin" to "list_profiles" -> {
@@ -641,7 +678,7 @@ class FakeEngine(
             }
             "temperature" to "list_presets", "lens" to "list_cameras", "denoiseprofile" to "list_profiles" -> JsonArray(emptyList())
             "lens" to "list_lenses" -> JsonArray(emptyList())
-            "temperature" to "apply_preset", "lens" to "set_lens", "denoiseprofile" to "set_profile" -> {
+            "lens" to "set_lens", "denoiseprofile" to "set_profile" -> {
                 requireWritable()
                 fail(EngineError.NOT_FOUND, "the fake engine has no presets, lenses or profiles")
             }
@@ -2542,6 +2579,34 @@ internal object FakeWhiteBalance {
     fun toCoefficients(t: Double, tint: Double): DoubleArray {
         val s = (t / T0).pow(K)
         return doubleArrayOf(C0[0] * s, C0[1] * tint / TINT0, C0[2] / s)
+    }
+
+    /** brief P6a: the stand-in camera's presets: daylight with fine tuning -2..2, cloudy and shade without */
+    class Preset(val name: String, val t: Double, val tint: Double, val tunings: List<Int>)
+    val PRESETS = listOf(Preset("daylight", 5200.0, 1.0, listOf(-2, -1, 0, 1, 2)), Preset("cloudy", 6000.0, 1.0, listOf(0)), Preset("shade", 7000.0, 1.0, listOf(0)))
+
+    /** a preset's multipliers at a tuning (10 mired per step), "as shot" and "camera reference" the defaults */
+    fun coefficients(name: String, tune: Int): DoubleArray? {
+        if (name == "as shot" || name == "camera reference") return C0.copyOf()
+        val p = PRESETS.firstOrNull { it.name == name } ?: return null
+        if (tune !in p.tunings) return null
+        return toCoefficients(1e6 / (1e6 / p.t + 10.0 * tune), p.tint)
+    }
+
+    fun match(p: JsonObject): Pair<Preset, Int>? {
+        val r = (p["red"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        val b = (p["blue"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        for (pr in PRESETS) for (t in pr.tunings) {
+            val c = coefficients(pr.name, t)!!
+            if (kotlin.math.abs(c[0] - r) < 1e-5 && kotlin.math.abs(c[2] - b) < 1e-5) return pr to t
+        }
+        return null
+    }
+
+    fun isAsShot(p: JsonObject): Boolean {
+        val r = (p["red"] as? JsonPrimitive)?.doubleOrNull ?: C0[0]
+        val b = (p["blue"] as? JsonPrimitive)?.doubleOrNull ?: C0[2]
+        return kotlin.math.abs(r - C0[0]) < 1e-5 && kotlin.math.abs(b - C0[2]) < 1e-5
     }
 
     fun fromCoefficients(p: JsonObject): Pair<Double, Double> {

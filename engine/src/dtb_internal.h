@@ -235,6 +235,18 @@ typedef struct dtb_pick_result_t
 /* pick on module m: area normalised in the picture (x0, y0, x1, y1) */
 int dtb__pick(dt_iop_module_t *m, const float area[4], gboolean denoise, gboolean full,
               const dtb_render_opts_t *o, dtb_pick_result_t *res);
+/* brief P6a: dtb__pick with the picker's colour space given (dt_iop_colorspace_type_t), for a module whose pickers
+ * differ in it */
+int dtb__pick_cst(dt_iop_module_t *m, const float area[4], gboolean denoise, int cst, dtb_pick_result_t *res);
+/* brief P6a: one render in which m runs, fn called on its input buffer (pickers.c) */
+typedef void (*dtb_input_fn)(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const float *in,
+                             const dt_iop_roi_t *roi_in, void *user);
+int dtb__module_input(dt_iop_module_t *m, dtb_input_fn fn, void *user);
+/* brief P6a: an area of the picture mapped back to the pipe's input (normalised), as desktop's picker box */
+void dtb__area_to_input(const float area[4], float box[4]);
+/* brief P6a: module actions added by P6a (p6a_actions.c, p6a_agx.c); 1 = no such action here */
+int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+int dtb__module_action_agx(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 /* "area": [x0, y0, x1, y1] or "point": [x, y] of a request or action arguments */
 int dtb__read_area(JsonObject *o, float area[4]);
 /* {"input": ..., "output": ...} */

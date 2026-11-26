@@ -368,6 +368,48 @@ static const char *_wb_mode_name(const int mode)
   }
 }
 
+/* the camera preset and its fine tuning, as gui_update() finds them
+ * (_match_camera_preset in iop/temperature.c): the saved preset first, then
+ * every camera preset; exact tunings, then interpolated ones. Only legacy
+ * params (no mode) and saved camera presets are matched. */
+static void _wb_match(const float coeffs[4], const int preset, const GArray *cams, int *cam_index_out,
+                      int *tuning_out)
+{
+  int cam_index = -1, tuning = 0;
+  for(int pass = 0; pass < 2 && cam_index < 0; pass++)
+    for(int interpolate = 0; interpolate < 2 && cam_index < 0; interpolate++)
+      for(guint i = 0; i < cams->len && cam_index < 0; i++)
+      {
+        const _wb_cam_preset_t *cp = &g_array_index(cams, _wb_cam_preset_t, i);
+        if(pass == 0 && cp->pos != preset) continue;
+        if(preset != WB_UNKNOWN && preset < WB_NUM_STD_PRESETS) continue;
+        for(int k = cp->min_ft_pos + (interpolate ? 1 : 0); k <= cp->max_ft_pos && cam_index < 0; k++)
+        {
+          if(!interpolate)
+          {
+            if(dt_dev_equal_chroma(coeffs, dt_wb_preset(k)->channels))
+            {
+              cam_index = i;
+              tuning = dt_wb_preset(k)->tuning;
+            }
+            continue;
+          }
+          for(int tune = dt_wb_preset(k - 1)->tuning + 1; tune < dt_wb_preset(k)->tuning && cam_index < 0; tune++)
+          {
+            dt_wb_data ip = { .tuning = tune };
+            dt_wb_preset_interpolate(dt_wb_preset(k - 1), dt_wb_preset(k), &ip);
+            if(dt_dev_equal_chroma(coeffs, ip.channels))
+            {
+              cam_index = i;
+              tuning = tune;
+            }
+          }
+        }
+      }
+  *cam_index_out = cam_index;
+  *tuning_out = tuning;
+}
+
 static int _wb_check(dt_iop_module_t *m, const dt_image_t *img)
 {
   if(m->hide_enable_button)
@@ -380,7 +422,7 @@ static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *
 {
   const gboolean mutating = !strcmp(action, "set_wb") || !strcmp(action, "apply_preset")
                             || !strcmp(action, "wb_from_area");
-  if(strcmp(action, "get_wb") && strcmp(action, "list_presets") && !mutating)
+  if(strcmp(action, "get_wb") && strcmp(action, "list_presets") && strcmp(action, "list_settings") && !mutating)
     return dtb__err(DTB_E_NOT_FOUND, "temperature has no action '%s'", action);
   if(mutating && _need_writable()) return DTB_E_READ_ONLY;
   const dt_image_t *img = _image_get();
@@ -410,46 +452,26 @@ static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *
       for(guint i = 0; i < cams->len && !name; i++)
         if(g_array_index(cams, _wb_cam_preset_t, i).pos == mode)
           name = g_array_index(cams, _wb_cam_preset_t, i).name;
-    // the camera preset and its fine tuning, as gui_update() finds them
-    // (_match_camera_preset in iop/temperature.c): the saved preset first,
-    // then every camera preset; exact tunings, then interpolated ones
     int cam_index = -1, tuning = 0;
-    for(int pass = 0; pass < 2 && cam_index < 0; pass++)
-      for(int interpolate = 0; interpolate < 2 && cam_index < 0; interpolate++)
-        for(guint i = 0; i < cams->len && cam_index < 0; i++)
-        {
-          const _wb_cam_preset_t *cp = &g_array_index(cams, _wb_cam_preset_t, i);
-          if(pass == 0 && cp->pos != *w.preset) continue;
-          if(*w.preset != WB_UNKNOWN && *w.preset < WB_NUM_STD_PRESETS) continue;
-          for(int k = cp->min_ft_pos + (interpolate ? 1 : 0); k <= cp->max_ft_pos && cam_index < 0; k++)
-          {
-            if(!interpolate)
-            {
-              if(dt_dev_equal_chroma(coeffs, dt_wb_preset(k)->channels))
-              {
-                cam_index = i;
-                tuning = dt_wb_preset(k)->tuning;
-              }
-              continue;
-            }
-            for(int tune = dt_wb_preset(k - 1)->tuning + 1; tune < dt_wb_preset(k)->tuning && cam_index < 0; tune++)
-            {
-              dt_wb_data ip = { .tuning = tune };
-              dt_wb_preset_interpolate(dt_wb_preset(k - 1), dt_wb_preset(k), &ip);
-              if(dt_dev_equal_chroma(coeffs, ip.channels))
-              {
-                cam_index = i;
-                tuning = tune;
-              }
-            }
-          }
-        }
+    _wb_match(coeffs, *w.preset, cams, &cam_index, &tuning);
     if(cam_index >= 0 && !name) name = g_array_index(cams, _wb_cam_preset_t, cam_index).name;
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
     json_builder_set_member_name(b, "tuning");
     if(cam_index >= 0) json_builder_add_int_value(b, tuning);
     else json_builder_add_null_value(b);
+    // brief P6a: desktop shows the finetune slider only for a matched camera
+    // preset that has fine tuning (gui_update: min_ft_pos != max_ft_pos), with
+    // that preset's tunings as its hard limits and its untuned entry as default
+    const _wb_cam_preset_t *fp = cam_index >= 0 ? &g_array_index(cams, _wb_cam_preset_t, cam_index) : NULL;
+    if(fp && fp->min_ft_pos == fp->max_ft_pos) fp = NULL;
+    const char *fnames[3] = { "finetune_min", "finetune_max", "finetune_default" };
+    for(int k = 0; k < 3; k++)
+    {
+      json_builder_set_member_name(b, fnames[k]);
+      if(fp) json_builder_add_int_value(b, dt_wb_preset(k == 0 ? fp->min_ft_pos : k == 1 ? fp->max_ft_pos : fp->no_ft_pos)->tuning);
+      else json_builder_add_null_value(b);
+    }
     json_builder_set_member_name(b, "preset_index");
     // position in list_presets: "as shot", "camera reference", then the camera's
     if(cam_index >= 0) json_builder_add_int_value(b, 2 + cam_index);
@@ -501,6 +523,94 @@ static int _act_temperature(dt_iop_module_t *m, const char *action, JsonObject *
       json_builder_add_int_value(b, dt_wb_preset(p->min_ft_pos)->tuning);
       json_builder_set_member_name(b, "tuning_max");
       json_builder_add_int_value(b, dt_wb_preset(p->max_ft_pos)->tuning);
+      json_builder_set_member_name(b, "tuning_default");
+      json_builder_add_int_value(b, dt_wb_preset(p->no_ft_pos)->tuning);
+      json_builder_end_object(b);
+    }
+    json_builder_end_array(b);
+    *res = dtb__json_finish(b);
+  }
+  else if(!r && !strcmp(action, "list_settings"))
+  {
+    // brief P6a: desktop's "settings" list in its order (gui_init and
+    // _generate_preset_combo): as shot, from image area, user modified,
+    // camera reference, then a section with the camera's name and its
+    // presets. "current" is the entry desktop's gui_update shows: as shot and
+    // camera reference by their mode, a camera preset whose tunings match the
+    // coefficients, "from image area" while that mode is stored (desktop shows
+    // it after a pick; after reopening it shows "user modified"), otherwise
+    // "user modified". A camera preset's "tuning" is what choosing it applies:
+    // _preset_tune_callback takes the finetune slider's value, which is the
+    // current preset's tuning (0 when no camera preset is current); a value
+    // outside the chosen preset's tunings gives its untuned entry here
+    // (desktop then keeps the old coefficients under the new name).
+    float coeffs[4];
+    for(int k = 0; k < 4; k++) coeffs[k] = *w.c[k];
+    const int mode = _wb_mode(coeffs, *w.preset, chr);
+    int cam_index = -1, tuning = 0;
+    _wb_match(coeffs, *w.preset, cams, &cam_index, &tuning);
+    const char *cur = mode == WB_AS_SHOT ? "as shot" : mode == WB_D65 ? "camera reference"
+                      : mode == WB_SPOT ? "from image area" : NULL;
+    if(!cur && cam_index < 0) cur = "user modified";
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_array(b);
+    static const struct { const char *name, *kind; } std[4] = {
+      { "as shot", "mode" }, { "from image area", "picker" }, { "user modified", "mode" }, { "camera reference", "mode" } };
+    for(int i = 0; i < 4; i++)
+    {
+      json_builder_begin_object(b);
+      json_builder_set_member_name(b, "name");
+      json_builder_add_string_value(b, std[i].name);
+      json_builder_set_member_name(b, "kind");
+      json_builder_add_string_value(b, std[i].kind);
+      json_builder_set_member_name(b, "current");
+      json_builder_add_boolean_value(b, cur && !strcmp(cur, std[i].name));
+      json_builder_set_member_name(b, "choosable");
+      // "user modified" restores the panel's memory of the last slider values
+      // (g->mod_coeff), which only desktop's panel has
+      json_builder_add_boolean_value(b, i != 2);
+      if(i == 2)
+      {
+        json_builder_set_member_name(b, "reason");
+        json_builder_add_string_value(b, "set by the temperature, tint or channel sliders");
+      }
+      json_builder_end_object(b);
+    }
+    if(cams->len)
+    {
+      gchar *section = g_strdup_printf("%s %s", img->camera_maker, img->camera_model);
+      json_builder_begin_object(b);
+      json_builder_set_member_name(b, "name");
+      json_builder_add_string_value(b, section);
+      json_builder_set_member_name(b, "kind");
+      json_builder_add_string_value(b, "section");
+      json_builder_set_member_name(b, "current");
+      json_builder_add_boolean_value(b, FALSE);
+      json_builder_set_member_name(b, "choosable");
+      json_builder_add_boolean_value(b, FALSE);
+      json_builder_end_object(b);
+      g_free(section);
+    }
+    const int carried = cam_index >= 0 ? tuning : 0;
+    for(guint i = 0; i < cams->len; i++)
+    {
+      const _wb_cam_preset_t *p = &g_array_index(cams, _wb_cam_preset_t, i);
+      const int tmin = dt_wb_preset(p->min_ft_pos)->tuning, tmax = dt_wb_preset(p->max_ft_pos)->tuning;
+      json_builder_begin_object(b);
+      json_builder_set_member_name(b, "name");
+      json_builder_add_string_value(b, p->name);
+      json_builder_set_member_name(b, "kind");
+      json_builder_add_string_value(b, "camera");
+      json_builder_set_member_name(b, "current");
+      json_builder_add_boolean_value(b, (int)i == cam_index);
+      json_builder_set_member_name(b, "choosable");
+      json_builder_add_boolean_value(b, TRUE);
+      json_builder_set_member_name(b, "tuning");
+      json_builder_add_int_value(b, carried >= tmin && carried <= tmax ? carried : dt_wb_preset(p->no_ft_pos)->tuning);
+      json_builder_set_member_name(b, "tuning_min");
+      json_builder_add_int_value(b, tmin);
+      json_builder_set_member_name(b, "tuning_max");
+      json_builder_add_int_value(b, tmax);
       json_builder_set_member_name(b, "tuning_default");
       json_builder_add_int_value(b, dt_wb_preset(p->no_ft_pos)->tuning);
       json_builder_end_object(b);
@@ -1198,6 +1308,9 @@ int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args,
   if(r2 != 1) return r2;
   const int r3 = dtb__module_action3(m, action, args, result);
   if(r3 != 1) return r3;
+  // brief P6a: pickers and auto buttons
+  const int r6 = dtb__module_action_p6a(m, action, args, result);
+  if(r6 != 1) return r6;
   if(dt_iop_module_is(m, "temperature")) return _act_temperature(m, action, args, result);
   if(dt_iop_module_is(m, "lens")) return _act_lens(m, action, args, result);
   if(dt_iop_module_is(m, "lut3d")) return _act_lut3d(m, action, args, result);

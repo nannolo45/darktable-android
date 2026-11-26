@@ -87,3 +87,12 @@ out ("not available yet").
 |---|---|
 | `action_list` | a list whose entries and current entry a module action gives for the open photo: `list` (the action), `filter` (entry fields that must match), `label`, `current` (entry fields), and either `params` (parameter to entry field, written with one `params_set`) or `action` with `action_args` (argument to entry field). Read again when the instance's parameters or the photo change. Files: `colorin.json` (input profile), `denoiseprofile.json` (profile) |
 | `bind_action` (fields added) | `args_from` (argument of `set` taken from another field of `get`'s answer), `needs` (the control is greyed out while that field is null), `round` (whole numbers). File: `temperature.json` (finetune: `get_wb` tuning, `apply_preset {name, tuning}`) |
+
+## Brief P6a
+
+| Operation | What it does |
+|---|---|
+| `add_slider` | a slider desktop does not have, for a float parameter it sets only on the photo: inserted `after` a node (checked by `expect_label`), with the next free id, `label`, `tooltip`, `soft_min`/`soft_max`/`hard_min`/`hard_max`, `default`, `digits`, `format`. File: `graduatednd.json` (offset, 0..100 %) |
+| `action_list` (fields added) | `enabled` (entry field false = greyed out, `reason` field says why), `section` (entry fields that make a heading), `arm_picker` (`when` entry fields, `node`: the entry arms that picker). File: `temperature.json` (settings: `list_settings`, `apply_preset {name, tuning}`) |
+| `bind_action` (fields added) | `hide` (hidden instead of greyed out while `needs` is null), `range_from` (`min`, `max`, `default` from fields of `get`'s answer). File: `temperature.json` (finetune) |
+| `action_button` | a desktop button whose callback the engine does as a module action: `node`, `expect_action_path` or `expect_label`, `label`, `action` (`name`, `args`, `tab_args`). Files: see the P6a report |

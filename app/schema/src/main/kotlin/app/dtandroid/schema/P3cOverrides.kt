@@ -129,8 +129,14 @@ internal object P3cOverrides {
             params.keys.forEach { p -> if (p !in m.params && p.substringBefore('[') !in m.fieldNames) throw SchemaException("$file: ${m.op} has no parameter $p") }
             val action = e.str("action")
             if ((action == null) == params.isEmpty()) throw SchemaException("$file: action_list ${c.id}: params or action, one of them")
+            // brief P6a: entries that cannot be chosen, headings, and an entry that arms a picker
+            val arm = e["arm_picker"] as? JsonObject
+            val armNode = arm?.let { (it["node"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull() ?: throw SchemaException("$file: arm_picker without node") }
+            if (armNode != null && m.control(armNode) == null) throw SchemaException("$file: arm_picker: ${m.op} has no node $armNode")
             lists[c.id] = ActionList(c.id, e.str("list") ?: throw SchemaException("$file: action_list without list"), map("filter"),
-                e.str("label") ?: "name", e.str("current") ?: "current", params, action, map("action_args"))
+                e.str("label") ?: "name", e.str("current") ?: "current", params, action, map("action_args"),
+                enabled = e.str("enabled"), reason = e.str("reason") ?: "reason", section = map("section"),
+                picker = (arm?.get("when") as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap(), pickerNode = armNode)
             m = m.copy(controls = Overrides.replace(m.controls, c.id) { (it as Control.ComboBox).copy(binding = Binding.ActionList) })
         }
         return m.copy(pickerSettings = settings, pickers = pickers, actionLists = lists)

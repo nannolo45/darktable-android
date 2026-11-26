@@ -1,6 +1,6 @@
 {
   "op": "temperature",
-  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4). Brief P2j: the settings list and its finetune are not built yet (see the P2j report). Brief P3c: the \"from image area\" picker button sets the coefficients from the picked area (module action wb_from_area, engine-api.md 6.3; temperature.c color_picker_apply). Brief P3c deliverable 5: finetune is read from get_wb's tuning (null when the white balance is not a camera preset: then the slider is greyed out) and written through apply_preset {name: the matched preset, tuning}, whole steps as desktop's slider.",
+  "reason": "white balance's temperature and tint sliders are derived from the channel coefficients on desktop and have no parameter (S5 section 7). The quick panel's default list includes the temperature, so both sliders are read and written through module_action get_wb / set_wb (engine-api.md 2.4). Brief P2j: the settings list and its finetune are not built yet (see the P2j report). Brief P3c: the \"from image area\" picker button sets the coefficients from the picked area (module action wb_from_area, engine-api.md 6.3; temperature.c color_picker_apply). Brief P3c deliverable 5: finetune is read from get_wb's tuning (null when the white balance is not a camera preset: then the slider is greyed out) and written through apply_preset {name: the matched preset, tuning}, whole steps as desktop's slider. Brief P6a: the settings list is desktop's list for this photo (module action list_settings: as shot, from image area, user modified, camera reference, the camera's name as a heading and its presets from wb_presets.json, the current entry as desktop's gui_update shows it); choosing an entry calls apply_preset {name, tuning} as _preset_tune_callback does (one history item); \"from image area\" arms the picker of node 4 as desktop does; \"user modified\" is greyed out (desktop restores its panel's memory of the last slider values). The finetune slider is shown only for a camera preset with fine tuning, with that preset's tunings as its limits (get_wb finetune_min/max/default), as desktop's gui_update.",
   "bind_action": [
     {
       "node": 12,
@@ -36,16 +36,14 @@
       "args_from": {
         "name": "preset"
       },
-      "needs": "tuning",
-      "round": true
-    }
-  ],
-  "note": [
-    {
-      "node": 9,
-      "expect_label": "settings",
-      "text": "not available yet on the phone",
-      "class": "b"
+      "needs": "finetune_min",
+      "round": true,
+      "hide": true,
+      "range_from": {
+        "min": "finetune_min",
+        "max": "finetune_max",
+        "default": "finetune_default"
+      }
     }
   ],
   "picker": [
@@ -58,6 +56,29 @@
       ],
       "action": {
         "name": "wb_from_area"
+      }
+    }
+  ],
+  "action_list": [
+    {
+      "node": 9,
+      "expect_label": "settings",
+      "list": "list_settings",
+      "action": "apply_preset",
+      "action_args": {
+        "name": "name",
+        "tuning": "tuning"
+      },
+      "enabled": "choosable",
+      "reason": "reason",
+      "section": {
+        "kind": "section"
+      },
+      "arm_picker": {
+        "when": {
+          "kind": "picker"
+        },
+        "node": 4
       }
     }
   ]

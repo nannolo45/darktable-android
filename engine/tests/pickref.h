@@ -13,7 +13,7 @@ typedef struct pickref_widgets_t
   float hue, chroma;   /* color calibration's target */
   int use_mixing;      /* color calibration: take channel mixing into account */
   int channel;         /* rgblevels, rgbcurve: the channel tab */
-  int which;           /* rgblevels: 0 black, 1 grey, 2 white */
+  int which;           /* rgblevels, levels: 0 black, 1 grey, 2 white; P6a: the picker or button of the module */
 } pickref_widgets_t;
 
 /* run the module's callback on [self] (a copy of the session's module whose params point to the parameters to
@@ -25,3 +25,23 @@ int pickref_exposure(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pi
 int pickref_rgblevels(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 int pickref_rgbcurve(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 int pickref_channelmixerrgb(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+
+/* brief P6a (C43) */
+int pickref_levels(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_invert(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_splittoning(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_colorize(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_profile_gamma(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_basicadj(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_colorzones(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+/* which: 0 the anchor hue, 1..4 custom node 0..3 */
+int pickref_colorharmonizer(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_colorequal(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+/* which: 0 black, 1 white, 2 auto tune levels, 3 pivot x, 4 pivot x and y; 10 read exposure (lightness = the
+ * effective exposure), 11..13 primaries blender / smooth / unmodified, 14 post-curve primaries from above */
+int pickref_agx(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+struct dt_dev_pixelpipe_iop_t;
+struct dt_iop_roi_t;
+void pickref_rgblevels_auto(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_iop_t *piece, const float *in,
+                            const struct dt_iop_roi_t *roi_in, const float box_cood[4], int channel, void *params);
+void pickref_temperature_mul2temp(struct dt_iop_module_t *self, float *temp, float *tint);

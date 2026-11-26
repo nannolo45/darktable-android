@@ -1,0 +1,62 @@
+{
+  "op": "profile_gamma",
+  "reason": "brief P6a: the four pickers (middle gray luma, black relative exposure, dynamic range, auto tune levels) as profile_gamma.c apply_auto_grey, apply_auto_black, apply_auto_dynamic_range, apply_autotune (module action pick).",
+  "picker": [
+    {
+      "node": 6,
+      "expect_label": "middle gray luma",
+      "label": "middle gray luma from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "grey"
+        }
+      }
+    },
+    {
+      "node": 7,
+      "expect_label": "black relative exposure",
+      "label": "black relative exposure from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "black"
+        }
+      }
+    },
+    {
+      "node": 8,
+      "expect_label": "dynamic range",
+      "label": "dynamic range from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "dynamic_range"
+        }
+      }
+    },
+    {
+      "node": 11,
+      "expect_label": "auto tune levels",
+      "label": "auto tune levels",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "auto"
+        }
+      }
+    }
+  ]
+}

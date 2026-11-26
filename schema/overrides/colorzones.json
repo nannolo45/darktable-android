@@ -1,6 +1,6 @@
 {
   "op": "colorzones",
-  "reason": "brief P2j: edit by area and the interpolation method (of the channel tab above the graph) belong to the curve editor. Brief P3c: \"show color\" marks the picked values on desktop's graph; the app shows them in the line under the photo. \"create curve\" has no engine action yet.",
+  "reason": "brief P2j: edit by area and the interpolation method (of the channel tab above the graph) belong to the curve editor. Brief P3c: \"show color\" marks the picked values on desktop's graph; the app shows them in the line under the photo. \"create curve\" has no engine action yet. Brief P6a: \"create curve\" sets the curve of the tab shown from the picked area as colorzones.c color_picker_apply does (module action set_curve_from_area: the curve back to its default, nodes at the picked minimum, mean and maximum of the \"select by\" channel; flat, as desktop without ctrl or shift).",
   "note": [
     {
       "node": 11,
@@ -24,6 +24,20 @@
         "point",
         "area"
       ]
+    },
+    {
+      "node": 7,
+      "expect_action_path": "pickers/create curve",
+      "label": "create curve",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "set_curve_from_area",
+        "tab_args": {
+          "channel": 1
+        }
+      }
     }
   ]
 }

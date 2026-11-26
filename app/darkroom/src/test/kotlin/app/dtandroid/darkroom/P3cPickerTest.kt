@@ -426,7 +426,10 @@ class P3cPickerTest {
         val b = finetune.binding as Binding.Action
         assertEquals("apply_preset", b.set)
         assertEquals(mapOf("name" to "preset"), b.argsFrom)
-        assertEquals("tuning", b.needs)
+        // brief P6a: the slider waits for the finetune range (null also for a camera preset without fine tuning,
+        // where desktop hides it too) and is hidden, not greyed out, while it is null
+        assertEquals("finetune_min", b.needs)
+        assertTrue(b.hide)
         assertTrue(c.state.value.actionValues[wb]!!["tuning"] is kotlinx.serialization.json.JsonNull)
         assertTrue(e.changes().isEmpty())
     }

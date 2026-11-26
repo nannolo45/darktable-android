@@ -1,6 +1,6 @@
 {
   "op": "rgblevels",
-  "reason": "brief P3c. The black, gray and white pickers set the levels of the selected channel from the picked point (module action pick, engine-api.md 6.3; rgblevels.c color_picker_apply), on the channel of the selected tab (tabs shown only with independent channels, rgblevels.c _rgblevels_show_hide_controls; back to R otherwise). \"auto region\" (levels from a region's histogram) has no engine action yet.",
+  "reason": "brief P3c. The black, gray and white pickers set the levels of the selected channel from the picked point (module action pick, engine-api.md 6.3; rgblevels.c color_picker_apply), on the channel of the selected tab (tabs shown only with independent channels, rgblevels.c _rgblevels_show_hide_controls; back to R otherwise). \"auto region\" (levels from a region's histogram) has no engine action yet. Brief P6a: \"auto\" and \"auto region\" set the levels from the module's input as desktop's _auto_levels does on the preview pipe (module action auto_levels: the whole picture, or the drawn area; the channel of the tab shown with independent channels).",
   "visibility": [
     {
       "node": 1,
@@ -65,6 +65,33 @@
         "tab_args": {
           "channel": 1
         }
+      }
+    },
+    {
+      "node": 12,
+      "expect_action_path": "auto region",
+      "label": "auto levels from an area",
+      "kinds": [
+        "area"
+      ],
+      "action": {
+        "name": "auto_levels",
+        "tab_args": {
+          "channel": 1
+        }
+      }
+    }
+  ],
+  "action_button": [
+    {
+      "node": 11,
+      "expect_action_path": "auto levels",
+      "label": "auto",
+      "action": {
+        "name": "auto_levels"
+      },
+      "tab_args": {
+        "channel": 1
       }
     }
   ]

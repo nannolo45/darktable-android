@@ -167,6 +167,8 @@ private fun ControlBody(c: Control, ctx: PanelContext) {
         // brief P3c: a picker button that stands alone (white balance's "from image area", levels' black, gray, white)
         is Control.Unsupported -> when {
             c.id in ctx.module.pickerMarks -> PickerButtonRow(c, ctx)
+            // brief P6a: a desktop button the engine does (rgb levels' "auto", AgX's buttons)
+            c.id in ctx.module.actionButtons -> ActionButtonRow(c, ctx)
             // brief P3e-b: the band editor stands in for desktop's graph of contrast equalizer, colour zones and colour equalizer
             c.id == BandHost.graphId(ctx.module) -> BandEditor(ctx)
             // brief P3e: the graph of the curve modules, levels and the tone equalizer; other buttons and graphs: later packages
@@ -212,12 +214,16 @@ fun UnavailableControl(label: String, reason: String?) {
 
 /** A generated slider bound to the schema's parameter (or action). */
 @Composable
-private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
+private fun GeneratedSlider(c0: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
+    // brief P6a: limits and default the engine gives per state (white balance's fine tuning: the preset's tunings)
+    val c = ctx.controller.withActionRange(ctx.state, ctx.key, c0)
     val value = ctx.controller.sliderValue(ctx.state, ctx.key, c, ctx.live) ?: c.default
     // brief P3c deliverable 5: a value the engine gives only in some states (white balance's fine tuning)
     val present = (c.binding as? Binding.Action)?.needs?.let { n ->
         ctx.state.actionValues[ctx.key]?.get(n).let { it != null && it !is kotlinx.serialization.json.JsonNull }
     } ?: true
+    // brief P6a: desktop hides such a slider while it has no value (white balance's finetune)
+    if (!present && (c.binding as? Binding.Action)?.hide == true) return
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && present
     // brief P3c: a slider with desktop's picker quad gets the picker button at its right, as on desktop
     if (c.id in ctx.module.pickerMarks && label == null) {
@@ -593,6 +599,20 @@ fun PickerButton(ctx: PanelContext, controlId: Int, sensitive: Boolean = true) {
         modifier = (if (armed) Modifier.background(c.selected) else Modifier).semantics { stateDescription = if (armed) "on" else "off" },
         enabled = enabled,
     )
+}
+
+/** Brief P6a: a desktop button done by a module action: its text (or, for a menu, one button per entry). */
+@Composable
+private fun ActionButtonRow(c: Control.Unsupported, ctx: PanelContext) {
+    val b = ctx.module.actionButtons[c.id] ?: return
+    Row(Modifier.fillMaxWidth().heightIn(min = DtTheme.sizes.sliderRow), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DtTheme.space.xs)) {
+        if (b.choices.size > 1) DtText(b.label, DtTheme.type.label, if (ctx.readOnly) DtTheme.colors.textDisabled else DtTheme.colors.text, Modifier.weight(1f), maxLines = 2)
+        for ((i, ch) in b.choices.withIndex()) {
+            DtTextButton(ch.label, onClick = { ctx.controller.launch { pressActionButton(ctx.key, c.id, i) } },
+                modifier = if (b.choices.size == 1) Modifier.weight(1f) else Modifier, enabled = !ctx.readOnly, compact = b.choices.size > 1)
+        }
+    }
 }
 
 /** A picker button that stands alone on desktop (an icon in a row): its meaning in words, the button at the right. */

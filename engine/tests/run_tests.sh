@@ -443,6 +443,9 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # brief P4c: module picks carry the working profile and rgb curve's picker_scale values
   if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
   # brief P4c: diffuse's built-in presets by their stored names
+  # brief P6a: white balance's settings list and fine tuning; graduated density's offset slider
+  if want C41; then drv C41 wbsettings "white balance settings list: desktop's order, one current entry, camera presets and every fine-tuning step against wb_presets.json, finetune range"; parity C41 p6a_wb; fi
+  if want C42; then drv C42 gradoffset "graduated density offset written as the slider writes it"; parity C42 p6a_grad; fi
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops
@@ -564,6 +567,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     DTB_TEST_R11="$HERE/../../docs/design/R11-hash-vectors.json" drv C31 shared "R11: hash vectors, snapshot, apply, refuse, delete"
   fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
+  # brief P6a: the new pickers and buttons against darktable's own callbacks (dtb_pickref p6a)
+  if want C43; then
+    if timeout 1200 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref6" "$RAW" "$XMP" "$D" p6a > "$D/C43.log" 2>&1; then
+      pass C43 "$C" "P6a picker and button actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C43.log" | cut -d' ' -f5-); $(grep '^RESULT wb presets' "$D/C43.log" | cut -d' ' -f4-)"
+    else
+      fail C43 "$C" "$(grep '^FAIL' "$D/C43.log" | head -5 | cut -c1-300 | tr '\n' ';') see $D/C43.log"
+    fi
+  fi
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
       pass C25 "$C" "picker actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C25.log" | cut -d' ' -f4-)"

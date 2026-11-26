@@ -1,0 +1,20 @@
+{
+  "op": "graduatednd",
+  "reason": "brief P6a: the position of the filter line (parameter offset) is set on desktop only by dragging the line on the photo (graduatednd.c mouse_moved / button_released: _set_grad_from_points). Here it is a slider after rotation. darktable's introspection gives offset no limits ($MIN/$MAX not declared: -FLT_MAX..FLT_MAX), so the slider takes 0..100 %, the values a line with rotation 0 takes from the top to the bottom edge of the picture (offset = 100 x the line's height there); desktop's default 50 is the centre. A turned line can reach a little beyond (about -20.7..120.7 at 45 degrees), which only the on-photo line gives on desktop.",
+  "add_slider": [
+    {
+      "after": 2,
+      "expect_label": "rotation",
+      "param": "offset",
+      "label": "offset",
+      "tooltip": "position of the filter line: 0 % at the top edge, 50 % through the centre, 100 % at the bottom edge (for rotation 0)",
+      "soft_min": 0.0,
+      "soft_max": 100.0,
+      "hard_min": 0.0,
+      "hard_max": 100.0,
+      "default": 50.0,
+      "digits": 2,
+      "format": "%"
+    }
+  ]
+}

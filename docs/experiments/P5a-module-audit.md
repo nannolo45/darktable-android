@@ -84,20 +84,20 @@ are found by search on desktop and on the phone.
 | rotate and perspective (`ashift`) | yes (C40, identical); with input: C33 | works | nothing (tests: C33) | - |
 | shadows and highlights (`shadhi`) | yes (C40, identical) | works | nothing | - |
 | tone equalizer (`toneequal`) | yes (C40, identical) | works | nothing (tests: C19) | - |
-| white balance (`temperature`) | yes (T1) | partly | the "settings" list (camera presets such as daylight, cloudy, flash and their fine-tuning) is not built; the bridge already lists the presets (C14), the app needs the list; temperature, tint, as shot, camera reference and "from image area" work (tests: C14) | small |
+| white balance (`temperature`) | yes (T1) | works | nothing (tests: C14, C41, C43) | - |
 
 ### tone
 
 | module | renders as desktop | editing on the phone | what is missing and why | size |
 |---|---|---|---|---|
-| AgX (`agx`) | yes (C40, identical) | partly | the five colour pickers (white, black and pivot exposure, "set black and white") and three buttons (read exposure from metadata, reset primaries, set from above) are not built; the read-only curve display is not drawn; every slider works | medium |
+| AgX (`agx`) | yes (C40, identical) | partly | the read-only curve display is not drawn; every slider, the five pickers and the three buttons work (tests: C43) | small |
 | contrast & texture (`contrastntexture`) | yes (C40, identical) | works | nothing | - |
 | filmic rgb (`filmicrgb`) | yes (Bayer C40, identical; X-Trans T1) | works | the read-only curve display is not drawn | - |
 | local contrast (`bilat`) | yes (C40, identical) | works | nothing | - |
 | rgb curve (`rgbcurve`) | yes (C40, identical) | works | nothing (tests: C19, C38) | - |
-| rgb levels (`rgblevels`) | yes (C40, identical) | partly | "auto" and "apply auto levels from an area" are not built; the levels graph and the black, gray and white pickers work (tests: C19) | small |
+| rgb levels (`rgblevels`) | yes (C40, identical) | works | nothing (tests: C19, C43) | - |
 | sigmoid (`sigmoid`) | yes (C40, identical) | works | nothing (tests: C9) | - |
-| spektrafilm (`spektrafilm`) | yes (C40, identical) | works | two pickers (pre-compression boost, post-compression scale) are not built; "download data pack" is not needed (the app carries the pack) | small |
+| spektrafilm (`spektrafilm`) | yes (C40, identical) | works | two pickers (pre-compression boost, post-compression scale) are not built: desktop solves its film simulation for the picked highlight (_solve_boost_for_lightness, _solve_scale_for_lightness), which the engine cannot call without a copy of the simulation; "download data pack" is not needed (the app carries the pack) | small |
 | tone curve (`tonecurve`) | yes (C40, identical) | works | "scale for graph" (a display zoom of the graph) is not built | small |
 
 ### color
@@ -108,10 +108,10 @@ are found by search on desktop and on the phone.
 | color calibration (`channelmixerrgb`) | yes (Bayer C40, identical; X-Trans T1) | partly | the colour checker calibration (chart, optimize for, patch scale, compute/check/accept buttons) needs a chart frame drawn on the photo, not built; everything else, the illuminant picker included, works (tests: C19) | large |
 | color contrast (`colorcontrast`) | yes (C40, identical) | works | nothing | - |
 | color correction (`colorcorrection`) | yes (C40, identical) | partly | the colour grid where desktop drags the two split-toning points is not built, so the four colour parameters cannot be changed; only saturation works | medium |
-| color equalizer (`colorequal`) | yes (C40, identical) | works | two pickers (node placement, white level) are not built | small |
-| color harmonizer (`colorharmonizer`) | yes (C40, identical) | partly | the hue pickers (anchor hue and the four harmony hues) and the "analyze" and "import" buttons are not built; the sliders and lists work | small |
+| color equalizer (`colorequal`) | yes (C40, identical) | works | the node placement picker shows the picked values only (desktop marks the hue on its graph) (tests: C43) | - |
+| color harmonizer (`colorharmonizer`) | yes (C40, identical) | partly | the "analyze" and "import" buttons are not built (analyze reads a hue histogram that desktop's process() collects); the sliders, lists and hue pickers work (tests: C43) | small |
 | color look up table (`colorchecker`) | yes (C40, identical); with input: C32 | works | nothing (tests: C32) | - |
-| color zones (`colorzones`) | yes (C40, identical) | works | "create a curve from an area" picker is not built; the band editor, its options and "pick/show color" work | small |
+| color zones (`colorzones`) | yes (C40, identical) | works | nothing (tests: C43) | - |
 | input color profile (`colorin`) | yes (T1) | works | your own ICC profile files cannot be added (desktop reads them from its color/in folder); the built-in and embedded profiles work (tests: C14) | - |
 | LUT 3D (`lut3d`) | yes (C40, identical); with input: not checked | missing | no way to choose a LUT file: desktop lists the files of its LUT folder (a preference the phone does not have); needs a file chooser and an answer to where the .cube/.3dl/.png files come from (phone storage, or synced from the PC through LightPhotoLibrary); with no file the module does nothing | medium |
 | monochrome (`monochrome`) | yes (C40, identical) | partly | the colour filter position (the round a/b graph you drag on desktop) is not built, so only the neutral filter and "highlights" are available | medium |
@@ -149,18 +149,18 @@ are found by search on desktop and on the phone.
 | blurs (`blurs`) | yes (C40, identical) | works | nothing | - |
 | censorize (`censorize`) | yes (C40, identical) | works | nothing | - |
 | color mapping (`colormapping`) | yes (C40, identical); with input: not checked | missing | needs "acquire as source" and "acquire as target" (two images' colours), not built; with nothing acquired the module does nothing | medium |
-| colorize (`colorize`) | yes (C40, identical) | works | the hue picker is not built; the sliders work | small |
+| colorize (`colorize`) | yes (C40, identical) | works | nothing (tests: C43) | - |
 | composite (`overlay`) | yes (C40, identical); with input: not checked | missing | composite needs another photo of the library chosen as the overlay; no way to choose it, and the phone's engine library does not hold the other photos | large |
 | diffuse or sharpen (`diffuse`) | yes (C40, identical) | works | nothing (tests: C39) | - |
 | enlarge canvas (`enlargecanvas`) | yes (C40, identical) | works | nothing | - |
 | framing (`borders`) | yes (C40, identical) | partly | border and frame line colours cannot be chosen: desktop's colour buttons and their pickers are not built (needs a colour dialog); sizes, aspect and position work (tests: C14) | medium |
-| graduated density (`graduatednd`) | yes (C40, identical) | partly | the filter line cannot be moved: its position ("offset") is set only by dragging on the photo on desktop; a slider through a schema override would do; density, hardness, rotation, hue and saturation work (hue picker not built) | small |
+| graduated density (`graduatednd`) | yes (C40, identical) | works | the filter line is not drawn on the photo (its position is a slider, 0..100 %, where desktop drags the line); the hue picker is not built (tests: C42) | small |
 | grain (`grain`) | yes (C40, identical) | works | nothing | - |
 | highpass (`highpass`) | yes (C40, identical) | works | nothing | - |
 | lowlight vision (`lowlight`) | yes (C40, identical) | partly | the lowlight curve (graph), the module's main control, is not built; only blue shift works | medium |
 | lowpass (`lowpass`) | yes (C40, identical) | works | nothing | - |
 | soften (`soften`) | yes (C40, identical) | works | nothing | - |
-| split-toning (`splittoning`) | yes (C40, identical) | works | the two hue pickers are not built; the sliders work | small |
+| split-toning (`splittoning`) | yes (C40, identical) | works | nothing (tests: C43) | - |
 | vignetting (`vignette`) | yes (C40, identical) | works | no on-photo handles; every value has a slider | small |
 | watermark (`watermark`) | yes (C40, identical) | partly | the watermark list (SVG files from darktable's watermarks folder, which the APK carries), the text font and the colour button are not built, nor the 3x3 alignment; the default watermark and the sliders work; fonts on Android not checked | medium |
 
@@ -168,25 +168,25 @@ are found by search on desktop and on the phone.
 
 | module | renders as desktop | editing on the phone | what is missing and why | size |
 |---|---|---|---|---|
-| color balance (`colorbalance`) | yes (C40, identical) | partly | desktop's HSL view of lift/gamma/gain (hue and saturation sliders) and the two pickers (optimize luma, neutralize colors) are not built; the RGB factor sliders work; desktop lists it in no module group (search only) | small |
+| color balance (`colorbalance`) | yes (C40, identical) | partly | desktop's HSL view of lift/gamma/gain (hue and saturation sliders) and the pickers are not built: "optimize luma" and "neutralize colors" use the patches its other pickers kept in the panel (left out by P6a); the RGB factor sliders work; desktop lists it in no module group (search only) | small |
 | defringe (`defringe`) | yes (Bayer C40, identical; X-Trans C40, max 1, mean 0.00000, PSNR 121.04) | works | desktop shows it as deprecated in its message but not in its flags (see the report's upstream notes); listed in no module group (search only) | - |
-| unbreak input profile (`profile_gamma`) | yes (C40, identical) | partly | four pickers and "auto tune level" are not built; the sliders work; desktop lists it in no module group (search only) | small |
+| unbreak input profile (`profile_gamma`) | yes (C40, identical) | works | desktop lists it in no module group (search only) (tests: C43) | - |
 
 ### deprecated (darktable shows them only in an edit that already uses them)
 
 | module | renders as desktop | editing on the phone | what is missing and why | size |
 |---|---|---|---|---|
-| basic adjustments (`basicadj`) | yes (C40, identical) | works | "auto" and two pickers are not built | small |
+| basic adjustments (`basicadj`) | yes (C40, identical) | works | "auto" and its area picker are not built (auto exposure from a histogram of the module's input); the middle gray picker works (tests: C43) | small |
 | channel mixer (`channelmixer`) | yes (C40, identical) | partly | the destination list and its red/green/blue sliders are interface-only on desktop and not built | small |
 | color transfer (`colortransfer`) | yes (C40, identical) | missing | no controls on desktop either (deprecated); renders and keeps its values | - |
 | contrast brightness saturation (`colisa`) | yes (C40, identical) | works | nothing | - |
 | crop and rotate (`clipping`) | yes (C40, identical) | partly | sliders work; flip, keystone and aspect lists are not built (crop and perspective replace it) | medium |
-| fill light (`relight`) | yes (C40, identical) | works | the picker is not built | small |
+| fill light (`relight`) | yes (C40, identical) | works | the picker shows the picked values only (desktop marks them on its center slider) | - |
 | filmic (`filmic`) | yes (C40, identical) | missing | all its sliders are interface-only on desktop (none bound to a parameter): not built; renders and keeps its values | medium |
 | global tonemap (`globaltonemap`) | yes (C40, identical) | works | nothing | - |
-| invert (`invert`) | yes (C40, identical) | missing | its only control is the film colour picker, not built; an old edit renders and keeps its values | small |
+| invert (`invert`) | yes (C40, identical) | works | nothing (tests: C43) | - |
 | legacy equalizer (`equalizer`) | yes (C40, identical) | missing | no controls on desktop either (deprecated); renders and keeps its values | - |
-| levels (`levels`) | yes (C40, identical) | partly | the levels graph, "auto" and the three pickers are not built (rgb levels replaces it) | small |
+| levels (`levels`) | yes (C40, identical) | partly | the levels graph and "auto" are not built (rgb levels replaces it); the three pickers work (tests: C43) | small |
 | old local contrast (`clahe`) | yes (C40, identical) | partly | radius and amount are interface-only on desktop: not built | small |
 | spot removal (`spots`) | yes (C40, identical); with input: not checked | missing | shapes are drawn on the photo; retouch replaces it; an old edit renders and keeps its spots | large |
 | tone mapping (`tonemap`) | yes (C40, identical) | works | nothing | - |
