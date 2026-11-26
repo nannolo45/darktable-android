@@ -532,8 +532,14 @@ static void _pipe_RGB_to_Ych(dt_iop_module_t *self,
  * the Y of the picked maximum, in the module's current profile) */
 static int _act_colorequal_white(dt_iop_module_t *m, JsonObject *a, char **res)
 {
+  if(dtb_S.read_only) return dtb__err(DTB_E_READ_ONLY, "session is read-only: its XMP failed the version guard");
+  // the white level's picker is dt_color_picker_new: the module's default colour space (the bridge's picks on
+  // colorequal otherwise take the hue shift picker's JzCzhz, dt_color_picker_new_with_cst)
   dtb_pick_result_t pk;
-  int r = _pick_for(m, a, &pk);
+  float area[4];
+  int r = dtb__read_area(a, area);
+  if(!r) r = dtb__pick_cst(m, area, FALSE, m->default_colorspace(m, NULL, NULL), &pk);
+  if(!r && (!pk.have[0] || pk.max[0][0] < pk.min[0][0])) r = dtb__err(DTB_E_ARG, "the area gives no sample in colorequal's input");
   if(r) return r;
   dtb_pipe_t *pp = NULL;
   r = dtb__pipe_ready(FALSE, &pp);
@@ -553,6 +559,158 @@ static int _act_colorequal_white(dt_iop_module_t *m, JsonObject *a, char **res)
   return DTB_OK;
 }
 
+/* ================================================================== */
+/* color zones: "create a curve from an area"                         */
+
+/* ---- copied verbatim from src/iop/colorzones.c ---- */
+#define DT_IOP_COLORZONES_MAXNODES 20
+
+#define DT_IOP_COLORZONES_MIN_X_DISTANCE 0.0025f
+
+typedef enum dt_iop_colorzones_modes_t
+{
+  DT_IOP_COLORZONES_MODE_SMOOTH = 0, // $DESCRIPTION: "smooth"
+  DT_IOP_COLORZONES_MODE_STRONG = 1  // $DESCRIPTION: "strong"
+} dt_iop_colorzones_modes_t;
+
+typedef enum dt_iop_colorzones_splines_version_t
+{
+  DT_IOP_COLORZONES_SPLINES_V1 = 0,
+  DT_IOP_COLORZONES_SPLINES_V2 = 1
+} dt_iop_colorzones_splines_version_t;
+
+typedef enum dt_iop_colorzones_channel_t
+{
+  DT_IOP_COLORZONES_L = 0, // $DESCRIPTION: "lightness"
+  DT_IOP_COLORZONES_C = 1, // $DESCRIPTION: "chroma"
+  DT_IOP_COLORZONES_h = 2, // $DESCRIPTION: "hue"
+  DT_IOP_COLORZONES_MAX_CHANNELS = 3
+} dt_iop_colorzones_channel_t;
+
+typedef struct dt_iop_colorzones_node_t
+{
+  float x;
+  float y;
+} dt_iop_colorzones_node_t;
+
+typedef struct dt_iop_colorzones_params_t
+{
+  dt_iop_colorzones_channel_t channel; // $DEFAULT: DT_IOP_COLORZONES_h $DESCRIPTION: "select by"
+  // three curves (L, C, h) with max number of nodes
+  dt_iop_colorzones_node_t curve[DT_IOP_COLORZONES_MAX_CHANNELS][DT_IOP_COLORZONES_MAXNODES];
+  int curve_num_nodes[DT_IOP_COLORZONES_MAX_CHANNELS]; // number of nodes per curve
+  int curve_type[DT_IOP_COLORZONES_MAX_CHANNELS];      // CUBIC_SPLINE, CATMULL_ROM, MONOTONE_HERMITE
+  float strength;  // $MIN: -200.0 $MAX: 200.0 $DEFAULT: 0.0 $DESCRIPTION: "mix"
+  dt_iop_colorzones_modes_t mode; // $MIN: 0 $MAX: 1 $DEFAULT: DT_IOP_COLORZONES_MODE_SMOOTH $DESCRIPTION: "process mode"
+  int splines_version;
+} dt_iop_colorzones_params_t;
+
+static inline int _add_node(dt_iop_colorzones_node_t *curve,
+                            int *nodes,
+                            const float x,
+                            const float y)
+{
+  int selected = -1;
+  if(curve[0].x > x)
+    selected = 0;
+  else
+  {
+    for(int k = 1; k < *nodes; k++)
+    {
+      if(curve[k].x > x)
+      {
+        selected = k;
+        break;
+      }
+    }
+  }
+  if(selected == -1) selected = *nodes;
+
+  // check if it is not too close to other node
+  const float min_dist = DT_IOP_COLORZONES_MIN_X_DISTANCE; // in curve coordinates
+  if((selected > 0 && x - curve[selected - 1].x <= min_dist)
+     || (selected < *nodes && curve[selected].x - x <= min_dist))
+    selected = -2;
+
+  if(selected >= 0)
+  {
+    for(int i = *nodes; i > selected; i--)
+    {
+      curve[i].x = curve[i - 1].x;
+      curve[i].y = curve[i - 1].y;
+    }
+    // found a new point
+    curve[selected].x = x;
+    curve[selected].y = y;
+    (*nodes)++;
+  }
+  return selected;
+}
+
+/* ---- end of copy ---- */
+
+/* set_curve_from_area {channel, area}: colorzones.c color_picker_apply for its
+ * colorpicker_set_values: the curve of the tab shown (channel: 0 lightness, 1
+ * chroma, 2 hue, desktop's g->channel) back to its default, then nodes at the
+ * picked minimum, mean and maximum of the "select by" channel, flat (desktop
+ * raises or lowers them with ctrl or shift held: no keys here) */
+static int _act_colorzones_curve(dt_iop_module_t *m, JsonObject *a, char **res)
+{
+  if(m->params_size != sizeof(dt_iop_colorzones_params_t))
+    return dtb__err(DTB_E_ENGINE, "colorzones' parameters are %d bytes, the copy's %d (upstream changed?)", m->params_size,
+                    (int)sizeof(dt_iop_colorzones_params_t));
+  double chd = 0;
+  const int hc = _arg_d(a, "channel", &chd);
+  if(hc < 0 || chd < 0 || chd > 2) return dtb__err(DTB_E_ARG, "channel 0 (lightness), 1 (chroma), 2 (hue)");
+  dtb_pick_result_t pk;
+  int r = _pick_for(m, a, &pk);
+  if(r) return r;
+  dt_iop_colorzones_params_t pp;
+  memcpy(&pp, m->params, sizeof(pp));
+  dt_iop_colorzones_params_t *p = &pp;
+  const dt_iop_colorzones_params_t *const d = m->default_params;
+  const int ch_curve = (int)chd;
+  const int ch_val = p->channel;
+  dt_iop_colorzones_node_t *curve = p->curve[ch_curve];
+  p->curve_num_nodes[ch_curve] = d->curve_num_nodes[ch_curve];
+  p->curve_type[ch_curve] = d->curve_type[ch_curve];
+  for(int k = 0; k < DT_IOP_COLORZONES_MAXNODES; k++)
+  {
+    curve[k].x = d->curve[ch_curve][k].x;
+    curve[k].y = d->curve[ch_curve][k].y;
+  }
+  const float feather = 0.02f;
+  const float increment = 0.1f * 0;  // flat: no ctrl or shift
+  const float *mn = pk.min[0], *mean = pk.mean[0], *mx = pk.max[0];
+  float x = 0.f;
+#define _CZ_X(v) (ch_val == DT_IOP_COLORZONES_L ? (v)[0] / 100.f : ch_val == DT_IOP_COLORZONES_C ? (v)[1] / (128.f * M_SQRT2_F) \
+                  : ch_val == DT_IOP_COLORZONES_h ? (v)[2] : 0.f)
+  x = _CZ_X(mn) - feather;
+  if(x > 0.f && x < 1.f) _add_node(curve, &p->curve_num_nodes[ch_curve], x, .5f);
+  x = _CZ_X(mn);
+  if(x > 0.f && x < 1.f) _add_node(curve, &p->curve_num_nodes[ch_curve], x, .5f + increment);
+  x = _CZ_X(mean);
+  if(x > 0.f && x < 1.f) _add_node(curve, &p->curve_num_nodes[ch_curve], x, .5f + 2.f * increment);
+  x = _CZ_X(mx);
+  if(x > 0.f && x < 1.f) _add_node(curve, &p->curve_num_nodes[ch_curve], x, .5f + increment);
+  x = _CZ_X(mx) + feather;
+  if(x > 0.f && x < 1.f) _add_node(curve, &p->curve_num_nodes[ch_curve], x, .5f);
+#undef _CZ_X
+  const gboolean changed = _differs(p, m->params, sizeof(pp));
+  _commit(m, p);
+  JsonBuilder *b = json_builder_new();
+  json_builder_begin_object(b);
+  json_builder_set_member_name(b, "picked");
+  dtb__pick_json(b, &pk);
+  json_builder_set_member_name(b, "nodes");
+  json_builder_add_int_value(b, p->curve_num_nodes[ch_curve]);
+  json_builder_set_member_name(b, "changed");
+  json_builder_add_boolean_value(b, changed);
+  json_builder_end_object(b);
+  *res = dtb__json_finish(b);
+  return DTB_OK;
+}
+
 /* 1 = no such action here */
 int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *args, char **result)
 {
@@ -564,5 +722,6 @@ int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *a
   if(dt_iop_module_is(m, "profile_gamma") && !strcmp(action, "pick")) return _act_profile_gamma_pick(m, args, result);
   if(dt_iop_module_is(m, "basicadj") && !strcmp(action, "pick_grey")) return _act_basicadj_grey(m, args, result);
   if(dt_iop_module_is(m, "colorequal") && !strcmp(action, "white_level")) return _act_colorequal_white(m, args, result);
+  if(dt_iop_module_is(m, "colorzones") && !strcmp(action, "set_curve_from_area")) return _act_colorzones_curve(m, args, result);
   return dtb__module_action_agx(m, action, args, result);
 }

@@ -294,7 +294,7 @@ static int run_p6a(const char *raw, const char *xmp)
 {
   MUST(dtb_open(raw, xmp));
   static const char *const on[] = { "rgblevels", "levels", "invert", "splittoning", "colorize", "profile_gamma", "basicadj",
-                                    "colorequal", "agx" };
+                                    "colorequal", "colorzones", "agx" };
   for(size_t i = 0; i < G_N_ELEMENTS(on); i++) MUST(dtb_set_enabled(on[i], 0, 1));
   MUST(dtb_history_seal());
   const int end0 = history_end();
@@ -375,9 +375,52 @@ static int run_p6a(const char *raw, const char *xmp)
   static const char *const ba[] = { "middle_grey" };
   CASE6("basicadj_middle_grey", "basicadj", "pick_grey", "{%s}", A, pickref_basicadj, w0, ba);
 
+  // color zones: "create a curve from an area", by hue (its default "select by") on the hue tab and the lightness tab,
+  // then selected by lightness
+  {
+    const char *cz_names[3] = { "colorzones_curve_hue_tab", "colorzones_curve_lightness_tab", "colorzones_curve_by_lightness" };
+    for(int k = 0; k < 3; k++)
+    {
+      if(k == 2)
+      {
+        MUST(dtb_params_set("colorzones", 0, "{\"channel\":\"DT_IOP_COLORZONES_L\"}"));
+        MUST(dtb_history_seal());
+      }
+      const int ch = k == 0 ? 2 : 0;
+      GPtrArray *paths = g_ptr_array_new_with_free_func(g_free);
+      g_ptr_array_add(paths, g_strdup_printf("curve_num_nodes[%d]", ch));
+      g_ptr_array_add(paths, g_strdup_printf("curve_type[%d]", ch));
+      for(int n = 0; n < 20; n++)
+      {
+        g_ptr_array_add(paths, g_strdup_printf("curve[%d][%d].x", ch, n));
+        g_ptr_array_add(paths, g_strdup_printf("curve[%d][%d].y", ch, n));
+      }
+      pickref_widgets_t wz = { 0 };
+      wz.channel = ch;
+      snprintf(args, sizeof(args), "{\"channel\":%d,%s}", ch, k == 1 ? B : A);
+      worst = fmax(worst, run_case(cz_names[k], "colorzones", "set_curve_from_area", args, pickref_colorzones, wz,
+                                   (const char *const *)paths->pdata, paths->len, NULL, bound));
+      g_ptr_array_free(paths, TRUE);
+      MUST(dtb_history_goto(end0));
+    }
+  }
+
   // color equalizer: white level
   static const char *const ce[] = { "white_level" };
   CASE6("colorequal_white_level", "colorequal", "white_level", "{%s}", A, pickref_colorequal, w0, ce);
+  {
+    // desktop's white level picker is dt_color_picker_new: the module's default colour space, not the JzCzhz of its
+    // hue shift picker
+    char *s = NULL;
+    MUST(dtb_module_action("colorequal", 0, "white_level", "{\"area\":[0.40,0.35,0.62,0.55]}", &s));
+    JsonNode *keep;
+    JsonObject *o = parse(s, &keep);
+    const char *cs = json_object_get_string_member(json_object_get_object_member(json_object_get_object_member(o, "picked"), "input"), "colorspace");
+    fprintf(stdout, "RESULT colorequal white level picked in %s\n", cs);
+    if(strcmp(cs, "rgb")) { fprintf(stdout, "FAIL colorequal white level picked in %s, desktop in rgb\n", cs); failures++; }
+    json_node_unref(keep);
+    MUST(dtb_history_goto(end0));
+  }
 
   // AgX: the five pickers, then with "keep the pivot on the diagonal" off; the three buttons
   static const char *const ag[] = { "range_black_relative_ev", "range_white_relative_ev", "curve_pivot_x",

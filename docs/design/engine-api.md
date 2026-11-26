@@ -873,7 +873,8 @@ the same picks.
 | `colorize` | `pick` | `color_picker_apply` (nothing written within 1e-4) |
 | `profile_gamma` | `pick {which: grey \| black \| dynamic_range \| auto}` | `apply_auto_grey`, `apply_auto_black`, `apply_auto_dynamic_range`, `apply_autotune` |
 | `basicadj` | `pick_grey` | `color_picker_apply` (middle grey) |
-| `colorequal` | `white_level` | `color_picker_apply` (white level; `_pipe_RGB_to_Ych`) |
+| `colorequal` | `white_level` | `color_picker_apply` (white level; `_pipe_RGB_to_Ych`; picked in the module's default colour space, as its `dt_color_picker_new`, not the hue shift picker's JzCzhz) |
+| `colorzones` | `set_curve_from_area {channel}` | `color_picker_apply` for "create curve" (the curve of tab `channel` back to its default, nodes at the picked min, mean, max; flat: desktop's ctrl/shift variants are not offered) |
 | `agx` | `pick {which: black \| white \| range \| pivot_x \| pivot_xy}` | `color_picker_apply`, `_apply_auto_*`, `_update_pivot_x` (the gamma desktop shows is not written) |
 | `agx` | `read_exposure` | `_read_exposure_params_callback` (the exposure module's effective exposure: the enabled instance as `dt_iop_get_module_enabled_preferring_unmasked_first_instance` picks it; 0 in deflicker mode, where desktop takes its panel's value) |
 | `agx` | `reset_primaries {preset: blender \| smooth \| unmodified}` | `_apply_primaries_from_menu_callback` |

@@ -235,6 +235,9 @@ typedef struct dtb_pick_result_t
 /* pick on module m: area normalised in the picture (x0, y0, x1, y1) */
 int dtb__pick(dt_iop_module_t *m, const float area[4], gboolean denoise, gboolean full,
               const dtb_render_opts_t *o, dtb_pick_result_t *res);
+/* brief P6a: dtb__pick with the picker's colour space given (dt_iop_colorspace_type_t), for a module whose pickers
+ * differ in it */
+int dtb__pick_cst(dt_iop_module_t *m, const float area[4], gboolean denoise, int cst, dtb_pick_result_t *res);
 /* brief P6a: one render in which m runs, fn called on its input buffer (pickers.c) */
 typedef void (*dtb_input_fn)(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const float *in,
                              const dt_iop_roi_t *roi_in, void *user);

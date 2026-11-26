@@ -36,8 +36,13 @@
 /* Desktop's picker colour space: module->default_colorspace(module, NULL,
  * NULL) (gui/color_picker_proxy.c, _init_picker), unless the module's
  * gui_init fixes another with dt_color_picker_new_with_cst. */
+/* brief P6a: a picker of a module whose pickers differ in colour space (colour equalizer's white level is
+ * dt_color_picker_new, its hue shift dt_color_picker_new_with_cst): set for one dtb__pick_cst call */
+static int g_forced_cst = -1;
+
 static dt_iop_colorspace_type_t _picker_cst(dt_iop_module_t *m)
 {
+  if(g_forced_cst >= 0) return (dt_iop_colorspace_type_t)g_forced_cst;
   static const struct { const char *op; dt_iop_colorspace_type_t cst; } fixed[] = {
     { "temperature", IOP_CS_NONE },   // temperature.c gui_init
     { "colorzones", IOP_CS_LCH },     // colorzones.c gui_init
@@ -435,6 +440,14 @@ void dtb__area_to_input(const float area[4], float box[4])
   box[2] /= p->pipe.iwidth;
   box[3] /= p->pipe.iheight;
   _swap_preview_pipe(old);
+}
+
+int dtb__pick_cst(dt_iop_module_t *m, const float area[4], const gboolean denoise, const int cst, dtb_pick_result_t *res)
+{
+  g_forced_cst = cst;
+  const int r = dtb__pick(m, area, denoise, FALSE, NULL, res);
+  g_forced_cst = -1;
+  return r;
 }
 
 static void _result_json(JsonBuilder *b, const dtb_pick_result_t *res)

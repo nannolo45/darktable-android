@@ -33,6 +33,7 @@ int pickref_splittoning(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t 
 int pickref_colorize(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 int pickref_profile_gamma(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 int pickref_basicadj(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
+int pickref_colorzones(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 int pickref_colorequal(struct dt_iop_module_t *self, struct dt_dev_pixelpipe_t *pipe, pickref_widgets_t *w);
 /* which: 0 black, 1 white, 2 auto tune levels, 3 pivot x, 4 pivot x and y; 10 read exposure (lightness = the
  * effective exposure), 11..13 primaries blender / smooth / unmodified, 14 post-curve primaries from above */
