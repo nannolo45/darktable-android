@@ -212,12 +212,16 @@ fun UnavailableControl(label: String, reason: String?) {
 
 /** A generated slider bound to the schema's parameter (or action). */
 @Composable
-private fun GeneratedSlider(c: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
+private fun GeneratedSlider(c0: Control.Slider, ctx: PanelContext, sensitive: Boolean, label: String? = null) {
+    // brief P6a: limits and default the engine gives per state (white balance's fine tuning: the preset's tunings)
+    val c = ctx.controller.withActionRange(ctx.state, ctx.key, c0)
     val value = ctx.controller.sliderValue(ctx.state, ctx.key, c, ctx.live) ?: c.default
     // brief P3c deliverable 5: a value the engine gives only in some states (white balance's fine tuning)
     val present = (c.binding as? Binding.Action)?.needs?.let { n ->
         ctx.state.actionValues[ctx.key]?.get(n).let { it != null && it !is kotlinx.serialization.json.JsonNull }
     } ?: true
+    // brief P6a: desktop hides such a slider while it has no value (white balance's finetune)
+    if (!present && (c.binding as? Binding.Action)?.hide == true) return
     val enabled = sensitive && !ctx.readOnly && c.binding !is Binding.None && present
     // brief P3c: a slider with desktop's picker quad gets the picker button at its right, as on desktop
     if (c.id in ctx.module.pickerMarks && label == null) {

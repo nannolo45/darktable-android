@@ -126,6 +126,10 @@ sealed interface Binding {
         val needs: String? = null,
         /** brief P3c: the value is written as a whole number (white balance's fine tuning steps) */
         val round: Boolean = false,
+        /** brief P6a: while [needs] is null the control is hidden (desktop hides it) instead of greyed out */
+        val hide: Boolean = false,
+        /** brief P6a: the slider's limits and default taken from [get]'s answer: keys min, max, default to fields */
+        val rangeFrom: Map<String, String> = emptyMap(),
     ) : Binding
 
     /** Not editable: the schema has no parameter for it (S5 "unbound"). */

@@ -66,6 +66,10 @@ internal object Overrides {
                 argsFrom = (b["args_from"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap(),
                 needs = b.str("needs"),
                 round = (b["round"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true",
+                hide = (b["hide"] as? kotlinx.serialization.json.JsonPrimitive)?.content == "true",
+                rangeFrom = (b["range_from"] as? JsonObject)?.mapValues { it.value.jsonPrimitive.content }?.also { r ->
+                    if (!setOf("min", "max", "default").containsAll(r.keys)) throw SchemaException("$file: range_from takes min, max, default")
+                } ?: emptyMap(),
             )
             controls = replace(controls, node) { (it as Control.Slider).copy(binding = binding) }
         }

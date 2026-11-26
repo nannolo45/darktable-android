@@ -216,6 +216,18 @@ JSON of one style (`dtb_styles_list`):
   whose coefficients equal them). One entry at most is current.
 - `temperature: get_wb` gains `"tuning": n | null` (the fine tuning of the matched camera preset, null when the
   mode is not a camera preset) and `"preset_index": n | null` (the position of that preset in `list_presets`).
+  Brief P6a: also `"finetune_min"`, `"finetune_max"`, `"finetune_default"`: n | null, the hard limits and default of
+  desktop's finetune slider (the matched camera preset's lowest, highest and untuned entry), null when desktop hides
+  the slider (no camera preset matched, or one without fine tuning).
+- `temperature: list_settings` (brief P6a) → desktop's "settings" list in its order: `[ {name, kind, current,
+  choosable, reason?, tuning?, tuning_min?, tuning_max?, tuning_default?} ]`. `kind`: `mode` ("as shot", "user
+  modified", "camera reference"), `picker` ("from image area": desktop arms the picker), `section` (the camera's
+  maker and model, a heading), `camera` (a preset of wb_presets.json for this camera, at most 50). `current`: the
+  entry desktop's gui_update shows (one entry; "from image area" while that mode is stored). `choosable` is false
+  for the heading and for "user modified" (desktop restores its panel's memory of the last slider values; `reason`
+  says so). A camera entry's `tuning` is what `apply_preset {name, tuning}` should get when it is chosen: desktop's
+  _preset_tune_callback takes the finetune slider's value (the current preset's tuning, 0 without one); outside the
+  chosen preset's tunings the untuned entry is given.
 - `borders: set_aspect {"aspect": number}` [M]: writes framing's aspect including the two values desktop's list
   writes outside the field's limits, `0` ("image") and `-1` ("constant border"); any other value must be inside the
   field's limits (1..3), else `RANGE`. One history item.

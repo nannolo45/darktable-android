@@ -443,6 +443,9 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # brief P4c: module picks carry the working profile and rgb curve's picker_scale values
   if want C38; then drv C38 pickwork "pick: working profile (Rec 2020, linear Rec 709) and picker_scale values against the formulas"; fi
   # brief P4c: diffuse's built-in presets by their stored names
+  # brief P6a: white balance's settings list and fine tuning; graduated density's offset slider
+  if want C41; then drv C41 wbsettings "white balance settings list: desktop's order, one current entry, camera presets and every fine-tuning step against wb_presets.json, finetune range"; parity C41 p6a_wb; fi
+  if want C42; then drv C42 gradoffset "graduated density offset written as the slider writes it"; parity C42 p6a_grad; fi
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops

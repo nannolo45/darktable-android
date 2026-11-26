@@ -912,9 +912,23 @@ class DarkroomController(
      * Brief P3c deliverable 5: an entry of a list the engine gives per photo chosen: its parameters (input colour
      * profile's type and filename) or its module action (denoise's set_profile), one history step.
      */
-    suspend fun chooseActionList(key: InstanceKey, controlId: Int, index: Int) = change {
+    suspend fun chooseActionList(key: InstanceKey, controlId: Int, index: Int) {
+        // brief P6a: an entry that arms a picker (white balance's "from image area", as desktop's
+        // _preset_tune_callback switches its picker on): the pick then writes the values
+        val m0 = schema.modules[key.op]?.actionLists?.get(controlId)
+        val e0 = m0?.entries(_state.value.actionLists[key to controlId])?.getOrNull(index)
+        val node = e0?.let { m0.armsPicker(it) }
+        if (node != null) {
+            if (!pickerArmed(_state.value, key, node)) togglePicker(key, node)
+            return
+        }
+        chooseActionListEntry(key, controlId, index)
+    }
+
+    private suspend fun chooseActionListEntry(key: InstanceKey, controlId: Int, index: Int) = change {
         val model = schema.modules[key.op]?.actionLists?.get(controlId) ?: throw EngineException(EngineError.STATE, "no list here")
         val entry = model.entries(_state.value.actionLists[key to controlId]).getOrNull(index) ?: throw EngineException(EngineError.STATE, "no such entry")
+        if (!model.isEnabled(entry)) throw EngineException(EngineError.ARG, model.whyDisabled(entry) ?: "this entry cannot be chosen")
         val writes = model.paramWrites(entry)
         if (writes != null) {
             // only the fields that change (a built-in profile keeps the empty file name)
@@ -1727,6 +1741,17 @@ class DarkroomController(
         // brief P3d stage 2b: the pickers of the parametric sliders are no schema controls: an area that sets a range
         if (controlId <= ParametricMasks.PICK_BASE) PickerSpec(controlId, "range", point = false, area = true, denoise = false, action = null)
         else schema.modules[key.op]?.pickers?.get(controlId)
+
+    /** Brief P6a: [c] with the limits and default the engine's answer gives (bind_action `range_from`), else as it is. */
+    fun withActionRange(s: DarkroomState, key: InstanceKey, c: Control.Slider): Control.Slider {
+        val b = c.binding as? Binding.Action ?: return c
+        if (b.rangeFrom.isEmpty()) return c
+        val values = s.actionValues[key] ?: return c
+        fun num(k: String) = b.rangeFrom[k]?.let { (values[it] as? JsonPrimitive)?.content?.toDoubleOrNull() }
+        val lo = num("min") ?: c.hardMin
+        val hi = num("max") ?: c.hardMax
+        return c.copy(hardMin = lo, hardMax = hi, softMin = lo, softMax = hi, default = num("default") ?: c.default)
+    }
 
     fun pickerArmed(s: DarkroomState, key: InstanceKey, controlId: Int): Boolean =
         s.picker?.let { it.key == key && it.controlId == controlId } == true

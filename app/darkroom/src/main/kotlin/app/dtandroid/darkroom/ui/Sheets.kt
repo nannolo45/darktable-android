@@ -163,7 +163,10 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
                 val cur = model.currentIndex(entries)
                 Sheet("${fullName(m)} · ${c.label ?: ""}", close, maxW) {
                     for ((i, e) in entries.withIndex()) {
-                        SheetItem(model.label(e), !s.readOnly, selected = i == cur) {
+                        // brief P6a: headings, entries that cannot be chosen (with the reason)
+                        if (model.isSection(e)) { SheetSection(model.label(e)); continue }
+                        val why = model.whyDisabled(e)
+                        SheetItem(if (why != null) "${model.label(e)} ($why)" else model.label(e), why == null && !s.readOnly, selected = i == cur) {
                             controller.setOverlay(null)
                             controller.launch { chooseActionList(o.key, c.id, i) }
                         }
@@ -205,7 +208,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         }
         is Overlay.NumberEntry -> {
             val ms = controller.schema.modules[o.key.op] ?: return
-            val c = ms.control(o.controlId) as? Control.Slider ?: return
+            // brief P6a: with the limits the engine gives per state (white balance's fine tuning)
+            val c = (ms.control(o.controlId) as? Control.Slider)?.let { controller.withActionRange(s, o.key, it) } ?: return
             val cur = controller.sliderValue(s, o.key, c, emptyMap()) ?: c.default
             val lo = ValueFormat.numberText(c, minOf(c.hardMin, c.hardMax))
             val hi = ValueFormat.numberText(c, maxOf(c.hardMin, c.hardMax))
