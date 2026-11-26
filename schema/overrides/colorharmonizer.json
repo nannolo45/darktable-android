@@ -1,6 +1,6 @@
 {
   "op": "colorharmonizer",
-  "reason": "brief P2j. the saturation sliders hue 1..4 write node_saturation[i] directly (_node_saturation_changed, src/iop/colorharmonizer.c) and are shown for the nodes of the rule (_update_visibility: the rule's node count, in custom mode num_custom_nodes; the extractor's sweep did not see custom mode with fewer nodes). The vectorscope sync only steers desktop's vectorscope (a configuration key, not a parameter) and is not shown. The anchor hue and the custom node hues show RYB degrees and store darktable UCS hue through two 720-entry tables that _build_hue_luts computes at load (_anchor_hue_slider_changed, _custom_hue_changed, gui_update with _ucs_to_ryb_fast / _ryb_to_ucs_fast); hue_tables are those tables as tools/colorharmonizer-hue-tables.py computes them with upstream's own code, and the custom hue rows show in custom mode for the first num_custom_nodes nodes (_update_visibility).",
+  "reason": "brief P2j. the saturation sliders hue 1..4 write node_saturation[i] directly (_node_saturation_changed, src/iop/colorharmonizer.c) and are shown for the nodes of the rule (_update_visibility: the rule's node count, in custom mode num_custom_nodes; the extractor's sweep did not see custom mode with fewer nodes). The vectorscope sync only steers desktop's vectorscope (a configuration key, not a parameter) and is not shown. The anchor hue and the custom node hues show RYB degrees and store darktable UCS hue through two 720-entry tables that _build_hue_luts computes at load (_anchor_hue_slider_changed, _custom_hue_changed, gui_update with _ucs_to_ryb_fast / _ryb_to_ucs_fast); hue_tables are those tables as tools/colorharmonizer-hue-tables.py computes them with upstream's own code, and the custom hue rows show in custom mode for the first num_custom_nodes nodes (_update_visibility). Brief P6a: the anchor hue and the four custom hue pickers set the hue (UCS) from the picked colour as colorharmonizer.c color_picker_apply (module action pick_hue). \"analyze\" (a hue histogram desktop's process() collects) and \"import\" are not built.",
   "bind_param": [
     {
       "node": 30,
@@ -2591,5 +2591,78 @@
       0.543055534,
       0.544444442
     ]
-  }
+  },
+  "picker": [
+    {
+      "node": 3,
+      "expect_label": "anchor hue",
+      "label": "anchor hue from the photo",
+      "kinds": [
+        "point",
+        "area"
+      ],
+      "action": {
+        "name": "pick_hue",
+        "args": {
+          "which": "anchor"
+        }
+      }
+    },
+    {
+      "node": 12,
+      "label": "node 1 hue from the photo",
+      "kinds": [
+        "point",
+        "area"
+      ],
+      "action": {
+        "name": "pick_hue",
+        "args": {
+          "which": 0
+        }
+      }
+    },
+    {
+      "node": 15,
+      "label": "node 2 hue from the photo",
+      "kinds": [
+        "point",
+        "area"
+      ],
+      "action": {
+        "name": "pick_hue",
+        "args": {
+          "which": 1
+        }
+      }
+    },
+    {
+      "node": 18,
+      "label": "node 3 hue from the photo",
+      "kinds": [
+        "point",
+        "area"
+      ],
+      "action": {
+        "name": "pick_hue",
+        "args": {
+          "which": 2
+        }
+      }
+    },
+    {
+      "node": 21,
+      "label": "node 4 hue from the photo",
+      "kinds": [
+        "point",
+        "area"
+      ],
+      "action": {
+        "name": "pick_hue",
+        "args": {
+          "which": 3
+        }
+      }
+    }
+  ]
 }

@@ -117,6 +117,8 @@ class P6aModuleGapsTest {
         assertEquals("pick_grey", act("basicadj", 5)!!.name)
         assertEquals("white_level", act("colorequal", 36)!!.name)
         assertEquals("set_curve_from_area", act("colorzones", 7)!!.name)
+        assertEquals("\"anchor\"", act("colorharmonizer", 3)!!.args["which"].toString())
+        for ((i, node) in listOf(12, 15, 18, 21).withIndex()) assertEquals("$i", act("colorharmonizer", node)!!.args["which"].toString())
         assertEquals(mapOf("channel" to 1), act("colorzones", 7)!!.tabArgs)
         // values only: desktop's picker sets no parameter there
         assertNotNull(m("colorequal").pickers[5])

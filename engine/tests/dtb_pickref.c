@@ -294,7 +294,7 @@ static int run_p6a(const char *raw, const char *xmp)
 {
   MUST(dtb_open(raw, xmp));
   static const char *const on[] = { "rgblevels", "levels", "invert", "splittoning", "colorize", "profile_gamma", "basicadj",
-                                    "colorequal", "colorzones", "agx" };
+                                    "colorequal", "colorzones", "colorharmonizer", "agx" };
   for(size_t i = 0; i < G_N_ELEMENTS(on); i++) MUST(dtb_set_enabled(on[i], 0, 1));
   MUST(dtb_history_seal());
   const int end0 = history_end();
@@ -404,6 +404,14 @@ static int run_p6a(const char *raw, const char *xmp)
       MUST(dtb_history_goto(end0));
     }
   }
+
+  // color harmonizer: the anchor hue and custom node 2
+  static const char *const ch_paths[] = { "anchor_hue", "custom_hue[0]", "custom_hue[1]", "custom_hue[2]", "custom_hue[3]" };
+  pickref_widgets_t wh = { 0 };
+  wh.which = 0;
+  CASE6("colorharmonizer_anchor", "colorharmonizer", "pick_hue", "{\"which\":\"anchor\",%s}", A, pickref_colorharmonizer, wh, ch_paths);
+  wh.which = 3;
+  CASE6("colorharmonizer_custom_2", "colorharmonizer", "pick_hue", "{\"which\":2,%s}", P, pickref_colorharmonizer, wh, ch_paths);
 
   // color equalizer: white level
   static const char *const ce[] = { "white_level" };

@@ -109,6 +109,8 @@ MODULES = {
     "profile_gamma": ([], ["dt_iop_profilegamma_mode_t", "dt_iop_profilegamma_params_t", "dt_iop_profilegamma_gui_data_t"],
                       ["apply_auto_grey", "apply_auto_black", "apply_auto_dynamic_range", "apply_autotune", "color_picker_apply"]),
     "basicadj": ([], ["dt_iop_basicadj_params_t", "dt_iop_basicadj_gui_data_t"], ["color_picker_apply"]),
+    "colorharmonizer": ([], ["dt_iop_colorharmonizer_rule_t", "dt_iop_colorharmonizer_params_t", "dt_iop_colorharmonizer_gui_data_t"],
+                        ["_picked_color_to_hue", "color_picker_apply"]),
     "colorzones": ([], ["dt_iop_colorzones_modes_t", "dt_iop_colorzones_splines_version_t", "dt_iop_colorzones_channel_t",
                         "dt_iop_colorzones_node_t", "dt_iop_colorzones_params_t", "dt_iop_colorzones_gui_data_t"],
                    ["_add_node", "color_picker_apply"]),

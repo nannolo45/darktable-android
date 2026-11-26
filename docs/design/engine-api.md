@@ -875,6 +875,7 @@ the same picks.
 | `basicadj` | `pick_grey` | `color_picker_apply` (middle grey) |
 | `colorequal` | `white_level` | `color_picker_apply` (white level; `_pipe_RGB_to_Ych`; picked in the module's default colour space, as its `dt_color_picker_new`, not the hue shift picker's JzCzhz) |
 | `colorzones` | `set_curve_from_area {channel}` | `color_picker_apply` for "create curve" (the curve of tab `channel` back to its default, nodes at the picked min, mean, max; flat: desktop's ctrl/shift variants are not offered) |
+| `colorharmonizer` | `pick_hue {which: "anchor" \| 0..3}` | `color_picker_apply`, `_picked_color_to_hue` (UCS hue in the pipe's working profile) |
 | `agx` | `pick {which: black \| white \| range \| pivot_x \| pivot_xy}` | `color_picker_apply`, `_apply_auto_*`, `_update_pivot_x` (the gamma desktop shows is not written) |
 | `agx` | `read_exposure` | `_read_exposure_params_callback` (the exposure module's effective exposure: the enabled instance as `dt_iop_get_module_enabled_preferring_unmasked_first_instance` picks it; 0 in deflicker mode, where desktop takes its panel's value) |
 | `agx` | `reset_primaries {preset: blender \| smooth \| unmodified}` | `_apply_primaries_from_menu_callback` |

@@ -12,6 +12,7 @@
 #include "dtb_internal.h"
 
 #include "common/colorspaces.h"
+#include "common/chromatic_adaptation.h"
 #include "common/colorspaces_inline_conversions.h"
 #include "common/iop_profile.h"
 #include "common/math.h"
@@ -711,6 +712,73 @@ static int _act_colorzones_curve(dt_iop_module_t *m, JsonObject *a, char **res)
   return DTB_OK;
 }
 
+/* ================================================================== */
+/* color harmonizer: the anchor hue and the four custom hues           */
+
+/* ---- copied verbatim from src/iop/colorharmonizer.c ---- */
+static gboolean _picked_color_to_hue(dt_iop_module_t *self,
+                                     dt_dev_pixelpipe_t *pipe,
+                                     float *out_hue)
+{
+  const dt_iop_order_iccprofile_info_t *const work_profile = pipe->work_profile_info;
+  if(!work_profile) return FALSE;
+
+  dt_aligned_pixel_t px_rgb, px_xyz;
+  for(int c = 0; c < 3; c++) px_rgb[c] = fmaxf(self->picked_color[c], 0.0f);
+  px_rgb[3] = 0.0f;
+
+  const float (*const matrix_in)[4] = (const float (*)[4])work_profile->matrix_in;
+  px_xyz[0] = matrix_in[0][0]*px_rgb[0] + matrix_in[0][1]*px_rgb[1] + matrix_in[0][2]*px_rgb[2];
+  px_xyz[1] = matrix_in[1][0]*px_rgb[0] + matrix_in[1][1]*px_rgb[1] + matrix_in[1][2]*px_rgb[2];
+  px_xyz[2] = matrix_in[2][0]*px_rgb[0] + matrix_in[2][1]*px_rgb[1] + matrix_in[2][2]*px_rgb[2];
+  px_xyz[3] = 0.0f;
+
+  const float L_white = Y_to_dt_UCS_L_star(1.0f);
+  dt_aligned_pixel_t px_xyz_d65, px_xyY, px_JCH;
+  XYZ_D50_to_D65(px_xyz, px_xyz_d65);
+  dt_D65_XYZ_to_xyY(px_xyz_d65, px_xyY);
+  xyY_to_dt_UCS_JCH(px_xyY, L_white, px_JCH);
+
+  *out_hue = (px_JCH[2] + M_PI_F) / DT_2PI_F;
+  return TRUE;
+}
+
+/* ---- end of copy ---- */
+
+/* pick_hue {which: "anchor" | 0..3, area or point}: colorharmonizer.c
+ * color_picker_apply: the picked mean's UCS hue (in the pipe's working
+ * profile) into anchor_hue or custom_hue[which] */
+static int _act_colorharmonizer_hue(dt_iop_module_t *m, JsonObject *a, char **res)
+{
+  const char *ws = _arg_s(a, "which", NULL);
+  double wd = -1;
+  const int wn = ws ? 0 : _arg_d(a, "which", &wd);
+  if(!(ws && !strcmp(ws, "anchor")) && !(wn == 1 && wd >= 0 && wd <= 3 && wd == floor(wd)))
+    return dtb__err(DTB_E_ARG, "which is \"anchor\" or a custom node 0..3");
+  dtb_pick_result_t pk;
+  int r = _pick_for(m, a, &pk);
+  if(r) return r;
+  dtb_pipe_t *pp = NULL;
+  r = dtb__pipe_ready(FALSE, &pp);
+  if(r) return r;
+  dt_iop_module_t tmp = *m;
+  for(int k = 0; k < 4; k++) tmp.picked_color[k] = pk.mean[0][k];
+  float hue = 0.0f;
+  if(!_picked_color_to_hue(&tmp, &pp->pipe, &hue)) return dtb__err(DTB_E_ENGINE, "no working profile");
+  gchar *path = ws ? g_strdup("anchor_hue") : g_strdup_printf("custom_hue[%d]", (int)wd);
+  void *params = dtb__memdup(m->params, m->params_size);
+  float *f = _ffield(m, params, path);
+  if(!f) { g_free(params); g_free(path); return dtb__err(DTB_E_ENGINE, "colorharmonizer has no %s (upstream changed?)", path); }
+  *f = hue;
+  const gboolean changed = _differs(params, m->params, m->params_size);
+  _commit(m, params);
+  const char *paths[1] = { path };
+  *res = _answer(m, &pk, params, paths, 1, changed);
+  g_free(params);
+  g_free(path);
+  return DTB_OK;
+}
+
 /* 1 = no such action here */
 int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *args, char **result)
 {
@@ -723,5 +791,6 @@ int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *a
   if(dt_iop_module_is(m, "basicadj") && !strcmp(action, "pick_grey")) return _act_basicadj_grey(m, args, result);
   if(dt_iop_module_is(m, "colorequal") && !strcmp(action, "white_level")) return _act_colorequal_white(m, args, result);
   if(dt_iop_module_is(m, "colorzones") && !strcmp(action, "set_curve_from_area")) return _act_colorzones_curve(m, args, result);
+  if(dt_iop_module_is(m, "colorharmonizer") && !strcmp(action, "pick_hue")) return _act_colorharmonizer_hue(m, args, result);
   return dtb__module_action_agx(m, action, args, result);
 }
