@@ -279,6 +279,11 @@ class P5cTapTest {
         val n0 = items(c)
         tapDesc("t4", "fit vertical")
         until("t4", "the fit written as one history item (message ${c.perspective.state.value.st?.message})") { items(c) == n0 + 1 }
+        // the history item is written inside the engine call; the module's state (rotation, shifts) is read back after it
+        // (PerspectiveController.changedLocked), so the item can be there a moment before the numbers (p2b 45815990998: 0, 0, 0)
+        until("t4", "the fit's numbers read back (rotation or lens shift not 0)") {
+            c.perspective.state.value.st?.let { it.rotation != 0.0 || it.lensshiftV != 0.0 || it.lensshiftH != 0.0 } == true
+        }
         val s = c.perspective.state.value.st!!
         TestFiles.record(res, "t4_fit", "rotation %.4f lensshift_v %.4f lensshift_h %.4f, items $n0 -> ${items(c)}".format(s.rotation, s.lensshiftV, s.lensshiftH))
         assertTrue("the fit changed the parameters", s.rotation != 0.0 || s.lensshiftV != 0.0)
