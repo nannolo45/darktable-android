@@ -1,7 +1,7 @@
 # Bridge test ids
 
 The registry of every id used by `engine/tests/run_tests.sh`. **New ids are taken from here:** add a row for the next
-free id (next is **C44**) in the same commit that adds the test, and say in your pull request which id you took.
+free id (next is **C46**) in the same commit that adds the test, and say in your pull request which id you took.
 Two parallel branches once both took C37; `check_test_ids.sh` (run first by `run_tests.sh`, also by hand) now fails
 when an id is used in `run_tests.sh` without a row here, when a row has no test, when an id appears twice in this
 table, or when a test block with the same id appears twice (T6 and C6 share one block and are the only exceptions,
@@ -68,6 +68,7 @@ Brief: the brief (`docs/briefs/`) that introduced it.
 | C42 | gradoffset | dtb_test_p6a.c | P6a | graduated density offset (slider); darktable-cli parity |
 | C43 | dtb_pickref p6a (tool) | dtb_pickref.c, pickref_*.c | P6a | P6a pickers and buttons, white balance presets' temperature/tint, against darktable's callbacks |
 | C44 | lut3dfiles | dtb_test_p6b.c | P6b | LUT folder set through the bridge; .cube, .3dl, Hald .png by relative path; missing file; darktable-cli parity |
+| C45 | lensbyhand | dtb_test_p6d.c | P6d | lens correction by hand: camera and lens lists, auto-searches on Exif, get_state, set_camera, set_lens, set_value, one history item each, refusals, undo, XMP round trip, render differs from module off; darktable-cli parity |
 
 ## Shared ids
 

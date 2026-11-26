@@ -212,9 +212,13 @@ int dtb_module_reset(const char *op, int priority);
  *                   list_presets -> [ {name, kind, tuning_min, tuning_max, tuning_default} ];
  *                   apply_preset {name, tuning?} [M]
  *   lens:           list_cameras -> [ {maker, model, variant, mount, crop_factor} ];
- *                   list_lenses {camera} -> [ {maker, model, min_focal, max_focal, min_aperture, max_aperture} ];
+ *                   list_lenses {camera?} -> [ {maker, model, min_focal, max_focal, min_aperture, max_aperture} ];
  *                   use_latest_md [M] (desktop's "use latest algorithm": md_version 2, scale_md_v1 0);
- *                   set_lens {camera, lens} [M]
+ *                   set_lens {camera?, lens, maker?} [M]
+ *                   P6d (engine-api.md 5.4): find_cameras -> [ camera ] and find_lenses {camera?} -> [ lens ]
+ *                   (desktop's auto-searches on Exif's camera and lens); get_state -> {has_been_set, camera_param,
+ *                   lens_param, exif, camera|null, lens|null, focal, aperture, distance, crop};
+ *                   set_camera {model, maker?, variant?} [M]; set_value {name: focal|aperture|distance, value} [M]
  *   lut3d:          set_file {path} [M]: path relative to the LUT folder
  *                   (dtb_lut_folder_set), or absolute inside it; ".." refused,
  *                   .gmz refused (no G'MIC), a missing file DTB_E_IO
