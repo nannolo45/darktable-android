@@ -49,7 +49,7 @@ data class LutList(val seq: Long, val files: List<LutEntry>)
 
 /** The answer to an upload: stored, or 409 with the server's current entry. */
 sealed interface LutPut {
-    data class Stored(val sha256: String) : LutPut
+    data class Stored(val sha256: String, val seq: Long) : LutPut
     data class ChangedElsewhere(val current: LutEntry?) : LutPut
 }
 
@@ -69,7 +69,7 @@ fun LplClient.lutPut(path: String, agent: String, file: File, sha256: String, ba
     return callRaw("PUT", "/api/luts/file?path=${enc(path)}&agent=${enc(agent)}", h, file, allow = setOf(409)) { r ->
         val o = parseAnswer("PUT /api/luts/file", r.body.readBytes())
         if (r.status == 409) LutPut.ChangedElsewhere(o["file"]?.let { LutEntry.of(it) })
-        else LutPut.Stored(o["sha256"].str() ?: sha256)
+        else LutPut.Stored(o["sha256"].str() ?: sha256, o["seq"].long() ?: 0)
     }
 }
 
@@ -251,11 +251,16 @@ class LutSync(
             if (localChange && serverChange && base != null) { conflict(b, p, s!!); continue }
             if (localChange) {
                 when (val r = c.lutPut(p, servers.installId, folder.fileOf(p)!!, l, base ?: "")) {
-                    is LutPut.Stored -> { b.base[p] = l; trace("luts: sent $p") }
+                    is LutPut.Stored -> { b.base[p] = l; stored(b, o, p, l, r.seq); trace("luts: sent $p") }
                     is LutPut.ChangedElsewhere -> r.current?.let { b.server[p] = it; conflict(b, p, it) }
                 }
             } else if (serverChange && LutPaths.wanted(p)) download(c, b, p, s!!)
         }
+    }
+
+    /** What the server holds after this phone's upload (until the next list says more). */
+    private fun stored(b: Book, o: ServerOrigin, p: String, sha: String, seq: Long) {
+        b.server[p] = LutEntry(p, folder.fileOf(p)?.length() ?: 0, sha, seq, clock(), servers.get(o)?.deviceName, false)
     }
 
     private fun conflict(b: Book, p: String, s: LutEntry) {
@@ -301,7 +306,7 @@ class LutSync(
         for (f in local) states[f.path] = when {
             f.path in b.conflicts -> LutSyncState.CONFLICT
             !f.usable -> LutSyncState.UNUSABLE
-            b.base[f.path] != null && b.base[f.path] == folder.hashOf(f.path) && b.server[f.path]?.deleted == false -> LutSyncState.SYNCED
+            folder.hashOf(f.path).let { h -> h != null && b.base[f.path] == h && b.server[f.path]?.let { e -> !e.deleted && e.sha256 == h } == true } -> LutSyncState.SYNCED
             else -> LutSyncState.LOCAL
         }
         for ((p, e) in b.server) if (!e.deleted && p !in states) states[p] = if (p in removed) LutSyncState.REMOVED else LutSyncState.ONLY_LPL
@@ -350,7 +355,7 @@ class LutSync(
                     "mine" -> {
                         val h = folder.hashOf(path) ?: return@withLock "$path is no longer on this phone"
                         when (val r = c.lutPut(path, servers.installId, folder.fileOf(path)!!, h, cf.serverSha)) {
-                            is LutPut.Stored -> { b.base[path] = h; b.conflicts.remove(path) }
+                            is LutPut.Stored -> { b.base[path] = h; b.conflicts.remove(path); stored(b, o, path, h, r.seq) }
                             is LutPut.ChangedElsewhere -> { r.current?.let { b.server[path] = it; conflict(b, path, it) }; return@withLock "$path changed again in LightPhotoLibrary" }
                         }
                     }
@@ -363,8 +368,8 @@ class LutSync(
                         val other = LutPaths.keepBothName(path, device) { folder.has(it) || b.server[it]?.deleted == false }
                         if (!folder.rename(path, other)) return@withLock "$path could not be renamed"
                         val h = folder.hashOf(other)!!
-                        when (c.lutPut(other, servers.installId, folder.fileOf(other)!!, h, "")) {
-                            is LutPut.Stored -> b.base[other] = h
+                        when (val r = c.lutPut(other, servers.installId, folder.fileOf(other)!!, h, "")) {
+                            is LutPut.Stored -> { b.base[other] = h; stored(b, o, other, h, r.seq) }
                             is LutPut.ChangedElsewhere -> trace("luts: $other exists in LightPhotoLibrary: sent at the next pass")
                         }
                         b.conflicts.remove(path); b.base.remove(path)
