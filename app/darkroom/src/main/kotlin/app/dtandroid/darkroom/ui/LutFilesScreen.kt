@@ -77,8 +77,10 @@ fun LutFilesScreen(
             DtText("${ui.files.size} files, ${mb(ui.totalBytes)}" + (if (usable != ui.files.size) " · $usable usable here" else ""),
                 DtTheme.type.body, c.textStrong)
             DtText(
-                if (ui.synced) "Files added here go to LightPhotoLibrary, and files from your PCs' darktable LUT folder come here" +
-                    (if (ui.autoSync) " with each sync." else " when you tap \"sync now\" (automatic sync is off).")
+                if (ui.synced) "Files added here go to LightPhotoLibrary" +
+                    (if (ui.autoSync) " with each sync" else " when you tap \"sync now\" (automatic sync is off)") +
+                    (if (ui.autoDownload) ", and files from your PCs' darktable LUT folder that this phone lacks come here too."
+                    else ". Files from your PCs' darktable LUT folder come here only when you get them.")
                 else "LightPhotoLibrary does not carry LUT files yet (no server, or one without this feature): the files stay on this phone.",
                 DtTheme.type.label, c.textMuted, maxLines = 4)
             if (ui.synced) {
