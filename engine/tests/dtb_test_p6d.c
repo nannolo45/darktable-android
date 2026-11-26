@@ -200,7 +200,7 @@ static int cmd_lensbyhand(const char *raw, const char *xmp, const char *outdir)
   const guint nls = json_array_get_length(json_node_get_array(ls)), nfl = json_array_get_length(json_node_get_array(fl)),
               nwl = json_array_get_length(json_node_get_array(wl));
   fprintf(stdout, "RESULT lenses: %u for '%s', find_lenses %u, without a camera %u\n", nls, cam_model, nfl, nwl);
-  CHECK(nls > 10 && nwl > nls, "lens lists: %u for the camera, %u without", nls, nwl);
+  CHECK(nls >= 1 && nwl > nls, "lens lists: %u for the camera, %u without", nls, nwl);  // a compact camera has one lens
   CHECK(nfl <= nls, "find_lenses gave %u of %u", nfl, nls);
   if(exif_lens_known)
   {
