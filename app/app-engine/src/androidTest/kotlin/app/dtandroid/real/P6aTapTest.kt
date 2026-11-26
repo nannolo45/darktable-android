@@ -19,6 +19,7 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
