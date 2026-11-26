@@ -1,0 +1,42 @@
+what: dt-android timings (briefs P2b, P2f); numbers measured on this device
+app: test
+engine package: b52e8111ed6e874c
+darktable: 04477d3-dirty
+engine api: 1
+threads: 4 of 4 at start; pinned to CPUs none
+cores: 4 CPUs, max clocks 0.00 GHz
+pinning: not pinned: all CPUs are equally fast; the engine uses every CPU it may
+engine thread CPUs at start: 0-3
+last return to the foreground: the engine was not pinned; the app may use CPUs 0-3; now not pinned: all CPUs are equally fast; the engine uses every CPU it may
+android api: 33
+photo: 15 MB RAW, CR2
+photo source: ?
+edit: 9 history items (current position 9)
+modules on (13): rawprepare, temperature, highlights, demosaic, demosaicscale, exposure, flip, colorin, colorout, finalscale, overexposed, rawoverexposed, gamma
+open ms: 150.0
+image info (loads the full image) ms: 107.8
+image: 3908 x 2602 processed, 3944 x 2622 sensor, bayer
+per module, first preview, every module (ms, slowest first): sum 56.6 ms over 7 modules: demosaic 30.5; colorin 11.8; colorout 5.3; highlights 2.9; rawprepare 2.7; exposure 2.4; temperature 1.1
+first preview 1024x681 ms: 156.7
+image info again ms (the darkroom reads it after every change): 2.1
+preview again, nothing changed ms: 10.7
+preview after a late module change (color balance rgb) ms: 381.3
+per module, preview after an exposure change (ms, slowest first): sum 304.0 ms over 8 modules: colorbalancergb 195.8; demosaic 51.9; colorin 16.2; highlights 15.8; temperature 9.5; exposure 5.8; rawprepare 4.6; colorout 4.3
+preview after an early module change (exposure) ms: 330.6
+per module, preview at the darkroom's fit size after an exposure change (ms, slowest first): sum 154.9 ms over 8 modules: colorbalancergb 105.4; demosaic 23.3; colorin 7.9; colorout 6.9; exposure 4.6; rawprepare 2.9; highlights 2.7; temperature 1.2
+preview at the darkroom's fit size (asked 1080 px, got 1080x719, this screen) after an exposure change ms: 176.1
+per module, drag picture 320 px after an exposure step (ms, slowest first): sum 56.4 ms over 8 modules: demosaic 29.4; colorbalancergb 9.6; rawprepare 5.1; exposure 4.0; colorout 3.7; highlights 3.0; colorin 0.9; temperature 0.7
+drag picture (chosen size 320 px), 6 steps: median ms: 15.4 (min 12.3, max 25.8)
+drag picture by size, median of 3 after an exposure step (ms): 256 px 19.6; 384 px 35.9; 512 px 70.3; 640 px 172.8; 768 px 83.6; 1024 px 190.7
+drag picture chosen now: fit: 64.6 ms fixed + 158.2 ns per pixel; drag picture 320 px for a 50 ms target
+per module, sharp region at fit after an exposure change (ms, slowest first): sum 264.1 ms over 7 modules: demosaic 189.8; highlights 35.6; rawprepare 16.6; colorin 9.3; temperature 5.7; colorout 5.4; exposure 1.7
+sharp region at fit 1080x719 after a change ms: 270.3
+per module, sharp region at 100 % after an exposure change (ms, slowest first): sum 85.6 ms over 8 modules: colorin 20.9; demosaic 20.4; colorout 16.8; highlights 11.2; exposure 5.5; rawprepare 5.3; finalscale 4.4; temperature 1.1
+sharp region at 100 % 1080x1500 after a change ms: 114.1
+region rendered in place (no JNI copy): true
+modules() size bytes: 185219
+modules() bridge call ms (median of 5): 19.1
+modules() JNI string ms (median of 5): 0.6
+modules() Kotlin parse ms (median of 5): 10.8
+export full-size JPEG ms: 2839.7
+export size bytes: 7091148
