@@ -393,19 +393,34 @@ Gate G3: checklist of these modules on the phone, and on the tablet layout in th
 
 **Phase 5: maintenance.** `UPDATE.md` proven by a real version bump, remaining modules by demand, optional nightly-following build.
 
-### 6.1 Status and remaining work (updated 25 Nov 2026)
+### 6.1 Status and remaining work (updated 26 Nov 2026)
 
 **Done:** Phases 0–3 (gates G0 and G1 passed; G2 and G3 wait for the owner's checks), R11 shared styles/presets/layouts, Phase 4 robustness (P4a) and speed (P4b: benchmark, memory by RAM). **GPU (OpenCL):** works on the Adreno 650 after a kernel patch (P4e, `patches/0001`), but measured 2–3× slower than the CPU per module and without darktable's pipeline cache reuse (owner's phone, 25 Nov); it stays an opt-in that switches itself off when slower. GPU work is closed unless drivers or darktable change.
 
-**Remaining, in order** (owner asked for the plan to be adjusted, 25 Nov 2026):
-1. **P5a module coverage audit.** Every processing module of the pinned darktable, not only the 29 priority ones: works / partly / missing on the phone, with the reason (e.g. liquify's on-photo tool, LUT 3D file chooser, lens correction's lens list and lensfun data, denoise profiles, watermark/framing assets). Output: a table the owner picks from; checked by bridge renders against darktable-cli where possible.
-2. **(Deferred by the owner, 25 Nov 2026: not needed for now; items 3–6 come first.)** **P5b engine bump to the current darktable development version** (`UPDATE.md` proven by a real bump; schema-diff; `patches/` re-applied; module-version check against the owner's PC nightly). Keeps phone and PCs on compatible module versions until 5.8.0, then the same routine for 5.8.0.
-3. **P5c test and CI hygiene:** p2b's permission allow-list and `pipefail`; a registry for bridge test ids; emulator tap tests for the R11, retouch, look up table and perspective dialogs (today Robolectric only); CurvePick fallback to darktable's Rec 2020 row.
-4. **Upstream reports: dropped by the owner (26 Nov 2026)**, no reports to darktable's repository; the findings stay as notes in the project, and `patches/0001` stays ours.
-5. **G3 checklist** written for the owner (after 1–2), then the owner's G2 and G3 checks.
-6. **From the audit** (P6a done 26 Nov: white balance settings list, graduated density offset slider, most pickers and auto buttons; left from it: graduated density on-photo line, color balance and spektrafilm pickers, colour harmonizer analyze/import, basic adjustments and levels auto; owner, 26 Nov 2026: reviewer's order; first P6a = white balance presets, graduated density position, missing pickers and auto buttons; then LUT 3D with files **both** from a folder on the phone and synced from the PCs through LightPhotoLibrary). Candidates: missing/partial modules (liquify first if wanted), retouch wavelet decompose, rotation gesture for shapes, curve graph zoom and "scale for graph", 8-thread CPU experiment for diffuse, tablet layout on a real tablet.
+**Done since 25 Nov 2026:**
+- **P5a module coverage audit** (PR #12): `docs/experiments/P5a-module-audit.md`, `tools/module-audit.py`, test C40 (every module with defaults vs darktable-cli; run only when named).
+- **P5c test and CI hygiene** (PRs #13, #14): p2b permission allow-list and `pipefail`, test id registry `engine/tests/TEST-IDS.md`, override notes corrected, CurvePick Rec 2020 row, emulator tap tests for R11, retouch, look up table, perspective (`TestFiles.waitRowAndKeyboardGone`, P6c).
+- **G2/G3 checklist** for the owner written (owner's project notes); the owner's checks are still open.
+- **P6a** (PR #15): white balance settings list and fine-tuning, graduated density offset slider, pickers and auto buttons for rgb levels, AgX, colour equalizer, colour zones, colour harmonizer hues, split-toning, colorize, unbreak input profile, basic adjustments middle grey, fill light, invert, levels (test C43 against desktop's callbacks).
+- **P6b / R19 LUT 3D files** (PR #16; LPL PR #3): section 4.6; LUT folder on the phone and on the PCs through LPL; test C44.
+- **P6c** (PR #17; LPL PR #4): phone download option, off by default; only missing files; changed files offered, never replaced by a pass. Owner: no limit on LPL's LUT history for now.
+- Audit counts now (current modules): works 54, partly 15, missing 4 (liquify, external raster masks, composite, color mapping).
+
+**Dropped or deferred:**
+- **P5b engine bump** to the current darktable development version: deferred by the owner (25 Nov 2026), not needed for now. Brief on branch `p5b-engine-bump` (owner's PCs: 5.7.0+1090). When it happens: `UPDATE.md` proven by a real bump, schema-diff, `patches/` re-applied, C40 and C43 re-run, the P6a verbatim blocks refreshed.
+- **Upstream reports:** dropped by the owner (26 Nov 2026); no reports to darktable's repository; `patches/0001` stays ours.
+
+**Remaining, in order** (reviewer's order, owner agreed 26 Nov 2026):
+1. **P6d lens correction** (next; owner said go ahead 26 Nov, not started): choose camera and lens by hand (desktop's searchable lists; bridge actions `lens list_cameras / list_lenses / set_lens` exist, C14; lensfun database already in the APK), and the focal length, aperture and distance lists as desktop shows them.
+2. **Colour dialog** used by framing and watermark (and watermark's text/fonts on Android).
+3. **Graph editors** reusing the curve and band editors: base curve, saturation curve (rgb), lowlight, raw denoise, the wavelet curves of denoise (profiled); curve graph zoom and "scale for graph".
+4. **Leftovers of P6a:** graduated density on-photo line; color balance and spektrafilm pickers; colour harmonizer analyze/import; basic adjustments and levels "auto".
+5. **Larger, if the owner wants them:** liquify; color calibration's colour checker; negadoctor pickers (only if he scans film); retouch wavelet decompose; rotation gesture for shapes; 8-thread diffuse test; a real tablet.
+6. **The owner's G2 and G3 checks** on the phone (any time; findings go before the list above).
 7. **LightPhotoLibrary:** repeat-safe export upload; per-device tokens (R7, optional).
-8. **darktable 5.8.0** when released (routine from 2).
+8. **darktable 5.8.0** when released (with the P5b routine).
+
+Known test flakes to watch: `P3mRetouchLutTest.algorithmsSettingsOpacityRemove` (failed once, p2b 45732776612).
 
 ## 7. How implementation runs
 
