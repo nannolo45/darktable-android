@@ -22,25 +22,40 @@ import java.io.File
  */
 class SyncSettings(private val file: File?) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val _autoSync = MutableStateFlow(load())
+    private val obj0 = loadObject()
+    private val _autoSync = MutableStateFlow(obj0?.get("auto_sync").bool() ?: true)
+    private val _lutDownload = MutableStateFlow(obj0?.get("lut_auto_download").bool() ?: false)
 
     /** "sync automatically": true unless the user switched it off. */
     val autoSync: StateFlow<Boolean> = _autoSync.asStateFlow()
 
-    private fun load(): Boolean {
-        val f = file ?: return true
-        val o = readWhole(f)?.let { runCatching { json.parseToJsonElement(it.decodeToString()) as JsonObject }.getOrNull() } ?: return true
-        return o["auto_sync"].bool() ?: true
+    /** P6c: "Download LUT files from LightPhotoLibrary automatically": false unless the user switched it on. */
+    val lutAutoDownload: StateFlow<Boolean> = _lutDownload.asStateFlow()
+
+    private fun loadObject(): JsonObject? {
+        val f = file ?: return null
+        return readWhole(f)?.let { runCatching { json.parseToJsonElement(it.decodeToString()) as JsonObject }.getOrNull() }
+    }
+
+    private fun store(auto: Boolean, lut: Boolean) {
+        file?.let { f ->
+            f.parentFile?.mkdirs()
+            atomicWrite(f, buildJsonObject { put("auto_sync", auto); put("lut_auto_download", lut) }.toString().toByteArray())
+        }
     }
 
     /** Switch automatic syncing on or off. Throws [java.io.IOException] when the setting cannot be stored. */
     @Synchronized
     fun setAutoSync(on: Boolean) {
-        file?.let { f ->
-            f.parentFile?.mkdirs()
-            atomicWrite(f, buildJsonObject { put("auto_sync", on) }.toString().toByteArray())
-        }
+        store(on, _lutDownload.value)
         _autoSync.value = on
+    }
+
+    /** Switch the automatic download of LUT files on or off (P6c). Throws [java.io.IOException] when it cannot be stored. */
+    @Synchronized
+    fun setLutAutoDownload(on: Boolean) {
+        store(_autoSync.value, on)
+        _lutDownload.value = on
     }
 
     companion object {

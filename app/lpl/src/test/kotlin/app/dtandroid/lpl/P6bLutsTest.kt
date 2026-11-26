@@ -33,9 +33,9 @@ class P6bLutsTest {
     private val cubeC = String(cubeA).replace("\"a\"", "\"c\"").toByteArray()
     private fun sha(b: ByteArray) = StubLuts.sha256(b)
 
-    inner class Device(name: String = "Phone") {
+    inner class Device(name: String = "Phone", autoDownload: Boolean = true) {
         val servers = ServerStore(File(tmp.root, "$name/lpl"), MemorySecretBox()).also { it.put(o, name, null) }
-        val settings = SyncSettings.inMemory()
+        val settings = SyncSettings.inMemory().also { it.setLutAutoDownload(autoDownload) }
         val agent = LplAgent(
             servers, WorkStore(File(tmp.root, "$name/lpl/work")), FakeEditor(), { "test" },
             clientFor = { origin -> LplClient(origin, { null }, settings = ClientSettings(backoffMs = listOf(1, 1), connectTimeoutMs = 500, readTimeoutMs = 3_000), sleep = {}) },
@@ -132,15 +132,16 @@ class P6bLutsTest {
         assertEquals(1, stub.luts.puts.size)
     }
 
-    @Test fun aPcFileArrivesAndAChangeOnThePcReplacesAnUnchangedPhoneCopy() = runBlocking {
+    @Test fun aPcFileArrivesAndAChangeOnThePcIsOfferedNotTaken() = runBlocking {
         val d = Device(); d.start()
         stub.luts.put("pc-1", "pc/warm.cube", cubeA, sha(cubeA), null)
         d.pass()
         assertTrue(d.bytes("pc/warm.cube").contentEquals(cubeA))
         assertEquals(LutSyncState.SYNCED, d.view.states["pc/warm.cube"])
-        stub.luts.put("pc-1", "pc/warm.cube", cubeB, sha(cubeB), null)  // the PC changed it: newest wins
+        stub.luts.put("pc-1", "pc/warm.cube", cubeB, sha(cubeB), null)  // the PC changed it (P6c: never replaced by itself)
         d.pass()
-        assertTrue(d.bytes("pc/warm.cube").contentEquals(cubeB))
+        assertTrue(d.bytes("pc/warm.cube").contentEquals(cubeA))
+        assertEquals(LutSyncState.NEWER_IN_LPL, d.view.states["pc/warm.cube"])
         assertEquals(0, stub.luts.puts.count { " ${d.id} " in it })
     }
 
@@ -241,6 +242,71 @@ class P6bLutsTest {
         d.luts.pass(o, transfer = true, throwing = true)  // "sync now"
         assertTrue(d.folder.has("pc.cube"))
         assertNotNull(stub.luts.get("mine.cube"))
+    }
+
+    // ------------------------------------------------------------------ P6c: the download option
+
+    @Test fun withTheDownloadOptionOffAPassDownloadsNothingEvenOnSyncNow() = runBlocking {
+        val d = Device(autoDownload = false); d.start()
+        assertFalse(SyncSettings.inMemory().lutAutoDownload.value)  // off by default
+        d.add("mine.cube", cubeA)
+        stub.luts.put("pc-1", "pc/a.cube", cubeB, sha(cubeB), null)
+        stub.luts.put("pc-1", "pc/b.cube", cubeC, sha(cubeC), null)
+        d.pass()
+        assertFalse(d.folder.has("pc/a.cube") || d.folder.has("pc/b.cube"))
+        assertEquals(setOf("pc/a.cube", "pc/b.cube"), d.view.states.filterValues { it == LutSyncState.ONLY_LPL }.keys)
+        assertEquals(cubeB.size.toLong(), d.view.entries["pc/a.cube"]!!.size)
+        assertNotNull("uploads still follow 'sync automatically'", stub.luts.get("mine.cube"))
+        assertTrue(stub.seen("GET", "/api/luts/file").isEmpty())
+    }
+
+    @Test fun withTheOptionOnOnlyMissingFilesComeAndAChangedOneIsNotReplaced() = runBlocking {
+        val d = Device(autoDownload = true); d.start()
+        stub.luts.put("pc-1", "a.cube", cubeA, sha(cubeA), null)
+        d.pass()
+        assertTrue(d.folder.has("a.cube"))
+        stub.luts.put("pc-1", "a.cube", cubeB, sha(cubeB), null)
+        stub.luts.put("pc-1", "new.cube", cubeC, sha(cubeC), null)
+        stub.luts.put("pc-1", "pack.gmz", cubeC, sha(cubeC), null)
+        val gets = stub.seen("GET", "/api/luts/file").size
+        d.pass()
+        assertTrue(d.folder.has("new.cube"))
+        assertFalse(d.folder.has("pack.gmz"))
+        assertTrue(d.bytes("a.cube").contentEquals(cubeA))
+        assertEquals(LutSyncState.NEWER_IN_LPL, d.view.states["a.cube"])
+        assertEquals("only new.cube was downloaded", gets + 1, stub.seen("GET", "/api/luts/file").size)
+        d.pass()
+        assertEquals("nothing already on the phone is downloaded again", gets + 1, stub.seen("GET", "/api/luts/file").size)
+    }
+
+    @Test fun getAndGetAllTakeMissingFilesAndUpdateReplacesAChangedOne() = runBlocking {
+        val d = Device(autoDownload = false); d.start()
+        stub.luts.put("pc-1", "a.cube", cubeA, sha(cubeA), null)
+        d.pass()
+        assertNull(d.luts.fetch("a.cube"))  // "Get"
+        stub.luts.put("pc-1", "a.cube", cubeB, sha(cubeB), null)
+        stub.luts.put("pc-1", "b.cube", cubeB, sha(cubeB), null)
+        stub.luts.put("pc-1", "c.cube", cubeC, sha(cubeC), null)
+        d.pass()
+        assertTrue(d.bytes("a.cube").contentEquals(cubeA))
+        assertEquals(LutSyncState.NEWER_IN_LPL, d.view.states["a.cube"])
+        assertNull(d.luts.fetchAll(d.view.states.filterValues { it == LutSyncState.ONLY_LPL }.keys.toList()))  // "Get all"
+        assertTrue(d.folder.has("b.cube") && d.folder.has("c.cube"))
+        assertNull(d.luts.fetch("a.cube"))  // "Update"
+        assertTrue(d.bytes("a.cube").contentEquals(cubeB))
+        assertEquals(LutSyncState.SYNCED, d.view.states["a.cube"])
+    }
+
+    @Test fun theDownloadOptionIsKeptInTheSettingsFileAndAutoSyncKeepsItsOwnValue() {
+        val f = File(tmp.root, "lpl/settings.json")
+        val s = SyncSettings(f)
+        assertFalse(s.lutAutoDownload.value)
+        assertTrue(s.autoSync.value)
+        s.setLutAutoDownload(true)
+        s.setAutoSync(false)
+        val again = SyncSettings(f)
+        assertTrue(again.lutAutoDownload.value)
+        assertFalse(again.autoSync.value)
     }
 
     @Test fun anOlderServerIsLeftAlone() = runBlocking {

@@ -955,7 +955,7 @@ class LplAgent(
      * LightPhotoLibrary; `luts` is always in the heartbeat's caps, the exchange runs with servers that list it.
      */
     val luts = LutSync(servers, LutFolder(File(work.root.parentFile ?: work.root, "luts"), File(work.root.parentFile ?: work.root, "luts-marks.json")),
-        File(work.root.parentFile ?: work.root, "luts-sync"), { o -> client(o) }, { o -> exports.capsOf(o) }, { autoSync }, clock, trace)
+        File(work.root.parentFile ?: work.root, "luts-sync"), { o -> client(o) }, { o -> exports.capsOf(o) }, { autoSync }, { settings.lutAutoDownload.value }, clock, trace)
 
     private val _capsTick = MutableStateFlow<Int>(0)
     /** Counts the changes of any server's `server_caps`: the export screen reads the offer again. */
