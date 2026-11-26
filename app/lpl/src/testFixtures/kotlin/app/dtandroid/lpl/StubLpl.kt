@@ -104,6 +104,12 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         agentNames[id] ?: heartbeats[id]?.let { Regex("\"name\"\\s*:\\s*\"([^\"]*)\"").find(it)?.groupValues?.get(1) } ?: id
     }
 
+    /** brief P6b (R19): answer `/api/luts...` from [luts] and list `luts` in `server_caps`; off = an older server */
+    @Volatile var r19: Boolean = false
+    val luts = StubLuts { id ->
+        agentNames[id] ?: heartbeats[id]?.let { Regex("\"name\"\\s*:\\s*\"([^\"]*)\"").find(it)?.groupValues?.get(1) } ?: id
+    }
+
     /** brief P2k: answer as a server with batches (R17): a `cancel` in every heartbeat answer; off = an older server, no `cancel` */
     @Volatile var batch: Boolean = false
     /** brief P2k: what the next answers ask the device to stop (the whole list every time) */
@@ -328,6 +334,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
                 }
             }
             r11 && p.startsWith("/api/shared") -> sharedRoute(out, req, ::record)
+            r19 && p.startsWith("/api/luts") -> lutsRoute(out, req, ::record)
             else -> { record(404); json(out, 404, """{"detail":"Not Found"}""") }
         }
     }
@@ -356,6 +363,27 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         }
     }
 
+    private fun lutsRoute(out: OutputStream, req: Req, record: (Int) -> Unit) {
+        fun q(k: String) = req.query[k]?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+        fun answer(r: Pair<Int, kotlinx.serialization.json.JsonObject>) { record(r.first); json(out, r.first, r.second.toString()) }
+        val path = q("path") ?: ""
+        when {
+            req.method == "GET" && req.path == "/api/luts" -> answer(200 to luts.list(q("since")?.toLongOrNull() ?: 0))
+            req.method == "GET" && req.path == "/api/luts/file" -> {
+                val f = luts.get(path)
+                if (f == null) answer(404 to kotlinx.serialization.json.JsonObject(mapOf("detail" to kotlinx.serialization.json.JsonPrimitive("no such LUT file"))))
+                else { record(200); respond(out, 200, "application/octet-stream", f.bytes, mapOf("x-sha256" to f.sha)) }
+            }
+            req.method == "PUT" && req.path == "/api/luts/file" ->
+                answer(luts.put(q("agent") ?: "", path, req.body, req.headers["x-sha256"], req.headers["x-base-sha256"]))
+            req.method == "PUT" && req.path == "/api/luts/state" -> {
+                luts.report(q("agent") ?: "", kotlinx.serialization.json.Json.parseToJsonElement(req.body.decodeToString()) as kotlinx.serialization.json.JsonObject)
+                answer(200 to kotlinx.serialization.json.JsonObject(mapOf("ok" to kotlinx.serialization.json.JsonPrimitive(true))))
+            }
+            else -> { record(404); json(out, 404, """{"detail":"Not Found"}""") }
+        }
+    }
+
     private fun heartbeat(out: OutputStream, req: Req) {
         val body = req.body.decodeToString()
         val id = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1) ?: ""
@@ -375,7 +403,7 @@ class StubLpl(port: Int = 0) : AutoCloseable {
         val cancel = if (batch) ""","cancel":{"jobs":[${synchronized(cancelJobs) { cancelJobs.joinToString(",") }}],"photos":[${synchronized(cancelPhotos) { cancelPhotos.joinToString(",") }}]}""" else ""
         // R18: only to a device that announced caps; `exports` only when the stub is a server with R18
         val announced = Regex("\"caps\"\\s*:\\s*\\[[^\\]]*\\]").containsMatchIn(body)
-        val serverCaps = if (announced && (r18 || r11)) ""","server_caps":[${listOfNotNull("\"batch\"".takeIf { batch }, "\"versions\"".takeIf { r17 }, "\"exports\"".takeIf { r18 }, "\"shared\"".takeIf { r11 }).joinToString(",")}]""" else ""
+        val serverCaps = if (announced && (r18 || r11 || r19)) ""","server_caps":[${listOfNotNull("\"batch\"".takeIf { batch }, "\"versions\"".takeIf { r17 }, "\"exports\"".takeIf { r18 }, "\"shared\"".takeIf { r11 }, "\"luts\"".takeIf { r19 }).joinToString(",")}]""" else ""
         json(out, 200, """{"jobs":[$js],"server_time":${now()}$cancel$serverCaps}""")
     }
 

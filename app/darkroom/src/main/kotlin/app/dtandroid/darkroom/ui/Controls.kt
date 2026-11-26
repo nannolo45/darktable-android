@@ -101,6 +101,11 @@ fun ModulePanel(ctx: PanelContext, modifier: Modifier = Modifier) {
             RetouchPanel(ctx)
         } else if (ctx.module.op == app.dtandroid.darkroom.LUT_OP) {
             LutPanel(ctx)
+        } else if (ctx.module.op == app.dtandroid.darkroom.LUT3D_OP) {
+            // brief P6b: the file row (desktop's file button and list) is hand-built over the phone's LUT folder;
+            // the schema's row (control 0: button and file list) is left out, the other controls stay generated
+            Lut3dFileRow(ctx)
+            Controls(ctx.module.controls.filter { it.id != 0 }, ctx)
         } else if (ctx.module.op == app.dtandroid.darkroom.ASHIFT_OP && ctx.module.editableCount > 0) {
             // brief P3n: structure and fit first (approved mockup), then the module's generated controls
             if (!ctx.readOnly) PerspectivePanel(ctx)

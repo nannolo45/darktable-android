@@ -2743,6 +2743,23 @@ class DarkroomController(
     /** The presets and styles sheets (engine-api.md 5.2, 5.3). */
     val stylesPresets: StylesPresets by lazy { StylesPresets(this) }
 
+    /** Brief P6b: lut 3D's file chooser over the phone's LUT folder (Lut3dFiles.kt); the host attaches the folder. */
+    val lut3d: Lut3dFiles by lazy { Lut3dFiles(this) }
+
+    /** Brief P6b: lut 3D's file, by its path relative to the LUT folder: one history step (bridge `set_file`). */
+    suspend fun chooseLutFile(key: InstanceKey, path: String) = change {
+        engine.moduleAction(key.op, key.priority, "set_file", kotlinx.serialization.json.buildJsonObject { put("path", JsonPrimitive(path)) })
+        engine.historySeal()
+    }
+
+    /**
+     * Brief P6b: darktable's LUT folder told to the engine, again after its files changed: an open photo's lut 3D
+     * reads its file again and the picture is rendered again (no history step).
+     */
+    suspend fun lutFolderChanged(dir: String?) {
+        if (_state.value.info != null) change { engine.lutFolderSet(dir) } else fg { engine.lutFolderSet(dir) }
+    }
+
     /** An engine call that does not change the edit (lists, darktable's database of presets and styles), under the lock. */
     internal suspend fun <T> engineRead(block: suspend (DarktableEngine) -> T): T = fg { block(engine) }
 

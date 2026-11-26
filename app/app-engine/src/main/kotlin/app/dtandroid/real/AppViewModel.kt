@@ -40,7 +40,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Which screen the app shows. */
-enum class Screen { LIBRARY, DARKROOM, ABOUT, TIMINGS, SERVER, HANDOFF, CRASH_LOG, PROCESSING }
+enum class Screen { LIBRARY, DARKROOM, ABOUT, TIMINGS, SERVER, HANDOFF, CRASH_LOG, PROCESSING, LUTS }
 
 /** What the hand-off screen shows (brief P2e item 4). */
 sealed interface HandOffUi {

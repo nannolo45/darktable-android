@@ -596,6 +596,16 @@ Java_app_dtandroid_engine_NativeBridge_modulesTimed(JNIEnv *env, jclass cls, jlo
   return j;
 }
 
+/* brief P6b: darktable's LUT folder (NULL = none) */
+JNIEXPORT jint JNICALL
+Java_app_dtandroid_engine_NativeBridge_lutFolderSet(JNIEnv *env, jclass cls, jstring dir)
+{
+  jstr_t d = _str(env, dir);
+  const int r = dtb_lut_folder_set(d.s);
+  _str_free(&d);
+  return r;
+}
+
 JNIEXPORT jint JNICALL
 Java_app_dtandroid_engine_NativeBridge_setThreadsCode(JNIEnv *env, jclass cls, jint n)
 {

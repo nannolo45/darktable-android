@@ -923,7 +923,7 @@ class LplAgent(
 
     /** One heartbeat to one server; null when it did not answer. Reports the transfers and acts on `cancel` (brief P2k). */
     private fun heartbeatTo(origin: ServerOrigin, deviceName: String): HeartbeatAnswer? = try {
-        val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin), shared.caps(origin)) }
+        val a = net(origin) { it.heartbeat(servers.installId, deviceName, state(origin), transfers.report(origin), shared.caps(origin) + luts.caps(origin)) }
         // brief P3i (R18): what the server can receive; no `server_caps` = an older server, exports wait
         if (exports.capsOf(origin) != (a.serverCaps ?: emptySet<String>())) { exports.setCaps(origin, a.serverCaps); _capsTick.value = _capsTick.value + 1 }
         // `cancel` comes only from a server that knows `caps`: only then are edit jobs run as batches
@@ -949,6 +949,13 @@ class LplAgent(
      */
     val shared = SharedSync(servers, File(work.root.parentFile ?: work.root, "shared"), { o -> client(o) }, { o -> exports.capsOf(o) },
         { autoSync }, sharedSettings, clock, trace)
+
+    /**
+     * Brief P6b (R19, PLAN.md 4.6): the phone's LUT folder (`luts/` beside the working folder) and its exchange with
+     * LightPhotoLibrary; `luts` is always in the heartbeat's caps, the exchange runs with servers that list it.
+     */
+    val luts = LutSync(servers, LutFolder(File(work.root.parentFile ?: work.root, "luts"), File(work.root.parentFile ?: work.root, "luts-marks.json")),
+        File(work.root.parentFile ?: work.root, "luts-sync"), { o -> client(o) }, { o -> exports.capsOf(o) }, { autoSync }, clock, trace)
 
     private val _capsTick = MutableStateFlow<Int>(0)
     /** Counts the changes of any server's `server_caps`: the export screen reads the offer again. */

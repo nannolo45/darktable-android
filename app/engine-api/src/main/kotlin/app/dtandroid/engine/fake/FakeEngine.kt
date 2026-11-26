@@ -584,6 +584,14 @@ class FakeEngine(
         s.addItem(op, priority, cur.enabled, d.defaultParams)
     }
 
+    /** brief P6b: darktable's LUT folder, as dtb_lut_folder_set */
+    @Volatile private var lutFolder: String? = null
+
+    override suspend fun lutFolderSet(dir: String?) = onEngine {
+        if (!dir.isNullOrEmpty() && !dir.startsWith("/")) fail(EngineError.ARG, "the LUT folder must be an absolute path: $dir")
+        lutFolder = dir
+    }
+
     override suspend fun moduleAction(op: String, priority: Int, action: String, args: JsonObject): JsonElement = onEngine {
         val s = requireSession()
         def(op)
@@ -683,8 +691,19 @@ class FakeEngine(
                 fail(EngineError.NOT_FOUND, "the fake engine has no presets, lenses or profiles")
             }
             "lut3d" to "set_file" -> {
-                requireWritable()
-                fail(EngineError.IO, "the fake engine cannot read LUT files")
+                // brief P6b: as the bridge's set_file (engine/src/actions.c): a path relative to the LUT folder, the
+                // file must exist; the fake does not read it (it renders no LUT)
+                val s = requireWritable()
+                val root = lutFolder?.takeIf { it.isNotEmpty() } ?: fail(EngineError.ARG, "LUT root folder not defined")
+                var p = (args["path"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: fail(EngineError.TYPE, "set_file takes {path}")
+                if (p.startsWith("/")) p = if (p.startsWith("${root.trimEnd('/')}/")) p.removePrefix("${root.trimEnd('/')}/") else fail(EngineError.ARG, "$p is outside the LUT root folder")
+                p = p.replace('\\', '/')
+                if (p.split('/').any { it == ".." }) fail(EngineError.ARG, "path must stay inside the LUT root folder")
+                if (p.lowercase().endsWith(".gmz")) fail(EngineError.ARG, "G'MIC compressed LUT (gmz) needs a darktable built with G'MIC")
+                if (listOf(".png", ".PNG", ".cube", ".CUBE", ".3dl", ".3DL").none { p.endsWith(it) }) fail(EngineError.ARG, "not a hald CLUT (png) or 3D LUT (cube, 3dl) darktable reads: $p")
+                if (!java.io.File(root, p).isFile) fail(EngineError.IO, "cannot read $root/$p")
+                s.setParams(op, priority, mapOf("filepath" to JsonPrimitive(p)), merge = true)
+                JsonObject(emptyMap())
             }
             else -> fail(EngineError.NOT_FOUND, "unknown action $op/$action")
         }

@@ -144,6 +144,8 @@ object AppEngine {
                 if (!engine.initialised)
                     engine.init(EnginePaths(p.paths.configDir, p.paths.cacheDir, p.paths.dataDir, p.paths.moduleDir, p.paths.tmpDir, ":memory:"), 0,
                         Processing.startOptions(app))
+                // brief P6b: darktable's LUT folder (the same folder as AppHost.agent.luts: lpl/luts beside the work folder)
+                runCatching { engine.lutFolderSet(java.io.File(app.filesDir, "lpl/luts").also { it.mkdirs() }.path) }
                 val initMs = (System.nanoTime() - t0) / 1_000_000
                 val cores = runCatching { FastCores.detect() }.getOrElse { FastCores(emptyList(), emptyMap(), emptyList()) }
                 // brief P2g: never an error from here; the result says what happened

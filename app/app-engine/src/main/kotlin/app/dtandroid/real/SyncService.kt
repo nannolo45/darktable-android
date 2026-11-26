@@ -82,6 +82,8 @@ class SyncService : Service() {
                     if (AppHost.agent.queuedExports() > 0) runCatching { AppHost.agent.sendQueuedExports() }
                     // brief P3l: the sync pass also sends shared styles, presets and layouts changed on this phone
                     runCatching { AppHost.agent.shared.passAll() }
+                    // brief P6b: and the LUT folder
+                    runCatching { AppHost.agent.luts.passAll() }
                 }
                 passWasRunning = true
             }

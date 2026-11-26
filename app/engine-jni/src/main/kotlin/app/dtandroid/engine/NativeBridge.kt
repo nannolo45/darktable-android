@@ -112,6 +112,8 @@ object NativeBridge {
     /** modules() with times[0] = bridge call, times[1] = copy into a Java string, in ns */
     @JvmStatic external fun modulesTimed(times: LongArray, status: IntArray): String?
     @JvmStatic external fun setThreadsCode(n: Int): Int
+    /** brief P6b: dtb_lut_folder_set; null = no LUT folder */
+    @JvmStatic external fun lutFolderSet(dir: String?): Int
     @JvmStatic external fun setThreadCpus(cpus: IntArray): Int
     @JvmStatic external fun xmpCheckStatus(path: String, status: IntArray): String?
     @JvmStatic external fun metadataReload(path: String): Int

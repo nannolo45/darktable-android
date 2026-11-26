@@ -446,6 +446,20 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
   # brief P6a: white balance's settings list and fine tuning; graduated density's offset slider
   if want C41; then drv C41 wbsettings "white balance settings list: desktop's order, one current entry, camera presets and every fine-tuning step against wb_presets.json, finetune range"; parity C41 p6a_wb; fi
   if want C42; then drv C42 gradoffset "graduated density offset written as the slider writes it"; parity C42 p6a_grad; fi
+  if want C44; then
+    drv C44 lut3dfiles "LUT folder from dtb_lut_folder_set; .cube, .3dl, Hald .png by relative path; refusals; missing file = pass-through, read again when back"
+    # darktable-cli with the same folder and the same relative paths (p6b_missing: the file is missing there too)
+    for n in p6b_cube p6b_3dl p6b_png p6b_missing; do
+      if [ -f "$D/$n.xmp" ]; then
+        rm -f "$D/${n}_cli.png"
+        "$CLI" "$RAW" "$D/$n.xmp" "$D/${n}_cli.png" --core --disable-opencl $CLI_LEVEL --configdir "$OUT/cli-config" \
+          --cachedir "$OUT/cli-cache" --conf "plugins/darkroom/lut3d/def_path=$D/p6b_luts" >> "$D/cli.log" 2>&1
+        cmp_rec C44 "$C" "$D/${n}_bridge.ppm" "$D/${n}_cli.png"
+      else
+        fail C44 "$C" "$n.xmp was not written"
+      fi
+    done
+  fi
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops
