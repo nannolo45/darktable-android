@@ -103,6 +103,27 @@ object TestFiles {
         if (attempt >= 10 && attempt % 10 == 0 && imeShown()) instr.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
     }
 
+    /**
+     * Brief P6c: after text was typed into the module search, wait for the real condition before the module's row is
+     * tapped: the row exists AND the keyboard is gone, on two checks in a row. Run 45805096711 (P5cTapTest.t4) showed why
+     * "the row exists" alone is not enough: the emulator's keyboard comes up a moment after the text is typed, so the row
+     * was there at the first look and gone (panel 0 px high) when it was tapped. Closing the keyboard also takes the focus
+     * off the search field, so a keyboard still on its way does not come up later. Returns null when settled, otherwise
+     * what the input method service said after [ms].
+     */
+    fun waitRowAndKeyboardGone(sc: androidx.test.core.app.ActivityScenario<*>?, rowShown: () -> Boolean, idle: () -> Unit, ms: Long = 90_000): String? {
+        val end = System.currentTimeMillis() + ms
+        var attempt = 0
+        var good = 0
+        while (System.currentTimeMillis() < end) {
+            closeKeyboard(sc, attempt++)
+            idle(); Thread.sleep(200)
+            good = if (rowShown() && !imeShown()) good + 1 else 0
+            if (good >= 2) return null
+        }
+        return "after $attempt closing attempts: row shown ${rowShown()}, ${imeDiagnosis()}"
+    }
+
     /** What the input method service says about the keyboard, for the results file when a wait timed out. */
     fun imeDiagnosis(): String = runCatching { shell("dumpsys input_method").lineSequence()
         .filter { l -> listOf("mInputShown", "mImeWindowVis", "mCurFocusedWindow", "mShowRequested", "mCurId").any { l.contains(it) } }
