@@ -1,0 +1,42 @@
+what: dt-android timings (briefs P2b, P2f); numbers measured on this device
+app: test
+engine package: b52e8111ed6e874c
+darktable: 04477d3-dirty
+engine api: 1
+threads: 4 of 4 at start; pinned to CPUs none
+cores: 4 CPUs, max clocks 0.00 GHz
+pinning: not pinned: all CPUs are equally fast; the engine uses every CPU it may
+engine thread CPUs at start: 0-3
+last return to the foreground: the engine was not pinned; the app may use CPUs 0-3; now not pinned: all CPUs are equally fast; the engine uses every CPU it may
+android api: 33
+photo: 15 MB RAW, CR2
+photo source: LightPhotoLibrary (a copy downloaded to this phone)
+edit: 15 history items (current position 15)
+modules on (19): rawprepare, temperature, highlights, demosaic, demosaicscale, denoiseprofile, flip _builtin_auto, exposure _builtin_scene-referred default, colorin, channelmixerrgb _builtin_scene-referred default, diffuse, sharpen, sigmoid _builtin_scene-referred default, bilat, finalscale, colorout, overexposed, rawoverexposed, gamma
+open ms: 135.3
+image info (loads the full image) ms: 79.9
+image: 3908 x 2602 processed, 3944 x 2622 sensor, bayer
+per module, first preview, every module (ms, slowest first): sum 430.7 ms over 13 modules: denoiseprofile 166.5; diffuse 120.3; bilat 43.4; demosaic 27.7; sigmoid 25.4; channelmixerrgb 22.7; highlights 6.0; colorout 4.8; colorin 4.2; sharpen 3.7; rawprepare 2.8; exposure 2.1; 1 others 1.1
+first preview 1024x681 ms: 558.8
+image info again ms (the darkroom reads it after every change): 1.4
+preview again, nothing changed ms: 16.6
+preview after a late module change (color balance rgb) ms: 314.9
+per module, preview after an exposure change (ms, slowest first): sum 501.4 ms over 14 modules: denoiseprofile 177.3; colorbalancergb 92.6; diffuse 77.9; bilat 56.3; sigmoid 25.9; demosaic 24.4; channelmixerrgb 22.8; highlights 5.7; colorout 4.9; sharpen 4.1; colorin 4.0; rawprepare 2.3; 2 others 3.2
+preview after an early module change (exposure) ms: 525.5
+per module, preview at the darkroom's fit size after an exposure change (ms, slowest first): sum 503.2 ms over 14 modules: denoiseprofile 187.1; colorbalancergb 89.1; diffuse 78.4; bilat 44.1; sigmoid 33.9; demosaic 23.4; channelmixerrgb 22.4; highlights 5.8; colorout 5.5; sharpen 4.1; colorin 3.9; rawprepare 2.3; 2 others 3.1
+preview at the darkroom's fit size (asked 1024 px, got 1024x681, view 304x250) after an exposure change ms: 535.4
+per module, drag picture 320 px after an exposure step (ms, slowest first): sum 69.4 ms over 14 modules: demosaic 22.7; denoiseprofile 11.1; colorbalancergb 8.9; highlights 8.9; diffuse 5.2; bilat 3.6; sigmoid 2.5; rawprepare 2.2; channelmixerrgb 2.0; temperature 1.3; colorout 0.5; colorin 0.3; 2 others 0.3
+drag picture (chosen size 320 px), 6 steps: median ms: 26.4 (min 24.1, max 31.8)
+drag picture by size, median of 3 after an exposure step (ms): 256 px 15.9; 384 px 49.3; 512 px 116.6; 640 px 119.0; 768 px 301.9; 1024 px 508.6
+drag picture chosen now: fit: 0.0 ms fixed + 812.7 ns per pixel; drag picture 320 px for a 50 ms target
+per module, sharp region at fit after an exposure change (ms, slowest first): sum 660.2 ms over 13 modules: demosaic 181.1; denoiseprofile 181.1; diffuse 86.0; highlights 48.7; bilat 47.7; sigmoid 28.3; channelmixerrgb 25.8; rawprepare 23.0; colorout 17.9; temperature 7.8; sharpen 4.6; colorin 4.3; 1 others 3.9
+sharp region at fit 1080x719 after a change ms: 679.0
+per module, sharp region at 100 % after an exposure change (ms, slowest first): sum 2468.7 ms over 14 modules: denoiseprofile 1149.4; diffuse 661.1; bilat 251.4; sigmoid 126.7; channelmixerrgb 102.5; highlights 36.7; demosaic 36.6; colorout 21.7; sharpen 21.4; colorin 17.8; rawprepare 17.7; exposure 9.5; 2 others 16.2
+sharp region at 100 % 1080x1500 after a change ms: 2589.0
+region rendered in place (no JNI copy): true
+modules() size bytes: 185306
+modules() bridge call ms (median of 5): 9.9
+modules() JNI string ms (median of 5): 0.5
+modules() Kotlin parse ms (median of 5): 8.3
+export full-size JPEG ms: 11581.0
+export size bytes: 4927420
