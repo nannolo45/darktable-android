@@ -1,0 +1,28 @@
+diff -r /home/runner/dt-linux/share/darktable/kernels/basic.cl /home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/basic.cl
+1641d1640
+<   // OpenCL C has no [] on vectors (a Clang extension some drivers refuse): use components
+1643,1648c1642,1643
+<   for(int i = 0; i < 3; i++)
+<   {
+<     linear.x += cmat[i] * cam[i];
+<     linear.y += cmat[3+i] * cam[i];
+<     linear.z += cmat[6+i] * cam[i];
+<   }
+---
+>   for(int j = 0; j < 3; j++)
+>     for(int i = 0; i < 3; i++) linear[j] += cmat[3*j+i] * cam[i];
+1651,1652c1646
+<     const float4 c4 = clamp(linear, 0.0f, 1.0f);
+<     const float clipped[3] = { c4.x, c4.y, c4.z };
+---
+>     float4 clipped = clamp(linear, 0.0f, 1.0f);
+1654,1659c1648,1649
+<     for(int i = 0; i < 3; i++)
+<     {
+<       linear.x += lmat[i] * clipped[i];
+<       linear.y += lmat[3+i] * clipped[i];
+<       linear.z += lmat[6+i] * clipped[i];
+<     }
+---
+>     for(int j = 0; j < 3; j++)
+>       for(int i = 0; i < 3; i++) linear[j] += lmat[3*j+i] * clipped[i];
