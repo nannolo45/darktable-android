@@ -69,7 +69,7 @@ Differences in the app (each with its reason):
 ### LPL
 - `server`: 292 passed (local; `test_luts.py` 32, `test_pc_agent_luts.py` 9; one existing assertion updated: the agent's caps list now ends with `luts`).
 - `web`: `npm run build` clean, `npm test` 93 passed; `luts-check.py` 3 rendered checks passed.
-- LPL CI: Docker image run **45773546528** success; Windows agent (.exe) run **45773550006** success.
+- LPL CI on the branch's last commit (2034505): Docker image run **45785434840** success; Windows agent (.exe) run **45785439098** success (earlier, on the agent commit: 45773546528, 45773550006, both success). LPL has no CI job for pytest or `npm test`; both were run on the build workspace.
 
 ## 5. Decisions made while building (reviewer please confirm)
 - **First upload from a PC does not replace LPL's file.** The brief says "newest upload wins between PCs". A PC that joins later would otherwise overwrite every file LPL already has with whatever old copies it has. The agent sends a file it never synced with `x-base-sha256: ""`, so the server answers 409 when LPL has another content, and the PC shows it as "different". A change the PC makes to a file it had synced is sent without a base and wins (newest change wins).
