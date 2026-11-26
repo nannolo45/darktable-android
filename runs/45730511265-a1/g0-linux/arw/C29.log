@@ -1,0 +1,28 @@
+RESULT engine 04477d3-dirty
+RESULT copy items {"items":[{"num":19,"op":"exposure","priority":2,"name":"exposure • 2","instance_name":"2","enabled":true,"mask":true,"safe":true},{"num":17,"op":"exposure","priority":2,"name":"exposure • scene-referred default","instance_name":"_builtin_scene-referred default","enabled":true,"mask":false,"safe":true},{"num":13,"op":"exposure","priority":1,"name":"exposure • after","instance_name":"after","enabled":true,"mask":false,"safe":true},{"num":20,"op":"exposure","priority":0,"name":"exposure","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":15,"op":"vignette","priority":0,"name":"vignetting","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":12,"op":"exposure","priority":0,"name":"exposure • scene-referred default","instance_name":"_builtin_scene-referred default","enabled":true,"mask":false,"safe":true},{"num":11,"op":"spektrafilm","priority":0,"name":"spektrafilm","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":9,"op":"flip","priority":0,"name":"orientation • auto","instance_name":"_builtin_auto","enabled":true,"mask":false,"safe":false},{"num":7,"op":"channelmixerrgb","priority":0,"name":"color calibration • scene-referred default","instance_name":"_builtin_scene-referred default","enabled":true,"mask":false,"safe":true},{"num":6,"op":"highlights","priority":0,"name":"highlight reconstruction","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":5,"op":"temperature","priority":0,"name":"white balance","instance_name":"","enabled":true,"mask":false,"safe":false},{"num":3,"op":"colorout","priority":0,"name":"output color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":2,"op":"colorin","priority":0,"name":"input color profile","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":1,"op":"demosaic","priority":0,"name":"demosaic","instance_name":"","enabled":true,"mask":false,"safe":true},{"num":0,"op":"rawprepare","priority":0,"name":"raw black/white point","instance_name":"","enabled":true,"mask":false,"safe":false}],"module_order":"custom"}
+RESULT items 15, unsafe 3, new instance num 19 priority 2
+RESULT clipboard after copy: {"parts":false,"copy_module_order":true,"items":[{"num":19,"op":"exposure","priority":2,"name":"exposure • 2","instance_name":"2","enabled":true,"mask":true,"safe":true,"selected":true},{"num":17,"o
+RESULT B after copy all + overwrite: 21 items
+     8.6549 cannot get iop-order for exposure instance 2
+     8.6550 [_dev_read_masks_history] can't find history entry 14 while adding mask group `exposure • 2'(1795657035)
+     8.6550 [_dev_read_masks_history] can't find history entry 14 while adding mask circle #1(1795657034)
+RESULT C exposure 0: 0.7000 (was 0.7000), new instance: nan
+RESULT C exposure instance 2 '': nan
+RESULT C exposure instance 3 '': nan
+RESULT C masks []
+RESULT C circle arrived: no
+    11.0037 cannot get iop-order for exposure instance 2
+    11.0037 [_dev_read_masks_history] can't find history entry 14 while adding mask group `exposure • 2'(1795657035)
+    11.0037 [_dev_read_masks_history] can't find history entry 14 while adding mask circle #1(1795657034)
+    11.0155 cannot get iop-order for exposure instance 2
+    11.0155 [_dev_read_masks_history] can't find history entry 17 while adding mask group `exposure • 2'(1795657035)
+    11.0155 [_dev_read_masks_history] can't find history entry 17 while adding mask circle #1(1795657034)
+[dtb] history_paste: history end 23 above its 22 items after the paste; set to 22
+RESULT open photo: 14 items before the paste, 22 after
+RESULT open photo after the paste: end 22 of 22 items; after undo and redo: end 22 of 22
+RESULT unknown-module target: code -7 (refusing to change /home/runner/bridge-tests/arw/p3j_d_unknown.xmp: it failed the version guard (3))
+    11.1268 cannot get iop-order for dtbnosuchop instance 0
+    11.1269 cannot get iop-order for dtbnosuchop instance 0
+    11.1269 cannot get iop-order for dtbnosuchop instance 1
+RESULT copypaste passed
+RESULT exit 0
