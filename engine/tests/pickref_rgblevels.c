@@ -28,3 +28,17 @@ int pickref_rgblevels(dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, pickref_w
   self->gui_data = NULL;
   return 0;
 }
+
+/* brief P6a (C43): "auto" and "auto region": desktop's _get_selected_area (with its box_cood) and _auto_levels on
+ * the module's input buffer, as process() runs them on the preview pipe */
+void pickref_rgblevels_auto(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const float *in,
+                            const dt_iop_roi_t *roi_in, const float box_cood[4], const int channel, void *params)
+{
+  dt_iop_rgblevels_gui_data_t g;
+  memset(&g, 0, sizeof(g));
+  for(int k = 0; k < 4; k++) g.box_cood[k] = box_cood[k];
+  int box[4] = { 0 };
+  _get_selected_area(self, piece, &g, roi_in, box);
+  _auto_levels(in, roi_in->width, roi_in->height, box, (dt_iop_rgblevels_params_t *)params, channel,
+               dt_ioppr_get_pipe_work_profile_info(piece->pipe));
+}

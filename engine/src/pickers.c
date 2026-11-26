@@ -93,6 +93,8 @@ typedef struct _pick_t
   dt_dev_pixelpipe_t *pipe;
   dt_colorpicker_sample_t sample;  // as desktop's primary sample: box or point in the pipe's input, normalised
   _side_t side[2];                 // input, output
+  dtb_input_fn fn;                 // brief P6a: called with the module's input instead of sampling
+  void *user;
 } _pick_t;
 
 static _pick_t *g_pick = NULL;
@@ -171,6 +173,13 @@ void dtb__pick_hook(dt_iop_module_t *self, dt_dev_pixelpipe_iop_t *piece, const 
 {
   _pick_t *p = g_pick;
   if(!p || self != p->module || piece->pipe != p->pipe) return;
+  if(p->fn)
+  {
+    // brief P6a: the module's input as its process() gets it (a module's own computation on it, as desktop's
+    // process() does on the preview pipe: rgb levels' auto levels)
+    p->fn(self, piece, (const float *)i, roi_in, p->user);
+    return;
+  }
   dt_dev_pixelpipe_t *pipe = piece->pipe;
   const dt_iop_colorspace_type_t picker_cst = _picker_cst(self);
   const dt_iop_order_iccprofile_info_t *profile = dt_ioppr_get_pipe_current_profile_info(self, pipe);
@@ -369,6 +378,63 @@ int dtb__pick(dt_iop_module_t *m, const float area[4], const gboolean denoise, c
     }
   }
   return DTB_OK;
+}
+
+/* brief P6a: one render of the bridge's preview pipe at scale 1 in which module m runs (as dtb__pick), with fn
+ * called on its input buffer for every tile process() gets (the preview pipe gets one) */
+int dtb__module_input(dt_iop_module_t *m, dtb_input_fn fn, void *user)
+{
+  dtb_pipe_t *p = NULL;
+  int r = dtb__pipe_ready(FALSE, &p);
+  if(r) return r;
+  dtb_bypass_t saved;
+  dtb__bypass_begin(p, NULL, &saved);
+  dt_dev_pixelpipe_iop_t *piece = NULL;
+  for(GList *n = p->pipe.nodes; n; n = g_list_next(n))
+    if(((dt_dev_pixelpipe_iop_t *)n->data)->module == m) piece = n->data;
+  if(!piece || !piece->enabled)
+  {
+    dtb__bypass_end(&saved);
+    return dtb__err(DTB_E_ARG, "%s %d is switched off (or left out)", m->op, m->multi_priority);
+  }
+  const int pw = p->pipe.processed_width, ph = p->pipe.processed_height;
+  _pick_t pick = { 0 };
+  pick.module = m;
+  pick.pipe = &p->pipe;
+  pick.fn = fn;
+  pick.user = user;
+  static guint64 serial = 0;
+  serial++;
+  const dt_hash_t h0 = piece->hash;
+  piece->hash = dt_hash(piece->hash, &serial, sizeof(serial));
+  g_pick = &pick;
+  uint8_t *tmp = g_try_malloc((size_t)4 * MAX(1, pw) * MAX(1, ph));
+  r = tmp ? dtb__pipe_run(p, 0, 0, pw, ph, 1.0f, tmp) : dtb__err(DTB_E_ENGINE, "out of memory");
+  g_free(tmp);
+  g_pick = NULL;
+  piece->hash = h0;
+  dtb__bypass_end(&saved);
+  return r;
+}
+
+/* brief P6a: the area's two corners (normalised in the picture) mapped back to the pipe's input and normalised
+ * by its size, as rgb levels' and basic adjustments' "auto region" keep their box_cood (button_released: the
+ * corners in preview pixels, dt_dev_distort_backtransform, divided by the preview pipe's iwidth, iheight) */
+void dtb__area_to_input(const float area[4], float box[4])
+{
+  dtb_pipe_t *p = NULL;
+  if(dtb__pipe_ready(FALSE, &p)) { memcpy(box, area, sizeof(float) * 4); return; }
+  dt_dev_pixelpipe_t *old = _swap_preview_pipe(&p->pipe);
+  box[0] = area[0] * p->pipe.processed_width;
+  box[1] = area[1] * p->pipe.processed_height;
+  box[2] = area[2] * p->pipe.processed_width;
+  box[3] = area[3] * p->pipe.processed_height;
+  dt_dev_distort_backtransform(darktable.develop, box, 2);
+  box[0] /= p->pipe.iwidth;
+  box[1] /= p->pipe.iheight;
+  box[2] /= p->pipe.iwidth;
+  box[3] /= p->pipe.iheight;
+  _swap_preview_pipe(old);
 }
 
 static void _result_json(JsonBuilder *b, const dtb_pick_result_t *res)

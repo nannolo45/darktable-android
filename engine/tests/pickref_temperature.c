@@ -27,3 +27,15 @@ int pickref_temperature(dt_iop_module_t *self, dt_dev_pixelpipe_t *pipe, pickref
   self->gui_data = NULL;
   return presets == DT_IOP_TEMP_SPOT ? 0 : 1;
 }
+
+/* brief P6a (C43): the temperature and tint desktop's panel shows for the module's coefficients (_prepare_matrices,
+ * _mul2temp: the camera's matrices, the spectra of a black body and of daylight, the CIE 1931 observer) */
+void pickref_temperature_mul2temp(dt_iop_module_t *self, float *temp, float *tint)
+{
+  dt_iop_temperature_gui_data_t g;
+  memset(&g, 0, sizeof(g));
+  self->gui_data = &g;
+  _prepare_matrices(self);
+  _mul2temp(self, self->params, temp, tint);
+  self->gui_data = NULL;
+}

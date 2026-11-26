@@ -1308,6 +1308,9 @@ int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args,
   if(r2 != 1) return r2;
   const int r3 = dtb__module_action3(m, action, args, result);
   if(r3 != 1) return r3;
+  // brief P6a: pickers and auto buttons
+  const int r6 = dtb__module_action_p6a(m, action, args, result);
+  if(r6 != 1) return r6;
   if(dt_iop_module_is(m, "temperature")) return _act_temperature(m, action, args, result);
   if(dt_iop_module_is(m, "lens")) return _act_lens(m, action, args, result);
   if(dt_iop_module_is(m, "lut3d")) return _act_lut3d(m, action, args, result);

@@ -567,6 +567,14 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     DTB_TEST_R11="$HERE/../../docs/design/R11-hash-vectors.json" drv C31 shared "R11: hash vectors, snapshot, apply, refuse, delete"
   fi
   # brief P3c deliverable 6: the picker actions' arithmetic against darktable's own callbacks, compiled verbatim
+  # brief P6a: the new pickers and buttons against darktable's own callbacks (dtb_pickref p6a)
+  if want C43; then
+    if timeout 1200 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref6" "$RAW" "$XMP" "$D" p6a > "$D/C43.log" 2>&1; then
+      pass C43 "$C" "P6a picker and button actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C43.log" | cut -d' ' -f5-); $(grep '^RESULT wb presets' "$D/C43.log" | cut -d' ' -f4-)"
+    else
+      fail C43 "$C" "$(grep '^FAIL' "$D/C43.log" | head -5 | cut -c1-300 | tr '\n' ';') see $D/C43.log"
+    fi
+  fi
   if want C25; then
     if timeout 900 "$BRIDGE_BUILD/tests/dtb_pickref" "$W-pickref" "$RAW" "$XMP" "$D" > "$D/C25.log" 2>&1; then
       pass C25 "$C" "picker actions vs darktable's callbacks: $(grep '^RESULT all' "$D/C25.log" | cut -d' ' -f4-)"
