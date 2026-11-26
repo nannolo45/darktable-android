@@ -39,4 +39,9 @@ Fix (`TestFiles.waitRowAndKeyboardGone`, used by `P5cTapTest` and `P6bTapTest`):
 - p2b-real-engine:
   - 45799493184 (insets-gated version): JVM 845 tests 0 failed; emulator 132/133, t3 passed, t4 failed (insets did not report the keyboard).
   - 45805096711 (row-only wait): emulator 132/133, t4 failed (keyboard came after the row was first seen).
-  - final test code, commit 55a3665bb2: **45811029127** green (133/133, t3 and t4 passed, P6bTapTest t1 and t2 passed); **45815990998** see the pull request text / last line below.
+  - 45811029127 (commit 55a3665bb2, waits for row and keyboard gone): 133/133, but 45815990998 on the same commit failed in **t4** at "the fit changed the parameters" (rotation and shifts read 0 although the history item was written): a second, separate race, see below.
+  - final test code, commit 5f821ef3c5: **45821699595** and **45827624335**, both green: 133/133 emulator tests (t3 and t4 of P5cTapTest, t1 and t2 of P6bTapTest passed), JVM 845 tests 0 failed. The report commit after it changes only this file.
+
+## 5. The second race, t4 (found on the way)
+
+`P5cTapTest.t4` read the module's state right after the history item count went up. The item is written inside the engine call; the module state (rotation, lens shifts) is read back afterwards by `PerspectiveController.changedLocked`, so the test could see the item and old numbers (run 45815990998: 0, 0, 0). The test now waits until the numbers are not all 0 (timeout still fails, honestly). App code unchanged.
