@@ -32,6 +32,10 @@ data class LutFilesUi(
     /** a server lists `luts` */
     val synced: Boolean = false,
     val autoSync: Boolean = true,
+    /** P6c: "Download LUT files from LightPhotoLibrary automatically" (off by default) */
+    val autoDownload: Boolean = false,
+    /** P6c: files LightPhotoLibrary has and the phone lacks (path, bytes), not removed here, not .gmz */
+    val missing: List<Pair<String, Long>> = emptyList(),
     val error: String? = null,
     val message: String? = null,
     val busy: Boolean = false,
@@ -52,6 +56,9 @@ fun LutFilesScreen(
     onAdd: () -> Unit,
     onSync: () -> Unit,
     onBack: () -> Unit,
+    onGet: (String) -> Unit = {},
+    onGetAll: () -> Unit = {},
+    onAutoDownload: (Boolean) -> Unit = {},
 ) {
     val sp = DtTheme.space
     val c = DtTheme.colors
@@ -70,10 +77,19 @@ fun LutFilesScreen(
             DtText("${ui.files.size} files, ${mb(ui.totalBytes)}" + (if (usable != ui.files.size) " · $usable usable here" else ""),
                 DtTheme.type.body, c.textStrong)
             DtText(
-                if (ui.synced) "Files added here go to LightPhotoLibrary, and files from your PCs' darktable LUT folder come here" +
-                    (if (ui.autoSync) " with each sync." else " when you tap \"sync now\" (automatic sync is off).")
+                if (ui.synced) "Files added here go to LightPhotoLibrary" +
+                    (if (ui.autoSync) " with each sync" else " when you tap \"sync now\" (automatic sync is off)") +
+                    (if (ui.autoDownload) ", and files from your PCs' darktable LUT folder that this phone lacks come here too."
+                    else ". Files from your PCs' darktable LUT folder come here only when you get them.")
                 else "LightPhotoLibrary does not carry LUT files yet (no server, or one without this feature): the files stay on this phone.",
                 DtTheme.type.label, c.textMuted, maxLines = 4)
+            if (ui.synced) {
+                ToggleControl("Download LUT files from LightPhotoLibrary automatically", ui.autoDownload, enabled = true) { onAutoDownload(!ui.autoDownload) }
+                DtText(
+                    if (ui.autoDownload) "On: a sync downloads the files this phone lacks. A file the phone has that changed in LightPhotoLibrary is never replaced without asking."
+                    else "Off: a sync downloads nothing. Take the files you want from the list below, or with \"Get from LightPhotoLibrary\" in the module.",
+                    DtTheme.type.label, c.textMuted, maxLines = 4)
+            }
             ui.error?.let { DtText("last sync: $it", DtTheme.type.label, c.textBright, maxLines = 3) }
             ui.message?.let { DtText(it, DtTheme.type.label, c.textMuted, maxLines = 3) }
             DtTextButton("Add from phone…", onAdd, Modifier.fillMaxWidth())
@@ -88,6 +104,20 @@ fun LutFilesScreen(
                     DtTextButton("keep both", { onResolve(cf.path, "both") }, compact = true, enabled = !ui.busy)
                 }
             }
+            if (ui.missing.isNotEmpty()) {
+                Divider()
+                DtText("in LightPhotoLibrary, not on this phone", DtTheme.type.body, c.textStrong)
+                for ((p, size) in ui.missing) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s)) {
+                        Column(Modifier.weight(1f)) {
+                            DtText(p, DtTheme.type.body, c.textStrong, middle = true)
+                            DtText(mb(size), DtTheme.type.label, c.textMuted)
+                        }
+                        DtTextButton("Get", { onGet(p) }, compact = true, enabled = !ui.busy)
+                    }
+                }
+                DtTextButton("Get all (${ui.missing.size} files, ${mb(ui.missing.sumOf { it.second })})", onGetAll, Modifier.fillMaxWidth(), enabled = !ui.busy)
+            }
             Divider()
             for (f in ui.files) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s)) {
@@ -96,10 +126,11 @@ fun LutFilesScreen(
                         val st = ui.states[f.path]
                         DtText(listOfNotNull(mb(f.size), f.reason, st?.words).joinToString(" · "), DtTheme.type.label, c.textMuted, maxLines = 2)
                     }
+                    if (ui.states[f.path] == LutSyncState.NEWER_IN_LPL) DtTextButton("Update", { onGet(f.path) }, compact = true, enabled = !ui.busy)
                     DtTextButton("Remove", { ask = f.path }, compact = true)
                 }
             }
-            for ((p, st) in ui.states) if (ui.files.none { it.path == p }) {
+            for ((p, st) in ui.states) if (ui.files.none { it.path == p } && ui.missing.none { it.first == p }) {
                 Column(Modifier.fillMaxWidth()) {
                     DtText(p, DtTheme.type.body, c.textMuted, middle = true)
                     DtText(st.words, DtTheme.type.label, c.textMuted)

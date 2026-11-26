@@ -102,6 +102,8 @@ enum class LutSyncState(val json: String, val words: String) {
     CONFLICT("conflict", "changed here and in LightPhotoLibrary"),
     REMOVED("removed", "removed from this phone"),
     ONLY_LPL("ok", "in LightPhotoLibrary, not on this phone"),
+    /** P6c: the phone's copy is unchanged and LightPhotoLibrary has another one; never replaced without asking */
+    NEWER_IN_LPL("ok", "newer version in LightPhotoLibrary"),
     UNUSABLE("unusable", "not usable here"),
 }
 
@@ -112,6 +114,8 @@ data class LutView(
     val conflicts: List<LutConflict> = emptyList(),
     /** paths LPL has (not removed) */
     val onServer: Set<String> = emptySet(),
+    /** P6c: LPL's entry (not removed) per path, for the sizes in the "missing here" list */
+    val entries: Map<String, LutEntry> = emptyMap(),
     val error: String? = null,
     val checkedAt: Double = 0.0,
 )
@@ -128,6 +132,8 @@ class LutSync(
     /** the server's last `server_caps`, null = not known yet */
     private val serverCaps: (ServerOrigin) -> Set<String>?,
     private val autoSync: () -> Boolean,
+    /** P6c: "Download LUT files from LightPhotoLibrary automatically" (off by default) */
+    private val autoDownload: () -> Boolean = { false },
     private val clock: () -> Double = { System.currentTimeMillis() / 1000.0 },
     private val trace: (String) -> Unit = {},
 ) {
@@ -234,6 +240,7 @@ class LutSync(
     /** The rules of 4.6 for every path the phone or LPL has. */
     private fun exchange(o: ServerOrigin, b: Book, c: LplClient) {
         val removed = folder.removed()
+        val download = autoDownload()  // P6c: off = a pass downloads nothing
         val local = folder.files().filter { LutPaths.problem(it.path) == null }.map { it.path }.toSet()
         for (p in (local + b.server.keys).sorted()) {
             val s = b.server[p]?.takeIf { !it.deleted }
@@ -241,7 +248,7 @@ class LutSync(
             val l = if (p in local) folder.hashOf(p) else null
             if (l == null) {
                 if (base != null && p !in removed) { trace("luts: $p is gone from the folder: kept as removed"); folder.remove(p); continue }
-                if (s != null && p !in removed && LutPaths.wanted(p)) download(c, b, p, s)
+                if (download && s != null && p !in removed && LutPaths.wanted(p)) download(c, b, p, s)
                 continue
             }
             if (s != null && s.sha256 == l) { b.base[p] = l; b.conflicts.remove(p); continue }
@@ -254,7 +261,8 @@ class LutSync(
                     is LutPut.Stored -> { b.base[p] = l; stored(b, o, p, l, r.seq); trace("luts: sent $p") }
                     is LutPut.ChangedElsewhere -> r.current?.let { b.server[p] = it; conflict(b, p, it) }
                 }
-            } else if (serverChange && LutPaths.wanted(p)) download(c, b, p, s!!)
+            }
+            // P6c: a server change of a file the phone has and did not change is never taken by itself ("Update" asks)
         }
     }
 
@@ -307,12 +315,14 @@ class LutSync(
             f.path in b.conflicts -> LutSyncState.CONFLICT
             !f.usable -> LutSyncState.UNUSABLE
             folder.hashOf(f.path).let { h -> h != null && b.base[f.path] == h && b.server[f.path]?.let { e -> !e.deleted && e.sha256 == h } == true } -> LutSyncState.SYNCED
+            folder.hashOf(f.path).let { h -> h != null && b.base[f.path] == h && b.server[f.path]?.let { e -> !e.deleted && e.sha256 != h } == true } -> LutSyncState.NEWER_IN_LPL
             else -> LutSyncState.LOCAL
         }
         for ((p, e) in b.server) if (!e.deleted && p !in states) states[p] = if (p in removed) LutSyncState.REMOVED else LutSyncState.ONLY_LPL
         _views.update {
             it + (o to LutView(true, states, b.conflicts.values.toList(),
-                b.server.values.filter { e -> !e.deleted }.map { e -> e.path }.toSet(), error, b.checkedAt))
+                b.server.values.filter { e -> !e.deleted }.map { e -> e.path }.toSet(),
+                b.server.filterValues { e -> !e.deleted }, error, b.checkedAt))
         }
     }
 
@@ -341,6 +351,14 @@ class LutSync(
                 e.message ?: e.javaClass.simpleName
             }
         }
+    }
+
+    /** "Get all" of the missing-files list: every path in [paths] that LPL has, one after the other. An error text, or null. */
+    suspend fun fetchAll(paths: List<String>): String? {
+        var first: String? = null
+        var failed = 0
+        for (p in paths) fetch(p)?.let { failed++; if (first == null) first = it }
+        return if (failed == 0) null else "$failed of ${paths.size} not taken: $first"
     }
 
     /** Settle the conflict of [path] with [o]: "mine", "theirs" or "both" (4.6). An error text, or null when done. */

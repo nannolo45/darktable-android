@@ -438,9 +438,15 @@ fun LutFilesPage(vm: AppViewModel) = Page {
     val origin = vm.servers.list().map { it.origin }.firstOrNull { views[it]?.active == true }
     val view = origin?.let { views[it] }
     val auto by AppHost.agent.settings.autoSync.collectAsState()
+    val download by AppHost.agent.settings.lutAutoDownload.collectAsState()
+    val missing = view?.states.orEmpty().filterValues { it == app.dtandroid.lpl.LutSyncState.ONLY_LPL }.keys
+        .filter { app.dtandroid.lpl.LutPaths.wanted(it) }.sorted().map { it to (view?.entries?.get(it)?.size ?: 0L) }
     app.dtandroid.darkroom.ui.LutFilesScreen(
         app.dtandroid.darkroom.ui.LutFilesUi(files, files.sumOf { it.size }, view?.states.orEmpty(), view?.conflicts.orEmpty(),
-            synced = view != null, autoSync = auto, error = view?.error, message = message, busy = busy),
+            synced = view != null, autoSync = auto, autoDownload = download, missing = missing, error = view?.error, message = message, busy = busy),
+        onGet = { p -> busy = true; scope.launch { message = luts.fetch(p); busy = false } },
+        onGetAll = { busy = true; scope.launch { message = luts.fetchAll(missing.map { it.first }); busy = false } },
+        onAutoDownload = { on -> message = runCatching { AppHost.agent.settings.setLutAutoDownload(on) }.exceptionOrNull()?.let { "the change could not be saved on this phone" } },
         onRemove = { p -> message = if (luts.remove(p)) "removed $p from this phone" else "$p could not be removed" },
         onResolve = { p, choice -> if (origin != null) { busy = true; scope.launch { message = luts.resolve(origin, p, choice); busy = false } } },
         onAdd = { AppHost.pickLuts?.invoke("") },

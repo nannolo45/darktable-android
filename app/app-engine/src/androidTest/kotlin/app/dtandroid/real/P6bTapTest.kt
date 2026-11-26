@@ -120,13 +120,6 @@ class P6bTapTest {
         c to item
     }
 
-    private fun hideKeyboard() {
-        scenario?.onActivity {
-            it.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                .hideSoftInputFromWindow(it.window.decorView.windowToken, 0)
-        }
-    }
-
     private fun openModule(tag: String, c: DarkroomController, name: String) {
         until(tag, "the darkroom") { has("photo") }
         val modulesTab = hasText("modules") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
@@ -136,14 +129,14 @@ class P6bTapTest {
         while (!has("search modules") && System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(50) }
         if (has("search modules")) {
             compose.onAllNodesWithContentDescription("search modules")[0].performTextReplacement(name)
-            val shown = System.currentTimeMillis() + 90_000
-            while (!has(name) && System.currentTimeMillis() < shown) { hideKeyboard(); compose.waitForIdle(); Thread.sleep(200) }
+            TestFiles.waitRowAndKeyboardGone(scenario, { has(name) }, { compose.waitForIdle() })
+                ?.let { TestFiles.record(res, "${tag}_module_wait", it) }
             tapDesc(tag, name)
         } else {
             TestFiles.record(res, "${tag}_module", "no search field in this layout: controller.goToModule")
             c.goToModule(key)
         }
-        hideKeyboard()
+        TestFiles.closeKeyboard(scenario, 0)
         until(tag, "$name expanded") { c.state.value.expanded == key }
     }
 
