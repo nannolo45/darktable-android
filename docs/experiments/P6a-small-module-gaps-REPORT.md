@@ -149,10 +149,10 @@ Last code commit **d7e24972** (later commits change `docs/` only).
 | Workflow | Run | Result |
 |---|---|---|
 | p2a-app | 45731530940 | success: 647 JVM and screenshot tests, 0 failed (new: schema P6aModuleGapsTest 8, darkroom P6aModuleGapsTest 3, PhoneP6aScreenshots 3); rule check; kept list |
-| g0-app | 45730511265 | Linux bridge suite **514 PASS, 0 FAIL** (C41, C42, C43 on cr2, raf, arw included); Android engines arm64-v8a and x86_64 built; its apk job failed on P6aTapTest's missing import (fixed in d7e24972, then built by p2b) |
+| g0-app | 45730511265 | Linux bridge suite **514 PASS, 0 FAIL** (C41, C42, C43 on cr2, raf, arw included); Android engines arm64-v8a and x86_64 built; its apk job failed on P6aTapTest's missing import (fixed in d7e24972, then built by p2b and by g0 45738468827) |
 | p2b-real-engine | 45735375991 | success: emulator **OK, 131 tests** (P6aTapTest t1, t2 included); compares as before; APK release **dt-android-d7e24972df5b** |
 | p2b-real-engine | 45732776612 | failure: `P3mRetouchLutTest.algorithmsSettingsOpacityRemove` (JVM, stand-in engine) "expected null, but was (0.33, 0.47)": not touched by P6a, passed in both p2a runs and in the next p2b; a timing flake, reported here, not changed |
-| g0-app | @@C40RUN@@ | `tests=C40`: @@C40RES@@ |
+| g0-app | 45738468827 | `tests=C40`: success: **C40** cr2 84 modules switched on and rendered, 84 same as darktable-cli, 0 differ; raf 80 rendered, 80 same, 0 differ (the touched modules included); its apk job built the instrumented tests with P6aTapTest; emulator job success |
 
 | What | Result | Where |
 |---|---|---|
