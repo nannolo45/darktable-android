@@ -427,6 +427,18 @@ class LplClient(
             r.status to parseObject("$method ${path.substringBefore('?')}", r.body.readBytes())
         }
 
+    /**
+     * Brief P6b (R19): one call with extra headers (`x-sha256`, `x-base-sha256`), an optional body file streamed, and
+     * error statuses [allow]ed through to [handle] (409 `changed_elsewhere`, 404). Never repeated here.
+     */
+    internal fun <T> callRaw(
+        method: String, path: String, headers: Map<String, String> = emptyMap(), bodyFile: File? = null,
+        allow: Set<Int> = emptySet(), readTimeoutMs: Int = settings.exportReadTimeoutMs, handle: (HttpResponse) -> T,
+    ): T = callOnce(method, path, null, if (bodyFile != null) "application/octet-stream" else null, readTimeoutMs, true,
+        bodyFile, null, allow, headers, handle)
+
+    internal fun parseAnswer(label: String, bytes: ByteArray): JsonObject = parseObject(label, bytes)
+
     private fun parseObject(label: String, bytes: ByteArray): JsonObject =
         try {
             json.parseToJsonElement(bytes.decodeToString()) as? JsonObject
@@ -454,9 +466,10 @@ class LplClient(
     private fun <T> callOnce(
         method: String, path: String, body: ByteArray?, contentType: String?, readTimeoutMs: Int, withToken: Boolean,
         bodyFile: File? = null, onSent: ((Long) -> Unit)? = null, allow: Set<Int> = emptySet(),
+        extraHeaders: Map<String, String> = emptyMap(),
         handle: (HttpResponse) -> T,
     ): T {
-        val headers = HashMap<String, String>()
+        val headers = HashMap<String, String>(extraHeaders)
         if (withToken) token()?.takeIf { it.isNotEmpty() }?.let { headers["x-lpl-token"] = it }
         val req = HttpRequest(method, origin, path, headers, body, contentType, settings.connectTimeoutMs, readTimeoutMs, bodyFile, onSent)
         val t0 = System.nanoTime()
