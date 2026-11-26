@@ -403,6 +403,12 @@ class JniEngine private constructor() : DarktableEngine {
     override suspend fun openclInfo(): OpenClInfo = onEngine { OpenClInfo.fromJson(get(NativeBridge.JSON_OPENCL_INFO)) }
 
     // brief P4d
+    // brief P6b
+    override suspend fun lutFolderSet(dir: String?) = onEngine {
+        requireInit()
+        check(NativeBridge.lutFolderSet(dir))
+    }
+
     override suspend fun openclLibraries(names: List<String>) = onEngine {
         requireInit()
         check(NativeBridge.openclLibrary(names.joinToString(":").ifEmpty { null }))

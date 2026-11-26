@@ -83,6 +83,13 @@ interface DarktableEngine {
     /** Escape hatch for what a module's desktop panel computes itself. Unknown action: NOT_FOUND. */
     suspend fun moduleAction(op: String, priority: Int, action: String, args: JsonObject = JsonObject(emptyMap())): JsonElement
 
+    /**
+     * Brief P6b (PLAN 4.6): darktable's LUT folder (`plugins/darkroom/lut3d/def_path`), an absolute path or null for
+     * none. lut 3D's `filepath` and `set_file {path}` are relative to it. Call again with the same folder after a file
+     * in it was added, changed or removed: an open image's LUT files are read again (the history is not touched).
+     */
+    suspend fun lutFolderSet(dir: String?) {}
+
     // 2.5 instances
 
     /** New instance with default parameters; returns its priority. */
