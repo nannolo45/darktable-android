@@ -65,6 +65,9 @@ object Rules {
     fun isVisible(m: ModuleSchema, c: Control, inputs: RuleInputs): Boolean {
         if (c.id in m.hidden) return false
         val r = m.visibility[c.id]
+        // brief P6a: a slider the engine's answer shows or hides (white balance's finetune: desktop shows it only for a
+        // camera preset with fine tuning, which the extractor's sweep never met) is decided by that answer
+        if (((c as? Control.Slider)?.binding as? Binding.Action)?.hide == true) return r?.let { holds(it, inputs) } ?: true
         return r?.let { holds(it, inputs) } ?: (c.id !in m.hiddenInEveryState)
     }
 

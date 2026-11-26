@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.dtandroid.darkroom
 
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import app.dtandroid.darkroom.ui.DarkroomLayout
 import app.dtandroid.ui.theme.DtTokens
 import app.dtandroid.ui.theme.Skin
@@ -35,6 +36,8 @@ class PhoneP6aScreenshots : ScreenshotBase() {
             chooseActionList(wb, 9, e.indexOfFirst { l.label(it) == "daylight" })
         }
         waitUntil("finetune shown") { c.state.value.actionValues[wb]?.get("finetune_min") is kotlinx.serialization.json.JsonPrimitive }
+        // the slider itself is drawn (desktop shows it for a camera preset with fine tuning)
+        waitUntil("finetune slider drawn") { compose.onAllNodesWithContentDescription("finetune").fetchSemanticsNodes().isNotEmpty() }
         settle(c)
         capture("$name-p6a-01-wb-preset")
         c.setOverlay(Overlay.ListEntries(wb, 9))

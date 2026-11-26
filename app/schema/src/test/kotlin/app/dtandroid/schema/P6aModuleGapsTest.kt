@@ -60,6 +60,9 @@ class P6aModuleGapsTest {
         assertEquals(mapOf("min" to "finetune_min", "max" to "finetune_max", "default" to "finetune_default"), b.rangeFrom)
         assertEquals("apply_preset", b.set)
         assertTrue(b.round)
+        // the extractor never saw it shown (no camera preset matched in its sweep): the engine's answer decides
+        assertTrue(10 in m("temperature").hiddenInEveryState)
+        assertTrue(Rules.isVisible(m("temperature"), f, ParamRuleInputs(m("temperature"), JsonObject(emptyMap()))))
     }
 
     @Test fun entriesOfTheListOverrideAreChecked() {
