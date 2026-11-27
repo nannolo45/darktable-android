@@ -1,6 +1,6 @@
 {
   "op": "borders",
-  "reason": "brief P2j. framing's aspect and position lists are fixed tables on desktop (_aspect_ratios, _pos_h_ratios, _pos_v_ratios with _aspect_changed, _position_h_changed, _position_v_changed in src/iop/borders.c); gui_changed shows the entry within 0.01 of the parameter, otherwise custom. Brief P3b (P2j section 6): \"image\" (0) and \"constant border\" (-1) lie outside the field's limits (1 to 3) and are written through the engine's module action borders set_aspect (engine-api.md 5.4).",
+  "reason": "brief P2j. framing's aspect and position lists are fixed tables on desktop (_aspect_ratios, _pos_h_ratios, _pos_v_ratios with _aspect_changed, _position_h_changed, _position_v_changed in src/iop/borders.c); gui_changed shows the entry within 0.01 of the parameter, otherwise custom. Brief P3b (P2j section 6): \"image\" (0) and \"constant border\" (-1) lie outside the field's limits (1 to 3) and are written through the engine's module action borders set_aspect (engine-api.md 5.4). Brief P6e: the border colour and frame line colour rows (nodes 11 and 15: desktop's colour buttons 13 and 17) are built by hand with the app's colour dialog (ColorDialog.kt, FramingWatermark.kt); their picker buttons (14, 18) apply the pick through the engine's module action borders pick {which} (color_picker_apply). The override files had no \"not available\" note for these rows to remove.",
   "value_list": [
     {
       "node": 2,
@@ -235,6 +235,46 @@
           "label": "custom..."
         }
       ]
+    }
+  ],
+  "picker": [
+    {
+      "node": 14,
+      "label": "pick border color from image",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "border"
+        }
+      }
+    },
+    {
+      "node": 18,
+      "label": "pick frame line color from image",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick",
+        "args": {
+          "which": "frame"
+        }
+      }
+    }
+  ],
+  "note": [
+    {
+      "node": 13,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): colour dialog",
+      "class": "f"
+    },
+    {
+      "node": 17,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): colour dialog",
+      "class": "f"
     }
   ]
 }

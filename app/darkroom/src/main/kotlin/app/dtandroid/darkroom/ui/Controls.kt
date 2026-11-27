@@ -139,6 +139,11 @@ private fun ControlView(c: Control, ctx: PanelContext) {
         LensRows(c.id, ctx)
         return
     }
+    // brief P6e: framing's colour rows, watermark's marker/text/font/colour grid and its alignment are hand-built
+    if (app.dtandroid.darkroom.FramingWatermarkNodes.handles(ctx.module.op, c.id)) {
+        FramingWatermarkRows(c.id, ctx)
+        return
+    }
     when (c) {
         // containers: their children fade one by one (the dragged slider may be one of them)
         is Control.Stack, is Control.Page, is Control.Group, is Control.Collapsible, is Control.Tabs -> ControlBody(c, ctx)

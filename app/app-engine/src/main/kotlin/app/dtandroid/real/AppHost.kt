@@ -182,6 +182,8 @@ object AppHost {
             c.exports.delivery = AppExportDelivery(app)
             // brief P3j: the paste mode (append / overwrite) is remembered between starts
             c.copyPaste.modeFile = File(app.filesDir, "settings/paste-mode.txt")
+            // brief P6e: the colour dialog's recent colours, per app
+            c.framing.recentFile = File(app.filesDir, "settings/recent-colours.txt")
             // brief P4a: engine (bridge) errors the darkroom shows go into the crash log as well
             AppEngine.scope.launch {
                 c.state.map { it.message }.distinctUntilChanged().collect { m ->

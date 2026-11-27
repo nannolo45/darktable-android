@@ -126,6 +126,8 @@ fun BoxScope.Overlays(controller: DarkroomController, s: DarkroomState, tablet: 
         Overlay.Versions, is Overlay.VersionName, is Overlay.VersionDelete -> Unit
         // brief P6d: lens correction's picker and value list are LensOverlays' (LensPanel.kt)
         is Overlay.LensPicker, is Overlay.LensValue -> Unit
+        // brief P6e: the colour dialog and watermark's lists are FramingWatermarkOverlays' (FramingWatermarkPanel.kt)
+        is Overlay.ColorDialog, is Overlay.WatermarkFiles, is Overlay.WatermarkFonts -> Unit
         is Overlay.ListEntries -> {
             val m = s.modules.firstOrNull { it.op == o.key.op && it.priority == o.key.priority } ?: return
             val ms = controller.schema.modules[m.op] ?: return

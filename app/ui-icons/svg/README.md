@@ -30,3 +30,6 @@ Brief P3f added `versions.svg` (the versions chip and sheet), `duplicate.svg` an
 
 Brief P3n added the three structure buttons of rotate and perspective: `perspectiveRectangle.svg`,
 `perspectiveFindLines.svg` and `perspectiveDrawLines.svg`, drawn after the approved mockup (owner, 25 Nov 2026).
+
+Brief P6e added `alignMark.svg`, the mark in each of the nine cells of watermark's alignment grid (desktop's 3 x 3
+toggle buttons): the cell's place in the grid says the alignment, the selected cell is highlighted.

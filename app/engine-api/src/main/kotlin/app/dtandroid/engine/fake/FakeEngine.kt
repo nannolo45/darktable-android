@@ -86,6 +86,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
+import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
@@ -133,6 +134,19 @@ class FakeEngine(
 
     companion object {
         const val API_VERSION = 1
+
+        /** brief P6e: darktable's share/darktable/watermarks as the APK carries it (upstream data/watermarks), sorted */
+        val FAKE_WATERMARKS = listOf(
+            "darktable.svg", "fixed-size-text.svg", "hasselblad.svg", "metadata-template.svg", "promo.svg",
+            "simple-text-shadow.svg", "simple-text.svg",
+        )
+
+        /** brief P6e: fonts as list_fonts gives them: family to (face, font description) */
+        val FAKE_FONTS = listOf(
+            "DejaVu Sans" to listOf("Book" to "DejaVu Sans 10"),
+            "Noto Serif" to listOf("Regular" to "Noto Serif 10", "Bold" to "Noto Serif Bold 10"),
+            "Roboto" to listOf("Regular" to "Roboto 10", "Italic" to "Roboto Italic 10", "Bold" to "Roboto Bold 10"),
+        )
 
         /** modules darktable switches on for a new raw in the scene-referred workflow, as the fake's default edit */
         val DEFAULT_EDIT = listOf(
@@ -495,6 +509,14 @@ class FakeEngine(
 
     /** Type and range check, then the new parameter structure. */
     private fun setPath(d: FakeModuleCatalog.ModuleDef, params: JsonObject, path: String, value: JsonPrimitive): JsonObject {
+        // brief P6e: a text field (char array, watermark's filename, text, font) takes a JSON string, as the bridge's
+        // param_set does; the fake keeps it as a string
+        if (!path.contains('[')) d.fields["$path[0]"]?.takeIf { it.type == FakeModuleCatalog.FieldType.CHAR && it.count > 1 }?.let { f ->
+            if (!value.isString) fail(EngineError.TYPE, "$path is a text field; give a JSON string")
+            val n = value.content.toByteArray(Charsets.UTF_8).size
+            if (n >= f.count) fail(EngineError.RANGE, "$path: text of $n bytes, at most ${f.count - 1} fit")
+            return JsonObject(params + (path to value))
+        }
         val steps = ParamPath.parse(path)
         val field = d.fields[ParamPath.template(path)] ?: fail(EngineError.NOT_FOUND, "${d.op} has no parameter \"$path\"")
         val v: JsonPrimitive = when (field.type) {
@@ -605,8 +627,33 @@ class FakeEngine(
         s.inst(op, priority)
         when (op to action) {
             "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area",
-            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot" ->
+            "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot",
+            "borders" to "pick", "watermark" to "pick" ->
                 fakePickAction(s, op, priority, action, args)
+            // brief P6e: darktable's watermarks folder as the APK carries it (upstream data/watermarks)
+            "watermark" to "list_files" -> {
+                val cur = (s.live()[op to priority]!!.params["filename"] as? JsonPrimitive)?.content ?: ""
+                buildJsonObject {
+                    put("files", buildJsonArray {
+                        for (f in FAKE_WATERMARKS) add(buildJsonObject {
+                            put("file", f); put("label", f.substringBeforeLast('.') + " (" + f.substringAfterLast('.') + ")")
+                            put("svg", f.endsWith(".svg", ignoreCase = true)); put("folder", "data")
+                        })
+                    })
+                    put("current", cur); put("found", cur in FAKE_WATERMARKS); put("config_folder", "/fake/config/watermarks")
+                }
+            }
+            "watermark" to "list_fonts" -> buildJsonObject {
+                put("families", buildJsonArray {
+                    for ((fam, faces) in FAKE_FONTS) add(buildJsonObject {
+                        put("family", fam)
+                        put("faces", buildJsonArray {
+                            for ((face, font) in faces) add(buildJsonObject { put("face", face); put("font", font) })
+                        })
+                    })
+                })
+                put("config", JsonNull); put("default_config_fonts", JsonNull)
+            }
             "temperature" to "get_wb" -> {
                 val p = s.live()[op to priority]!!.params
                 val (t, tint) = FakeWhiteBalance.fromCoefficients(p)
@@ -1688,6 +1735,27 @@ class FakeEngine(
                             put("exposure", e)
                         }
                     }
+                }
+            }
+            // brief P6e: color_picker_apply of framing and watermark: the picked mean into the colour, unless it equals
+            // one of the module's colours (desktop's loop guard)
+            "borders" to "pick", "watermark" to "pick" -> {
+                val target = when {
+                    op == "watermark" -> "color"
+                    (args["which"] as? JsonPrimitive)?.content == "border" -> "color"
+                    (args["which"] as? JsonPrimitive)?.content == "frame" -> "frame_color"
+                    else -> fail(EngineError.ARG, "which is \"border\" or \"frame\"")
+                }
+                val guards = if (op == "borders") listOf("color", "frame_color") else listOf("color")
+                fun col(f: String) = (0..2).map { k -> (cur.paramAt("$f[$k]") as? JsonPrimitive)?.doubleOrNull ?: 0.0 }
+                val pickedRgb = (0..2).map { m[it].toFloat().toDouble() }
+                val skip = guards.any { g -> col(g).zip(pickedRgb).all { (a, b) -> abs(a - b) < 0.0001 } }
+                val changed = !skip && col(target) != pickedRgb
+                if (changed) s.setParams(op, priority, (0..2).associate { k -> "$target[$k]" to JsonPrimitive(pickedRgb[k]) }, merge = false)
+                buildJsonObject {
+                    put("picked", picked)
+                    put("color", JsonArray((if (changed) pickedRgb else col(target)).map { JsonPrimitive(it) }))
+                    put("changed", changed)
                 }
             }
             "rgblevels" to "pick" -> {
