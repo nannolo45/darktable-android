@@ -218,6 +218,8 @@ int dtb_init_ex(const dtb_paths_t *p, int threads, const char *options_json)
   g_mkdir_with_parents(p->cachedir, 0700);
   if(p->tmpdir) g_mkdir_with_parents(p->tmpdir, 0700);
   dtb__clear_stale_lock(p->configdir);
+  // brief P6e: text watermarks need fonts; the Android engine has no fontconfig configuration of its own
+  dtb__fonts_setup(p->datadir, p->cachedir);
 
   // init_gui FALSE as darktable-cli; load_data TRUE = darktable-cli's
   // default (custom_presets), so presets and styles come from data.db

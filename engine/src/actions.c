@@ -1656,6 +1656,9 @@ int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args,
   // brief P6a: pickers and auto buttons
   const int r6 = dtb__module_action_p6a(m, action, args, result);
   if(r6 != 1) return r6;
+  // brief P6e: framing's and watermark's colour pickers, watermark's files and fonts
+  const int r7 = dtb__module_action_p6e(m, action, args, result);
+  if(r7 != 1) return r7;
   if(dt_iop_module_is(m, "temperature")) return _act_temperature(m, action, args, result);
   if(dt_iop_module_is(m, "lens")) return _act_lens(m, action, args, result);
   if(dt_iop_module_is(m, "lut3d")) return _act_lut3d(m, action, args, result);

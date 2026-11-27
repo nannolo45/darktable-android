@@ -95,6 +95,21 @@ cp -a "$STAGE$ENGINE_PREFIX/share/darktable" "$E/share/"
 # runtime libraries from the sysroot (shared objects only)
 ( cd "$DTA_PREFIX/lib" && find . -maxdepth 1 \( -name '*.so' -o -name '*.so.*' \) -print0 | xargs -0 cp -L --preserve=mode,timestamps -t "$E/lib/" )   # symlinks resolved: one real file per name
 cp -a "$DTA_PREFIX/share/lensfun" "$E/share/" 2>/dev/null || dta_log "warning: no lensfun database in sysroot"
+# brief P6e: DejaVu Sans, desktop's default watermark font ("DejaVu Sans 10" in src/iop/watermark.c), with its
+# licence; the bridge's fontconfig configuration (src/p6e_actions.c) reads share/fonts and the phone's /system/fonts
+DJV=dejavu-fonts-ttf-2.37
+DJV_SHA=fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7
+DJV_DL="${DTA_DL:-$DTA_WORK}/$DJV.tar.bz2"
+mkdir -p "$(dirname "$DJV_DL")"
+if [ ! -s "$DJV_DL" ] || ! echo "$DJV_SHA  $DJV_DL" | sha256sum -c --status; then
+  curl -fsSL --retry 4 --retry-delay 5 -o "$DJV_DL.part" \
+    "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/$DJV.tar.bz2" || dta_die "DejaVu download failed"
+  mv "$DJV_DL.part" "$DJV_DL"
+fi
+echo "$DJV_SHA  $DJV_DL" | sha256sum -c --status || dta_die "DejaVu checksum mismatch"
+mkdir -p "$E/share/fonts"
+tar -xjf "$DJV_DL" -C "$E/share/fonts" --strip-components=2 "$DJV/ttf/DejaVuSans.ttf"
+tar -xjf "$DJV_DL" -O "$DJV/LICENSE" > "$E/share/fonts/LICENSE-DejaVu.txt"
 # C++ runtime and OpenMP runtime from the NDK
 cp "$DTA_NDK_SYSROOT/usr/lib/$DTA_TRIPLE/libc++_shared.so" "$E/lib/"
 OMP=$(find "$DTA_TOOLCHAIN/lib/clang" -path "*/lib/linux/$DTA_LLVM_ARCH/libomp.so" | head -1)
@@ -145,6 +160,7 @@ R="$OUT/engine-$ABI-report.txt"
   printf 'dependency_libs\t%s\n' "$(find "$E/lib" -maxdepth 1 -type f -printf '%s\n' | awk '{s+=$1} END{print s}')"
   printf 'share_darktable\t%s\n' "$(du -sb "$E/share/darktable" | cut -f1)"
   printf 'share_lensfun\t%s\n' "$(du -sb "$E/share/lensfun" 2>/dev/null | cut -f1)"
+  printf 'share_fonts\t%s\n' "$(du -sb "$E/share/fonts" 2>/dev/null | cut -f1)"
   echo
   printf 'libdtbridge\t%s\n' "$(stat -c %s "$E/lib/libdtbridge.so")"
   printf 'load_order_entries\t%s\n' "$(wc -l < "$E/lib/load-order.txt")"

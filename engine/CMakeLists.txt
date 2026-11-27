@@ -101,6 +101,7 @@ add_library(dtbridge SHARED
   src/actions3.c    # module actions that pick (P1b part 2, 6.3)
   src/p6a_actions.c # pickers and auto buttons of brief P6a
   src/p6a_agx.c     # AgX's pickers and buttons (P6a)
+  src/p6e_actions.c # framing and watermark colour pickers, watermark files and fonts (P6e)
   src/coords.c      # coordinates original <-> processed (P1b part 2, 6.5)
   src/blend.c       # blending of an instance (P1b part 2, 6.6)
   src/masks.c       # drawn masks (P1b part 2, 6.7)
@@ -116,12 +117,14 @@ add_library(dtbridge SHARED
 # dependency; GTK is never initialised)
 set_source_files_properties(src/perspective.c PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden")
 pkg_check_modules(DTB_GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
+# brief P6e: watermark's font list and the Android fontconfig set-up (both darktable dependencies already)
+pkg_check_modules(DTB_FONTS REQUIRED IMPORTED_TARGET fontconfig pangocairo)
 target_include_directories(dtbridge PUBLIC include)
 target_include_directories(dtbridge PRIVATE src ${DT_INCS})
 target_include_directories(dtbridge SYSTEM PRIVATE ${DT_SYS_INCS})
 target_compile_definitions(dtbridge PRIVATE ${DT_DEFS})
 target_compile_options(dtbridge PRIVATE ${DT_OPTS} -Wall -Wno-unknown-pragmas)
-target_link_libraries(dtbridge PRIVATE ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::DTB_GTK OpenMP::OpenMP_C m)
+target_link_libraries(dtbridge PRIVATE ${DARKTABLE_LIB} PkgConfig::DTB_DEPS PkgConfig::DTB_GTK PkgConfig::DTB_FONTS OpenMP::OpenMP_C m)
 set_target_properties(dtbridge PROPERTIES BUILD_RPATH "${DARKTABLE_LIBDIR}")
 
 # the test driver dtb_test (S3 tests); runs on Linux only
