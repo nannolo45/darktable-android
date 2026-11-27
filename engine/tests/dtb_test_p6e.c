@@ -195,6 +195,11 @@ static int cmd_colordialog(const char *raw, const char *xmp, const char *outdir)
 
   // ---- watermark: file, text, font, colour, alignment, scale as one step each as the panel writes them
   {
+    // a field set to the value it has makes no history item (as for any module): desktop's default font is
+    // "DejaVu Sans 10", which the chosen font may be
+    gchar *font0 = p6e_string("watermark", "font");
+    const int expect = 3 + (strcmp(font0, font ? font : "DejaVu Sans 10") != 0);
+    g_free(font0);
     const int before = p6e_items();
     MUST(dtb_params_set("watermark", 0, "{\"filename\": \"simple-text.svg\"}"));
     MUST(dtb_history_seal());
@@ -206,7 +211,7 @@ static int cmd_colordialog(const char *raw, const char *xmp, const char *outdir)
     MUST(dtb_history_seal());
     MUST(dtb_params_set("watermark", 0, "{\"alignment\": 0, \"scale\": 60, \"scale_base\": \"DT_SCALE_MAINMENU_IMAGE\"}"));
     const int after = p6e_items();
-    CHECK(after == before + 4, "watermark settings: %d items before, %d after (four expected)", before, after);
+    CHECK(after == before + expect, "watermark settings: %d items before, %d after (%d expected)", before, after, expect);
   }
   const double wcol[3] = { 1.0, 1.0, 0.0 };
   p6e_set_color("watermark", "color", wcol);
