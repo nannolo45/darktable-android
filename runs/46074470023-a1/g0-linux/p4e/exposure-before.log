@@ -1,0 +1,632 @@
+darktable 04477d3-dirty [linux x64 sse2 release]
+Copyright (C) 2012-2026 Johannes Hanika and other contributors.
+
+Compile options:
+  Exiv2                  -> 0.27.6
+  Lensfun                -> 0.3.4
+  OpenMP                 -> ENABLED
+  OpenCL                 -> ENABLED
+  OpenCV                 -> DISABLED - HDR bracket auto-alignment is NOT available
+  Lua                    -> DISABLED
+  Colord                 -> DISABLED
+  Wayland color mgmt     -> DISABLED
+  gPhoto2                -> DISABLED - Camera tethering is NOT available
+  OSMGpsMap              -> DISABLED - Map view is NOT available
+  GMIC                   -> DISABLED - Compressed LUTs are NOT supported
+  GraphicsMagick         -> DISABLED
+  ImageMagick            -> DISABLED
+  libavif                -> DISABLED
+  libheif                -> DISABLED
+  libjxl                 -> DISABLED
+  LibRaw                 -> ENABLED  - Version 0.23.0-Snapshot202611
+  OpenJPEG               -> DISABLED
+  OpenEXR                -> DISABLED
+  WebP                   -> DISABLED
+  AI                     -> DISABLED
+
+See https://www.darktable.org/resources/ for detailed documentation.
+See https://github.com/darktable-org/darktable/issues/new/choose to report bugs.
+
+[dt_get_sysresource_level] switched to `default'
+  total mem:       15701MB
+  available mem:   7850MB
+  singlebuff:      122MB
+[opencl_init] opencl disabled by --disable-opencl
+[opencl_init] FINALLY: opencl PREFERENCE=YES is NOT AVAILABLE and NOT ENABLED
+RESULT engine 04477d3-dirty
+[dt_dlopencl_init] found specified opencl runtime library 'libOpenCL.so.1'
+[opencl_init] opencl library 'libOpenCL.so.1' found on your system and loaded, preference 'libOpenCL.so.1'
+[opencl_init] found 1 platform
+[opencl_init] found 1 device
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_id0'
+
+   DEVICE:                   0: 'cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C', NEW
+   CONF KEY:                 cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc
+   PLATFORM, VENDOR & ID:    Portable Computing Language, The pocl project, ID=32902
+   CANONICAL NAME:           portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc
+   DRIVER VERSION:           5.0+debian
+   DEVICE VERSION:           OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-skylake-avx512 API=300
+   DEVICE_TYPE:              CPU, unified mem
+   GLOBAL MEM SIZE:          13653 MB
+   MAX IMAGE ALLOC:          4096 MB
+   MAX IMAGE SIZE:           16384 x 16384
+   MAX CONSTANT BUFFER:      2048 KB
+   LOCAL MEM SIZE:           2048 KB
+   COMPUTE UNITS:            4
+   MAX WORK GROUP SIZE:      4096 (8)
+   MAX WORK ITEM DIMENSIONS: 3 [ 4096 4096 4096 ]
+   ASYNC PIXELPIPE:          NO
+   SUPPORTED ATOMICS:        INT32 INT64 FLOAT32 
+   SUPPORTED DOUBLE:         YES
+   FLOAT32 FMA:              YES
+   EXACT FLOAT32 DIV&SQRT:   YES
+   ROUNDUP WIDTH & HEIGHT    32x32
+   EVENTS HANDLED:           YES
+   OPENCL FAST MODE:         NO
+   DEFAULT DEVICE:           NO
+   AVOIDED MODULES:          none
+   KERNEL BUILD DIRECTORY:   /home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels
+   KERNEL DIRECTORY:         /home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian
+   CL COMPILER COMMAND:      -w  -DINTEL=1 -I"/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels"
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_id0'
+[dt_opencl_device_init] testing program `demosaic_ppg.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_ppg.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_ppg.cl' MD5: '9aa2860cf414540b1657f242da6a1e54'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `atrous.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/atrous.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/atrous.cl' MD5: '989a57fd67fa4e865c2eac7cbd7af3f8'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basic.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/basic.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/basic.cl' MD5: '333eb40554473d9344a8494951926e55'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `blendop.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/blendop.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/blendop.cl' MD5: 'b0d7fb21f13b7e6b7e56d100671611d1'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `highpass.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/highpass.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/highpass.cl' MD5: '0154ed4abea3976b3a2f54293394bc4c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `nlmeans.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/nlmeans.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/nlmeans.cl' MD5: 'cc163cfb256e2a8cd70cdd56e838c3f9'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `gaussian.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/gaussian.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/gaussian.cl' MD5: '5dd279bb756dc36caa45215f03ab480b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `sharpen.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/sharpen.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/sharpen.cl' MD5: '867b7998a139c8d4ed64b11265404228'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `extended.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/extended.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/extended.cl' MD5: '3a3c437b184b528bc518beb721ebda55'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `soften.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/soften.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/soften.cl' MD5: 'bc357c0e2dc67d8717c7a868bb735fba'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bilateral.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/bilateral.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/bilateral.cl' MD5: 'c18cf455d27084c4951a943b2cfd0010'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `denoiseprofile.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/denoiseprofile.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/denoiseprofile.cl' MD5: '1ecb311aa12f2a879d4b4561937202a5'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bloom.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/bloom.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/bloom.cl' MD5: '628cf100e82f758feb005da03cea0724'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorreconstruction.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/colorreconstruction.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/colorreconstruction.cl' MD5: '7cbd70de70ca95c2fa62e10fb757b123'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_other.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_other.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_other.cl' MD5: '29618da5e7337a17ad8932ca6ce2a134'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_vng.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_vng.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_vng.cl' MD5: '93c4aa977d1699c34b579a4fd9be0b16'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_markesteijn.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_markesteijn.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_markesteijn.cl' MD5: '06bbe6f5136327e4788fd68b38aafe31'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `liquify.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/liquify.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/liquify.cl' MD5: '99a9dc4c6ce9a1ff6942a08a742feb9c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basecurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/basecurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/basecurve.cl' MD5: '2a985cb3176c869df3d0010009c2074d'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `locallaplacian.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/locallaplacian.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/locallaplacian.cl' MD5: '34e7250f292bd167915c8658dc20c2a1'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `dwt.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/dwt.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/dwt.cl' MD5: 'ada90363b9c74cb3c8d0b366bd24fd7b'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `retouch.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/retouch.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/retouch.cl' MD5: 'e6e87c8651b02110fc48d61751990779'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `filmic.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/filmic.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/filmic.cl' MD5: 'df9abf7b9814732ad5def0350c553dc0'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorspaces.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/colorspaces.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/colorspaces.cl' MD5: '4b6a608cf35aa18aeb8cd1ed68fd455e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `basicadj.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/basicadj.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/basicadj.cl' MD5: 'f9a6b99261e2cfa4f24cd6cb4c8ffa98'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `rgbcurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/rgbcurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/rgbcurve.cl' MD5: '9c09daf4e33e3a703a238ff52241f62e'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `guided_filter.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/guided_filter.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/guided_filter.cl' MD5: '3abb9f2b5d198b2267fc48359311493d'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `hazeremoval.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/hazeremoval.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/hazeremoval.cl' MD5: 'dc768175b6f478d512d0d5d780de753c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `lut3d.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/lut3d.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/lut3d.cl' MD5: '23ed1f4f3aea1ca73b52bc19b6638242'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `rgblevels.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/rgblevels.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/rgblevels.cl' MD5: 'a4b87eb1ebb999e9ed004124dfbb6afc'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `negadoctor.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/negadoctor.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/negadoctor.cl' MD5: '1c988f9c55a12d221d74665363ef2c11'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_rcd.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_rcd.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_rcd.cl' MD5: '37a625ffdba42211e11d4540870358ba'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `channelmixer.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/channelmixer.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/channelmixer.cl' MD5: 'acfb3accbf45f5d47cc6a1206bc39e87'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `diffuse.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/diffuse.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/diffuse.cl' MD5: '165be9981c3c1f3438dc4ede8aa7dbe8'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `blurs.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/blurs.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/blurs.cl' MD5: '650b1f7e5901eb85918f5ba767749bee'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bspline.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/bspline.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/bspline.cl' MD5: '0dde53caf33c16fb24cf93b5b8f152ee'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `sigmoid.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/sigmoid.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/sigmoid.cl' MD5: 'f31cc9bab3956a3ff3e87036bd830af1'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorequal.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/colorequal.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/colorequal.cl' MD5: 'e43e423ed0fe788d381cb3ce349b1e50'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `capture.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/capture.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/capture.cl' MD5: '44ea2524068eaa99effd4ad84eb66555'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `agx.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/agx.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/agx.cl' MD5: '35d4164e88c7c149f69278407b929dcf'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `colorharmonizer.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/colorharmonizer.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/colorharmonizer.cl' MD5: 'dee5524e017383705a69d1b3c18bc929'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `overlay.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/overlay.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/overlay.cl' MD5: '9f98a5770bed38cbcd8a409f49cfea21'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `bilinear.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/bilinear.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/bilinear.cl' MD5: '578cb2c1e0dd98a28ff29eef9405eddb'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `spektrafilm.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/spektrafilm.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/spektrafilm.cl' MD5: '010844d6d3dac13eb59a0cd4ea452293'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `satcurve.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/satcurve.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/satcurve.cl' MD5: 'f812830c9c1e0927d947230a048853b4'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `toneequal.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/toneequal.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/toneequal.cl' MD5: '76ddd80949bfbecd22eb3c2bc3169355'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `contrastntexture.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/contrastntexture.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/contrastntexture.cl' MD5: '96e115df8b8631d603900fdf45d661fb'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `cacorrectrgb.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/cacorrectrgb.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/cacorrectrgb.cl' MD5: 'f163d05b55095186c6e4f6997785cf78'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `grain.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/grain.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/grain.cl' MD5: '049f7c744e4319781594de7984f29347'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `cacorrect.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/cacorrect.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/cacorrect.cl' MD5: 'a0e38b8fd02d4a99db75d1637ce7b102'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `permutohedral.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/permutohedral.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/permutohedral.cl' MD5: 'cc915e97a8e2239d87d4e165f9cb394c'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_amaze.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_amaze.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_amaze.cl' MD5: '5dc1fdd69c983212932df76a436a56aa'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `demosaic_lmmse.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/demosaic_lmmse.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/demosaic_lmmse.cl' MD5: '4f1c1fb934c908015f9ac3d653f274d6'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+[dt_opencl_device_init] testing program `dng_opcode.cl'
+[opencl_fopen_stat] could not open file `/home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian/dng_opcode.cl.bin'
+[opencl_load_program] could not load cached binary program, trying to compile source
+[opencl_load_program] successfully loaded program from '/home/runner/p4e/prefix-upstream-kernels/share/darktable/kernels/dng_opcode.cl' MD5: '13f7c85b3dd87d397fd1cbd9f571f3b4'
+[opencl_build_program] successfully built program
+[opencl_build_program] BUILD STATUS: 0
+[opencl_build_program] saving binary
+   KERNEL LOADING TIME:      1.3744 sec
+[opencl_write_device_config] writing data 'events:on asyncmode:off device:on unifraction: 0.250' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc'
+[opencl_write_device_config] writing data '' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_nocl'
+[opencl_write_device_config] writing data 'headroom: 600' for 'cldevice_v7_portablecomputinglanguagecpuskylakeavx512intelrxeonr6975pc_id0'
+[opencl_init] OpenCL successfully initialized. internal numbers and names of available devices:
+[opencl_init]		0	'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C'
+[opencl_init] FINALLY: opencl PREFERENCE=YES is AVAILABLE and ENABLED
+[opencl_init] opencl_scheduling_profile: 'default'
+[opencl_init] opencl_device_priority: '*/!0,*/*/*/!0,*'
+[opencl_init] opencl_mandatory_timeout: 1000
+[opencl_init] set scheduling profile to default, setup has changed
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+     2.1448 [opencl_update_settings] scheduling profile set to default
+   AVAILABLE MEM SIZE:       3925 MB
+   UNIFIED MEM SIZE:         3925 MB
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3925 MB
+   UNIFIED MEM SIZE:         3925 MB
+P4B opencl after switching on: {"built":true,"allowed":true,"started":true,"library":"libOpenCL.so.1","inited":true,"enabled":true,"stopped":false,"error_count":0,"running":true,"devices":[{"name":"Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C","platform":"Portable Computing Language","version":"OpenCL 3.0 PoCL HSTR: cpu-x86_64-pc-linux-gnu-skylake-avx512","memory":14316793856,"unified":true,"disabled":false}],"renders":1,"renders_gpu":0,"renders_fallback":0,"last_render":"cpu","kernel_dir":"/home/runner/p4e/exposure/before/work/kernels"}
+RESULT opencl running 1 devices 1 start_s 1.4
+     2.3060 [memory] before pixelpipe process
+             max address space (vmpeak):     1279756 kB
+             cur address space (vmsize):      958288 kB
+             max used memory   (vmhwm ):      308104 kB
+             cur used memory   (vmrss ):      246236 kB
+
+     2.3064 [dev_pixelpipe] took 0.000 secs (0.000 CPU) initing base buffer [export]
+     2.3073 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 2 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3073 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3073 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3073 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3073 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3081 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3081 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3081 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 6 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3148 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.3148 [opencl_events_flush] invalid profiling data for 'rawprepare_1f' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.3148 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 4 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3149 [dev_pixelpipe] took 0.008 secs (0.028 CPU) [export] processed `rawprepare' on GPU
+     2.3150 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3150 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3150 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3206 [opencl_events_flush] invalid profiling data for 'whitebalance_1f' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.3206 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 4 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3208 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `temperature' on GPU
+     2.3208 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3208 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3208 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 9 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3265 [opencl_events_flush] invalid profiling data for 'highlights_1f_clip' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.3265 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 4 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3267 [dev_pixelpipe] took 0.006 secs (0.020 CPU) [export] processed `highlights' on GPU
+     2.3268 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 15 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3268 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3268 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 51 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3268 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [resample_cl] plan 0.000 secs (0.000 CPU) resample 0.000 secs (0.000 CPU)
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 33 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.3269 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 15 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4776 [opencl_events_flush] invalid profiling data for 'border_interpolate' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4776 [opencl_events_flush] invalid profiling data for 'ppg_demosaic_green' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4776 [opencl_events_flush] invalid profiling data for 'ppg_demosaic_redblue' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4776 [opencl_events_flush] invalid profiling data for 'interpolation_resample' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4776 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 10 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4778 [dev_pixelpipe] took 0.151 secs (0.578 CPU) [export] processed `demosaic' on GPU
+     2.4778 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4819 [opencl_events_flush] invalid profiling data for 'exposure' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4819 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 10 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4824 [dev_pixelpipe] took 0.005 secs (0.010 CPU) [export] processed `exposure' on GPU
+     2.4824 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4824 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4824 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4824 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4825 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4827 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4828 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4952 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4952 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4952 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4952 [opencl_events_flush] invalid profiling data for 'colorin_unbound' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.4952 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 10 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4956 [dev_pixelpipe] took 0.013 secs (0.046 CPU) [export] processed `colorin' on GPU
+     2.4956 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4956 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4957 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4958 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4959 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4959 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4960 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 22 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4960 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4960 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4960 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.4960 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 21 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.5163 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.5163 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.5163 [opencl_events_flush] invalid profiling data for '[Write Image (from host to device)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.5163 [opencl_events_flush] invalid profiling data for 'colorout' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.5163 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 10 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.5167 [dev_pixelpipe] took 0.021 secs (0.076 CPU) [export] processed `colorout' on GPU
+     2.5196 [opencl memory] device 'Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C' id=0: 0 MB in use, 3925 MB available GPU mem of 13653 MB
+     2.5199 [opencl_events_flush] invalid profiling data for '[Read Image (from device to host)]' on device 0 (start=0, end=0, errs=CL_PROFILING_INFO_NOT_AVAILABLE, erre=CL_PROFILING_INFO_NOT_AVAILABLE)
+     2.5199 [opencl_profiling] profiling device 0 ('Portable Computing Language cpu-skylake-avx512-Intel(R) Xeon(R) 6975P-C'):
+     2.5199 [opencl_profiling] spent  0.0000 seconds in [Write Image (from host to device)]
+     2.5199 [opencl_profiling] spent  0.0000 seconds in rawprepare_1f
+     2.5199 [opencl_profiling] spent  0.0000 seconds in whitebalance_1f
+     2.5199 [opencl_profiling] spent  0.0000 seconds in highlights_1f_clip
+     2.5199 [opencl_profiling] spent  0.0000 seconds in border_interpolate
+     2.5199 [opencl_profiling] spent  0.0000 seconds in ppg_demosaic_green
+     2.5200 [opencl_profiling] spent  0.0000 seconds in ppg_demosaic_redblue
+     2.5200 [opencl_profiling] spent  0.0000 seconds in interpolation_resample
+     2.5200 [opencl_profiling] spent  0.0000 seconds in exposure
+     2.5200 [opencl_profiling] spent  0.0000 seconds in colorin_unbound
+     2.5200 [opencl_profiling] spent  0.0000 seconds in colorout
+     2.5200 [opencl_profiling] spent  0.0000 seconds in [Read Image (from device to host)]
+     2.5200 [opencl_profiling] spent  0.0000 seconds totally in command queue (with 18 events missing)
+     2.5200 cache report                  [export]                                      Lines=64 important=0 used=2 invalid=0. Now=12MB limit=735MB max=0MB. Hits/run=0.00. Hits/test=0.000
+     2.5201 [memory] after pixelpipe process
+             max address space (vmpeak):     1279756 kB
+             cur address space (vmsize):      971760 kB
+             max used memory   (vmhwm ):      308104 kB
+             cur used memory   (vmrss ):      262008 kB
+
+RESULT render_trace modules 7 on_gpu 7 bytes 18177
+RESULT opencl last gpu psnr 95.77 maxdiff 1 cpu_s 0.102 gpu_s 0.265
+RESULT kernels /home/runner/p4e/exposure/before/work/kernels/cached_v8_stdkernels_for_PortableComputingLanguagecpuskylakeavx512IntelRXeonR6975PC_50debian
+RESULT export_ran gpu
+[opencl_update_priorities] these are your device priorities:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		0	-1	0	0	-1
+[opencl_update_priorities] show if opencl use is mandatory for a given pixelpipe:
+[opencl_update_priorities] 		image	preview	export	thumbs	preview2
+[opencl_update_priorities]		NO	NO	NO	NO	NO
+[opencl_synchronization_timeout] synchronization timeout set to 200
+   AVAILABLE MEM SIZE:       3925 MB
+   UNIFIED MEM SIZE:         3925 MB
+RESULT exit 0
