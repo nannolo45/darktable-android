@@ -104,7 +104,9 @@ Brief: docs/briefs/P6e-colour-dialog-framing-watermark.md. Branch `p6e-colour-di
   offered, the text watermark changes 66,316 of 10,168,616 pixels (0.652 %). Compare job: app vs darktable-cli for the
   same watermark XMP: text pixels 66,316 vs 66,305 (ratio 1.000), overlap 0.998, centres (1163.1, 42.0) vs (1163.3,
   42.0), PSNR of the two exports 44.04 dB; G0 export 75.73 dB.
-- Second p2b: SECONDP2B
+- **Second p2b 46078912928** (953b07f, which adds only this report to 808d572): green, 138 tests, 0 failed; the same
+  P6e numbers (t1 11 → 12, t2 11 → 13, 66,316 text pixels; compare ratio 1.000, overlap 0.998, 44.04 dB).
+  The commit after 953b07f adds only this run's id to the report.
 - Measurements here are x86_64 (CI runners and the emulator), not phone numbers.
 
 ## 4. Upstream and CI surprises
