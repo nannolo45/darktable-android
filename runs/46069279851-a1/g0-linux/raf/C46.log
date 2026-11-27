@@ -1,0 +1,16 @@
+RESULT engine 04477d3-dirty
+RESULT framing corner pixel 51 102 204 (border colour set to 51 102 204)
+FAIL module_action borders pick {"which": "border", "area": [0.4, 0.4, 0.6, 0.6]} returned -3, expected 0 [borders has no action 'pick']
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6e.c:133: border pick did not change the colour [borders has no action 'pick']
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6e.c:134: border pick: 15 items before, 15 after [borders has no action 'pick']
+RESULT border pick: 0.2000 0.4000 0.8000
+FAIL module_action borders pick {"which": "frame", "area": [0.4, 0.4, 0.6, 0.6]} returned -3, expected 0 [borders has no action 'pick']
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6e.c:147: frame pick equal to the border colour was written [borders has no action 'pick']
+FAIL module_action borders pick {"which": "frame", "point": [0.25, 0.3]} returned -3, expected 0 [borders has no action 'pick']
+FAIL module_action borders pick {"which": "line", "point": [0.5, 0.5]} returned -3, expected -2 [borders has no action 'pick']
+RESULT watermark files: 7 (current 'darktable.svg')
+RESULT fonts: 8 families, using 'DejaVu Sans 10'
+FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6e.c:209: watermark settings: 15 items before, 18 after (four expected) [borders has no action 'pick']
+RESULT text watermark: 165059 pixels changed of 26050000 (0.634%), max 236
+RESULT XMP round trip render differs by 0
+RESULT exit 1
