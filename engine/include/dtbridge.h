@@ -224,6 +224,13 @@ int dtb_module_reset(const char *op, int priority);
  *                   .gmz refused (no G'MIC), a missing file DTB_E_IO
  *   colorin:        list_profiles -> [ {kind: "input"|"work", type, filename, name, current} ];
  *   borders:        set_aspect {aspect} [M]: 0 (image), -1 (constant border) or 1..3;
+ *                   P6e (engine-api.md 5.4): pick {which: "border"|"frame", area|point} [M] -> {picked, color,
+ *                   changed}: color_picker_apply (the picked mean into color or frame_color)
+ *   watermark:      P6e: pick {area|point} [M] -> {picked, color, changed} (color_picker_apply);
+ *                   list_files -> {files: [ {file, label, svg, folder: "data"|"config"} ], current, found,
+ *                   config_folder} (_refresh_watermarks); list_fonts -> {families: [ {family, faces: [ {face,
+ *                   font} ]} ], config, default_config_fonts} (families that draw Latin text; "font" is
+ *                   what the font chooser writes). filename, text and font are set with dtb_params_set.
  *   P1b part 2 (engine-api.md 6.3), each picks an "area" or "point" first:
  *   temperature:     wb_from_area {area} [M];
  *   exposure:        spot {area, mode: "correction"|"measure", lightness?} [M];

@@ -93,6 +93,7 @@ fun DarkroomScreen(
         MasksOverlays(controller, s, ms, tablet)
         ParametricOverlays(controller, s, tablet) // brief P3d stage 2b
         LensOverlays(controller, s, tablet) // brief P6d
+        FramingWatermarkOverlays(controller, s, tablet) // brief P6e
         // brief P3g: the export screen over the whole darkroom
         if (s.overlay == Overlay.Export) ExportScreen(controller, s, tablet)
     }

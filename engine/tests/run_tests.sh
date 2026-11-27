@@ -465,6 +465,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C45 lensbyhand "lens by hand: camera and lens lists, find_cameras / find_lenses on Exif, get_state, set_camera, set_lens, set_value, one history item each, undo, XMP round trip, render against the module off"
     parity C45 p6d_lens
   fi
+  # brief P6e (engine-api.md 5.4): framing's and watermark's colours, pickers, watermark files, fonts, text
+  if want C46; then
+    drv C46 colordialog "colour dialog writes (no drift, one item), framing and watermark pickers, watermark files, fonts, file/text/font/colour/alignment, text draws pixels, XMP round trip"
+    parity C46 p6e_watermark
+  fi
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops

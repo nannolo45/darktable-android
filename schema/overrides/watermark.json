@@ -1,11 +1,43 @@
 {
   "op": "watermark",
-  "reason": "brief P2j: the watermark list is not built yet.",
+  "reason": "brief P6e: the marker list, text, font and colour rows (grid 0: desktop's combobox 2 with its refresh button 3, entry 5, font button 7, colour button 9, picker 10) and the 3x3 alignment (grid 18) are built by hand (FramingWatermark.kt) over the engine's module actions watermark list_files, list_fonts and pick (engine-api.md 5.4); the brief P2j note \"not available yet\" is replaced by class f notes.",
   "note": [
     {
       "node": 2,
-      "text": "not available yet on the phone",
-      "class": "b"
+      "text": "built by hand (brief P6e, FramingWatermark.kt): marker list",
+      "class": "f"
+    },
+    {
+      "node": 5,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): text",
+      "class": "f"
+    },
+    {
+      "node": 7,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): font list",
+      "class": "f"
+    },
+    {
+      "node": 9,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): colour dialog",
+      "class": "f"
+    },
+    {
+      "node": 19,
+      "text": "built by hand (brief P6e, FramingWatermark.kt): alignment grid",
+      "class": "f"
+    }
+  ],
+  "picker": [
+    {
+      "node": 10,
+      "label": "pick color from image",
+      "kinds": [
+        "point"
+      ],
+      "action": {
+        "name": "pick"
+      }
     }
   ]
 }

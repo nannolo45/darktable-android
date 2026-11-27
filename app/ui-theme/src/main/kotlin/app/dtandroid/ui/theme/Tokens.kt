@@ -176,6 +176,10 @@ class DtSizes(t: TokenSource) {
     val patchOutline = t.dp("size.patchOutline")
     val patchMarkInset = t.dp("size.patchMarkInset")
     val fillSwatch = t.dp("size.fillSwatch")
+    /** brief P6e: the colour dialog's saturation/value field, its hue strip and the cursor on them */
+    val colorField = t.dp("size.colorField")
+    val colorHue = t.dp("size.colorHue")
+    val colorCursor = t.dp("size.colorCursor")
     val shapeButton = t.dp("size.shapeButton")
     /** brief P3d stage 2b: the markers of a four-marker range slider (a diamond) and the line of an open one */
     val rangeMarker = t.dp("size.rangeMarker")

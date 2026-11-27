@@ -263,6 +263,23 @@ JSON of one style (`dtb_styles_list`):
   - `lens: set_value {name: "focal"|"aperture"|"distance", value}` [M]: what the three
     `_lens_comboentry_*_update` callbacks do: the value, then `has_been_set` = true. The value must be above 0
     (`ARG`). One history item.
+  - **P6e** (brief P6e): `borders: pick {which: "border"|"frame", area|point}` [M] and `watermark: pick {area|point}`
+    [M]: `color_picker_apply` of `src/iop/borders.c` / `src/iop/watermark.c`: the picked mean of the module's input
+    into `color` or `frame_color` (watermark: `color`); as desktop, nothing is written when the pick equals one of the
+    module's colours (framing: either; "interrupt infinite loops"). Answer `{picked, color: [r, g, b], changed}`; one
+    history item when changed. The colour button itself (`_colorpick_color_set`) needs no action: `params_set` with
+    `color[0..2]` (or `frame_color[0..2]`) is one history item.
+  - `watermark: list_files` → `{files: [ {file, label, svg, folder} ], current, found, config_folder}`:
+    `_refresh_watermarks`/`_load_watermarks`: the `.svg` and `.png` files of darktable's `watermarks` folder, then of
+    the configuration folder's (`folder` "data" / "config"), each folder sorted; `label` is desktop's "name (ext)";
+    `svg` false greys out text, font and colour (`_text_color_font_set_sensitive`). `filename`, `text` and `font`
+    are char arrays set with `param_set`/`params_set`.
+  - `watermark: list_fonts` → `{families: [ {family, faces: [ {face, font} ]} ], config, default_config_fonts}`:
+    pango's families and faces as GTK's font chooser lists them, without families fontconfig cannot draw English
+    with; `font` is the face's description with size 10, as `gtk_font_chooser_get_font` gives it. On Android the
+    bridge writes a fontconfig configuration before `dt_init` (`<cachedir>/fontconfig/fonts.conf`: the APK's
+    `share/fonts` with DejaVu Sans, `/system/fonts`, `/product/fonts`); `config` names it (null on Linux) and
+    `default_config_fonts` is how many fonts fontconfig's built-in configuration found (null on Linux).
   *Why module actions and not an unchecked `param_set` (P2j question 1):* the out-of-range values are fixed values one
   desktop callback writes, not a range; an action writes exactly those values and nothing else, while a flag on
   `param_set` would open every field to any value and remove the range check that protects the XMP.

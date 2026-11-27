@@ -1649,6 +1649,10 @@ static int _act_denoiseprofile(dt_iop_module_t *m, const char *action, JsonObjec
 
 int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args, char **result)
 {
+  // brief P6e: framing's and watermark's colour pickers, watermark's files and fonts (first: actions2.c answers
+  // NOT_FOUND for any other borders action)
+  const int r7 = dtb__module_action_p6e(m, action, args, result);
+  if(r7 != 1) return r7;
   const int r2 = dtb__module_action2(m, action, args, result);
   if(r2 != 1) return r2;
   const int r3 = dtb__module_action3(m, action, args, result);

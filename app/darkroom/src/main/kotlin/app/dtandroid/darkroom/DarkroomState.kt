@@ -95,6 +95,12 @@ sealed interface Overlay {
     data class LensPicker(val key: InstanceKey, val pick: LensPick) : Overlay
     /** brief P6d: lens correction's list of focal lengths, apertures or distances, with typed entry */
     data class LensValue(val key: InstanceKey, val kind: LensValueKind) : Overlay
+    /** brief P6e: the colour dialog of a colour row (framing's border and frame line, watermark's text colour) */
+    data class ColorDialog(val key: InstanceKey, val target: ColorTarget) : Overlay
+    /** brief P6e: watermark's marker list */
+    data class WatermarkFiles(val key: InstanceKey) : Overlay
+    /** brief P6e: watermark's font list */
+    data class WatermarkFonts(val key: InstanceKey) : Overlay
 }
 
 /** An entry of the app's photo menu, given to the darkroom screen by the app (brief P2b). */

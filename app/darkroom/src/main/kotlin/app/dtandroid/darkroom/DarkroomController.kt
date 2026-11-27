@@ -862,6 +862,12 @@ class DarkroomController(
         engine.historySeal()
     }
 
+    /** Brief P6e: several parameters as one history step (a colour's three floats). */
+    suspend fun setParams(key: InstanceKey, values: Map<String, JsonPrimitive>) = change {
+        engine.paramsSet(key.op, key.priority, values)
+        engine.historySeal()
+    }
+
     /** Exact entry or reset to default of a slider, through its binding. */
     suspend fun setSlider(key: InstanceKey, binding: Binding, value: Double, integer: Boolean, controlId: Int? = null) {
         if (cropMargin(key, binding, value)) return // brief P3a: a margin of the frame in the crop tool
@@ -2748,6 +2754,9 @@ class DarkroomController(
 
     /** Brief P6d: lens correction's camera and lens by hand and its value lists (LensByHand.kt). */
     val lens: LensByHand by lazy { LensByHand(this) }
+
+    /** Brief P6e: the colour dialog's writes and recent colours, watermark's lists (FramingWatermark.kt). */
+    val framing: FramingWatermark by lazy { FramingWatermark(this) }
 
     /** Brief P6b: lut 3D's file, by its path relative to the LUT folder: one history step (bridge `set_file`). */
     suspend fun chooseLutFile(key: InstanceKey, path: String) = change {
