@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,7 +69,7 @@ import kotlin.math.sqrt
 @Composable
 fun CurveEditorHost(control: Control.Unsupported, ctx: PanelContext) {
     when (ctx.instance.op) {
-        "tonecurve", "rgbcurve" -> CurveEditor(ctx)
+        "tonecurve", "rgbcurve", "basecurve", "satcurvergb" -> CurveEditor(ctx)
         "rgblevels" -> LevelsEditor(ctx)
         "toneequal" -> ToneEqEditor(ctx)
         else -> Unit
@@ -95,10 +96,11 @@ private fun graphSide(): Dp =
     if (DtTheme.l1.layout) minOf(DtTheme.sizes.curveMaxHeight, DtTheme.l1.panelMaxHeight - DtTheme.sizes.touch * 2) else DtTheme.sizes.curveMaxHeight
 
 /** The page of the channel tabs the graph belongs to; the first channel while the tabs are hidden (desktop goes back to it). */
-private fun channelOf(ctx: PanelContext): Int {
-    val tabs = ctx.module.allControls().filterIsInstance<Control.Tabs>().firstOrNull { it.pages.size == 3 } ?: return 0
+private fun channelOf(ctx: PanelContext, channels: Int = 3): Int {
+    if (channels <= 1) return 0
+    val tabs = ctx.module.allControls().filterIsInstance<Control.Tabs>().firstOrNull { it.pages.size == channels } ?: return 0
     val shown = ctx.module.pathTo(tabs.id).all { Rules.isVisible(ctx.module, it, ctx.inputs) }
-    return if (shown) ctx.controller.tabPage(ctx.state, ctx.key, tabs.id).coerceIn(0, 2) else 0
+    return if (shown) ctx.controller.tabPage(ctx.state, ctx.key, tabs.id).coerceIn(0, channels - 1) else 0
 }
 
 /** The histogram of the picture, read again whenever the module's parameters change (the engine's, behind the module: engine-api.md 6.4). */
@@ -152,7 +154,7 @@ private fun DrawScope.nodeMark(cx: Float, cy: Float, look: GraphLook, held: Bool
     }
 }
 
-// ------------------------------------------------------------------------------------------------ tone curve and rgb curve
+// ------------------------------------------------------------------------------------------------ tone curve, rgb curve, base curve, saturation curve
 
 @Composable
 private fun CurveEditor(ctx: PanelContext) {
@@ -160,14 +162,32 @@ private fun CurveEditor(ctx: PanelContext) {
     if (layout != null) CurveEditorBody(layout, ctx)
 }
 
+/** Brief P6f: desktop's "scale for graph" slider of tone curve and base curve: display only, nothing is written. */
+@Composable
+fun GraphScaleSlider(c: Control.Slider, ctx: PanelContext) {
+    val v = GraphViews.logBase[ctx.key] ?: c.default
+    app.dtandroid.darkroom.ui.SliderControl(
+        label = c.label ?: "", slider = c, value = v, enabled = true,
+        onDrag = { GraphViews.logBase[ctx.key] = it.coerceIn(CurveScale.LOG_MIN, CurveScale.LOG_MAX) },
+        onDragEnd = {},
+        onReset = { GraphViews.logBase[ctx.key] = c.default },
+        onExact = {},
+    )
+}
+
 @Composable
 private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
-    val ch = channelOf(ctx)
+    val ch = channelOf(ctx, layout.channels)
     val params = ctx.instance.params
-    val rgb = layout.op == "rgbcurve"
+    val op = layout.op
+    val rgb = op == "rgbcurve"
+    val lab = op == "tonecurve"
     // desktop edits a and b only with independent channels (tonecurve.c: autoscale_ab MANUAL); the rgb curve's tabs only exist then
-    val independent = if (rgb) (params.paramAt("curve_autoscale") as? JsonPrimitive)?.content.let { it == "DT_S_SCALE_MANUAL_RGB" || it == "1" }
-    else (params.paramAt("tonecurve_autoscale_ab") as? JsonPrimitive)?.content.let { it == "DT_S_SCALE_MANUAL" || it == "0" }
+    val independent = when {
+        rgb -> (params.paramAt("curve_autoscale") as? JsonPrimitive)?.content.let { it == "DT_S_SCALE_MANUAL_RGB" || it == "1" }
+        lab -> (params.paramAt("tonecurve_autoscale_ab") as? JsonPrimitive)?.content.let { it == "DT_S_SCALE_MANUAL" || it == "0" }
+        else -> true
+    }
     val editable = !ctx.readOnly && (ch == 0 || independent)
     val stored = remember(params, ch) { layout.read(params, ch) }
     val type = layout.readType(params, ch)
@@ -176,36 +196,50 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
     var held by remember { mutableIntStateOf(-1) }
     LaunchedEffect(params, ch) { local = null; held = -1 }
     val nodes = local ?: stored
+    // brief P6f: the display scale ("scale for graph", rgb curve's pinch zoom)
+    val view = GraphViews.view(ctx.key, ch)
+    // saturation curve: desktop draws both curves, the other one fainter (satcurvergb.c `area_draw`)
+    val others = if (op == "satcurvergb") (0 until layout.channels).filter { it != ch }.map { o -> layout.read(params, o) to layout.readType(params, o) } else emptyList()
     val look = graphLook()
+    val satColours = listOf(look.line, DtTheme.colors.curveSecond)
     val tint = when {
         rgb && independent -> listOf(DtTheme.colors.curveRed, DtTheme.colors.curveGreen, DtTheme.colors.curveBlue)[ch]
+        op == "satcurvergb" -> satColours[ch.coerceIn(0, 1)]
         else -> look.line
     }
-    val hist = counts(rememberHistogram(ctx), if (rgb && independent) ch else null)
+    val otherTint = if (op == "satcurvergb") satColours[(1 - ch).coerceIn(0, 1)] else look.line
+    // tone curve and rgb curve draw the picture's histogram behind (base curve and saturation curve do not: see the P6f report)
+    val hist = if (lab || rgb) counts(rememberHistogram(ctx), if (rgb && independent) ch else null) else null
     // the picker armed on this module: what it took, on the graph (desktop: band, line at the mean, "in → out")
     val pickState = ctx.state.picker?.takeIf { it.key == ctx.key }
-    val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, params, ch) {
-        // brief P4c: the graph is drawn unzoomed and linear (no zoom/offset, no "scale for graph"), so is the mark
-        pickState?.let { CurvePick.mark(layout.op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput, CurveView.IDENTITY) }
+    val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, params, ch, view) {
+        pickState?.let { CurvePick.mark(op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput, view) }
     }
     val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
     val pickTextStyle = DtTheme.type.small.copy(color = look.line)
     val pickBand = DtTheme.colors.curvePickBand
     val pickLine = DtTheme.colors.curvePickLine
+    val satLow = DtTheme.colors.curveSatLow
+    val satHigh = DtTheme.colors.curveSatHigh
     val vc = LocalViewConfiguration.current
     val insetDp = DtTheme.space.l
     val touchDp = DtTheme.sizes.touch
+    val stripDp = DtTheme.space.s
     val nowNodes by rememberUpdatedState(nodes)
     val nowParams by rememberUpdatedState(params)
+    val nowView by rememberUpdatedState(view)
+    val nowType by rememberUpdatedState(type)
     val lastTap = remember { mutableLongStateOf(0L) }
     val scope = rememberCoroutineScope()
     val mayEdit = editable
     val note = if (!mayEdit && !ctx.readOnly) "this curve has no effect with linked channels; double tap the graph to edit it" else null
+    // saturation curve: the gradient strip under the graph (desktop: white at no saturation, purple at full)
+    val strip = op == "satcurvergb"
 
     Box(Modifier.fillMaxWidth().padding(vertical = DtTheme.space.xs), contentAlignment = Alignment.Center) {
         Box(
             Modifier.widthIn(max = graphSide()).fillMaxWidth().aspectRatio(1f).background(look.bg)
-                .semantics { contentDescription = "curve graph"; stateDescription = "${nodes.size} nodes" }
+                .semantics { contentDescription = "curve graph"; stateDescription = "${nodes.size} nodes" + if (view.zoom > 1.0) ", zoom ${"%.1f".format(view.zoom)}" else "" }
                 .pointerInput(ch, mayEdit) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
@@ -213,74 +247,95 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                         val h = size.height.toFloat()
                         val inset = insetDp.toPx()
                         val pw = (w - 2 * inset).coerceAtLeast(1f)
-                        val ph = (h - 2 * inset).coerceAtLeast(1f)
+                        val ph = (h - 2 * inset - (if (strip) stripDp.toPx() * 2 else 0f)).coerceAtLeast(1f)
                         val p0 = down.position
                         val base = nowNodes
+                        val v = nowView
                         val previous = layout.countOf(nowParams, ch)
                         // a second tap soon after the first: desktop's double click, the channel's curve back to its default
                         if (lastTap.longValue > 0L && down.uptimeMillis - lastTap.longValue <= vc.doubleTapTimeoutMillis) {
                             lastTap.longValue = 0L
                             down.consume()
                             if (mayEdit) {
-                                val defaults = layout.defaults(ch)
-                                ctx.controller.curveCommit(ctx.key, layout.writes(ch, defaults, previous) + (layout.typePath(ch) to JsonPrimitive(CurveLayout.DEFAULT_TYPE.toLong())))
-                            } else if (!ctx.readOnly && !rgb && ch > 0) {
+                                ctx.controller.curveCommit(ctx.key, layout.resetWrites(ch, previous))
+                            } else if (!ctx.readOnly && lab && ch > 0) {
                                 ctx.controller.launch { setParam(ctx.key, "tonecurve_autoscale_ab", JsonPrimitive("DT_S_SCALE_MANUAL")) }
                             }
                             do { val e = awaitPointerEvent(); e.changes.forEach { it.consume() } } while (e.changes.any { it.pressed })
                             return@awaitEachGesture
                         }
-                        if (!mayEdit) {
+                        if (!mayEdit && !rgb) {
                             var up = down.uptimeMillis
                             do { val e = awaitPointerEvent(); up = e.changes.maxOf { it.uptimeMillis } } while (e.changes.any { it.pressed })
                             lastTap.longValue = up
                             return@awaitEachGesture
                         }
                         down.consume()
-                        fun fx(p: Offset) = ((p.x - inset) / pw).coerceIn(0f, 1f).toDouble()
-                        fun fy(p: Offset) = (1f - ((p.y - inset) / ph).coerceIn(0f, 1f)).toDouble()
+                        // screen fractions (y up) and back to the curve's values through the display scale
+                        fun sx(p: Offset) = ((p.x - inset) / pw).toDouble()
+                        fun sy(p: Offset) = (1f - (p.y - inset) / ph).toDouble()
+                        fun fx(p: Offset) = v.valueX(sx(p).coerceIn(0.0, 1.0)).coerceIn(0.0, 1.0)
+                        fun fy(p: Offset) = v.valueY(sy(p).coerceIn(0.0, 1.0)).coerceIn(0.0, 1.0)
                         val reach = touchDp.toPx() / 2
-                        var sel = CurveEdit.hit(base, fx(p0), fy(p0), (reach / pw).toDouble(), (reach / ph).toDouble())
+                        val onScreen = base.map { CurveNode(v.screenX(it.x), v.screenY(it.y)) }
+                        var sel = if (mayEdit) CurveEdit.hit(onScreen, sx(p0), sy(p0), (reach / pw).toDouble(), (reach / ph).toDouble()) else -1
                         var cur = base
                         var added = false
                         var moved = false
+                        var pinched = false
                         var up = down.uptimeMillis
                         var longPress: Job? = null
                         var longPressed = false
+                        // empty space: a node will be added there when the finger moves or lifts (a second finger first: a pinch)
+                        val add = if (sel < 0 && mayEdit) layout.add(base, fx(p0), fy(p0), nowType) else null
                         if (sel >= 0) {
                             // on a node: a long press removes it (a timer, so that it fires with no event), a drag moves it
                             val hitNode = sel
                             longPress = scope.launch {
                                 delay(vc.longPressTimeoutMillis)
                                 longPressed = true
-                                ctx.controller.curveCommit(ctx.key, layout.writes(ch, CurveEdit.remove(base, hitNode), previous))
+                                ctx.controller.curveCommit(ctx.key, layout.writes(ch, layout.remove(base, hitNode), previous))
                             }
-                        } else {
-                            // empty space: a node is added there (and follows the finger)
-                            val add = CurveEdit.add(base, fx(p0), fy(p0), layout.maxNodes)
-                            if (add == null) {
-                                do { val e = awaitPointerEvent(); up = e.changes.maxOf { it.uptimeMillis } } while (e.changes.any { it.pressed })
-                                lastTap.longValue = up
-                                return@awaitEachGesture
-                            }
-                            cur = add.first
-                            sel = add.second
-                            added = true
-                            local = cur
-                            ctx.controller.curveDrag(ctx.key, layout.writes(ch, cur, previous))
+                            held = sel
                         }
-                        held = sel
                         var off = false
+                        var pinchFrom: Pair<Offset, Float>? = null
                         do {
                             val e = awaitPointerEvent()
                             up = e.changes.maxOf { it.uptimeMillis }
+                            val pressed = e.changes.filter { it.pressed }
+                            // brief P6f: rgb curve, two fingers before any edit: desktop's pan and zoom of the graph
+                            if (rgb && !moved && !added && !longPressed && pressed.size >= 2) {
+                                longPress?.cancel()
+                                pinched = true
+                                held = -1
+                                val a = pressed[0].position
+                                val b = pressed[1].position
+                                val centre = (a + b) / 2f
+                                val span = (a - b).getDistance().coerceAtLeast(1f)
+                                val last = pinchFrom
+                                if (last != null) {
+                                    val nv = CurveScale.pinch(GraphViews.view(ctx.key, ch), sx(last.first), sy(last.first), sx(centre), sy(centre), (span / last.second).toDouble())
+                                    GraphViews.zoom[ctx.key] = nv
+                                }
+                                pinchFrom = centre to span
+                                e.changes.forEach { it.consume() }
+                                continue
+                            }
+                            if (pinched) { e.changes.forEach { it.consume() }; continue }
                             val c = e.changes.firstOrNull { it.id == down.id }
-                            if (c != null && c.pressed && !longPressed) {
-                                if ((c.position - p0).getDistance() > vc.touchSlop) { moved = true; longPress?.cancel() }
+                            if (c != null && c.pressed && !longPressed && mayEdit) {
+                                if (!moved && (c.position - p0).getDistance() > vc.touchSlop) {
+                                    moved = true
+                                    longPress?.cancel()
+                                    if (sel < 0 && add != null) {
+                                        cur = add.first; sel = add.second; added = true; held = sel
+                                    }
+                                }
                                 // a node dragged off the graph is dropped there
                                 off = c.position.x < -inset || c.position.x > w + inset || c.position.y < -inset || c.position.y > h + inset
-                                if (!off && moved) {
-                                    cur = CurveEdit.move(cur, sel, fx(c.position), fy(c.position))
+                                if (!off && moved && sel >= 0) {
+                                    cur = layout.move(cur, sel, fx(c.position), fy(c.position))
                                     local = cur
                                     ctx.controller.curveDrag(ctx.key, layout.writes(ch, cur, previous))
                                 }
@@ -288,14 +343,23 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                             } else if (c != null && c.pressed) c.consume()
                         } while (e.changes.any { it.pressed })
                         longPress?.cancel()
-                        if (longPressed) { held = -1; return@awaitEachGesture } // the node was removed by the long press
-                        if (off) {
-                            val final = if (added) base else CurveEdit.remove(cur, sel)
+                        held = -1
+                        if (pinched) { lastTap.longValue = 0L; return@awaitEachGesture }
+                        if (longPressed) return@awaitEachGesture // the node was removed by the long press
+                        if (!mayEdit) { lastTap.longValue = up; return@awaitEachGesture }
+                        if (!moved && sel < 0 && add != null) {
+                            // a tap on empty space: the node is added there (one history item)
+                            local = add.first
+                            ctx.controller.curveCommit(ctx.key, layout.writes(ch, add.first, previous))
+                            lastTap.longValue = up
+                            return@awaitEachGesture
+                        }
+                        if (off && moved) {
+                            val final = if (added) base else layout.remove(cur, sel)
                             local = final
                             ctx.controller.curveDrag(ctx.key, layout.writes(ch, final, previous))
                         }
                         ctx.controller.curveEnd(ctx.key)
-                        held = -1
                         lastTap.longValue = if (moved || off) 0L else up
                     }
                 },
@@ -303,41 +367,63 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
             Canvas(Modifier.fillMaxSize()) {
                 val inset = insetDp.toPx()
                 val pw = size.width - 2 * inset
-                val ph = size.height - 2 * inset
+                val stripH = if (strip) stripDp.toPx() else 0f
+                val ph = size.height - 2 * inset - stripH * 2
                 val dim = if (mayEdit) 1f else 0.4f
-                histogramBars(hist, inset, inset, pw, ph, look.histogram)
-                val gl = look.gridLine.toPx()
-                for (i in 0..4) {
-                    val gx = inset + pw * i / 4
-                    val gy = inset + ph * i / 4
-                    drawRect(look.grid, Offset(gx - gl / 2, inset), Size(gl, ph))
-                    drawRect(look.grid, Offset(inset, gy - gl / 2), Size(pw, gl))
+                fun px(s: Double) = inset + pw * s.toFloat()
+                fun py(s: Double) = inset + ph - ph * s.toFloat()
+                clipRect(inset, inset, inset + pw, inset + ph) {
+                    if (view.zoom == 1.0) histogramBars(hist, inset, inset, pw, ph, look.histogram)
+                    val gl = look.gridLine.toPx()
+                    // the grid: quarters of the values, through the display scale (gui/draw.h dt_draw_loglog_grid, dt_draw_grid_zoomed)
+                    for (i in 0..4) {
+                        val gx = px(view.screenX(i / 4.0))
+                        val gy = py(view.screenY(i / 4.0))
+                        drawRect(look.grid, Offset(gx - gl / 2, inset), Size(gl, ph))
+                        drawRect(look.grid, Offset(inset, gy - gl / 2), Size(pw, gl))
+                    }
+                    // the identity, as desktop's diagonal (a satcurve's neutral line is the middle)
+                    if (op == "satcurvergb") drawRect(look.grid, Offset(inset, py(0.5) - gl / 2), Size(pw, gl))
+                    else segment(px(view.screenX(0.0)), py(view.screenY(0.0)), px(view.screenX(1.0)), py(view.screenY(1.0)), gl, look.grid)
+                    val lw = look.curveLine.toPx()
+                    fun curveLine(ns: List<CurveNode>, t: Int, color: Color, width: Float) {
+                        val steps = 128
+                        var qx0 = 0f
+                        var qy0 = 0f
+                        for (k in 0..steps) {
+                            val s = k.toDouble() / steps
+                            val qx = px(s)
+                            val qy = py(view.screenY(eval(ns, t, view.valueX(s).coerceIn(0.0, 1.0))))
+                            if (k > 0) segment(qx0, qy0, qx, qy, width, color)
+                            qx0 = qx; qy0 = qy
+                        }
+                    }
+                    for ((ns, t) in others) curveLine(ns, t, otherTint.copy(alpha = 0.5f), lw * 0.6f)
+                    curveLine(nodes, type, tint.copy(alpha = dim), lw)
+                    if (pick != null) {
+                        val x0 = px(pick.min)
+                        val x1 = px(pick.max)
+                        if (x1 > x0) drawRect(pickBand, Offset(x0, inset), Size(x1 - x0, ph))
+                        val xm = px(pick.mean)
+                        drawRect(pickLine, Offset(xm - lw / 2, inset), Size(lw, ph))
+                        // the picked value as a point on the curve
+                        val ym = py(view.screenY(eval(nodes, type, view.valueX(pick.mean).coerceIn(0.0, 1.0))).coerceIn(0.0, 1.0))
+                        nodeMark(xm, ym, look, true)
+                        if (pick.text.isNotEmpty()) drawText(textMeasurer, pick.text, Offset(inset + pw * 0.02f, inset + ph * 0.02f), pickTextStyle)
+                    }
+                    nodes.forEachIndexed { i, n -> nodeMark(px(view.screenX(n.x)), py(view.screenY(n.y)), look, held == i) }
+                    // base curve: the held node's "x / y ( ±difference)" in percent (basecurve.c dt_iop_basecurve_draw)
+                    val hn = nodes.getOrNull(held)
+                    if (op == "basecurve" && hn != null) {
+                        val t = "%.2f / %.2f ( %+.2f)".format(hn.x * 100, hn.y * 100, (hn.y - hn.x) * 100)
+                        val m = textMeasurer.measure(t, pickTextStyle)
+                        drawText(m, topLeft = Offset(inset + pw * 0.98f - m.size.width, inset + ph * 0.98f - m.size.height))
+                    }
                 }
-                // the identity, as desktop's diagonal
-                segment(inset, inset + ph, inset + pw, inset, gl, look.grid)
-                val steps = 96
-                var px = inset
-                var py = inset + ph - eval(nodes, type, 0.0).toFloat() * ph
-                val lw = look.curveLine.toPx()
-                for (s in 1..steps) {
-                    val x = s.toDouble() / steps
-                    val qx = inset + pw * x.toFloat()
-                    val qy = inset + ph - eval(nodes, type, x).toFloat() * ph
-                    segment(px, py, qx, qy, lw, tint.copy(alpha = dim))
-                    px = qx; py = qy
+                if (strip) {
+                    drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(satLow, satHigh), inset, inset + pw),
+                        Offset(inset, inset + ph + stripH), Size(pw, stripH))
                 }
-                if (pick != null) {
-                    val x0 = inset + pw * pick.min.toFloat()
-                    val x1 = inset + pw * pick.max.toFloat()
-                    if (x1 > x0) drawRect(pickBand, Offset(x0, inset), Size(x1 - x0, ph))
-                    val xm = inset + pw * pick.mean.toFloat()
-                    drawRect(pickLine, Offset(xm - lw / 2, inset), Size(lw, ph))
-                    // the picked value as a point on the curve
-                    val ym = inset + ph - eval(nodes, type, pick.mean).toFloat().coerceIn(0f, 1f) * ph
-                    nodeMark(xm, ym, look, true)
-                    drawText(textMeasurer, pick.text, Offset(inset + pw * 0.02f, inset + ph * 0.02f), pickTextStyle)
-                }
-                nodes.forEachIndexed { i, n -> nodeMark(inset + pw * n.x.toFloat(), inset + ph - ph * n.y.toFloat(), look, held == i) }
             }
         }
     }

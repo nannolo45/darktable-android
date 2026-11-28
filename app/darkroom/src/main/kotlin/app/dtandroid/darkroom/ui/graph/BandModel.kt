@@ -87,7 +87,15 @@ data class BandCurve(
     fun reset(): BandCurve = copy(xs = resetXs, ys = resetYs, type = resetType)
 }
 
-data class BandTab(val label: String, val curves: List<BandCurve>, val sharedX: Boolean = false) {
+data class BandTab(
+    val label: String,
+    val curves: List<BandCurve>,
+    val sharedX: Boolean = false,
+    /** brief P6f: the channel colour of the tab's curve (0 neutral, 1 red, 2 green, 3 blue, 4 the second colour: raw denoise, denoise (profiled)) */
+    val tint: Int = 0,
+    /** brief P6f: the other tabs' curves, drawn faint behind (desktop draws every channel, the selected one last) */
+    val ghosts: List<Pair<BandCurve, Int>> = emptyList(),
+) {
     fun writesFrom(base: BandTab, clearRemoved: Boolean = true): List<BandWrite> =
         curves.indices.flatMap { curves[it].writesFrom(base.curves[it], clearRemoved) }
 
@@ -105,10 +113,15 @@ class BandView(
     /** nodes of the first curve can be taken at the strip under the graph (contrast equalizer) */
     val xStrip: Boolean = false,
     val gridX: Int = 8,
+    /** brief P6f: the smallest brush radius (desktop's scroll limit: 0.2 / bands for lowlight and the denoise modules) */
+    val radiusMin: Double = BandModels.RADIUS_MIN,
+    /** brief P6f: words at the ends of the x axis and at the bottom and top of the graph, where desktop writes them */
+    val xWords: Pair<String, String>? = null,
+    val yWords: Pair<String, String>? = null,
 )
 
 object BandModels {
-    val OPS = setOf("atrous", "colorzones", "colorequal")
+    val OPS = setOf("atrous", "colorzones", "colorequal", "lowlight", "rawdenoise", "denoiseprofile")
 
     const val RADIUS_MIN = 0.02
     const val RADIUS_MAX = 1.0
@@ -121,7 +134,87 @@ object BandModels {
         "atrous" -> atrous(p)
         "colorzones" -> zones(p)
         "colorequal" -> equalizer(p)
+        "lowlight" -> lowlight(p)
+        "rawdenoise" -> rawdenoise(p)
+        "denoiseprofile" -> denoiseprofile(p)
         else -> null
+    }
+
+    // ------------------------------------------------------------------ brief P6f: lowlight vision, raw denoise, denoise (profiled)
+
+    /**
+     * One curve of [bands] nodes with x in `x[k]` and y in `y[k]` (paths from [xPath], [yPath]), as lowlight.c,
+     * rawdenoise.c and denoiseprofile.c keep them: `init` puts x at k / (bands - 1), y defaults to 0.5, Catmull-Rom
+     * (`dt_draw_curve_new(0, 1, CATMULL_ROM)`), the ends' x fixed.
+     */
+    private fun fixedBands(p: JsonObject, bands: Int, name: String, xPath: (Int) -> String, yPath: (Int) -> String): BandCurve? {
+        val xs = (0 until bands).map { p.num(xPath(it)) ?: return null }
+        val ys = (0 until bands).map { p.num(yPath(it)) ?: return null }
+        val defaultXs = (0 until bands).map { it / (bands - 1.0) }
+        val ordered = xs.zipWithNext().all { (a, b) -> a < b }
+        return BandCurve(
+            name = name, xs = if (ordered) xs else defaultXs, ys = ys,
+            xPaths = (0 until bands).map(xPath), yPaths = (0 until bands).map(yPath),
+            resetXs = defaultXs, resetYs = List(bands) { 0.5 },
+            type = BandInterp.CATMULL, resetType = BandInterp.CATMULL, minGap = 0.001, endsFixed = true,
+        )
+    }
+
+    const val LOWLIGHT_BANDS = 6
+
+    /**
+     * lowlight.c: the transition curve, x the luminance (dark to bright), y night to day vision; the soft brush
+     * (`dt_iop_lowlight_get_params`, radius 1/6, scroll 0.2/6..1) and the inner nodes' x moved at the strip under the
+     * graph (`lowlight_motion_notify`, x_move, 0.001 from the neighbours); double click resets x and y.
+     */
+    private fun lowlight(p: JsonObject): BandView? {
+        val c = fixedBands(p, LOWLIGHT_BANDS, "lowlight", { "transition_x[$it]" }, { "transition_y[$it]" }) ?: return null
+        return BandView("lowlight", BandAxis.LIGHTNESS, listOf(BandTab("lowlight", listOf(c))),
+            defaultRadius = 1.0 / LOWLIGHT_BANDS, brushAlways = true, xStrip = true, gridX = 8, radiusMin = 0.2 / LOWLIGHT_BANDS,
+            xWords = "dark" to "bright", yWords = "night vision" to "day vision")
+    }
+
+    const val RAWDENOISE_BANDS = 5
+    private val RGB_TABS = listOf("all", "R", "G", "B")
+
+    /**
+     * rawdenoise.c: four curves (all, R, G, B) of five bands, y only (`rawdenoise_motion_notify` never moves an x),
+     * the soft brush (radius 1/10, scroll 0.2/5..1), every channel drawn, the selected one last.
+     */
+    private fun rawdenoise(p: JsonObject): BandView? {
+        val curves = RGB_TABS.indices.map { ch -> fixedBands(p, RAWDENOISE_BANDS, RGB_TABS[ch], { "x[$ch][$it]" }, { "y[$ch][$it]" }) ?: return null }
+        val tabs = RGB_TABS.indices.map { ch -> BandTab(RGB_TABS[ch], listOf(curves[ch]), tint = ch, ghosts = curves.indices.filter { it != ch }.map { curves[it] to it }) }
+        return BandView("rawdenoise", BandAxis.FREQUENCY, tabs,
+            defaultRadius = 1.0 / (RAWDENOISE_BANDS * 2), brushAlways = true, gridX = 8, radiusMin = 0.2 / RAWDENOISE_BANDS)
+    }
+
+    const val DENOISE_BANDS = 7
+
+    /** denoise (profiled)'s colour mode: true for Y0U0V0 (the enum's constant name or number) */
+    fun denoiseY0U0V0(p: JsonObject): Boolean {
+        val t = p.text("wavelet_color_mode") ?: return true
+        t.toDoubleOrNull()?.let { return it.toInt() == 1 }
+        return t == "MODE_Y0U0V0"
+    }
+
+    /**
+     * denoiseprofile.c, wavelets mode: six curves of seven bands, y only; the tabs are all, R, G, B with the RGB colour
+     * mode (channels 0..3) and luma, chroma with Y0U0V0 (channels 4, 5: `denoiseprofile_tab_switch`); the soft brush
+     * (radius 1/14, scroll 0.2/7..1); "coarse" to "fine", "noisy" (bottom) to "smooth" (top).
+     */
+    private fun denoiseprofile(p: JsonObject): BandView? {
+        val y0 = denoiseY0U0V0(p)
+        val chans = if (y0) listOf(4, 5) else listOf(0, 1, 2, 3)
+        val labels = if (y0) listOf("luma", "chroma") else RGB_TABS
+        val curves = chans.mapIndexed { i, ch -> fixedBands(p, DENOISE_BANDS, labels[i], { "x[$ch][$it]" }, { "y[$ch][$it]" }) ?: return null }
+        // desktop draws the mode's other curves faint behind the selected one: all grey, R, G, B; luma grey, chroma orange
+        val tints = if (y0) listOf(0, 4) else listOf(0, 1, 2, 3)
+        val tabs = chans.indices.map { i ->
+            BandTab(labels[i], listOf(curves[i]), tint = tints[i], ghosts = curves.indices.filter { it != i }.map { curves[it] to tints[it] })
+        }
+        return BandView("denoiseprofile", BandAxis.FREQUENCY, tabs,
+            defaultRadius = 1.0 / (DENOISE_BANDS * 2), brushAlways = true, gridX = 8, radiusMin = 0.2 / DENOISE_BANDS,
+            xWords = "coarse" to "fine", yWords = "noisy" to "smooth")
     }
 
     // ------------------------------------------------------------------ contrast equalizer

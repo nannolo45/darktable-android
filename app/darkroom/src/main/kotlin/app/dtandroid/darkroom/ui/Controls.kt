@@ -127,8 +127,8 @@ private fun Controls(controls: List<Control>, ctx: PanelContext) {
         // brief P3e-b: what the band editor replaces (its notebook, colour zones' own lists) is not built here
         if (!Rules.isVisible(ctx.module, c, ctx.inputs) || BandHost.hides(ctx.module, c)) continue
         ControlView(c, ctx)
-        // brief P2j: a control that waits for a later tool says so in one line
-        ctx.module.notes[c.id]?.let { ControlNote(it) }
+        // brief P2j: a control that waits for a later tool says so in one line (brief P6f: not under a slider the app now drives)
+        if (!app.dtandroid.darkroom.ui.graph.GraphViews.isScaleSlider(ctx.module.op, c)) ctx.module.notes[c.id]?.let { ControlNote(it) }
     }
 }
 
@@ -142,6 +142,11 @@ private fun ControlView(c: Control, ctx: PanelContext) {
     // brief P6e: framing's colour rows, watermark's marker/text/font/colour grid and its alignment are hand-built
     if (app.dtandroid.darkroom.FramingWatermarkNodes.handles(ctx.module.op, c.id)) {
         FramingWatermarkRows(c.id, ctx)
+        return
+    }
+    // brief P6f: tone curve's and base curve's "scale for graph", a display zoom of the curve graph (no parameter)
+    if (c is Control.Slider && app.dtandroid.darkroom.ui.graph.GraphViews.isScaleSlider(ctx.module.op, c)) {
+        app.dtandroid.darkroom.ui.graph.GraphScaleSlider(c, ctx)
         return
     }
     when (c) {
