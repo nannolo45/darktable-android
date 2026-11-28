@@ -204,7 +204,7 @@ class P6fGraphEditorsTest {
         val now = BandModels.build("lowlight", params(c, low))!!.tabs[0]
         c.bandApply(low, now.reset().writesFrom(now))
         waitFor("reset") { items(c) == items0 + 2 }
-        assertEquals(0.6, num(params(c, low), "transition_x[2]")!!, 1e-6)
+        assertEquals("the double tap puts x back at k / 5", 0.4, num(params(c, low), "transition_x[2]")!!, 1e-6)
         c.undo()
         waitFor("undo") { num(params(c, low), "transition_x[2]")?.let { Math.abs(it - 0.599) < 1e-6 } == true }
     }

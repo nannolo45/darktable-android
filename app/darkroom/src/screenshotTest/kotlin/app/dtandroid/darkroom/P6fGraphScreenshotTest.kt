@@ -7,6 +7,8 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import app.dtandroid.darkroom.ui.DarkroomLayout
@@ -47,7 +49,14 @@ abstract class P6fGraphScreens : ScreenshotBase() {
 
     private fun params(c: DarkroomController, key: InstanceKey) = c.state.value.modules.first { it.key == key }.params
 
+    /** The panel scrolled until [target] is composed (the module list is lazy: a control far down is not there yet). */
     private fun scrollTo(target: SemanticsMatcher) {
+        val n = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
+        for (i in 0 until n) {
+            if (compose.onAllNodes(target).fetchSemanticsNodes().isNotEmpty()) break
+            runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(target) }
+            compose.waitForIdle()
+        }
         runCatching { compose.onNode(hasScrollAction() and hasAnyDescendant(target)).performScrollToNode(target) }
         compose.waitForIdle()
     }
@@ -59,7 +68,9 @@ abstract class P6fGraphScreens : ScreenshotBase() {
         settle(c)
         scrollTo(hasContentDescription(graph, substring = true))
         settle(c)
-        compose.onNodeWithContentDescription(graph, substring = true).assertExists()
+        try { compose.onNodeWithContentDescription(graph, substring = true).assertExists() } catch (e: AssertionError) {
+            throw AssertionError(e.message + compose.onRoot().printToString(60).take(6000), e)
+        }
         capture("phone-${skin.key}-p6f-$name")
     }
 
@@ -166,7 +177,7 @@ abstract class P6fGraphScreens : ScreenshotBase() {
         GraphViews.zoom.clear()
         // rgb curve: two fingers spread: the graph zooms, nothing is written
         val rgb = InstanceKey("rgbcurve", 0)
-        val c2 = show(tokens = tokens) { toggleExpanded(rgb) }
+        val c2 = show(tokens = tokens) { setEnabled(rgb, true); toggleExpanded(rgb) }
         settle(c2)
         val items1 = c2.state.value.history.items.size
         compose.onNodeWithContentDescription("curve graph").performTouchInput {
