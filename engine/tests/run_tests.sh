@@ -470,6 +470,11 @@ print([m["version"] for m in json.loads(sys.stdin.readline()) if m["op"] == "exp
     drv C46 colordialog "colour dialog writes (no drift, one item), framing and watermark pickers, watermark files, fonts, file/text/font/colour/alignment, text draws pixels, XMP round trip"
     parity C46 p6e_watermark
   fi
+  # brief P6f: the graph editors' curves of five modules, each against darktable-cli
+  if want C47; then
+    drv C47 graphs "graph editors' curves: base curve, saturation curve, lowlight, raw denoise, denoise (profiled) wavelets: one item, read back, render differs from the default curve, XMP round trip"
+    for m in basecurve satcurvergb lowlight rawdenoise denoiseprofile; do parity C47 "p6f_$m"; done
+  fi
   if want C39; then drv C39 diffpreset "diffuse built-in presets listed as stored (_builtin_ prefix), lens deblur | medium applied by that name"; fi
   # brief P5a: every module of the pipe switched on with its defaults, one at a time, bridge vs darktable-cli
   # (one Bayer and one X-Trans image). p5a_hook.sh renders and compares after each module. If the bridge stops

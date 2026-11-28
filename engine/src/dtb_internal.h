@@ -249,6 +249,8 @@ int dtb__module_action_p6a(dt_iop_module_t *m, const char *action, JsonObject *a
 int dtb__module_action_agx(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 /* brief P6e (p6e_actions.c): borders and watermark pickers, watermark list_files and list_fonts; 1 = no such action */
 int dtb__module_action_p6e(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
+/* brief P6f (p6f_actions.c): saturation curve's picker (the picked saturation for the graph); 1 = no such action */
+int dtb__module_action_p6f(dt_iop_module_t *m, const char *action, JsonObject *args, char **result);
 /* brief P6e: on Android, a fontconfig configuration with the APK's font and the phone's fonts (before dt_init) */
 void dtb__fonts_setup(const char *datadir, const char *cachedir);
 /* "area": [x0, y0, x1, y1] or "point": [x, y] of a request or action arguments */

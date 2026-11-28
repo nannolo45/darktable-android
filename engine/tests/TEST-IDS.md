@@ -70,6 +70,7 @@ Brief: the brief (`docs/briefs/`) that introduced it.
 | C44 | lut3dfiles | dtb_test_p6b.c | P6b | LUT folder set through the bridge; .cube, .3dl, Hald .png by relative path; missing file; darktable-cli parity |
 | C45 | lensbyhand | dtb_test_p6d.c | P6d | lens correction by hand: camera and lens lists, auto-searches on Exif, get_state, set_camera, set_lens, set_value, one history item each, refusals, undo, XMP round trip, render differs from module off; darktable-cli parity |
 | C46 | colordialog | dtb_test_p6e.c | P6e | framing border and frame line colours as the colour dialog writes them (one item, no drift), framing and watermark pickers, watermark list_files and list_fonts, file/text/font/colour/alignment, a text watermark draws pixels, XMP round trip; darktable-cli parity |
+| C47 | graphs | dtb_test_p6f.c | P6f | the graph editors' curves (base curve, saturation curve, lowlight, raw denoise, denoise (profiled) wavelets): one params_set is one item and reads back, render differs from the default curve, XMP round trip (parameters and render identical); darktable-cli parity per module |
 
 ## Shared ids
 

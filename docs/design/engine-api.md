@@ -280,6 +280,13 @@ JSON of one style (`dtb_styles_list`):
     bridge writes a fontconfig configuration before `dt_init` (`<cachedir>/fontconfig/fonts.conf`: the APK's
     `share/fonts` with DejaVu Sans, `/system/fonts`, `/product/fonts`); `config` names it (null on Linux) and
     `default_config_fonts` is how many fonts fontconfig's built-in configuration found (null on Linux).
+  - Brief P6f: `satcurvergb: pick {point | area}` → `{picked, saturation, saturation_min, saturation_max, gamut_lut}`:
+    satcurvergb.c `color_picker_apply`: the picked mean, min and max of the module's input (working RGB) through
+    `pixel_s_in_norm` (copied verbatim into `engine/src/p6f_actions.c`) with the module's formula, the gamut LUT of the
+    module's piece in the bridge's pipe (a LUT of ones when it has none, as `_get_gamut_lut_for_picker`) and the
+    working profile. Writes nothing (desktop only marks the values on the graph). `gamut_lut` says whether the pipe's
+    LUT was used. The curves of the P6f graph editors (base curve, saturation curve, lowlight, raw denoise, denoise
+    (profiled)) need no action: they are parameter arrays written with `params_set` (test C47).
   *Why module actions and not an unchecked `param_set` (P2j question 1):* the out-of-range values are fixed values one
   desktop callback writes, not a range; an action writes exactly those values and nothing else, while a flag on
   `param_set` would open every field to any value and remove the range check that protects the XMP.

@@ -102,6 +102,7 @@ add_library(dtbridge SHARED
   src/p6a_actions.c # pickers and auto buttons of brief P6a
   src/p6a_agx.c     # AgX's pickers and buttons (P6a)
   src/p6e_actions.c # framing and watermark colour pickers, watermark files and fonts (P6e)
+  src/p6f_actions.c # saturation curve's picker (P6f)
   src/coords.c      # coordinates original <-> processed (P1b part 2, 6.5)
   src/blend.c       # blending of an instance (P1b part 2, 6.6)
   src/masks.c       # drawn masks (P1b part 2, 6.7)

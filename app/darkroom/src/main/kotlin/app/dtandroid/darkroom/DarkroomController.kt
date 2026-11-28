@@ -1926,7 +1926,16 @@ class DarkroomController(
             if (e.error == EngineError.CANCELLED) return
             null
         } else null
-        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = pick?.input, moduleOutput = pick?.output, picks = it.picks + 1)) } ?: s }
+        // brief P6f: saturation curve marks the picked saturation on its graph (the engine's color_picker_apply numbers)
+        val saturation = if (sel != null && p.key.op == "satcurvergb") try {
+            (engine.moduleAction(p.key.op, p.key.priority, "pick", JsonObject(sel.toJson())) as? JsonObject)?.let { r ->
+                listOf("saturation", "saturation_min", "saturation_max").map { k -> (r[k] as? JsonPrimitive)?.doubleOrNull ?: return@let null }
+            }
+        } catch (e: EngineException) {
+            if (e.error == EngineError.CANCELLED) return
+            null
+        } else null
+        _state.update { s -> s.picker?.takeIf { it.key == p.key && it.controlId == p.controlId }?.let { s.copy(picker = it.copy(readout = lines, moduleInput = pick?.input, moduleOutput = pick?.output, picks = it.picks + 1, saturation = saturation)) } ?: s }
     }
 
     /**

@@ -212,8 +212,13 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
     val hist = if (lab || rgb) counts(rememberHistogram(ctx), if (rgb && independent) ch else null) else null
     // the picker armed on this module: what it took, on the graph (desktop: band, line at the mean, "in → out")
     val pickState = ctx.state.picker?.takeIf { it.key == ctx.key }
-    val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, params, ch, view) {
-        pickState?.let { CurvePick.mark(op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput, view) }
+    val pick = remember(pickState?.moduleInput, pickState?.moduleOutput, pickState?.saturation, params, ch, view) {
+        pickState?.let {
+            // brief P6f: saturation curve, the picked saturation (satcurvergb.c _draw_sat_picker: band min..max, line at the mean, no text)
+            val sat = it.saturation
+            if (op == "satcurvergb") sat?.let { v -> CurvePickMark(v[1].coerceIn(0.0, 1.0), v[0].coerceIn(0.0, 1.0), v[2].coerceIn(0.0, 1.0), "") }
+            else CurvePick.mark(op, if (rgb && !independent) 0 else ch, params, it.moduleInput, it.moduleOutput, view)
+        }
     }
     val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
     val pickTextStyle = DtTheme.type.small.copy(color = look.line)
@@ -408,7 +413,7 @@ private fun CurveEditorBody(layout: CurveLayout, ctx: PanelContext) {
                         drawRect(pickLine, Offset(xm - lw / 2, inset), Size(lw, ph))
                         // the picked value as a point on the curve
                         val ym = py(view.screenY(eval(nodes, type, view.valueX(pick.mean).coerceIn(0.0, 1.0))).coerceIn(0.0, 1.0))
-                        nodeMark(xm, ym, look, true)
+                        if (op != "satcurvergb") nodeMark(xm, ym, look, true)
                         if (pick.text.isNotEmpty()) drawText(textMeasurer, pick.text, Offset(inset + pw * 0.02f, inset + ph * 0.02f), pickTextStyle)
                     }
                     nodes.forEachIndexed { i, n -> nodeMark(px(view.screenX(n.x)), py(view.screenY(n.y)), look, held == i) }
