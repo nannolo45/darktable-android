@@ -113,7 +113,8 @@ abstract class P6fGraphScreens : ScreenshotBase() {
     @Test fun shot05() {
         GraphViews.logBase.clear(); GraphViews.zoom.clear()
         shot("05-denoise-luma", "denoiseprofile", "band graph") { k ->
-            bandApply(k, (0..5).flatMap { ch -> bandXs(7).mapIndexed { i, x -> "x[$ch][$i]" to JsonPrimitive(x) } } +
+            // the stand-in starts in "non-local means auto" (it reads the list's position as the value); the graph is the wavelets mode's
+            bandApply(k, listOf("mode" to JsonPrimitive("MODE_WAVELETS")) + (0..5).flatMap { ch -> bandXs(7).mapIndexed { i, x -> "x[$ch][$i]" to JsonPrimitive(x) } } +
                 listOf(0.3, 0.4, 0.55, 0.7, 0.8, 0.85, 0.9).mapIndexed { i, y -> "y[4][$i]" to JsonPrimitive(y) } +
                 listOf(0.6, 0.6, 0.65, 0.7, 0.6, 0.5, 0.5).mapIndexed { i, y -> "y[5][$i]" to JsonPrimitive(y) })
         }
@@ -122,7 +123,7 @@ abstract class P6fGraphScreens : ScreenshotBase() {
     @Test fun shot06() {
         GraphViews.logBase.clear(); GraphViews.zoom.clear()
         shot("06-denoise-rgb-B", "denoiseprofile", "band graph") { k ->
-            bandApply(k, listOf("wavelet_color_mode" to JsonPrimitive("MODE_RGB")) +
+            bandApply(k, listOf("mode" to JsonPrimitive("MODE_WAVELETS"), "wavelet_color_mode" to JsonPrimitive("MODE_RGB")) +
                 (0..5).flatMap { ch -> bandXs(7).mapIndexed { i, x -> "x[$ch][$i]" to JsonPrimitive(x) } } +
                 listOf(0.7, 0.6, 0.55, 0.5, 0.45, 0.4, 0.4).mapIndexed { i, y -> "y[0][$i]" to JsonPrimitive(y) } +
                 listOf(0.5, 0.55, 0.6, 0.7, 0.75, 0.8, 0.8).mapIndexed { i, y -> "y[3][$i]" to JsonPrimitive(y) })
@@ -181,8 +182,9 @@ abstract class P6fGraphScreens : ScreenshotBase() {
         settle(c2)
         val items1 = c2.state.value.history.items.size
         compose.onNodeWithContentDescription("curve graph").performTouchInput {
-            down(0, at(0.45, 0.5)); down(1, at(0.55, 0.5))
-            for (i in 1..8) { moveTo(0, at(0.45 - 0.03 * i, 0.5)); moveTo(1, at(0.55 + 0.03 * i, 0.5)) }
+            // in the upper part of the graph: the phone shows only its top above the tab bar (as P3e's touch test)
+            down(0, at(0.45, 0.85)); down(1, at(0.55, 0.85))
+            for (i in 1..8) { moveTo(0, at(0.45 - 0.03 * i, 0.85)); moveTo(1, at(0.55 + 0.03 * i, 0.85)) }
             up(0); up(1)
         }
         waitUntil("zoomed") { (GraphViews.zoom[rgb]?.zoom ?: 1.0) > 2.0 }

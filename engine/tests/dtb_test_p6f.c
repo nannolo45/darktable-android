@@ -139,8 +139,9 @@ static int cmd_graphs(const char *raw, const char *xmp, const char *outdir)
     { "rawdenoise", "{\"threshold\": 0.1}",
       "{\"y[0][0]\": 1, \"y[0][1]\": 1, \"y[0][2]\": 1, \"y[0][3]\": 0.9, \"y[0][4]\": 0.8, \"y[1][2]\": 0.9}",
       { "y/0/0", "y/0/4", "y/1/2" }, { 1, 0.8, 0.9 } },
-    // denoise (profiled), wavelets, Y0U0V0: the luma curve raised (denoiseprofile.c y[4])
-    { "denoiseprofile", "{\"mode\": \"MODE_WAVELETS\", \"wavelet_color_mode\": \"MODE_Y0U0V0\", \"use_new_vst\": true}",
+    // denoise (profiled), wavelets, Y0U0V0: the luma curve raised (denoiseprofile.c y[4]); a strength that shows on
+    // the clean test images (at 1, raising the curve changed 0 pixels of the raf by more than 2, g0 46087211920)
+    { "denoiseprofile", "{\"mode\": \"MODE_WAVELETS\", \"wavelet_color_mode\": \"MODE_Y0U0V0\", \"use_new_vst\": true, \"strength\": 20}",
       "{\"y[4][0]\": 1, \"y[4][1]\": 1, \"y[4][2]\": 1, \"y[4][3]\": 1, \"y[4][4]\": 0.9, \"y[4][5]\": 0.8, \"y[4][6]\": 0.8}",
       { "y/4/0", "y/4/5", "y/5/0" }, { 1, 0.8, 0.5 } },
   };
