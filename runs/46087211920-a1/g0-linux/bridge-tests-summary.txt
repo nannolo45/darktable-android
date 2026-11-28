@@ -1,0 +1,28 @@
+== cr2: mire1.cr2 with exposure.xmp
+PASS C14 cr2: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 28 entries; current input DT_COLORSPACE_ENHANCED_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_STANDARD_MATRIX;denoiseprofile: 15 entries, current index 0;get_wb before: preset as shot, preset_index set;get_wb after 'daylight' tuning 0: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 288 of 302 lenses with min_aperture;
+PASS C14 cr2: size 4342x2891 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 cr2: graph editors' curves: base curve, saturation curve, lowlight, raw denoise, denoise (profiled) wavelets: one item, read back, render differs from the default curve, XMP round trip: basecurve curve vs default curve: 9692215 of 10168616 pixels differ by more than 2 (95.315%), mean difference 12.0454, max 36;basecurve XMP round trip render differs by 0;satcurvergb curve vs default curve: 4169262 of 10168616 pixels differ by more than 2 (41.001%), mean difference 5.0499, max 212;satcurvergb XMP round trip render differs by 0;lowlight curve vs default curve: 8924567 of 10168616 pixels differ by more than 2 (87.766%), mean difference 6.4169, max 172;lowlight XMP round trip render differs by 0;rawdenoise curve vs default curve: 6296071 of 10168616 pixels differ by more than 2 (61.917%), mean difference 9.3874, max 191;rawdenoise XMP round trip render differs by 0;denoiseprofile curve vs default curve: 136292 of 10168616 pixels differ by more than 2 (1.340%), mean difference 0.7813, max 13;denoiseprofile XMP round trip render differs by 0;satcurvergb pick at the centre: saturation 0.2253 (min 0.2253, max 0.2253), pipe gamut LUT yes;
+PASS C47 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 cr2: size 3908x2602 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== raf: xtransIV.raf with lens-metadata-xtransIV-modversion-7.xmp
+PASS C14 raf: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 27 entries; current input DT_COLORSPACE_STANDARD_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_SRGB;denoiseprofile: 23 entries, current index 0;get_wb before: preset camera reference, preset_index set;get_wb after 'daylight' tuning 0: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 83 of 90 lenses with min_aperture;
+PASS C14 raf: size 6944x4631 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL C47 raf: graph editors' curves: base curve, saturation curve, lowlight, raw denoise, denoise (profiled) wavelets: one item, read back, render differs from the default curve, XMP round trip: FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6f.c:93: denoiseprofile: the curve changed only 0 pixels []; see /home/runner/bridge-tests/raf/C47.log
+PASS C47 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 raf: size 6250x4168 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+== arw: hlrecovery.arw with spektrafilm.xmp
+PASS C14 arw: colorin profiles, denoise current, WB tuning, framing aspect, lens md: colorin profiles: 27 entries; current input DT_COLORSPACE_STANDARD_MATRIX, current work DT_COLORSPACE_LIN_REC2020;colorin set input profile DT_COLORSPACE_SRGB;denoiseprofile: 25 entries, current index 0;get_wb before: preset as shot, preset_index set;get_wb after 'daylight' tuning -6: tuning set, preset_index 2 (expected 2);lens use_latest_md: md_version DT_IOP_LENS_EMBEDDED_METADATA_VERSION_2, scale_md_v1 0;list_lenses: 1 of 1 lenses with min_aperture;
+PASS C14 arw: size 6102x4080 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+FAIL C47 arw: graph editors' curves: base curve, saturation curve, lowlight, raw denoise, denoise (profiled) wavelets: one item, read back, render differs from the default curve, XMP round trip: FAIL /home/runner/work/darktable-android/darktable-android/engine/tests/dtb_test_p6f.c:93: denoiseprofile: the curve changed only 1367 pixels []; see /home/runner/bridge-tests/arw/C47.log
+PASS C47 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS C47 arw: size 5492x3672 max 0 mean 0.00000 psnr inf differing_values_pct 0.0000
+PASS safety: RAW files unchanged
