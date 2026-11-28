@@ -1,0 +1,15 @@
+a_cut	cut at 1048576 of 15855600 bytes; on the phone after the cut: 1048576 bytes; failure: UNREACHABLE
+a_resume	requests: [200 whole, 206 bytes=1048576-]; resumed in 136 ms
+a_open	opened and rendered 512x340
+a	passed
+b_0_engine_started_no_photo	pipelines 0.0 + 0.0 MB (peak 0.0 + 0.0), image cache full 39.4 MB in 2 of 2 buffers, f 39.6 MB in 2 of 2, thumbs 0.0 MB in 0 (limit 153.1 MB), process RSS 421.3 MB; app PSS 316 MB (x86_64 emulator)
+b_1_photo_open_rendered	pipelines 0.0 + 77.5 MB (peak 0.0 + 77.5), image cache full 39.4 MB in 2 of 2 buffers, f 39.6 MB in 2 of 2, thumbs 0.0 MB in 0 (limit 153.1 MB), process RSS 492.9 MB; app PSS 388 MB (x86_64 emulator)
+b_2_after_level_1	pipelines 0.0 + 0.0 MB (peak 0.0 + 77.5), image cache full 19.7 MB in 1 of 2 buffers, f 19.8 MB in 1 of 2, thumbs 0.0 MB in 0 (limit 153.1 MB), process RSS 393.3 MB; app PSS 289 MB (x86_64 emulator)
+b_3_after_trim_memory_complete	pipelines 0.0 + 0.0 MB (peak 0.0 + 0.0), image cache full 0.0 MB in 0 of 2 buffers, f 0.0 MB in 0 of 2, thumbs 0.0 MB in 0 (limit 153.1 MB), process RSS 362.4 MB; app PSS 258 MB (x86_64 emulator)
+b_4_first_render_after_level_2_ms	384
+b_5_rendered_again	pipelines 0.0 + 77.5 MB (peak 0.0 + 77.5), image cache full 19.7 MB in 1 of 2 buffers, f 19.8 MB in 1 of 2, thumbs 0.0 MB in 0 (limit 153.1 MB), process RSS 484.0 MB; app PSS 380 MB (x86_64 emulator)
+b	passed
+c_exit_reasons	read on the device: 0 added (earlier runs of the test app); entries []
+c_message	darkroom says: cannot open P4A_NOT_A_RAW.cr2: darktable found no picture in this file (not a RAW it can read, or a broken download)
+c_bridge_entries	[cannot open JUNK_F8.CR2: IO: darktable found no picture in this file (not a RAW it can read, or a broken download), ARG: style 'p3b test|unknown' cannot be applied: item 9 'p3bnosuchmodule' unknown_operation (version 1, blend version 13), cannot open P4A_NOT_A_RAW.cr2: IO: darktable found no picture in this file (not a RAW it can read, or a broken download)]
+c	passed
