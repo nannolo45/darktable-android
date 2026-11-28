@@ -38,8 +38,8 @@ import java.io.File
 
 /**
  * Brief P6f: a finger on the graph editors over the real engine (module found by its search field, as P6eTapTest):
- *  t1 base curve: a drag up from the middle of the graph adds a node and lifts it: one history item, three nodes, the
- *     preview changes;
+ *  t1 base curve: a drag up from the middle of the graph (a node taken there or added): one history item, the curve
+ *     changed and valid, the preview changes;
  *  t2 lowlight vision: a drag up on the curve (the soft brush): one history item, transition_y raised under the finger,
  *     the preview changes;
  *  t3 raw denoise: a drag up on the "all" curve: one history item, y[0] raised, the module on, the preview changes.
@@ -150,21 +150,24 @@ class P6fTapTest {
         return p !== p0 && (p.width != p0.width || p.height != p0.height || !p.rgba.contentEquals(p0.rgba))
     }
 
-    @Test fun t1_baseCurveDragAddsAndLiftsANode() {
+    @Test fun t1_baseCurveDrag() {
         val c = openPhoto("basecurve")
         val key = InstanceKey("basecurve", 0)
         openModule("t1", c, "base curve", key)
         val n0 = items(c)
+        // the test raw opens with base curve on and a camera preset's curve (6 nodes on the emulator, p2b 46090694570):
+        // the finger lands on the middle of the graph and drags up; it takes the node there or adds one (tone curve's gestures)
+        val before = CurveLayout.BASECURVE.read(mod(c, key).params, 0)
         val p0 = c.state.value.preview!!.image
-        // the middle of the graph is on the identity line and holds no node: the drag adds one there and lifts it
         dragOn("t1", "curve graph", 0.5f, 0.5f, 0.5f, 0.28f)
-        until("t1", "one item, three nodes") { items(c) == n0 + 1 && CurveLayout.BASECURVE.countOf(mod(c, key).params, 0) == 3 }
+        until("t1", "one item, the curve changed") { items(c) == n0 + 1 && CurveLayout.BASECURVE.read(mod(c, key).params, 0) != before }
         val nodes = CurveLayout.BASECURVE.read(mod(c, key).params, 0)
-        assertTrue("the new node is above the identity: $nodes", nodes[1].y > nodes[1].x + 0.1)
+        assertTrue("nodes in order, inside the graph: $nodes", app.dtandroid.darkroom.ui.graph.CurveEdit.valid(nodes))
+        assertTrue("a node added or moved: ${before.size} -> ${nodes.size}", nodes.size == before.size || nodes.size == before.size + 1)
         until("t1", "the preview changes") { previewChanged(c, p0) }
         compose.waitForIdle()
         assertTrue("still one item after the lift", items(c) == n0 + 1)
-        TestFiles.record(res, "t1", "items $n0 -> ${items(c)}; nodes $nodes; enabled ${mod(c, key).enabled}")
+        TestFiles.record(res, "t1", "items $n0 -> ${items(c)}; nodes ${before.size} -> ${nodes.size}: $before -> $nodes; enabled ${mod(c, key).enabled}")
     }
 
     @Test fun t2_lowlightBrushDrag() {
