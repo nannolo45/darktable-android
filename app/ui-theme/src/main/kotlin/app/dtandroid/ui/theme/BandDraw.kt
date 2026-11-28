@@ -20,6 +20,10 @@ class BandLine(
     val points: FloatArray,
     /** the second curve of a tab (drawn in the second colour) */
     val second: Boolean = false,
+    /** brief P6f: a channel's own colour (a token the screen passes), else the band's curve colour */
+    val color: androidx.compose.ui.graphics.Color? = null,
+    /** brief P6f: another channel's curve, drawn faint behind (desktop: alpha 0.3) */
+    val faded: Boolean = false,
 )
 
 class BandNodes(
@@ -30,6 +34,8 @@ class BandNodes(
     val selected: Int = -1,
     /** a short bar from the neutral line to the node (colour equalizer's) */
     val bars: Boolean = false,
+    /** brief P6f: the channel's own colour, else the band's curve colour */
+    val color: androidx.compose.ui.graphics.Color? = null,
 )
 
 /** The soft brush: its centre and radius (a fraction of the graph's width). */
@@ -54,6 +60,9 @@ class BandFrame(
 )
 
 object BandDraw {
+    /** the opacity of another channel's curve (rawdenoise.c, denoiseprofile.c: 0.3) */
+    const val FADED_ALPHA = 0.3f
+
     /**
      * Draws [f] into the area of [scope] inside an [insetPx] margin all round. [strip] is the height of the marker
      * strip under the graph (0 for none): the graph is shorter by that much.
@@ -81,16 +90,17 @@ object BandDraw {
             // the circle's radius is a fraction of the graph's width
             drawCircleOutline(band.brush.copy(alpha = band.brushAlpha), Offset(px(b.x), py(b.y)), b.radius * gw, band.markLine.toPx())
         }
-        for (l in f.lines) {
+        for (l in f.lines.sortedBy { if (it.faded) 0 else 1 }) {
             if (l.points.size < 4) continue
             val path = Path()
             path.moveTo(px(l.points[0]), py(l.points[1]))
             var i = 2
             while (i + 1 < l.points.size) { path.lineTo(px(l.points[i]), py(l.points[i + 1])); i += 2 }
-            drawPath(path, if (l.second) band.curveSecond else band.curve, style = Stroke(width = band.curveLine.toPx(), cap = StrokeCap.Round))
+            val c = l.color ?: if (l.second) band.curveSecond else band.curve
+            drawPath(path, if (l.faded) c.copy(alpha = FADED_ALPHA) else c, style = Stroke(width = band.curveLine.toPx() * (if (l.faded) 0.75f else 1f), cap = StrokeCap.Round))
         }
         for (n in f.nodes) {
-            val color = if (n.second) band.curveSecond else band.curve
+            val color = n.color ?: if (n.second) band.curveSecond else band.curve
             for (k in n.xs.indices) {
                 val cx = px(n.xs[k])
                 val cy = py(n.ys[k])

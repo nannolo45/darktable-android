@@ -427,7 +427,8 @@ class P3eBandsTest {
     @Test fun tabSwitchingIsTheControllersAndKeepsTheOtherTabsAsTheyWere() {
         val c = controller()
         val m = TestSetup.schema.modules
-        for (op in BandModels.OPS) {
+        // brief P6f: the band modules with a notebook of their own (lowlight has one curve and no tabs on desktop either)
+        for (op in BandModels.OPS - "lowlight") {
             val ms = m[op]!!
             val tabs = BandHost.tabsId(ms)
             assertNotNull("$op has its notebook", tabs)

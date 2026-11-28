@@ -29,6 +29,8 @@ data class PickerState(
     val moduleOutput: PickStats? = null,
     /** picks finished since the picker was armed (a gesture's pick has landed when this has grown; tests wait on it) */
     val picks: Int = 0,
+    /** brief P6f: saturation curve's picked saturation (mean, min, max), as satcurvergb.c color_picker_apply computes it */
+    val saturation: List<Double>? = null,
 )
 
 /**

@@ -15,6 +15,14 @@ import kotlin.math.min
  */
 data class CurveNode(val x: Double, val y: Double)
 
+/** How a curve module takes a node away (desktop's right click). */
+enum class CurveRemove {
+    /** tone curve, base curve: an end node goes back to (0, 0) or (1, 1), any other is removed */
+    ENDS_RESET,
+    /** saturation curve (satcurvergb.c `area_button_press`): with two nodes left the node's y goes back to 0.5, else it is removed */
+    NEUTRAL_WHEN_TWO,
+}
+
 /** The names of one curve module's node arrays (the schema's field names) and its limits. */
 class CurveLayout(
     val op: String,
@@ -23,6 +31,17 @@ class CurveLayout(
     private val node: (Int, Int, Char) -> String,
     private val count: (Int) -> String,
     private val type: (Int) -> String,
+    /** least gap in x between two nodes while one moves */
+    val minGap: Double = CurveEdit.MIN_GAP,
+    /** a node is added only this far (or farther) from both neighbours in x */
+    val addGap: Double = CurveEdit.ADD_GAP,
+    /** the first node stays at x 0 and the last at x 1 (satcurvergb.c `area_motion_notify`) */
+    val endsFixedX: Boolean = false,
+    /** a node is added on the curve at the finger's x (satcurvergb.c), not at the finger */
+    val addOnCurve: Boolean = false,
+    val removeMode: CurveRemove = CurveRemove.ENDS_RESET,
+    /** the channels' default nodes (`init` / `reset_params`) */
+    private val defaultNodes: (Int) -> List<CurveNode> = { CurveEdit.IDENTITY },
 ) {
     fun nodePath(ch: Int, k: Int, axis: Char) = node(ch, k, axis)
     fun countPath(ch: Int) = count(ch)
@@ -45,11 +64,10 @@ class CurveLayout(
     }
 
     /** darktable's default nodes of the channel (`init`): a straight line; the tone curve's a and b have a middle node. */
-    fun defaults(ch: Int): List<CurveNode> =
-        if (op == "tonecurve" && ch > 0) listOf(CurveNode(0.0, 0.0), CurveNode(0.5, 0.5), CurveNode(1.0, 1.0)) else CurveEdit.IDENTITY
+    fun defaults(ch: Int): List<CurveNode> = defaultNodes(ch)
 
     /** The interpolation method of the channel (0 cubic spline, 1 centripetal spline, 2 monotonic spline). */
-    fun readType(params: JsonObject, ch: Int): Int = (params.paramAt(type(ch)) as? JsonPrimitive)?.doubleOrNull?.toInt() ?: 0
+    fun readType(params: JsonObject, ch: Int): Int = (params.paramAt(type(ch)) as? JsonPrimitive)?.doubleOrNull?.toInt() ?: DEFAULT_TYPE
 
     /**
      * What to write for [nodes] on channel [ch]: the count and every node. [previous] is the count the module held;
@@ -69,19 +87,64 @@ class CurveLayout(
         return out
     }
 
+    /** What a double tap writes on channel [ch] (desktop's double click): the default nodes and interpolation. */
+    fun resetWrites(ch: Int, previous: Int): Map<String, JsonPrimitive> =
+        writes(ch, defaults(ch), previous) + (typePath(ch) to JsonPrimitive(DEFAULT_TYPE.toLong()))
+
     fun countOf(params: JsonObject, ch: Int): Int = (params.paramAt(count(ch)) as? JsonPrimitive)?.doubleOrNull?.toInt() ?: 0
+
+    /** Node [i] to (x, y) with this module's limits. */
+    fun move(nodes: List<CurveNode>, i: Int, x: Double, y: Double): List<CurveNode> {
+        val moved = CurveEdit.move(nodes, i, x, y, minGap)
+        if (!endsFixedX || i !in moved.indices) return moved
+        val fx = if (i == 0) 0.0 else if (i == moved.lastIndex) 1.0 else return moved
+        return moved.toMutableList().also { it[i] = CurveNode(fx, it[i].y) }
+    }
+
+    /** A node at the finger's x (and at [y], or on the curve of interpolation [type] where the module adds it there); null as [CurveEdit.add]. */
+    fun add(nodes: List<CurveNode>, x: Double, y: Double, type: Int): Pair<List<CurveNode>, Int>? =
+        CurveEdit.add(nodes, x, if (addOnCurve) CurveEdit.eval(nodes, type, x) else y, maxNodes, addGap)
+
+    /** Node [i] taken away as the module does it. */
+    fun remove(nodes: List<CurveNode>, i: Int): List<CurveNode> = when (removeMode) {
+        CurveRemove.ENDS_RESET -> CurveEdit.remove(nodes, i)
+        CurveRemove.NEUTRAL_WHEN_TWO -> when {
+            i !in nodes.indices -> nodes
+            nodes.size <= 2 -> nodes.toMutableList().also { it[i] = CurveNode(it[i].x, 0.5) }
+            else -> nodes.toMutableList().also { it.removeAt(i) }
+        }
+    }
 
     companion object {
         /** the default interpolation method (monotonic spline) */
         const val DEFAULT_TYPE = 2
 
         /** tone curve: tonecurve[ch][k].x, tonecurve_nodes[ch], tonecurve_type[ch]; DT_IOP_TONECURVE_MAXNODES 20 */
-        val TONECURVE = CurveLayout("tonecurve", 3, 20, { c, k, a -> "tonecurve[$c][$k].$a" }, { "tonecurve_nodes[$it]" }, { "tonecurve_type[$it]" })
+        val TONECURVE = CurveLayout("tonecurve", 3, 20, { c, k, a -> "tonecurve[$c][$k].$a" }, { "tonecurve_nodes[$it]" }, { "tonecurve_type[$it]" },
+            defaultNodes = { ch -> if (ch > 0) listOf(CurveNode(0.0, 0.0), CurveNode(0.5, 0.5), CurveNode(1.0, 1.0)) else CurveEdit.IDENTITY })
 
         /** rgb curve: curve_nodes[ch][k].x, curve_num_nodes[ch], curve_type[ch]; MAX_ANCHORS 20 */
         val RGBCURVE = CurveLayout("rgbcurve", 3, 20, { c, k, a -> "curve_nodes[$c][$k].$a" }, { "curve_num_nodes[$it]" }, { "curve_type[$it]" })
 
-        fun of(op: String): CurveLayout? = when (op) { "tonecurve" -> TONECURVE; "rgbcurve" -> RGBCURVE; else -> null }
+        /**
+         * Brief P6f, base curve (basecurve.c): one curve, basecurve[0][k], basecurve_nodes[0], basecurve_type[0];
+         * MAXNODES 20; `init` sets (0, 0) and (1, 1); the right click puts an end node back on its corner.
+         */
+        val BASECURVE = CurveLayout("basecurve", 1, 20, { _, k, a -> "basecurve[0][$k].$a" }, { "basecurve_nodes[0]" }, { "basecurve_type[0]" })
+
+        /**
+         * Brief P6f, saturation curve (satcurvergb.c): two curves (saturation, brilliance) in channel[ch].curve[k],
+         * channel[ch].curve_num_nodes, channel[ch].curve_type; DT_IOP_SATCURVE_MAXNODES 20, nodes 0.0025 apart
+         * (DT_IOP_SATCURVE_MIN_X_DISTANCE, also for adding), the ends fixed at x 0 and 1, a node added on the curve,
+         * `reset_channel_curve`: (0, 0.5), (1, 0.5), monotonic.
+         */
+        val SATCURVE = CurveLayout("satcurvergb", 2, 20, { c, k, a -> "channel[$c].curve[$k].$a" }, { "channel[$it].curve_num_nodes" }, { "channel[$it].curve_type" },
+            minGap = 0.0025, addGap = 0.0025, endsFixedX = true, addOnCurve = true, removeMode = CurveRemove.NEUTRAL_WHEN_TWO,
+            defaultNodes = { listOf(CurveNode(0.0, 0.5), CurveNode(1.0, 0.5)) })
+
+        fun of(op: String): CurveLayout? = when (op) {
+            "tonecurve" -> TONECURVE; "rgbcurve" -> RGBCURVE; "basecurve" -> BASECURVE; "satcurvergb" -> SATCURVE; else -> null
+        }
     }
 }
 
@@ -102,20 +165,20 @@ object CurveEdit {
         nodes.size >= 2 && nodes.zipWithNext().all { (a, b) -> a.x < b.x } && nodes.all { it.x in 0.0..1.0 && it.y in 0.0..1.0 }
 
     /** Node [i] to (x, y), clamped to the graph and to its neighbours. */
-    fun move(nodes: List<CurveNode>, i: Int, x: Double, y: Double): List<CurveNode> {
+    fun move(nodes: List<CurveNode>, i: Int, x: Double, y: Double, gap: Double = MIN_GAP): List<CurveNode> {
         if (i !in nodes.indices) return nodes
-        val lo = if (i > 0) nodes[i - 1].x + MIN_GAP else 0.0
-        val hi = if (i < nodes.lastIndex) nodes[i + 1].x - MIN_GAP else 1.0
+        val lo = if (i > 0) nodes[i - 1].x + gap else 0.0
+        val hi = if (i < nodes.lastIndex) nodes[i + 1].x - gap else 1.0
         val nx = min(max(x, lo), max(lo, hi)).coerceIn(0.0, 1.0)
         return nodes.toMutableList().also { it[i] = CurveNode(nx, y.coerceIn(0.0, 1.0)) }
     }
 
     /** A node at (x, y) in its place; null when the curve is full, or x is within [ADD_GAP] of a neighbour. The new node's index is in `second`. */
-    fun add(nodes: List<CurveNode>, x: Double, y: Double, maxNodes: Int): Pair<List<CurveNode>, Int>? {
+    fun add(nodes: List<CurveNode>, x: Double, y: Double, maxNodes: Int, gap: Double = ADD_GAP): Pair<List<CurveNode>, Int>? {
         if (nodes.size >= maxNodes) return null
         val at = nodes.indexOfFirst { it.x > x }.let { if (it < 0) nodes.size else it }
-        if (at > 0 && x - nodes[at - 1].x <= ADD_GAP) return null
-        if (at < nodes.size && nodes[at].x - x <= ADD_GAP) return null
+        if (at > 0 && x - nodes[at - 1].x <= gap) return null
+        if (at < nodes.size && nodes[at].x - x <= gap) return null
         return nodes.toMutableList().also { it.add(at, CurveNode(x.coerceIn(0.0, 1.0), y.coerceIn(0.0, 1.0))) } to at
     }
 
@@ -251,11 +314,72 @@ data class CurvePickMark(val min: Double, val mean: Double, val max: Double, val
 /**
  * Brief P4c: how a curve's graph is shown, as desktop's: rgb curve's zoom and offset (rgbcurve.c `_curve_to_mouse`,
  * set with ctrl+scroll on desktop) and tone curve's "scale for graph" (tonecurve.c `to_log`, `loglogscale` and
- * `semilog`). The app's graphs have neither control, so they are shown with [IDENTITY]; the mark follows whatever view
- * the graph is drawn with.
+ * `semilog`). Brief P6f: the graphs now have both (tone curve's and base curve's "scale for graph" slider, rgb curve's
+ * pinch); [offsetY] is rgb curve's offset of the ordinate. [logBase] is 0 where the scale does not apply (tone
+ * curve's a and b).
  */
-data class CurveView(val zoom: Double = 1.0, val offsetX: Double = 0.0, val logBase: Double = 0.0, val semilog: Int = 0) {
+data class CurveView(val zoom: Double = 1.0, val offsetX: Double = 0.0, val logBase: Double = 0.0, val semilog: Int = 0, val offsetY: Double = 0.0) {
+    /** Where the value [v] of the abscissa is drawn, as a fraction of the graph's width. */
+    fun screenX(v: Double): Double = CurveScale.toScreen(v, logBase, zoom, offsetX, semilog != -1)
+
+    /** Where the value [v] of the ordinate is drawn, as a fraction of the graph's height from the bottom. */
+    fun screenY(v: Double): Double = CurveScale.toScreen(v, logBase, zoom, offsetY, semilog != 1)
+
+    /** The value of the abscissa under the screen fraction [s]. */
+    fun valueX(s: Double): Double = CurveScale.toValue(s, logBase, zoom, offsetX, semilog != -1)
+
+    fun valueY(s: Double): Double = CurveScale.toValue(s, logBase, zoom, offsetY, semilog != 1)
+
     companion object { val IDENTITY = CurveView() }
+}
+
+/**
+ * Brief P6f: the display scales of the curve graphs, display only (nothing is written to the module, as desktop).
+ *
+ * "scale for graph" (tonecurve.c and basecurve.c `logbase`, a slider 0..40, `loglogscale = eval_grey(value)` which
+ * returns the value): `to_log(x) = log(x * base + 1) / log(base + 1)` on both axes (`semilog` is always 0 in the pinned
+ * tree), and its inverse `to_lin(y) = ((base + 1)^y - 1) / base` (tonecurve.c; basecurve.c's `to_lin` has `base - 1`,
+ * which is not the inverse of its `to_log`: the app uses the true inverse for both, see the P6f report).
+ *
+ * rgb curve's zoom (rgbcurve.c `_scrolled` with the pan-and-zoom key): `zoom *= 1 - 0.1 * dy` at least 1, the point under
+ * the pointer kept, the offsets clamped to 0..(zoom - 1) / zoom; `_curve_to_mouse(x) = (x - offset) * zoom`. On the phone
+ * a two-finger pinch does it: the point under the fingers' centre stays under it.
+ */
+object CurveScale {
+    /** "scale for graph": desktop's slider limits and default */
+    const val LOG_MIN = 0.0
+    const val LOG_MAX = 40.0
+    /** rgb curve's zoom: desktop has no upper limit; the app stops at this */
+    const val ZOOM_MAX = 100.0
+
+    fun toLog(x: Double, base: Double): Double = if (base > 0.0) Math.log(x * base + 1.0) / Math.log(base + 1.0) else x
+
+    fun toLin(y: Double, base: Double): Double = if (base > 0.0) (Math.pow(base + 1.0, y) - 1.0) / base else y
+
+    fun toScreen(v: Double, base: Double, zoom: Double, offset: Double, log: Boolean = true): Double =
+        ((if (log) toLog(v, base) else v) - offset) * zoom
+
+    fun toValue(s: Double, base: Double, zoom: Double, offset: Double, log: Boolean = true): Double {
+        val l = s / zoom + offset
+        return if (log) toLin(l, base) else l
+    }
+
+    /**
+     * A pinch step: the fingers' centre moved from ([fromX], [fromY]) to ([toX], [toY]) (graph fractions, y up) and
+     * their distance changed by [factor]. The curve point that was under the old centre comes under the new one.
+     */
+    fun pinch(v: CurveView, fromX: Double, fromY: Double, toX: Double, toY: Double, factor: Double): CurveView {
+        val linx = fromX / v.zoom + v.offsetX
+        val liny = fromY / v.zoom + v.offsetY
+        val zoom = (v.zoom * factor).coerceIn(1.0, ZOOM_MAX)
+        val limit = (zoom - 1.0) / zoom
+        val ox = (linx - toX / zoom).coerceIn(0.0, limit)
+        val oy = (liny - toY / zoom).coerceIn(0.0, limit)
+        return v.copy(zoom = zoom, offsetX = ox, offsetY = oy)
+    }
+
+    /** The grid lines' positions (graph fractions) for [n] divisions under the log scale [base] (gui/draw.h `dt_draw_loglog_grid`). */
+    fun grid(n: Int, base: Double): List<Double> = (1 until n).map { toLog(it / n.toDouble(), base) }
 }
 
 object CurvePick {

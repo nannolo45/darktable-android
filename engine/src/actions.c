@@ -1653,6 +1653,9 @@ int dtb__module_action(dt_iop_module_t *m, const char *action, JsonObject *args,
   // NOT_FOUND for any other borders action)
   const int r7 = dtb__module_action_p6e(m, action, args, result);
   if(r7 != 1) return r7;
+  // brief P6f: saturation curve's picker
+  const int r8 = dtb__module_action_p6f(m, action, args, result);
+  if(r8 != 1) return r8;
   const int r2 = dtb__module_action2(m, action, args, result);
   if(r2 != 1) return r2;
   const int r3 = dtb__module_action3(m, action, args, result);

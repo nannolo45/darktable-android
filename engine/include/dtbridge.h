@@ -231,6 +231,9 @@ int dtb_module_reset(const char *op, int priority);
  *                   config_folder} (_refresh_watermarks); list_fonts -> {families: [ {family, faces: [ {face,
  *                   font} ]} ], config, default_config_fonts} (families that draw Latin text; "font" is
  *                   what the font chooser writes). filename, text and font are set with dtb_params_set.
+ *   satcurvergb:    P6f (engine-api.md 5.4): pick {point|area} -> {picked, saturation, saturation_min,
+ *                   saturation_max, gamut_lut}: color_picker_apply's picked saturation (pixel_s_in_norm with the
+ *                   module's formula, the pipe's gamut LUT, the working profile); writes nothing.
  *   P1b part 2 (engine-api.md 6.3), each picks an "area" or "point" first:
  *   temperature:     wb_from_area {area} [M];
  *   exposure:        spot {area, mode: "correction"|"measure", lightness?} [M];

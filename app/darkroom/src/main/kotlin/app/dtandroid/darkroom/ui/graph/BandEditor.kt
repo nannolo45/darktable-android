@@ -64,6 +64,12 @@ object BandHost {
     /** The notebook that holds the module's curve tabs (its page is the controller's, as the pickers read it) */
     fun tabsId(m: ModuleSchema): Int? = m.allControls().firstOrNull { it is Control.Tabs }?.id
 
+    /** Brief P6f: denoise (profiled) has two notebooks, all/R/G/B and luma/chroma; the colour mode in [params] says which one shows. */
+    fun tabsId(m: ModuleSchema, params: kotlinx.serialization.json.JsonObject): Int? {
+        val tabs = m.allControls().filterIsInstance<Control.Tabs>().toList()
+        return if (m.op == "denoiseprofile" && BandModels.denoiseY0U0V0(params)) tabs.getOrNull(1)?.id else tabs.firstOrNull()?.id
+    }
+
     /** True for a control the editor replaces: it is not built as a generic control. */
     fun hides(m: ModuleSchema, c: Control): Boolean =
         isBandModule(m.op) && (c is Control.Tabs || (m.op == "colorzones" && c.label?.trim() in ZONES_OWN))
@@ -118,7 +124,7 @@ fun BandEditor(ctx: PanelContext) {
 private fun BandEditorBody(ctx: PanelContext, view: BandView) {
     val op = ctx.module.op
     val params = ctx.instance.params
-    val tabsId = BandHost.tabsId(ctx.module) ?: -1
+    val tabsId = BandHost.tabsId(ctx.module, params) ?: -1
     val tabIndex = ctx.controller.tabPage(ctx.state, ctx.key, tabsId).coerceIn(0, view.tabs.size - 1)
     // the tab as the finger has it, until the engine's parameters say the same
     var live by remember(ctx.key) { mutableStateOf<Pair<Int, BandTab>?>(null) }
@@ -144,7 +150,8 @@ private fun BandEditorBody(ctx: PanelContext, view: BandView) {
             DtText(t.label, DtTheme.type.label, if (sel) DtTheme.colors.textBright else DtTheme.colors.textDim)
         }
         val marks = pickMarks(ctx, view)
-        val frame = frameOf(view, tab, selected, if (brushOn) brushAt else null, radius, marks)
+        val tints = listOf(null, DtTheme.colors.curveRed, DtTheme.colors.curveGreen, DtTheme.colors.curveBlue, DtTheme.colors.curveSecond)
+        val frame = frameOf(view, tab, selected, if (brushOn) brushAt else null, radius, marks, tints)
         Box(
             Modifier.fillMaxWidth().height(if (view.xStrip) band.height + band.strip else band.height)
                 .semantics { contentDescription = "band graph: ${tab.label}" }
@@ -159,19 +166,19 @@ private fun BandEditorBody(ctx: PanelContext, view: BandView) {
                 } else Modifier),
         ) {}
         // the strip under a hue, lightness or chroma axis: the colour of the position (data, from ui-theme)
-        if (!view.xStrip) AxisStrip(ctx, view, tab, inset)
+        if (!view.xStrip && view.axis != BandAxis.FREQUENCY) AxisStrip(ctx, view, tab, inset)
         AxisWords(view)
         Column(Modifier.padding(top = DtTheme.space.xs)) {
-            val slider = remember(view.defaultRadius) { radiusSlider(view.defaultRadius) }
+            val slider = remember(view.defaultRadius, view.radiusMin) { radiusSlider(view.defaultRadius, view.radiusMin) }
             SliderControl("brush radius", slider, radius, !ctx.readOnly, onDrag = { radius = it }, onDragEnd = {}, onReset = { radius = view.defaultRadius }, onExact = {})
         }
         if (op == "colorzones") ZonesOptions(ctx, tab, tabIndex, byArea) { byArea = it }
     }
 }
 
-private fun radiusSlider(default: Double) = Control.Slider(
+private fun radiusSlider(default: Double, min: Double = BandModels.RADIUS_MIN) = Control.Slider(
     id = -1, label = "brush radius", tooltip = "how far a moved node pulls its neighbours: the soft brush", hiddenByDefault = false, binding = Binding.None,
-    softMin = BandModels.RADIUS_MIN, softMax = BandModels.RADIUS_MAX, hardMin = BandModels.RADIUS_MIN, hardMax = BandModels.RADIUS_MAX, default = default,
+    softMin = min, softMax = BandModels.RADIUS_MAX, hardMin = min, hardMax = BandModels.RADIUS_MAX, default = default,
     step = 0.01, digits = 0, factor = 100.0, offset = 0.0, format = "%", textDefault = null, integer = false,
 )
 
@@ -237,7 +244,15 @@ private fun equalizerBand(ctx: PanelContext, tab: BandTab, widthPx: Float, band:
 
 @Composable
 private fun AxisWords(view: BandView) {
-    val words = when (view.axis) {
+    // brief P6f: the y axis's words where desktop writes them in the graph (lowlight: night / day vision; denoise: noisy / smooth)
+    view.yWords?.let { (bottom, top) ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            DtText("$bottom (bottom) to $top (top)", DtTheme.type.tiny, DtTheme.colors.textMuted)
+        }
+    }
+    // raw denoise's graph has no words on desktop
+    if (view.op == "rawdenoise") return
+    val words = view.xWords ?: when (view.axis) {
         BandAxis.FREQUENCY -> "coarse" to "fine"
         BandAxis.LIGHTNESS -> "dark" to "light"
         BandAxis.CHROMA -> "dull" to "bold"
@@ -250,10 +265,17 @@ private fun AxisWords(view: BandView) {
 }
 
 /** What the graph draws for [tab]: its lines and nodes, the brush while a finger is down, the picked values. */
-private fun frameOf(view: BandView, tab: BandTab, selected: Pair<Int, Int>, brushAt: Pair<Double, Double>?, radius: Double, marks: List<BandMark>): BandFrame {
-    val lines = tab.curves.map { BandLine(BandInterp.line(it.xs, it.ys, it.type, it.periodic), it.second) }
+private fun frameOf(
+    view: BandView, tab: BandTab, selected: Pair<Int, Int>, brushAt: Pair<Double, Double>?, radius: Double, marks: List<BandMark>,
+    tints: List<androidx.compose.ui.graphics.Color?> = emptyList(),
+): BandFrame {
+    val own = tints.getOrNull(tab.tint)
+    // brief P6f: the other channels' curves faint behind (raw denoise, denoise (profiled))
+    val ghosts = tab.ghosts.map { (c, t) -> BandLine(BandInterp.line(c.xs, c.ys, c.type, c.periodic), color = tints.getOrNull(t), faded = true) }
+    val lines = ghosts + tab.curves.map { BandLine(BandInterp.line(it.xs, it.ys, it.type, it.periodic), it.second, color = if (it.second) null else own) }
     val nodes = tab.curves.mapIndexed { k, c ->
-        BandNodes(FloatArray(c.count) { c.xs[it].toFloat() }, FloatArray(c.count) { c.ys[it].toFloat() }, c.second, if (selected.first == k) selected.second else -1, bars = view.op == "colorequal")
+        BandNodes(FloatArray(c.count) { c.xs[it].toFloat() }, FloatArray(c.count) { c.ys[it].toFloat() }, c.second, if (selected.first == k) selected.second else -1,
+            bars = view.op == "colorequal", color = if (c.second) null else own)
     }
     val strip = if (view.xStrip) {
         val c = tab.curves[0]

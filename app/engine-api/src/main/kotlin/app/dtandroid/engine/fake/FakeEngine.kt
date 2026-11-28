@@ -628,7 +628,7 @@ class FakeEngine(
         when (op to action) {
             "temperature" to "wb_from_area", "exposure" to "spot", "rgblevels" to "pick", "rgbcurve" to "set_nodes_from_area",
             "channelmixerrgb" to "illuminant_from_area", "channelmixerrgb" to "spot",
-            "borders" to "pick", "watermark" to "pick" ->
+            "borders" to "pick", "watermark" to "pick", "satcurvergb" to "pick" ->
                 fakePickAction(s, op, priority, action, args)
             // brief P6e: darktable's watermarks folder as the APK carries it (upstream data/watermarks)
             "watermark" to "list_files" -> {
@@ -1756,6 +1756,17 @@ class FakeEngine(
                     put("picked", picked)
                     put("color", JsonArray((if (changed) pickedRgb else col(target)).map { JsonPrimitive(it) }))
                     put("changed", changed)
+                }
+            }
+            // brief P6f: saturation curve's picker writes nothing; the stand-in's saturation is (max - min) / max of the picked RGB
+            "satcurvergb" to "pick" -> {
+                fun satOf(v: List<Double?>): Double { val c = v.take(3).map { it ?: 0.0 }; val hi = c.max(); return if (hi > 0) (hi - c.min()) / hi else 0.0 }
+                buildJsonObject {
+                    put("picked", picked)
+                    put("saturation", satOf(input.mean))
+                    put("saturation_min", satOf(input.min))
+                    put("saturation_max", satOf(input.max))
+                    put("gamut_lut", false)
                 }
             }
             "rgblevels" to "pick" -> {
