@@ -86,8 +86,9 @@ abstract class P6fGraphScreens : ScreenshotBase() {
     @Test fun shot02() {
         GraphViews.logBase.clear(); GraphViews.zoom.clear()
         shot("02-satcurve-brilliance", "satcurvergb", "curve graph") { k ->
-            curveSet(k, CurveLayout.SATCURVE.writes(0, listOf(n(0.0, 0.5), n(0.3, 0.68), n(1.0, 0.55)), 0))
-            curveSet(k, CurveLayout.SATCURVE.writes(1, listOf(n(0.0, 0.5), n(0.5, 0.35), n(1.0, 0.5)), 0))
+            // the stand-in's interpolation is 0 (cubic); desktop's reset_channel_curve sets monotonic
+            curveSet(k, CurveLayout.SATCURVE.writes(0, listOf(n(0.0, 0.5), n(0.3, 0.68), n(1.0, 0.55)), 0) + (CurveLayout.SATCURVE.typePath(0) to JsonPrimitive(2L)))
+            curveSet(k, CurveLayout.SATCURVE.writes(1, listOf(n(0.0, 0.5), n(0.5, 0.35), n(1.0, 0.5)), 0) + (CurveLayout.SATCURVE.typePath(1) to JsonPrimitive(2L)))
             chooseTab(k, TestSetup.schema.modules.getValue("satcurvergb").allControls().first { it is app.dtandroid.schema.Control.Tabs }.id, 1)
         }
     }

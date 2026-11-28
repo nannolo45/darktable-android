@@ -21,6 +21,7 @@ import app.dtandroid.darkroom.DarkroomController
 import app.dtandroid.darkroom.InstanceKey
 import app.dtandroid.darkroom.Series
 import app.dtandroid.darkroom.SeriesItem
+import app.dtandroid.darkroom.key
 import app.dtandroid.darkroom.ui.graph.CurveLayout
 import app.dtandroid.engine.api.paramAt
 import kotlinx.coroutines.runBlocking
