@@ -216,6 +216,9 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
         private val ARRAY_DIMS: Map<String, Map<String, List<Int>>> = mapOf(
             "atrous" to mapOf("x" to listOf(5, 6), "y" to listOf(5, 6)),
             "colorzones" to mapOf("curve" to listOf(3, 20)),
+            // brief P6f: raw denoise's x and y are [4][5] (all, R, G, B), denoise (profiled)'s [6][7] (all, R, G, B, Y0, U0V0)
+            "rawdenoise" to mapOf("x" to listOf(4, 5), "y" to listOf(4, 5)),
+            "denoiseprofile" to mapOf("x" to listOf(6, 7), "y" to listOf(6, 7)),
         )
 
         fun buildParams(fields: List<FieldDef>, dims: Map<String, List<Int>> = emptyMap()): JsonObject {
@@ -251,6 +254,8 @@ class FakeModuleCatalog private constructor(val darktableVersion: String, val mo
             "tonecurve[0][0].x" to intArrayOf(3, 20), "tonecurve[0][0].y" to intArrayOf(3, 20),
             "curve_nodes[0][0].x" to intArrayOf(3, 20), "curve_nodes[0][0].y" to intArrayOf(3, 20),
             "levels[0][0]" to intArrayOf(3, 3),
+            // brief P6f: base curve's [3][20] (only the first curve is used)
+            "basecurve[0][0].x" to intArrayOf(3, 20), "basecurve[0][0].y" to intArrayOf(3, 20),
         )
 
         private fun prefixOf(steps: List<ParamPath.Step>, upToInclusive: Int): String = buildString {

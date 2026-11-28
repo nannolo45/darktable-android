@@ -66,7 +66,7 @@ object BandHost {
 
     /** Brief P6f: denoise (profiled) has two notebooks, all/R/G/B and luma/chroma; the colour mode in [params] says which one shows. */
     fun tabsId(m: ModuleSchema, params: kotlinx.serialization.json.JsonObject): Int? {
-        val tabs = m.allControls().filterIsInstance<Control.Tabs>()
+        val tabs = m.allControls().filterIsInstance<Control.Tabs>().toList()
         return if (m.op == "denoiseprofile" && BandModels.denoiseY0U0V0(params)) tabs.getOrNull(1)?.id else tabs.firstOrNull()?.id
     }
 
