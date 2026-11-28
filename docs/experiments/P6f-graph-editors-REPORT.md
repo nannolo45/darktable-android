@@ -101,7 +101,10 @@ Measurements are x86_64 (CI runners and emulator), not phone numbers.
   `P6fTapTest`: t1 base curve: items 11 → 12, the camera curve's node (0.460, 0.748) taken and moved to (0.5, 0.906),
   6 nodes before and after, the preview changed; t2 lowlight: items 11 → 12, transition_y [0.50, 0.57, 0.81, 0.57,
   0.50, 0.50]; t3 raw denoise: items 11 → 12, y[0] [0.50, 0.50, 0.89, 0.50, 0.50], R untouched 0.5, module on.
-  Earlier p2b 46090694570 (fe8495f): 140 of 141 passed;
+- **Second p2b 46097107978** (3f6e130, which adds only this report to daebae6): green, 141 tests, 0 failed, the same
+  P6f numbers (t1 node (0.459, 0.747) → (0.5, 0.906), t2 and t3 identical). The commit after 3f6e130 adds only this
+  run's id to the report.
+- Earlier p2b 46090694570 (fe8495f): 140 of 141 passed;
   P6f t1 failed because the test expected the identity curve and the raw opens with base curve on and a 6-node camera
   curve; t2 lowlight: items 11 → 12, transition_y [0.50, 0.57, 0.81, 0.57, 0.50, 0.50]; t3 raw denoise: items
   11 → 12, y[0] [0.50, 0.50, 0.89, 0.50, 0.50], R untouched 0.5.
